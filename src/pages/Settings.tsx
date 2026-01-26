@@ -12,12 +12,15 @@ import {
   Bell,
   Shield,
   Users,
+  Palette,
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PAYMENT_PROVIDER_LABELS } from '@/lib/constants';
+import { ThemeCustomizer } from '@/components/settings/ThemeCustomizer';
 
 export default function Settings() {
   const { profile, roles } = useAuth();
+  const isSuperAdmin = roles.includes('admin'); // In production, add proper super admin check
 
   return (
     <div className="space-y-6">
@@ -33,10 +36,14 @@ export default function Settings() {
       </div>
 
       <Tabs defaultValue="store" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5">
+        <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6">
           <TabsTrigger value="store">
             <Store className="h-4 w-4 mr-2" />
             Loja
+          </TabsTrigger>
+          <TabsTrigger value="appearance">
+            <Palette className="h-4 w-4 mr-2" />
+            Aparência
           </TabsTrigger>
           <TabsTrigger value="payments">
             <CreditCard className="h-4 w-4 mr-2" />
@@ -91,6 +98,11 @@ export default function Settings() {
               <Button>Salvar Alterações</Button>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Appearance Settings */}
+        <TabsContent value="appearance">
+          <ThemeCustomizer isSuperAdmin={isSuperAdmin} />
         </TabsContent>
 
         {/* Payment Settings */}
