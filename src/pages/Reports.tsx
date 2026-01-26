@@ -12,13 +12,15 @@ import {
   Calculator,
 } from 'lucide-react';
 import { useSalesReport } from '@/hooks/useSalesReport';
-import { useTopProducts } from '@/hooks/useTopProducts';
+import { useTopProductsWithCategory } from '@/hooks/useTopProductsWithCategory';
 import { useCMVReport } from '@/hooks/useCMVReport';
+import { usePeriodComparison } from '@/hooks/usePeriodComparison';
 import { SalesChart } from '@/components/reports/SalesChart';
 import { PaymentMethodChart } from '@/components/reports/PaymentMethodChart';
-import { TopProductsChart } from '@/components/reports/TopProductsChart';
+import { TopProductsChartWithFilter } from '@/components/reports/TopProductsChartWithFilter';
 import { CMVReportView } from '@/components/reports/CMVReportView';
 import { ReportExport } from '@/components/reports/ReportExport';
+import { PeriodComparisonCard } from '@/components/reports/PeriodComparisonCard';
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat('pt-BR', {
@@ -28,11 +30,20 @@ const formatCurrency = (value: number) =>
 
 type PeriodOption = 7 | 15 | 30;
 
+const PERIOD_LABELS: Record<PeriodOption, string> = {
+  7: '7 dias',
+  15: '15 dias',
+  30: '30 dias',
+};
+
 export default function Reports() {
   const [period, setPeriod] = useState<PeriodOption>(7);
+  const [selectedCategory, setSelectedCategory] = useState<string | undefined>(undefined);
+  
   const { report: salesReport, isLoading: salesLoading } = useSalesReport(period);
-  const { products: topProducts, isLoading: productsLoading } = useTopProducts(period, 10);
+  const { products: topProducts, categories, isLoading: productsLoading } = useTopProductsWithCategory(period, 10, selectedCategory);
   const { report: cmvReport, isLoading: cmvLoading } = useCMVReport(period);
+  const { comparison, isLoading: comparisonLoading } = usePeriodComparison(period);
 
   const isLoading = salesLoading || productsLoading || cmvLoading;
 
@@ -146,6 +157,24 @@ export default function Reports() {
             </Card>
           </div>
 
+          {/* Period Comparison */}
+          {comparisonLoading ? (
+            <Card>
+              <CardContent className="pt-6">
+                <Skeleton className="h-32 w-full" />
+              </CardContent>
+            </Card>
+          ) : comparison && (
+            <PeriodComparisonCard
+              current={comparison.current}
+              previous={comparison.previous}
+              revenueChange={comparison.revenueChange}
+              ordersChange={comparison.ordersChange}
+              ticketChange={comparison.ticketChange}
+              periodLabel={PERIOD_LABELS[period]}
+            />
+          )}
+
           {/* Charts */}
           {isLoading ? (
             <div className="grid gap-4 lg:grid-cols-2">
@@ -180,7 +209,12 @@ export default function Reports() {
                 )}
               </div>
 
-              <TopProductsChart data={topProducts} />
+              <TopProductsChartWithFilter 
+                products={topProducts} 
+                categories={categories}
+                selectedCategory={selectedCategory}
+                onCategoryChange={setSelectedCategory}
+              />
 
               {/* Payment Methods Summary Table */}
               {salesReport && salesReport.byPaymentMethod.length > 0 && (
