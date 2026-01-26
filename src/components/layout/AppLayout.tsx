@@ -1,10 +1,14 @@
 import { Outlet } from 'react-router-dom';
 import { AppSidebar } from './AppSidebar';
 import { useLowStockAlerts } from '@/hooks/useLowStockAlerts';
+import { usePreparingAlerts } from '@/hooks/usePreparingAlerts';
 
 export function AppLayout() {
   // Enable low stock alerts globally
   useLowStockAlerts();
+  
+  // Enable preparing order alerts globally
+  usePreparingAlerts();
 
   return (
     <div className="min-h-screen flex w-full">

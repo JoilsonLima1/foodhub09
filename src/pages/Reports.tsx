@@ -10,6 +10,7 @@ import {
   ShoppingCart,
   Calendar,
   Calculator,
+  CalendarDays,
 } from 'lucide-react';
 import { useSalesReport } from '@/hooks/useSalesReport';
 import { useTopProductsWithCategory } from '@/hooks/useTopProductsWithCategory';
@@ -21,6 +22,7 @@ import { TopProductsChartWithFilter } from '@/components/reports/TopProductsChar
 import { CMVReportView } from '@/components/reports/CMVReportView';
 import { ReportExport } from '@/components/reports/ReportExport';
 import { PeriodComparisonCard } from '@/components/reports/PeriodComparisonCard';
+import { DayOfWeekChart } from '@/components/reports/DayOfWeekChart';
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat('pt-BR', {
@@ -92,6 +94,10 @@ export default function Reports() {
           <TabsTrigger value="vendas" className="flex items-center gap-2">
             <TrendingUp className="h-4 w-4" />
             Vendas
+          </TabsTrigger>
+          <TabsTrigger value="diasemana" className="flex items-center gap-2">
+            <CalendarDays className="h-4 w-4" />
+            Por Dia
           </TabsTrigger>
           <TabsTrigger value="cmv" className="flex items-center gap-2">
             <Calculator className="h-4 w-4" />
@@ -260,6 +266,10 @@ export default function Reports() {
               </CardContent>
             </Card>
           )}
+        </TabsContent>
+
+        <TabsContent value="diasemana" className="mt-6">
+          <DayOfWeekChart daysBack={period} />
         </TabsContent>
 
         <TabsContent value="cmv" className="mt-6">

@@ -1212,6 +1212,53 @@ export type Database = {
           },
         ]
       }
+      sales_goals: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          end_date: string
+          goal_type: string
+          id: string
+          is_active: boolean | null
+          start_date: string
+          target_amount: number
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          end_date: string
+          goal_type: string
+          id?: string
+          is_active?: boolean | null
+          start_date: string
+          target_amount?: number
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          end_date?: string
+          goal_type?: string
+          id?: string
+          is_active?: boolean | null
+          start_date?: string
+          target_amount?: number
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_goals_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stock_entries: {
         Row: {
           cost_per_unit: number | null
