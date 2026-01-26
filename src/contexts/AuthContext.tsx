@@ -133,6 +133,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user_id: data.user.id,
         full_name: fullName,
       });
+
+      // Bootstrap user to demo tenant with admin role
+      try {
+        const { data: session } = await supabase.auth.getSession();
+        if (session?.session?.access_token) {
+          await supabase.functions.invoke('bootstrap-user', {
+            headers: {
+              Authorization: `Bearer ${session.session.access_token}`
+            }
+          });
+        }
+      } catch (bootstrapError) {
+        console.error('Bootstrap error:', bootstrapError);
+        // Don't fail signup if bootstrap fails
+      }
     }
 
     return { error };
