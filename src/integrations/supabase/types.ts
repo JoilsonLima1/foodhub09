@@ -1773,6 +1773,7 @@ export type Database = {
         | "kitchen"
         | "stock"
         | "delivery"
+        | "super_admin"
       delivery_status:
         | "pending"
         | "assigned"
@@ -1939,7 +1940,15 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "manager", "cashier", "kitchen", "stock", "delivery"],
+      app_role: [
+        "admin",
+        "manager",
+        "cashier",
+        "kitchen",
+        "stock",
+        "delivery",
+        "super_admin",
+      ],
       delivery_status: [
         "pending",
         "assigned",
