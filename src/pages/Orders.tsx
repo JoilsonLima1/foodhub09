@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQueryClient } from '@tanstack/react-query';
@@ -14,14 +14,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import {
   Search,
   RefreshCw,
   ChefHat,
   Zap,
+  Volume2,
+  VolumeX,
 } from 'lucide-react';
 import { OrderCard } from '@/components/orders/OrderCard';
 import { useOrders, type OrderWithDetails } from '@/hooks/useOrders';
+import { useOrderSound } from '@/hooks/useOrderSound';
 import { toast } from '@/hooks/use-toast';
 import type { OrderStatus } from '@/types/database';
 
@@ -31,8 +36,12 @@ export default function Orders() {
   const { data: orders = [], isLoading, refetch } = useOrders('today');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const { playNotificationSound } = useOrderSound();
+  const previousOrderCountRef = useRef<number>(0);
+  const isFirstLoadRef = useRef(true);
 
-  // Setup realtime subscription
+  // Setup realtime subscription with sound alerts
   useEffect(() => {
     if (!tenantId) return;
 
@@ -41,7 +50,29 @@ export default function Orders() {
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'INSERT',
+          schema: 'public',
+          table: 'orders',
+        },
+        (payload) => {
+          console.log('New order received:', payload);
+          
+          // Play sound for new orders
+          if (soundEnabled && !isFirstLoadRef.current) {
+            playNotificationSound();
+            toast({
+              title: '🔔 Novo pedido!',
+              description: `Pedido #${payload.new.order_number} recebido`,
+            });
+          }
+          
+          queryClient.invalidateQueries({ queryKey: ['orders'] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
           schema: 'public',
           table: 'orders',
         },
@@ -55,7 +86,17 @@ export default function Orders() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [tenantId, queryClient]);
+  }, [tenantId, queryClient, soundEnabled, playNotificationSound]);
+
+  // Track first load to avoid sound on initial page load
+  useEffect(() => {
+    if (!isLoading && orders.length > 0) {
+      if (isFirstLoadRef.current) {
+        previousOrderCountRef.current = orders.length;
+        isFirstLoadRef.current = false;
+      }
+    }
+  }, [orders, isLoading]);
 
   const handleUpdateStatus = async (orderId: string, newStatus: OrderStatus) => {
     try {
@@ -143,10 +184,25 @@ export default function Orders() {
             {ordersCount} {ordersCount === 1 ? 'pedido' : 'pedidos'} • Total: {formatCurrency(totalToday)}
           </p>
         </div>
-        <Button variant="outline" onClick={() => refetch()} disabled={isLoading}>
-          <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-          Atualizar
-        </Button>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            {soundEnabled ? (
+              <Volume2 className="h-4 w-4 text-primary" />
+            ) : (
+              <VolumeX className="h-4 w-4 text-muted-foreground" />
+            )}
+            <Label htmlFor="sound-toggle" className="text-sm">Som</Label>
+            <Switch
+              id="sound-toggle"
+              checked={soundEnabled}
+              onCheckedChange={setSoundEnabled}
+            />
+          </div>
+          <Button variant="outline" onClick={() => refetch()} disabled={isLoading}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+            Atualizar
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
