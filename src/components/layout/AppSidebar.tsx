@@ -121,7 +121,7 @@ export function AppSidebar() {
             <Store className="h-6 w-6 text-sidebar-primary-foreground" />
           </div>
           <div>
-            <h1 className="font-bold text-lg">FoodHub</h1>
+            <h1 className="font-bold text-lg">FoodHub09</h1>
             <p className="text-xs text-sidebar-foreground/60">Sistema de Gestão</p>
           </div>
         </div>
