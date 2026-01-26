@@ -228,6 +228,28 @@ Responda APENAS em formato JSON válido:
       );
     }
 
+    // Salvar previsões no histórico para comparação futura
+    const today = new Date().toISOString().split("T")[0];
+    if (forecastResult.forecast && forecastResult.forecast.length > 0) {
+      for (const f of forecastResult.forecast) {
+        const { error: insertError } = await supabase
+          .from("sales_forecast_history")
+          .upsert({
+            tenant_id: tenantId,
+            forecast_date: today,
+            target_date: f.date,
+            predicted_amount: f.predictedAmount,
+            confidence: f.confidence,
+          }, {
+            onConflict: 'tenant_id,forecast_date,target_date'
+          });
+
+        if (insertError) {
+          console.warn("Erro ao salvar histórico de previsão:", insertError);
+        }
+      }
+    }
+
     return new Response(
       JSON.stringify({
         success: true,

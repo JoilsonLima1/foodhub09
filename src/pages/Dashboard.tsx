@@ -13,6 +13,7 @@ import type { OrderStatus, OrderOrigin } from '@/types/database';
 import { KPIDashboard } from '@/components/dashboard/KPIDashboard';
 import { SalesGoalsCard } from '@/components/dashboard/SalesGoalsCard';
 import { SalesForecastCard } from '@/components/dashboard/SalesForecastCard';
+import { ForecastAccuracyCard } from '@/components/dashboard/ForecastAccuracyCard';
 
 interface RecentOrder {
   id: string;
@@ -151,8 +152,11 @@ export default function Dashboard() {
       {/* Sales Goals */}
       <SalesGoalsCard />
 
-      {/* Sales Forecast */}
-      <SalesForecastCard />
+      {/* Sales Forecast and Accuracy */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <SalesForecastCard />
+        <ForecastAccuracyCard />
+      </div>
 
       {/* Recent Orders */}
       <Card>

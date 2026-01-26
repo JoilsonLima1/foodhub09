@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { startOfDay, endOfDay } from 'date-fns';
 import { toast } from 'sonner';
+import { usePushNotifications } from './usePushNotifications';
 import type { Database } from '@/integrations/supabase/types';
 
 type DeliveryStatus = Database['public']['Enums']['delivery_status'];
@@ -37,10 +38,12 @@ interface CourierStats {
 
 export function useCourierDeliveries() {
   const { user, tenantId } = useAuth();
+  const { notifyNewDelivery } = usePushNotifications();
   const [deliveries, setDeliveries] = useState<DeliveryWithOrder[]>([]);
   const [stats, setStats] = useState<CourierStats>({ total: 0, pending: 0, inRoute: 0, completed: 0 });
   const [courierId, setCourierId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const previousDeliveryIdsRef = useRef<Set<string>>(new Set());
 
   // Buscar o courier_id vinculado ao usuário
   const fetchCourierId = useCallback(async () => {
@@ -171,7 +174,7 @@ export function useCourierDeliveries() {
     fetchDeliveries();
   }, [fetchDeliveries]);
 
-  // Realtime updates
+  // Realtime updates with push notifications
   useEffect(() => {
     if (!tenantId || !courierId) return;
 
@@ -180,13 +183,47 @@ export function useCourierDeliveries() {
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'INSERT',
           schema: 'public',
           table: 'deliveries',
           filter: `tenant_id=eq.${tenantId}`,
         },
-        () => {
-          fetchDeliveries();
+        async (payload) => {
+          const newDelivery = payload.new as { id: string; courier_id: string | null; order_id: string };
+          
+          // Verificar se é uma nova entrega para este courier
+          if (newDelivery.courier_id === courierId && !previousDeliveryIdsRef.current.has(newDelivery.id)) {
+            // Buscar detalhes do pedido para a notificação
+            const { data: order } = await supabase
+              .from('orders')
+              .select('order_number, customer_name, delivery_address')
+              .eq('id', newDelivery.order_id)
+              .single();
+
+            if (order) {
+              notifyNewDelivery(order.order_number, order.customer_name, order.delivery_address);
+              toast.info(`Nova entrega atribuída: Pedido #${order.order_number}`);
+            }
+            
+            fetchDeliveries();
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'deliveries',
+          filter: `tenant_id=eq.${tenantId}`,
+        },
+        (payload) => {
+          const updatedDelivery = payload.new as { courier_id: string | null };
+          
+          // Verificar se a entrega foi atribuída a este courier
+          if (updatedDelivery.courier_id === courierId) {
+            fetchDeliveries();
+          }
         }
       )
       .subscribe();
@@ -194,7 +231,12 @@ export function useCourierDeliveries() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [tenantId, courierId, fetchDeliveries]);
+  }, [tenantId, courierId, fetchDeliveries, notifyNewDelivery]);
+
+  // Atualizar referência de IDs anteriores
+  useEffect(() => {
+    previousDeliveryIdsRef.current = new Set(deliveries.map(d => d.id));
+  }, [deliveries]);
 
   return {
     deliveries,
