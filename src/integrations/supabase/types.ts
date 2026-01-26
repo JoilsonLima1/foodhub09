@@ -358,6 +358,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "deliveries_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "orders_safe"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "deliveries_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
@@ -660,6 +667,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders_safe"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "order_items_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
@@ -706,6 +720,13 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_status_history_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders_safe"
             referencedColumns: ["id"]
           },
         ]
@@ -879,6 +900,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "payment_machine_records_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders_safe"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "payment_machine_records_payment_id_fkey"
             columns: ["payment_id"]
             isOneToOne: false
@@ -946,6 +974,13 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders_safe"
             referencedColumns: ["id"]
           },
           {
@@ -1616,7 +1651,105 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      orders_safe: {
+        Row: {
+          coupon_id: string | null
+          created_at: string | null
+          created_by: string | null
+          customer_email: string | null
+          customer_name: string | null
+          customer_phone: string | null
+          delivery_address: string | null
+          delivery_city: string | null
+          delivery_fee: number | null
+          delivery_instructions: string | null
+          delivery_neighborhood: string | null
+          delivery_zip_code: string | null
+          discount: number | null
+          estimated_time_minutes: number | null
+          id: string | null
+          is_delivery: boolean | null
+          marketplace_order_id: string | null
+          notes: string | null
+          order_number: number | null
+          origin: Database["public"]["Enums"]["order_origin"] | null
+          status: Database["public"]["Enums"]["order_status"] | null
+          subtotal: number | null
+          tenant_id: string | null
+          total: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          coupon_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          customer_email?: never
+          customer_name?: never
+          customer_phone?: never
+          delivery_address?: never
+          delivery_city?: never
+          delivery_fee?: number | null
+          delivery_instructions?: never
+          delivery_neighborhood?: never
+          delivery_zip_code?: never
+          discount?: number | null
+          estimated_time_minutes?: number | null
+          id?: string | null
+          is_delivery?: boolean | null
+          marketplace_order_id?: string | null
+          notes?: string | null
+          order_number?: number | null
+          origin?: Database["public"]["Enums"]["order_origin"] | null
+          status?: Database["public"]["Enums"]["order_status"] | null
+          subtotal?: number | null
+          tenant_id?: string | null
+          total?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          coupon_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          customer_email?: never
+          customer_name?: never
+          customer_phone?: never
+          delivery_address?: never
+          delivery_city?: never
+          delivery_fee?: number | null
+          delivery_instructions?: never
+          delivery_neighborhood?: never
+          delivery_zip_code?: never
+          discount?: number | null
+          estimated_time_minutes?: number | null
+          id?: string | null
+          is_delivery?: boolean | null
+          marketplace_order_id?: string | null
+          notes?: string | null
+          order_number?: number | null
+          origin?: Database["public"]["Enums"]["order_origin"] | null
+          status?: Database["public"]["Enums"]["order_status"] | null
+          subtotal?: number | null
+          tenant_id?: string | null
+          total?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_coupon_id_fkey"
+            columns: ["coupon_id"]
+            isOneToOne: false
+            referencedRelation: "coupons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       get_user_tenant_id: { Args: { _user_id: string }; Returns: string }
