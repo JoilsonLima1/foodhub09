@@ -6,9 +6,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Store, Loader2, AlertCircle } from 'lucide-react';
+import { Loader2, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { z } from 'zod';
+import logo from '@/assets/logo.png';
 
 const loginSchema = z.object({
   email: z.string().email('Email inválido'),
@@ -120,12 +121,10 @@ export default function AuthPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center space-y-4">
           <div className="flex justify-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-primary">
-              <Store className="h-8 w-8 text-primary-foreground" />
-            </div>
+            <img src={logo} alt="FoodHub09 Logo" className="h-16 w-16 rounded-xl" />
           </div>
           <div>
-            <CardTitle className="text-2xl font-bold">FoodHub</CardTitle>
+            <CardTitle className="text-2xl font-bold">FoodHub09</CardTitle>
             <CardDescription>Sistema de Gestão para Restaurantes</CardDescription>
           </div>
         </CardHeader>

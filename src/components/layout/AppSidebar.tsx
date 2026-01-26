@@ -17,10 +17,10 @@ import {
   X,
   Moon,
   Sun,
-  Store,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
+import logo from '@/assets/logo.png';
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   LayoutDashboard,
@@ -117,9 +117,7 @@ export function AppSidebar() {
       >
         {/* Logo */}
         <div className="flex items-center gap-3 px-6 py-5 border-b border-sidebar-border">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-sidebar-primary">
-            <Store className="h-6 w-6 text-sidebar-primary-foreground" />
-          </div>
+          <img src={logo} alt="FoodHub09 Logo" className="h-10 w-10 rounded-lg" />
           <div>
             <h1 className="font-bold text-lg">FoodHub09</h1>
             <p className="text-xs text-sidebar-foreground/60">Sistema de Gestão</p>
