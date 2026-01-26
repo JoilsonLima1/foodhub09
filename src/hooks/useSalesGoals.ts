@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { startOfDay, endOfDay, startOfWeek, endOfWeek, format } from 'date-fns';
@@ -35,6 +35,52 @@ export function useSalesGoals() {
     remaining: 0,
   });
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Track previous percentages to detect goal achievement
+  const prevDailyPercentage = useRef<number>(0);
+  const prevWeeklyPercentage = useRef<number>(0);
+
+  // Send notification when goal is achieved
+  const sendGoalNotification = useCallback(async (
+    goalId: string,
+    goalType: 'daily' | 'weekly',
+    targetAmount: number,
+    achievedAmount: number
+  ) => {
+    if (!tenantId) return;
+
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      if (!session?.session?.access_token) return;
+
+      console.log('Enviando notificação de meta atingida:', { goalId, goalType, targetAmount, achievedAmount });
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-goal-notification`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.session.access_token}`,
+          },
+          body: JSON.stringify({
+            goalId,
+            goalType,
+            targetAmount,
+            achievedAmount,
+            tenantId,
+          }),
+        }
+      );
+
+      const result = await response.json();
+      if (result.success && result.recipients?.length > 0) {
+        toast.success('🎉 Meta atingida! Notificação enviada para gestores.');
+      }
+    } catch (error) {
+      console.error('Erro ao enviar notificação:', error);
+    }
+  }, [tenantId]);
 
   const fetchGoalsAndProgress = useCallback(async () => {
     if (!tenantId) return;
@@ -78,10 +124,17 @@ export function useSalesGoals() {
 
       const weekTotal = weekPayments?.reduce((sum, p) => sum + Number(p.amount), 0) || 0;
 
-      // Calculate daily progress
+      // Calculate daily progress and check for achievement
       if (dailyGoalData) {
         const target = Number(dailyGoalData.target_amount);
         const percentage = target > 0 ? Math.min((todayTotal / target) * 100, 100) : 0;
+        
+        // Check if goal was just achieved (crossed 100%)
+        if (prevDailyPercentage.current < 100 && percentage >= 100) {
+          sendGoalNotification(dailyGoalData.id, 'daily', target, todayTotal);
+        }
+        prevDailyPercentage.current = percentage;
+
         setDailyGoal({
           goal: dailyGoalData as SalesGoal,
           currentAmount: todayTotal,
@@ -89,13 +142,21 @@ export function useSalesGoals() {
           remaining: Math.max(target - todayTotal, 0),
         });
       } else {
+        prevDailyPercentage.current = 0;
         setDailyGoal({ goal: null, currentAmount: todayTotal, percentage: 0, remaining: 0 });
       }
 
-      // Calculate weekly progress
+      // Calculate weekly progress and check for achievement
       if (weeklyGoalData) {
         const target = Number(weeklyGoalData.target_amount);
         const percentage = target > 0 ? Math.min((weekTotal / target) * 100, 100) : 0;
+        
+        // Check if goal was just achieved (crossed 100%)
+        if (prevWeeklyPercentage.current < 100 && percentage >= 100) {
+          sendGoalNotification(weeklyGoalData.id, 'weekly', target, weekTotal);
+        }
+        prevWeeklyPercentage.current = percentage;
+
         setWeeklyGoal({
           goal: weeklyGoalData as SalesGoal,
           currentAmount: weekTotal,
@@ -103,6 +164,7 @@ export function useSalesGoals() {
           remaining: Math.max(target - weekTotal, 0),
         });
       } else {
+        prevWeeklyPercentage.current = 0;
         setWeeklyGoal({ goal: null, currentAmount: weekTotal, percentage: 0, remaining: 0 });
       }
     } catch (error) {
@@ -110,7 +172,7 @@ export function useSalesGoals() {
     } finally {
       setIsLoading(false);
     }
-  }, [tenantId]);
+  }, [tenantId, sendGoalNotification]);
 
   const createGoal = useCallback(async (
     goalType: 'daily' | 'weekly',

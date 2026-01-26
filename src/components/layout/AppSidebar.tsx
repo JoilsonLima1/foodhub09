@@ -46,6 +46,7 @@ const allNavItems: NavItem[] = [
   { path: '/pos', label: 'PDV/Caixa', icon: 'Calculator' },
   { path: '/kitchen', label: 'Cozinha', icon: 'ChefHat' },
   { path: '/deliveries', label: 'Entregas', icon: 'Truck' },
+  { path: '/courier-dashboard', label: 'Minhas Entregas', icon: 'Truck' },
   { path: '/products', label: 'Produtos', icon: 'Package' },
   { path: '/stock', label: 'Estoque', icon: 'Warehouse' },
   { path: '/reports', label: 'Relatórios', icon: 'BarChart3' },
@@ -60,10 +61,12 @@ export function AppSidebar() {
 
   // Filter nav items based on roles
   const getNavItems = (): NavItem[] => {
-    if (roles.includes('admin')) return allNavItems;
+    if (roles.includes('admin')) {
+      return allNavItems.filter(item => item.path !== '/courier-dashboard');
+    }
     if (roles.includes('manager')) {
       return allNavItems.filter(item => 
-        !['pos', 'kitchen'].includes(item.path.replace('/', ''))
+        !['pos', 'kitchen', 'courier-dashboard'].includes(item.path.replace('/', ''))
       );
     }
     if (roles.includes('cashier')) {
@@ -80,7 +83,7 @@ export function AppSidebar() {
       );
     }
     if (roles.includes('delivery')) {
-      return allNavItems.filter(item => item.path === '/deliveries');
+      return allNavItems.filter(item => item.path === '/courier-dashboard');
     }
     return [{ path: '/dashboard', label: 'Dashboard', icon: 'LayoutDashboard' }];
   };

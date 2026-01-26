@@ -12,6 +12,7 @@ import { ORDER_STATUS_LABELS, ORDER_ORIGIN_LABELS } from '@/lib/constants';
 import type { OrderStatus, OrderOrigin } from '@/types/database';
 import { KPIDashboard } from '@/components/dashboard/KPIDashboard';
 import { SalesGoalsCard } from '@/components/dashboard/SalesGoalsCard';
+import { SalesForecastCard } from '@/components/dashboard/SalesForecastCard';
 
 interface RecentOrder {
   id: string;
@@ -149,6 +150,9 @@ export default function Dashboard() {
 
       {/* Sales Goals */}
       <SalesGoalsCard />
+
+      {/* Sales Forecast */}
+      <SalesForecastCard />
 
       {/* Recent Orders */}
       <Card>

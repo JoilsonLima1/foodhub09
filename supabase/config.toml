@@ -1,1 +1,10 @@
 project_id = "baxitzkbbqqbbbtojswm"
+
+[functions.bootstrap-user]
+verify_jwt = false
+
+[functions.send-goal-notification]
+verify_jwt = false
+
+[functions.sales-forecast]
+verify_jwt = false
