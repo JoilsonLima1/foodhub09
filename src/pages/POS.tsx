@@ -9,7 +9,16 @@ import { useCreateOrder } from '@/hooks/useCreateOrder';
 import { ProductGrid } from '@/components/pos/ProductGrid';
 import { CartPanel } from '@/components/pos/CartPanel';
 import { PaymentDialog } from '@/components/pos/PaymentDialog';
+import { ReceiptDialog } from '@/components/pos/ReceiptDialog';
 import type { CartItem, PaymentMethod } from '@/types/database';
+
+interface CompletedOrder {
+  orderNumber: number;
+  items: CartItem[];
+  subtotal: number;
+  total: number;
+  paymentMethod: PaymentMethod;
+}
 
 export default function POS() {
   const { tenantId, profile } = useAuth();
@@ -22,6 +31,8 @@ export default function POS() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod | null>(null);
+  const [isReceiptOpen, setIsReceiptOpen] = useState(false);
+  const [completedOrder, setCompletedOrder] = useState<CompletedOrder | null>(null);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -107,14 +118,26 @@ export default function POS() {
   const handlePayment = async () => {
     if (!selectedPaymentMethod || cart.length === 0) return;
 
-    await createOrder.mutateAsync({
+    const result = await createOrder.mutateAsync({
       items: cart,
       paymentMethod: selectedPaymentMethod,
+    });
+
+    // Store completed order for receipt
+    setCompletedOrder({
+      orderNumber: result.orderNumber,
+      items: result.items,
+      subtotal: result.subtotal,
+      total: result.total,
+      paymentMethod: result.paymentMethod,
     });
 
     setIsPaymentOpen(false);
     clearCart();
     setSelectedPaymentMethod(null);
+    
+    // Show receipt dialog
+    setIsReceiptOpen(true);
   };
 
   if (!tenantId) {
@@ -205,6 +228,21 @@ export default function POS() {
         formatCurrency={formatCurrency}
         isProcessing={createOrder.isPending}
       />
+
+      {/* Receipt Dialog */}
+      {completedOrder && (
+        <ReceiptDialog
+          open={isReceiptOpen}
+          onOpenChange={setIsReceiptOpen}
+          orderNumber={completedOrder.orderNumber}
+          items={completedOrder.items}
+          subtotal={completedOrder.subtotal}
+          total={completedOrder.total}
+          paymentMethod={completedOrder.paymentMethod}
+          cashierName={profile?.full_name || 'Operador'}
+          tenantName="FoodHub09"
+        />
+      )}
     </div>
   );
 }

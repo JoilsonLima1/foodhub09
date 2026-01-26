@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import type { CartItem, PaymentMethod, OrderOrigin } from '@/types/database';
 import { toast } from '@/hooks/use-toast';
+import { reduceStockForOrder } from './useStockReduction';
 
 interface CreateOrderInput {
   items: CartItem[];
@@ -18,6 +19,10 @@ interface CreateOrderInput {
 interface CreateOrderResult {
   orderId: string;
   orderNumber: number;
+  items: CartItem[];
+  subtotal: number;
+  total: number;
+  paymentMethod: PaymentMethod;
 }
 
 export function useCreateOrder() {
@@ -103,13 +108,35 @@ export function useCreateOrder() {
         // Non-critical error, don't throw
       }
 
+      // Reduce stock based on recipes (ficha técnica)
+      const stockResult = await reduceStockForOrder(
+        input.items,
+        order.id,
+        tenantId,
+        user.id
+      );
+
+      if (stockResult.reducedItems > 0) {
+        console.log(`Stock reduced for ${stockResult.reducedItems} ingredients`);
+      }
+
+      if (stockResult.errors.length > 0) {
+        console.warn('Stock reduction errors:', stockResult.errors);
+      }
+
       return {
         orderId: order.id,
         orderNumber: order.order_number,
+        items: input.items,
+        subtotal,
+        total,
+        paymentMethod: input.paymentMethod,
       };
     },
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['ingredients'] });
+      queryClient.invalidateQueries({ queryKey: ['stock-movements'] });
       toast({
         title: 'Pedido criado!',
         description: `Pedido #${result.orderNumber} registrado com sucesso.`,
