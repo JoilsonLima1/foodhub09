@@ -10,6 +10,7 @@ import { ProductGrid } from '@/components/pos/ProductGrid';
 import { CartPanel } from '@/components/pos/CartPanel';
 import { PaymentDialog } from '@/components/pos/PaymentDialog';
 import { ReceiptDialog } from '@/components/pos/ReceiptDialog';
+import { CustomerInfoDialog } from '@/components/pos/CustomerInfoDialog';
 import type { CartItem, PaymentMethod } from '@/types/database';
 
 interface CompletedOrder {
@@ -29,10 +30,15 @@ export default function POS() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [isCustomerInfoOpen, setIsCustomerInfoOpen] = useState(false);
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod | null>(null);
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const [completedOrder, setCompletedOrder] = useState<CompletedOrder | null>(null);
+  
+  // Customer info state
+  const [customerName, setCustomerName] = useState('');
+  const [orderNotes, setOrderNotes] = useState('');
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -111,8 +117,13 @@ export default function POS() {
 
   const handleCheckout = () => {
     if (cart.length > 0) {
-      setIsPaymentOpen(true);
+      setIsCustomerInfoOpen(true);
     }
+  };
+
+  const handleContinueToPayment = () => {
+    setIsCustomerInfoOpen(false);
+    setIsPaymentOpen(true);
   };
 
   const handlePayment = async () => {
@@ -121,6 +132,8 @@ export default function POS() {
     const result = await createOrder.mutateAsync({
       items: cart,
       paymentMethod: selectedPaymentMethod,
+      customerName: customerName.trim() || undefined,
+      notes: orderNotes.trim() || undefined,
     });
 
     // Store completed order for receipt
@@ -135,6 +148,8 @@ export default function POS() {
     setIsPaymentOpen(false);
     clearCart();
     setSelectedPaymentMethod(null);
+    setCustomerName('');
+    setOrderNotes('');
     
     // Show receipt dialog
     setIsReceiptOpen(true);
@@ -215,6 +230,19 @@ export default function POS() {
         onCheckout={handleCheckout}
         formatCurrency={formatCurrency}
         isProcessing={createOrder.isPending}
+      />
+
+      {/* Customer Info Dialog */}
+      <CustomerInfoDialog
+        open={isCustomerInfoOpen}
+        onOpenChange={setIsCustomerInfoOpen}
+        customerName={customerName}
+        onCustomerNameChange={setCustomerName}
+        notes={orderNotes}
+        onNotesChange={setOrderNotes}
+        onContinue={handleContinueToPayment}
+        formatCurrency={formatCurrency}
+        total={total}
       />
 
       {/* Payment Dialog */}
