@@ -121,7 +121,7 @@ export default function AuthPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center space-y-4">
           <div className="flex justify-center">
-            <img src={logo} alt="FoodHub09 Logo" className="h-16 w-16 rounded-xl" />
+            <img src={logo} alt="FoodHub09 Logo" className="h-24 w-auto" />
           </div>
           <div>
             <CardTitle className="text-2xl font-bold">FoodHub09</CardTitle>

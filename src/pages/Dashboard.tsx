@@ -4,26 +4,13 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
-  DollarSign,
-  ShoppingCart,
-  Clock,
-  AlertTriangle,
   Package,
-  TrendingUp,
-  Users,
-  ArrowUpRight,
-  ArrowDownRight,
+  ShoppingCart,
+  LayoutDashboard,
 } from 'lucide-react';
 import { ORDER_STATUS_LABELS, ORDER_ORIGIN_LABELS } from '@/lib/constants';
 import type { OrderStatus, OrderOrigin } from '@/types/database';
-
-interface DashboardStats {
-  todaySales: number;
-  todayOrders: number;
-  pendingOrders: number;
-  lowStockItems: number;
-  weeklyGrowth: number;
-}
+import { KPIDashboard } from '@/components/dashboard/KPIDashboard';
 
 interface RecentOrder {
   id: string;
@@ -37,74 +24,17 @@ interface RecentOrder {
 
 export default function Dashboard() {
   const { profile, tenantId } = useAuth();
-  const [stats, setStats] = useState<DashboardStats>({
-    todaySales: 0,
-    todayOrders: 0,
-    pendingOrders: 0,
-    lowStockItems: 0,
-    weeklyGrowth: 0,
-  });
   const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const fetchDashboardData = async () => {
+    const fetchRecentOrders = async () => {
       if (!tenantId) {
         setIsLoading(false);
         return;
       }
 
       try {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        // Fetch today's orders
-        const { data: todayOrders } = await supabase
-          .from('orders')
-          .select('total, status')
-          .eq('tenant_id', tenantId)
-          .gte('created_at', today.toISOString());
-
-        if (todayOrders) {
-          const completedOrders = todayOrders.filter(o => 
-            ['paid', 'confirmed', 'preparing', 'ready', 'out_for_delivery', 'delivered'].includes(o.status)
-          );
-          setStats(prev => ({
-            ...prev,
-            todaySales: completedOrders.reduce((sum, o) => sum + Number(o.total), 0),
-            todayOrders: todayOrders.length,
-          }));
-        }
-
-        // Fetch pending orders
-        const { count: pendingCount } = await supabase
-          .from('orders')
-          .select('*', { count: 'exact', head: true })
-          .eq('tenant_id', tenantId)
-          .in('status', ['pending_payment', 'paid', 'confirmed', 'preparing']);
-
-        setStats(prev => ({
-          ...prev,
-          pendingOrders: pendingCount || 0,
-        }));
-
-        // Fetch low stock items
-        const { data: lowStock } = await supabase
-          .from('ingredients')
-          .select('id')
-          .eq('tenant_id', tenantId);
-
-        if (lowStock) {
-          const lowStockCount = lowStock.filter((item: any) => 
-            item.current_stock <= item.min_stock
-          ).length;
-          setStats(prev => ({
-            ...prev,
-            lowStockItems: lowStockCount,
-          }));
-        }
-
-        // Fetch recent orders
         const { data: recent } = await supabase
           .from('orders')
           .select('id, order_number, customer_name, total, status, origin, created_at')
@@ -116,13 +46,36 @@ export default function Dashboard() {
           setRecentOrders(recent as RecentOrder[]);
         }
       } catch (error) {
-        console.error('Error fetching dashboard data:', error);
+        console.error('Error fetching recent orders:', error);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchDashboardData();
+    fetchRecentOrders();
+
+    // Listen for real-time order updates
+    if (tenantId) {
+      const channel = supabase
+        .channel('dashboard-orders')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'orders',
+            filter: `tenant_id=eq.${tenantId}`,
+          },
+          () => {
+            fetchRecentOrders();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
   }, [tenantId]);
 
   const formatCurrency = (value: number) => {
@@ -159,7 +112,7 @@ export default function Dashboard() {
             Olá, {profile?.full_name || 'Usuário'}! 👋
           </h1>
           <p className="text-muted-foreground mt-1">
-            Bem-vindo ao FoodHub. Configure seu restaurante para começar.
+            Bem-vindo ao FoodHub09. Configure seu restaurante para começar.
           </p>
         </div>
         
@@ -181,77 +134,17 @@ export default function Dashboard() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-foreground">
-          Olá, {profile?.full_name || 'Usuário'}! 👋
+        <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+          <LayoutDashboard className="h-6 w-6" />
+          Dashboard
         </h1>
         <p className="text-muted-foreground mt-1">
-          Aqui está o resumo do seu negócio hoje.
+          Olá, {profile?.full_name || 'Usuário'}! Aqui está o resumo do seu negócio em tempo real.
         </p>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Vendas Hoje
-            </CardTitle>
-            <DollarSign className="h-4 w-4 text-success" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(stats.todaySales)}</div>
-            <p className="text-xs text-muted-foreground flex items-center mt-1">
-              <TrendingUp className="h-3 w-3 mr-1 text-success" />
-              {stats.todayOrders} pedidos
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Pedidos Hoje
-            </CardTitle>
-            <ShoppingCart className="h-4 w-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.todayOrders}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Novos pedidos recebidos
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Pedidos Pendentes
-            </CardTitle>
-            <Clock className="h-4 w-4 text-warning" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.pendingOrders}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Aguardando processamento
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Estoque Baixo
-            </CardTitle>
-            <AlertTriangle className="h-4 w-4 text-destructive" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.lowStockItems}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Itens abaixo do mínimo
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+      {/* KPI Dashboard */}
+      <KPIDashboard />
 
       {/* Recent Orders */}
       <Card>
