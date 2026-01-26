@@ -1254,6 +1254,53 @@ export type Database = {
           },
         ]
       }
+      sales_forecast_history: {
+        Row: {
+          accuracy_percentage: number | null
+          actual_amount: number | null
+          confidence: number | null
+          created_at: string
+          forecast_date: string
+          id: string
+          predicted_amount: number
+          target_date: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          accuracy_percentage?: number | null
+          actual_amount?: number | null
+          confidence?: number | null
+          created_at?: string
+          forecast_date: string
+          id?: string
+          predicted_amount?: number
+          target_date: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          accuracy_percentage?: number | null
+          actual_amount?: number | null
+          confidence?: number | null
+          created_at?: string
+          forecast_date?: string
+          id?: string
+          predicted_amount?: number
+          target_date?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_forecast_history_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sales_goals: {
         Row: {
           created_at: string | null

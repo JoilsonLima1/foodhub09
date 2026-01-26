@@ -1,7 +1,9 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useCourierDeliveries } from '@/hooks/useCourierDeliveries';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { CourierDeliveryCard } from '@/components/courier/CourierDeliveryCard';
 import { CourierStats } from '@/components/courier/CourierStats';
+import { PushNotificationBanner } from '@/components/courier/PushNotificationBanner';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Truck, RefreshCw, AlertCircle } from 'lucide-react';
@@ -66,6 +68,9 @@ export default function CourierDashboard() {
       <p className="text-muted-foreground">
         Olá, <span className="font-medium text-foreground">{profile?.full_name}</span>! 👋
       </p>
+
+      {/* Banner de notificações push */}
+      <PushNotificationBanner />
 
       {/* Estatísticas */}
       <CourierStats
