@@ -21,6 +21,16 @@ serve(async (req) => {
   }
 
   try {
+    // ===== SECURITY: Validate authentication =====
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      console.error("Missing or invalid Authorization header");
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
     if (!resendApiKey) {
       throw new Error("RESEND_API_KEY não configurada");
@@ -29,10 +39,62 @@ serve(async (req) => {
     const resend = new Resend(resendApiKey);
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    
+    // Create client with user's token to validate their identity
+    const supabaseUser = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } }
+    });
+    
+    // Service client for admin operations
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // ===== SECURITY: Validate user token =====
+    const { data: userData, error: userError } = await supabaseUser.auth.getUser();
+    
+    if (userError || !userData?.user) {
+      console.error("Invalid token:", userError);
+      return new Response(
+        JSON.stringify({ error: "Invalid token" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    const userId = userData.user.id;
+    console.log("Authenticated user:", userId);
+
     const { goalId, goalType, targetAmount, achievedAmount, tenantId }: GoalNotificationRequest = await req.json();
+    
+    // ===== SECURITY: Verify user belongs to the tenant =====
+    const { data: userProfile, error: profileError } = await supabase
+      .from("profiles")
+      .select("tenant_id")
+      .eq("user_id", userId)
+      .single();
+    
+    if (profileError || !userProfile || userProfile.tenant_id !== tenantId) {
+      console.error("User does not belong to tenant:", { userId, tenantId, userTenant: userProfile?.tenant_id });
+      return new Response(
+        JSON.stringify({ error: "Unauthorized for this tenant" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    // ===== SECURITY: Verify goal belongs to the tenant =====
+    const { data: goal, error: goalError } = await supabase
+      .from("sales_goals")
+      .select("tenant_id")
+      .eq("id", goalId)
+      .single();
+    
+    if (goalError || !goal || goal.tenant_id !== tenantId) {
+      console.error("Goal does not belong to tenant:", { goalId, tenantId, goalTenant: goal?.tenant_id });
+      return new Response(
+        JSON.stringify({ error: "Invalid goal for tenant" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     console.log("Recebida solicitação de notificação:", { goalId, goalType, targetAmount, achievedAmount, tenantId });
 
