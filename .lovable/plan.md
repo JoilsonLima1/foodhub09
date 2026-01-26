@@ -1,135 +1,163 @@
 
+# Plano de Implementação
 
-## 🍕 FoodHub - Sistema SaaS para Restaurantes
-
-### Visão Geral
-Sistema unificado para gerenciar pedidos online, vendas no balcão, estoque, entregas e pagamentos - tudo em um único painel com design profissional e corporativo.
+Este plano abrange três funcionalidades: **notificações por email quando metas são atingidas**, **dashboard específico para entregadores**, e **previsão de vendas com inteligência artificial**.
 
 ---
 
-### 📱 Módulo 1: Loja Online (E-commerce)
-- **Catálogo** com categorias, produtos, variações (tamanhos P/M/G), sabores e adicionais
-- **Carrinho e checkout** com opções de entrega ou retirada
-- **Taxas de entrega** configuráveis por bairro/CEP
-- **Cupons e promoções** com regras flexíveis
-- **Acompanhamento de pedido** em tempo real para o cliente (status: Pago → Em preparo → Pronto → Em rota → Entregue)
+## 1. Notificações por Email para Metas Atingidas
+
+### O que será feito
+Quando uma meta de vendas (diária ou semanal) for atingida, o sistema enviará automaticamente um email de celebração para os gestores do restaurante.
+
+### Componentes técnicos
+
+**Edge Function: `send-goal-notification`**
+- Recebe dados da meta atingida (tipo, valor, tenant)
+- Busca emails dos usuários com role `admin` ou `manager` do tenant
+- Envia email de parabéns usando Resend
+- Registra o envio para evitar notificações duplicadas
+
+**Nova tabela: `goal_notifications_sent`**
+- Armazena registro de quais metas já tiveram notificação enviada
+- Evita spam quando a meta é atingida múltiplas vezes no mesmo período
+
+**Modificação no hook `useSalesGoals`**
+- Detecta quando a meta passa de < 100% para >= 100%
+- Chama a edge function para enviar notificação
 
 ---
 
-### 💳 Módulo 2: PDV/Caixa
-- **Abertura e fechamento de caixa** com relatório do turno
-- **Venda rápida** com busca por produto e atalhos por categoria
-- **Múltiplas formas de pagamento**: Dinheiro, Pix, Cartão (débito/crédito), Voucher, pagamento misto
-- **Integração com maquininhas** (Stone prioritário) com 3 modos:
-  - Integrado (tempo real via API)
-  - Semi-integrado (referência + confirmação manual)
-  - Manual com antifraude
-- **Sangria e reforço** de caixa com registro
+## 2. Dashboard Específico para Entregadores
+
+### O que será feito
+Uma nova página acessível por entregadores mostrando apenas as entregas do dia atribuídas a eles, com ações simplificadas.
+
+### Componentes
+
+**Nova página: `/courier-dashboard`**
+- Layout otimizado para mobile
+- Mostra apenas entregas do dia do entregador logado
+- Cards grandes com botões de ação rápida
+
+**Componentes visuais**
+- Resumo do dia: total de entregas, completadas, pendentes
+- Lista de entregas com ações: "Coletei", "Em Rota", "Entregue"
+- Mapa simplificado com endereços (usando links para Google Maps)
+
+**Hook: `useCourierDeliveries`**
+- Busca entregas filtradas pelo `courier_id` do usuário logado
+- Atualização em tempo real via Supabase Realtime
 
 ---
 
-### 📦 Módulo 3: Estoque + Ficha Técnica
-- **Cadastro de insumos** com unidades de medida (kg, g, ml, un)
-- **Entrada de estoque** com fornecedor, custo e data
-- **Ficha técnica** por produto: quais insumos e quantidades são usados
-- **Baixa automática** ao confirmar pagamento (online ou presencial)
-- **Reversão automática** quando pedido é cancelado antes do preparo
-- **Alertas de estoque baixo** e sugestão de compra
-- **Relatórios**: consumo por período, CMV estimado, itens mais vendidos
+## 3. Previsão de Vendas com IA
+
+### O que será feito
+Usar o histórico de vendas para prever o faturamento dos próximos dias usando Lovable AI.
+
+### Componentes
+
+**Edge Function: `sales-forecast`**
+- Coleta histórico de vendas dos últimos 30-60 dias
+- Usa Lovable AI (Gemini) para analisar padrões e gerar previsões
+- Retorna previsão para os próximos 7 dias
+
+**Componente: `SalesForecastCard`**
+- Exibe gráfico de previsão vs realizado
+- Mostra tendência (crescimento/queda)
+- Indicadores de confiança da previsão
+
+**Hook: `useSalesForecast`**
+- Chama a edge function de previsão
+- Cache dos resultados para não chamar IA repetidamente
 
 ---
 
-### 👨‍🍳 Módulo 4: Cozinha (Painel Operacional)
-- **Kanban de pedidos**: Confirmado → Em preparo → Pronto
-- **Ticket detalhado** com adicionais e observações do cliente
-- **Tempo estimado** e priorização de pedidos
-- **Som/alerta** para novos pedidos
+## Arquivos a Criar
+
+| Arquivo | Propósito |
+|---------|-----------|
+| `supabase/functions/send-goal-notification/index.ts` | Edge function para envio de emails |
+| `supabase/functions/sales-forecast/index.ts` | Edge function para previsão com IA |
+| `src/pages/CourierDashboard.tsx` | Dashboard do entregador |
+| `src/hooks/useCourierDeliveries.ts` | Hook para entregas do entregador |
+| `src/hooks/useSalesForecast.ts` | Hook para previsão de vendas |
+| `src/components/dashboard/SalesForecastCard.tsx` | Card de previsão de vendas |
+| `src/components/courier/CourierDeliveryCard.tsx` | Card de entrega para courier |
+| `src/components/courier/CourierStats.tsx` | Estatísticas do entregador |
+
+## Arquivos a Modificar
+
+| Arquivo | Modificação |
+|---------|-------------|
+| `src/hooks/useSalesGoals.ts` | Adicionar detecção de meta atingida e chamada da edge function |
+| `src/App.tsx` | Adicionar rota `/courier-dashboard` |
+| `src/components/layout/AppSidebar.tsx` | Adicionar link para dashboard do entregador |
+| `src/pages/Dashboard.tsx` | Adicionar card de previsão de vendas |
+| `supabase/config.toml` | Registrar novas edge functions |
+
+## Migração de Banco de Dados
+
+```text
+┌────────────────────────────────────────────┐
+│ Tabela: goal_notifications_sent            │
+├────────────────────────────────────────────┤
+│ id (uuid) PK                               │
+│ tenant_id (uuid) FK → tenants              │
+│ goal_id (uuid) FK → sales_goals            │
+│ notification_type (text) - 'achieved'      │
+│ sent_at (timestamptz)                      │
+│ recipients (jsonb) - lista de emails       │
+└────────────────────────────────────────────┘
+```
+
+## Fluxo de Notificação de Meta
+
+```text
+┌──────────────────┐     ┌──────────────────┐     ┌──────────────────┐
+│  useSalesGoals   │────▶│  Edge Function   │────▶│     Resend       │
+│  detecta meta    │     │  send-goal-      │     │     API          │
+│  atingida        │     │  notification    │     │                  │
+└──────────────────┘     └──────────────────┘     └──────────────────┘
+                                │
+                                ▼
+                         ┌──────────────────┐
+                         │ Registra em      │
+                         │ goal_notif_sent  │
+                         └──────────────────┘
+```
+
+## Fluxo de Previsão de Vendas
+
+```text
+┌──────────────────┐     ┌──────────────────┐     ┌──────────────────┐
+│  Dashboard       │────▶│  Edge Function   │────▶│   Lovable AI     │
+│  carrega         │     │  sales-forecast  │     │   (Gemini)       │
+└──────────────────┘     └──────────────────┘     └──────────────────┘
+                                │
+                                ▼
+                         ┌──────────────────┐
+                         │ Retorna previsão │
+                         │ 7 dias + análise │
+                         └──────────────────┘
+```
+
+## Ordem de Implementação
+
+1. **Configurar secret do Resend** (RESEND_API_KEY)
+2. **Criar tabela de notificações enviadas**
+3. **Implementar edge function de notificação**
+4. **Modificar useSalesGoals para detectar metas**
+5. **Criar dashboard do entregador**
+6. **Implementar edge function de previsão**
+7. **Criar componentes de previsão de vendas**
+8. **Atualizar rotas e sidebar**
 
 ---
 
-### 🛵 Módulo 5: Entregas e Entregadores
-- **Cadastro de entregadores** (internos e externos)
-- **Atribuição de pedido** ao entregador
-- **Status da entrega**: Aguardando retirada → Em rota → Entregue
-- **Controle de taxa** de entrega por entregador
+## Resultado Final
 
----
-
-### 💬 Módulo 6: WhatsApp
-- **Botão "Pedir no WhatsApp"** com mensagem pronta do carrinho
-- **Registro de pedidos** originados do WhatsApp no sistema
-- Preparado para futura integração com WhatsApp Business API (mensagens automáticas de status)
-
----
-
-### 🔌 Módulo 7: Integrações de Marketplace
-- **Lançamento manual de pedido iFood** em 2 cliques (selecionar itens e confirmar)
-- Baixa automática do estoque e registro no caixa
-- Estrutura preparada para futura integração via API do iFood
-
----
-
-### 🔐 Módulo 8: Antifraude de Comprovantes
-- **Validação de duplicidade** ao registrar pagamento de maquininha:
-  - Bloqueia se NSU/DOC já existe nos últimos 90 dias
-  - Alerta alto se autorização + valor + últimos 4 dígitos coincidem
-  - Alerta médio se valor + cartão + horário são muito similares
-- **Painel lateral** mostrando possíveis duplicidades enquanto digita
-- **Ações**: Bloquear, solicitar Admin, ou permitir com justificativa
-- **Notificações** ao administrador
-
----
-
-### 👥 Módulo 9: Usuários e Permissões (RBAC)
-- **Perfis disponíveis**:
-  - **Admin**: acesso total
-  - **Gerente**: relatórios, estoque, configurações
-  - **Caixa**: PDV, abertura/fechamento de caixa
-  - **Cozinha**: apenas painel de produção
-  - **Estoque**: apenas gestão de insumos
-  - **Entregador**: apenas suas entregas atribuídas
-- **Auditoria completa**: registro de ações críticas (cancelamentos, estornos, override de antifraude)
-
----
-
-### 📊 Dashboard Administrativo
-- **Resumo de vendas** do dia/semana/mês
-- **Pedidos em andamento** por status
-- **Alertas**: estoque baixo, suspeitas de fraude
-- **Gráficos**: vendas por período, produtos mais vendidos, formas de pagamento
-
----
-
-### ⚙️ Payment Orchestrator (Configuração por Loja)
-- **Gateway online**: ativar/desativar Pix e cartão online
-- **Provedor presencial**: escolher entre Stone Connect, Stone TEF, Manual + Antifraude
-- **Fallback automático**: se integração falhar, cai para modo manual com validações
-
----
-
-### 🎨 Design e Interface
-- Estilo **profissional e corporativo** (tons neutros, tipografia clara)
-- **Mobile-first**: otimizado para uso em celular e tablet
-- Interface **limpa e funcional** inspirada em sistemas ERP modernos
-- **Dark mode** disponível
-
----
-
-### 🗄️ Estrutura de Dados Principal
-- Tenants (restaurantes) com isolamento multi-tenant
-- Produtos, categorias, variações, adicionais, combos
-- Insumos, fichas técnicas, movimentações de estoque
-- Pedidos com histórico de status
-- Pagamentos online e presenciais separados
-- Registros de maquininha com validação antifraude
-- Usuários, perfis, permissões e logs de auditoria
-
----
-
-### 📦 Dados de Exemplo (Seed)
-O sistema virá com dados de demonstração:
-- 2 categorias (Pizzas e Bebidas)
-- 10 produtos com variações
-- 12 insumos cadastrados
-- 8 fichas técnicas configuradas
-
+- Gestores recebem email automático quando metas são batidas
+- Entregadores têm dashboard dedicado no celular
+- Dashboard principal mostra previsão de vendas inteligente para os próximos 7 dias
