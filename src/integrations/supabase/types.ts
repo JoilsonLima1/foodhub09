@@ -477,6 +477,48 @@ export type Database = {
           },
         ]
       }
+      goal_notifications_sent: {
+        Row: {
+          goal_id: string
+          id: string
+          notification_type: string
+          recipients: Json | null
+          sent_at: string
+          tenant_id: string
+        }
+        Insert: {
+          goal_id: string
+          id?: string
+          notification_type?: string
+          recipients?: Json | null
+          sent_at?: string
+          tenant_id: string
+        }
+        Update: {
+          goal_id?: string
+          id?: string
+          notification_type?: string
+          recipients?: Json | null
+          sent_at?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goal_notifications_sent_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "sales_goals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goal_notifications_sent_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ingredients: {
         Row: {
           cost_per_unit: number | null

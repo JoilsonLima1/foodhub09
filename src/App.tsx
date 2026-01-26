@@ -17,6 +17,7 @@ import Products from "./pages/Products";
 import Stock from "./pages/Stock";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
+import CourierDashboard from "./pages/CourierDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -42,6 +43,7 @@ const App = () => (
               <Route path="/stock" element={<Stock />} />
               <Route path="/reports" element={<Reports />} />
               <Route path="/settings" element={<Settings />} />
+              <Route path="/courier-dashboard" element={<CourierDashboard />} />
             </Route>
             
             <Route path="*" element={<NotFound />} />
