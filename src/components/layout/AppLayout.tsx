@@ -1,7 +1,11 @@
 import { Outlet } from 'react-router-dom';
 import { AppSidebar } from './AppSidebar';
+import { useLowStockAlerts } from '@/hooks/useLowStockAlerts';
 
 export function AppLayout() {
+  // Enable low stock alerts globally
+  useLowStockAlerts();
+
   return (
     <div className="min-h-screen flex w-full">
       <AppSidebar />
