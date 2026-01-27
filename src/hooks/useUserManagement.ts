@@ -133,7 +133,9 @@ export function useUserManagement() {
     try {
       setIsCreating(true);
 
-      const { data: result, error } = await supabase.functions.invoke('manage-users', {
+      console.log('[useUserManagement] Creating user:', { tenantId, email: data.email });
+
+      const response = await supabase.functions.invoke('manage-users', {
         body: {
           action: 'create',
           tenantId,
@@ -141,8 +143,17 @@ export function useUserManagement() {
         }
       });
 
-      if (error) throw error;
-      if (result?.error) throw new Error(result.error);
+      console.log('[useUserManagement] Create response:', response);
+
+      if (response.error) {
+        console.error('[useUserManagement] Function error:', response.error);
+        throw response.error;
+      }
+      
+      if (response.data?.error) {
+        console.error('[useUserManagement] Data error:', response.data.error);
+        throw new Error(response.data.error);
+      }
 
       toast({
         title: 'Sucesso',
@@ -152,10 +163,11 @@ export function useUserManagement() {
       await fetchUsers();
       return true;
     } catch (error: any) {
-      console.error('Error creating user:', error);
+      console.error('[useUserManagement] Error creating user:', error);
+      const errorMessage = error?.message || error?.error || 'Ocorreu um erro ao criar o usuário';
       toast({
         title: 'Erro ao criar usuário',
-        description: error.message || 'Ocorreu um erro ao criar o usuário',
+        description: errorMessage,
         variant: 'destructive',
       });
       return false;
@@ -177,6 +189,8 @@ export function useUserManagement() {
     try {
       setIsUpdating(true);
 
+      console.log('[useUserManagement] Updating user:', { userId, data });
+
       // Update profile if needed
       if (data.full_name || data.phone !== undefined || data.is_active !== undefined) {
         const updateData: Record<string, any> = {};
@@ -184,18 +198,25 @@ export function useUserManagement() {
         if (data.phone !== undefined) updateData.phone = data.phone;
         if (data.is_active !== undefined) updateData.is_active = data.is_active;
 
+        console.log('[useUserManagement] Updating profile:', updateData);
+
         const { error: profileError } = await supabase
           .from('profiles')
           .update(updateData)
           .eq('user_id', userId)
           .eq('tenant_id', tenantId);
 
-        if (profileError) throw profileError;
+        if (profileError) {
+          console.error('[useUserManagement] Profile update error:', profileError);
+          throw profileError;
+        }
       }
 
       // Update roles if provided
       if (data.roles) {
-        const { data: result, error } = await supabase.functions.invoke('manage-users', {
+        console.log('[useUserManagement] Updating roles:', data.roles);
+        
+        const response = await supabase.functions.invoke('manage-users', {
           body: {
             action: 'update-roles',
             tenantId,
@@ -204,8 +225,16 @@ export function useUserManagement() {
           }
         });
 
-        if (error) throw error;
-        if (result?.error) throw new Error(result.error);
+        console.log('[useUserManagement] Roles update response:', response);
+
+        if (response.error) {
+          console.error('[useUserManagement] Roles function error:', response.error);
+          throw response.error;
+        }
+        if (response.data?.error) {
+          console.error('[useUserManagement] Roles data error:', response.data.error);
+          throw new Error(response.data.error);
+        }
       }
 
       toast({
@@ -216,10 +245,11 @@ export function useUserManagement() {
       await fetchUsers();
       return true;
     } catch (error: any) {
-      console.error('Error updating user:', error);
+      console.error('[useUserManagement] Error updating user:', error);
+      const errorMessage = error?.message || error?.error || 'Ocorreu um erro ao atualizar o usuário';
       toast({
         title: 'Erro ao atualizar usuário',
-        description: error.message || 'Ocorreu um erro ao atualizar o usuário',
+        description: errorMessage,
         variant: 'destructive',
       });
       return false;
