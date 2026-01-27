@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ScrollArea } from '@/components/ui/scroll-area';
+
 import {
   Dialog,
   DialogContent,
@@ -504,15 +504,15 @@ export function UserManagement() {
 
       {/* Create User Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent className="sm:max-w-md max-h-[90vh] flex flex-col">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-md max-h-[85vh] p-0 flex flex-col overflow-hidden">
+          <DialogHeader className="px-6 pt-6 pb-4 shrink-0">
             <DialogTitle>Novo Usuário</DialogTitle>
             <DialogDescription>
               Preencha os dados para criar um novo usuário no sistema.
             </DialogDescription>
           </DialogHeader>
-          <ScrollArea className="flex-1 pr-4">
-            <div className="space-y-4 py-4">
+          <div className="flex-1 overflow-y-auto px-6">
+            <div className="space-y-4 pb-4">
               <div className="space-y-2">
                 <Label htmlFor="create-name">Nome Completo *</Label>
                 <Input
@@ -553,7 +553,7 @@ export function UserManagement() {
               </div>
               <div className="space-y-2">
                 <Label>Permissões</Label>
-                <div className="grid grid-cols-1 gap-2 p-1">
+                <div className="grid grid-cols-1 gap-2">
                   {ASSIGNABLE_ROLES.map(role => {
                     const isSelected = createForm.roles.includes(role);
                     const Icon = ROLE_ICONS[role];
@@ -589,8 +589,8 @@ export function UserManagement() {
                 </div>
               </div>
             </div>
-          </ScrollArea>
-          <DialogFooter className="border-t pt-4 mt-2">
+          </div>
+          <DialogFooter className="border-t px-6 py-4 shrink-0">
             <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
               Cancelar
             </Button>
@@ -607,15 +607,15 @@ export function UserManagement() {
 
       {/* Edit User Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="sm:max-w-md max-h-[90vh] flex flex-col">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-md max-h-[85vh] p-0 flex flex-col overflow-hidden">
+          <DialogHeader className="px-6 pt-6 pb-4 shrink-0">
             <DialogTitle>Editar Usuário</DialogTitle>
             <DialogDescription>
               Altere os dados e permissões do usuário.
             </DialogDescription>
           </DialogHeader>
-          <ScrollArea className="flex-1 pr-4">
-            <div className="space-y-4 py-4">
+          <div className="flex-1 overflow-y-auto px-6">
+            <div className="space-y-4 pb-4">
               <div className="space-y-2">
                 <Label htmlFor="edit-name">Nome Completo</Label>
                 <Input
@@ -634,7 +634,7 @@ export function UserManagement() {
               </div>
               <div className="space-y-2">
                 <Label>Permissões</Label>
-                <div className="grid grid-cols-1 gap-2 p-1">
+                <div className="grid grid-cols-1 gap-2">
                   {ASSIGNABLE_ROLES.map(role => {
                     const isSelected = editForm.roles.includes(role);
                     const Icon = ROLE_ICONS[role];
@@ -670,8 +670,8 @@ export function UserManagement() {
                 </div>
               </div>
             </div>
-          </ScrollArea>
-          <DialogFooter className="border-t pt-4 mt-2">
+          </div>
+          <DialogFooter className="border-t px-6 py-4 shrink-0">
             <Button variant="outline" onClick={() => setShowEditDialog(false)}>
               Cancelar
             </Button>
