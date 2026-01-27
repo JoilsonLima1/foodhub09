@@ -75,7 +75,7 @@ export function CourierManagement() {
   const [editingCourier, setEditingCourier] = useState<Courier | null>(null);
   const [formData, setFormData] = useState<CourierFormData>(initialFormData);
 
-  const canManage = hasRole('admin') || hasRole('manager');
+  const canManage = hasRole('admin') || hasRole('manager') || hasRole('super_admin');
 
   useEffect(() => {
     if (tenantId) {
