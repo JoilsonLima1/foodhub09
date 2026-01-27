@@ -158,10 +158,15 @@ const ROLE_PERMISSIONS: Record<AppRole, string[]> = {
   ],
 };
 
+// Roles that regular admins can assign (super_admin NOT included)
 const ASSIGNABLE_ROLES: AppRole[] = ['admin', 'manager', 'cashier', 'kitchen', 'stock', 'delivery'];
 
+// All roles including super_admin (only for super_admin users to see in permissions tab)
+const ALL_ROLES: AppRole[] = ['super_admin', 'admin', 'manager', 'cashier', 'kitchen', 'stock', 'delivery'];
+
 export function UserManagement() {
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, hasRole: currentUserHasRole } = useAuth();
+  const isSuperAdmin = currentUserHasRole('super_admin');
   const { 
     users, 
     isLoading, 
@@ -467,7 +472,7 @@ export function UserManagement() {
 
             <TabsContent value="permissions">
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {ASSIGNABLE_ROLES.map(role => {
+                {(isSuperAdmin ? ALL_ROLES : ASSIGNABLE_ROLES).map(role => {
                   const Icon = ROLE_ICONS[role];
                   return (
                     <Card key={role} className="border-0 bg-[#1a1a1a] overflow-hidden">
