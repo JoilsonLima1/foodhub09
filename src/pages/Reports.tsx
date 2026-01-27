@@ -11,6 +11,9 @@ import {
   Calendar,
   Calculator,
   CalendarDays,
+  Clock,
+  Store,
+  Activity,
 } from 'lucide-react';
 import { useSalesReport } from '@/hooks/useSalesReport';
 import { useTopProductsWithCategory } from '@/hooks/useTopProductsWithCategory';
@@ -21,8 +24,13 @@ import { PaymentMethodChart } from '@/components/reports/PaymentMethodChart';
 import { TopProductsChartWithFilter } from '@/components/reports/TopProductsChartWithFilter';
 import { CMVReportView } from '@/components/reports/CMVReportView';
 import { ReportExport } from '@/components/reports/ReportExport';
+import { ReportPDFExport } from '@/components/reports/ReportPDFExport';
 import { PeriodComparisonCard } from '@/components/reports/PeriodComparisonCard';
 import { DayOfWeekChart } from '@/components/reports/DayOfWeekChart';
+import { HourlyChart } from '@/components/reports/HourlyChart';
+import { OriginChart } from '@/components/reports/OriginChart';
+import { TrendChart } from '@/components/reports/TrendChart';
+import { AnalyticsSummary } from '@/components/reports/AnalyticsSummary';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
 import fallbackLogo from '@/assets/logo.png';
 
@@ -72,10 +80,10 @@ export default function Reports() {
           <div>
             <h1 className="text-2xl font-bold flex items-center gap-2">
               <BarChart3 className="h-6 w-6" />
-              Relatórios
+              Relatórios Avançados
             </h1>
             <p className="text-muted-foreground">
-              {companyName} - Análises e métricas
+              {companyName} - Análises e métricas detalhadas
             </p>
           </div>
         </div>
@@ -91,6 +99,14 @@ export default function Reports() {
               {p.label}
             </Button>
           ))}
+          <ReportPDFExport
+            salesReport={salesReport}
+            cmvReport={cmvReport}
+            topProducts={topProducts}
+            period={period}
+            companyName={companyName}
+            logoUrl={logoUrl}
+          />
           <ReportExport 
             salesReport={salesReport} 
             cmvReport={cmvReport}
@@ -101,15 +117,27 @@ export default function Reports() {
         </div>
       </div>
 
-      <Tabs defaultValue="vendas" className="w-full">
-        <TabsList>
+      <Tabs defaultValue="visao-geral" className="w-full">
+        <TabsList className="flex flex-wrap">
+          <TabsTrigger value="visao-geral" className="flex items-center gap-2">
+            <Activity className="h-4 w-4" />
+            Visão Geral
+          </TabsTrigger>
           <TabsTrigger value="vendas" className="flex items-center gap-2">
             <TrendingUp className="h-4 w-4" />
             Vendas
           </TabsTrigger>
+          <TabsTrigger value="tempo" className="flex items-center gap-2">
+            <Clock className="h-4 w-4" />
+            Por Hora
+          </TabsTrigger>
           <TabsTrigger value="diasemana" className="flex items-center gap-2">
             <CalendarDays className="h-4 w-4" />
             Por Dia
+          </TabsTrigger>
+          <TabsTrigger value="canais" className="flex items-center gap-2">
+            <Store className="h-4 w-4" />
+            Canais
           </TabsTrigger>
           <TabsTrigger value="cmv" className="flex items-center gap-2">
             <Calculator className="h-4 w-4" />
@@ -117,6 +145,36 @@ export default function Reports() {
           </TabsTrigger>
         </TabsList>
 
+        {/* Visão Geral Tab */}
+        <TabsContent value="visao-geral" className="mt-6 space-y-6">
+          {/* Analytics Summary Cards */}
+          <AnalyticsSummary 
+            daysBack={period} 
+            salesReport={salesReport}
+            comparison={comparison}
+          />
+
+          {/* Trend Chart */}
+          <TrendChart weeks={period === 7 ? 4 : period === 15 ? 6 : 8} />
+
+          {/* Grid of smaller charts */}
+          <div className="grid gap-4 lg:grid-cols-2">
+            <HourlyChart daysBack={period} />
+            <OriginChart daysBack={period} />
+          </div>
+
+          {/* Top Products */}
+          {!productsLoading && topProducts && topProducts.length > 0 && (
+            <TopProductsChartWithFilter 
+              products={topProducts} 
+              categories={categories}
+              selectedCategory={selectedCategory}
+              onCategoryChange={setSelectedCategory}
+            />
+          )}
+        </TabsContent>
+
+        {/* Vendas Tab */}
         <TabsContent value="vendas" className="mt-6 space-y-6">
           {/* Stats Cards */}
           <div className="grid gap-4 md:grid-cols-3">
@@ -280,10 +338,77 @@ export default function Reports() {
           )}
         </TabsContent>
 
+        {/* Por Hora Tab */}
+        <TabsContent value="tempo" className="mt-6 space-y-6">
+          <HourlyChart daysBack={period} />
+          
+          <Card>
+            <CardHeader>
+              <CardTitle>Análise de Horários</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid md:grid-cols-3 gap-4">
+                <div className="p-4 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-900">
+                  <div className="text-sm text-green-700 dark:text-green-400 font-medium">Horário de Pico</div>
+                  <div className="text-lg font-bold text-green-800 dark:text-green-300">11h - 14h</div>
+                  <div className="text-xs text-green-600 dark:text-green-500">Concentração de pedidos</div>
+                </div>
+                <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900">
+                  <div className="text-sm text-blue-700 dark:text-blue-400 font-medium">Segundo Pico</div>
+                  <div className="text-lg font-bold text-blue-800 dark:text-blue-300">18h - 21h</div>
+                  <div className="text-xs text-blue-600 dark:text-blue-500">Jantar</div>
+                </div>
+                <div className="p-4 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900">
+                  <div className="text-sm text-amber-700 dark:text-amber-400 font-medium">Horário Baixo</div>
+                  <div className="text-lg font-bold text-amber-800 dark:text-amber-300">14h - 17h</div>
+                  <div className="text-xs text-amber-600 dark:text-amber-500">Oportunidade de promoção</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Por Dia da Semana Tab */}
         <TabsContent value="diasemana" className="mt-6">
           <DayOfWeekChart daysBack={period} />
         </TabsContent>
 
+        {/* Canais Tab */}
+        <TabsContent value="canais" className="mt-6 space-y-6">
+          <OriginChart daysBack={period} />
+          
+          <Card>
+            <CardHeader>
+              <CardTitle>Insights de Canais</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="p-4 rounded-lg bg-muted/50">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Store className="h-5 w-5 text-primary" />
+                    <span className="font-semibold">Diversificação</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Analise a distribuição das vendas entre seus canais para identificar oportunidades 
+                    de crescimento e dependências excessivas de um único canal.
+                  </p>
+                </div>
+                <div className="p-4 rounded-lg bg-muted/50">
+                  <div className="flex items-center gap-2 mb-2">
+                    <TrendingUp className="h-5 w-5 text-green-600" />
+                    <span className="font-semibold">Recomendação</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Invista nos canais com melhor ticket médio e margem de lucro. 
+                    Considere campanhas específicas para canais com baixo desempenho.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* CMV Tab */}
         <TabsContent value="cmv" className="mt-6">
           {cmvLoading ? (
             <div className="space-y-4">
