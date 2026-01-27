@@ -34,6 +34,7 @@ export function TrialExpirationBanner() {
     setIsUpgrading(true);
     try {
       const { data, error } = await supabase.functions.invoke('create-checkout', {
+        body: { planId: 'starter' },
         headers: {
           Authorization: `Bearer ${session.access_token}`,
         },
