@@ -504,85 +504,93 @@ export function UserManagement() {
 
       {/* Create User Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Novo Usuário</DialogTitle>
             <DialogDescription>
               Preencha os dados para criar um novo usuário no sistema.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="create-name">Nome Completo *</Label>
-              <Input
-                id="create-name"
-                value={createForm.full_name}
-                onChange={e => setCreateForm(prev => ({ ...prev, full_name: e.target.value }))}
-                placeholder="Nome do usuário"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="create-email">Email *</Label>
-              <Input
-                id="create-email"
-                type="email"
-                value={createForm.email}
-                onChange={e => setCreateForm(prev => ({ ...prev, email: e.target.value }))}
-                placeholder="email@exemplo.com"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="create-password">Senha *</Label>
-              <Input
-                id="create-password"
-                type="password"
-                value={createForm.password}
-                onChange={e => setCreateForm(prev => ({ ...prev, password: e.target.value }))}
-                placeholder="Mínimo 6 caracteres"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="create-phone">Telefone</Label>
-              <Input
-                id="create-phone"
-                value={createForm.phone}
-                onChange={e => setCreateForm(prev => ({ ...prev, phone: e.target.value }))}
-                placeholder="(11) 99999-9999"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Permissões</Label>
-              <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto p-1">
-                {ASSIGNABLE_ROLES.map(role => (
-                  <div 
-                    key={role} 
-                    className={`flex items-center space-x-3 p-2 rounded-md border cursor-pointer transition-colors ${
-                      createForm.roles.includes(role) 
-                        ? 'bg-primary/5 border-primary' 
-                        : 'border-border hover:bg-muted/50'
-                    }`}
-                    onClick={() => toggleRole(role, 'create')}
-                  >
-                    <Checkbox
-                      id={`create-role-${role}`}
-                      checked={createForm.roles.includes(role)}
-                      onCheckedChange={() => toggleRole(role, 'create')}
-                    />
-                    <div className="flex-1">
-                      <Label 
-                        htmlFor={`create-role-${role}`} 
-                        className="text-sm font-medium cursor-pointer"
+          <ScrollArea className="flex-1 pr-4">
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="create-name">Nome Completo *</Label>
+                <Input
+                  id="create-name"
+                  value={createForm.full_name}
+                  onChange={e => setCreateForm(prev => ({ ...prev, full_name: e.target.value }))}
+                  placeholder="Nome do usuário"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="create-email">Email *</Label>
+                <Input
+                  id="create-email"
+                  type="email"
+                  value={createForm.email}
+                  onChange={e => setCreateForm(prev => ({ ...prev, email: e.target.value }))}
+                  placeholder="email@exemplo.com"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="create-password">Senha *</Label>
+                <Input
+                  id="create-password"
+                  type="password"
+                  value={createForm.password}
+                  onChange={e => setCreateForm(prev => ({ ...prev, password: e.target.value }))}
+                  placeholder="Mínimo 6 caracteres"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="create-phone">Telefone</Label>
+                <Input
+                  id="create-phone"
+                  value={createForm.phone}
+                  onChange={e => setCreateForm(prev => ({ ...prev, phone: e.target.value }))}
+                  placeholder="(11) 99999-9999"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Permissões</Label>
+                <div className="grid grid-cols-1 gap-2 p-1">
+                  {ASSIGNABLE_ROLES.map(role => {
+                    const isSelected = createForm.roles.includes(role);
+                    const Icon = ROLE_ICONS[role];
+                    return (
+                      <div 
+                        key={role} 
+                        className={`flex items-center space-x-3 p-3 rounded-md border-2 cursor-pointer transition-all ${
+                          isSelected 
+                            ? 'bg-primary/20 border-primary ring-2 ring-primary/30' 
+                            : 'border-muted-foreground/30 hover:border-muted-foreground/50 hover:bg-muted/30'
+                        }`}
+                        onClick={() => toggleRole(role, 'create')}
                       >
-                        {ROLE_LABELS[role]}
-                      </Label>
-                      <p className="text-xs text-foreground/80">{ROLE_DESCRIPTIONS[role]}</p>
-                    </div>
-                  </div>
-                ))}
+                        <Checkbox
+                          id={`create-role-${role}`}
+                          checked={isSelected}
+                          onCheckedChange={() => toggleRole(role, 'create')}
+                          className={isSelected ? 'border-primary data-[state=checked]:bg-primary' : ''}
+                        />
+                        <Icon className={`h-4 w-4 ${isSelected ? 'text-primary' : 'text-muted-foreground'}`} />
+                        <div className="flex-1">
+                          <Label 
+                            htmlFor={`create-role-${role}`} 
+                            className={`text-sm font-medium cursor-pointer ${isSelected ? 'text-primary' : ''}`}
+                          >
+                            {ROLE_LABELS[role]}
+                          </Label>
+                          <p className="text-xs text-muted-foreground">{ROLE_DESCRIPTIONS[role]}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
-          </div>
-          <DialogFooter>
+          </ScrollArea>
+          <DialogFooter className="border-t pt-4 mt-2">
             <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
               Cancelar
             </Button>
@@ -599,63 +607,71 @@ export function UserManagement() {
 
       {/* Edit User Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Editar Usuário</DialogTitle>
             <DialogDescription>
               Altere os dados e permissões do usuário.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="edit-name">Nome Completo</Label>
-              <Input
-                id="edit-name"
-                value={editForm.full_name}
-                onChange={e => setEditForm(prev => ({ ...prev, full_name: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-phone">Telefone</Label>
-              <Input
-                id="edit-phone"
-                value={editForm.phone}
-                onChange={e => setEditForm(prev => ({ ...prev, phone: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Permissões</Label>
-              <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto p-1">
-                {ASSIGNABLE_ROLES.map(role => (
-                  <div 
-                    key={role} 
-                    className={`flex items-center space-x-3 p-2 rounded-md border cursor-pointer transition-colors ${
-                      editForm.roles.includes(role) 
-                        ? 'bg-primary/5 border-primary' 
-                        : 'border-border hover:bg-muted/50'
-                    }`}
-                    onClick={() => toggleRole(role, 'edit')}
-                  >
-                    <Checkbox
-                      id={`edit-role-${role}`}
-                      checked={editForm.roles.includes(role)}
-                      onCheckedChange={() => toggleRole(role, 'edit')}
-                    />
-                    <div className="flex-1">
-                      <Label 
-                        htmlFor={`edit-role-${role}`} 
-                        className="text-sm font-medium cursor-pointer"
+          <ScrollArea className="flex-1 pr-4">
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-name">Nome Completo</Label>
+                <Input
+                  id="edit-name"
+                  value={editForm.full_name}
+                  onChange={e => setEditForm(prev => ({ ...prev, full_name: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-phone">Telefone</Label>
+                <Input
+                  id="edit-phone"
+                  value={editForm.phone}
+                  onChange={e => setEditForm(prev => ({ ...prev, phone: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Permissões</Label>
+                <div className="grid grid-cols-1 gap-2 p-1">
+                  {ASSIGNABLE_ROLES.map(role => {
+                    const isSelected = editForm.roles.includes(role);
+                    const Icon = ROLE_ICONS[role];
+                    return (
+                      <div 
+                        key={role} 
+                        className={`flex items-center space-x-3 p-3 rounded-md border-2 cursor-pointer transition-all ${
+                          isSelected 
+                            ? 'bg-primary/20 border-primary ring-2 ring-primary/30' 
+                            : 'border-muted-foreground/30 hover:border-muted-foreground/50 hover:bg-muted/30'
+                        }`}
+                        onClick={() => toggleRole(role, 'edit')}
                       >
-                        {ROLE_LABELS[role]}
-                      </Label>
-                      <p className="text-xs text-foreground/80">{ROLE_DESCRIPTIONS[role]}</p>
-                    </div>
-                  </div>
-                ))}
+                        <Checkbox
+                          id={`edit-role-${role}`}
+                          checked={isSelected}
+                          onCheckedChange={() => toggleRole(role, 'edit')}
+                          className={isSelected ? 'border-primary data-[state=checked]:bg-primary' : ''}
+                        />
+                        <Icon className={`h-4 w-4 ${isSelected ? 'text-primary' : 'text-muted-foreground'}`} />
+                        <div className="flex-1">
+                          <Label 
+                            htmlFor={`edit-role-${role}`} 
+                            className={`text-sm font-medium cursor-pointer ${isSelected ? 'text-primary' : ''}`}
+                          >
+                            {ROLE_LABELS[role]}
+                          </Label>
+                          <p className="text-xs text-muted-foreground">{ROLE_DESCRIPTIONS[role]}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
-          </div>
-          <DialogFooter>
+          </ScrollArea>
+          <DialogFooter className="border-t pt-4 mt-2">
             <Button variant="outline" onClick={() => setShowEditDialog(false)}>
               Cancelar
             </Button>
