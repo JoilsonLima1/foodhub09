@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useServiceWorker } from './useServiceWorker';
 
 export function usePushNotifications() {
   const [permission, setPermission] = useState<NotificationPermission>('default');
   const [isSupported, setIsSupported] = useState(false);
+  const { registration, showNotification: swShowNotification } = useServiceWorker();
 
   useEffect(() => {
     // Verificar suporte a notificações
@@ -29,12 +31,28 @@ export function usePushNotifications() {
   }, [isSupported]);
 
   const showNotification = useCallback(
-    (title: string, options?: NotificationOptions) => {
+    async (title: string, options?: NotificationOptions) => {
       if (!isSupported || permission !== 'granted') {
         console.warn('Permissão de notificação não concedida');
         return null;
       }
 
+      // Tentar usar Service Worker primeiro (melhor para mobile/background)
+      if (registration) {
+        try {
+          await swShowNotification(title, {
+            icon: '/favicon.ico',
+            badge: '/favicon.ico',
+            requireInteraction: true,
+            ...options,
+          });
+          return true;
+        } catch (err) {
+          console.warn('Fallback para notificação direta:', err);
+        }
+      }
+
+      // Fallback: notificação direta (não funciona bem em mobile/background)
       try {
         const notification = new Notification(title, {
           icon: '/favicon.ico',
@@ -52,7 +70,7 @@ export function usePushNotifications() {
         return null;
       }
     },
-    [isSupported, permission]
+    [isSupported, permission, registration, swShowNotification]
   );
 
   const notifyNewDelivery = useCallback(
@@ -60,6 +78,34 @@ export function usePushNotifications() {
       return showNotification('🚚 Nova Entrega Atribuída!', {
         body: `Pedido #${orderNumber}${customerName ? ` - ${customerName}` : ''}${address ? `\n📍 ${address}` : ''}`,
         tag: `delivery-${orderNumber}`,
+        data: {
+          url: '/courier',
+          orderId: orderNumber,
+        },
+      } as NotificationOptions);
+    },
+    [showNotification]
+  );
+
+  const notifyOrderReady = useCallback(
+    (orderNumber: number) => {
+      return showNotification('✅ Pedido Pronto para Coleta!', {
+        body: `Pedido #${orderNumber} está pronto para ser retirado`,
+        tag: `order-ready-${orderNumber}`,
+        data: {
+          url: '/courier',
+          orderId: orderNumber,
+        },
+      } as NotificationOptions);
+    },
+    [showNotification]
+  );
+
+  const notifyGeneral = useCallback(
+    (title: string, body: string, tag?: string) => {
+      return showNotification(title, {
+        body,
+        tag: tag || `general-${Date.now()}`,
       });
     },
     [showNotification]
@@ -68,8 +114,11 @@ export function usePushNotifications() {
   return {
     isSupported,
     permission,
+    hasServiceWorker: !!registration,
     requestPermission,
     showNotification,
     notifyNewDelivery,
+    notifyOrderReady,
+    notifyGeneral,
   };
 }
