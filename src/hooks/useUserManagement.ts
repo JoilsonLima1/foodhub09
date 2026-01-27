@@ -38,7 +38,7 @@ export function useUserManagement() {
   const [isCreating, setIsCreating] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
 
-  const canManageUsers = hasRole('admin') || hasRole('manager');
+  const canManageUsers = hasRole('admin') || hasRole('manager') || hasRole('super_admin');
 
   const fetchUsers = useCallback(async () => {
     if (!tenantId || !canManageUsers) {
