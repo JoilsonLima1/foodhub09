@@ -54,16 +54,29 @@ export function useFeatureAccess(feature?: FeatureKey): FeatureAccessResult {
     };
   }
 
-  // Still loading subscription status
+  // Still loading subscription status - grant access while loading
   if (isLoading) {
     return {
-      hasAccess: true, // Assume access while loading to avoid flicker
+      hasAccess: true,
       isTrialActive: false,
       isTrialExpired: false,
-      daysRemaining: 0,
+      daysRemaining: trialDays,
       trialDays,
-      reason: 'no_subscription',
+      reason: 'trial_active',
       isLoading: true,
+    };
+  }
+
+  // If subscription check failed or returned null, grant temporary access
+  if (!subscriptionStatus) {
+    return {
+      hasAccess: true,
+      isTrialActive: true,
+      isTrialExpired: false,
+      daysRemaining: trialDays,
+      trialDays,
+      reason: 'trial_active',
+      isLoading: false,
     };
   }
 
