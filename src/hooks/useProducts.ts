@@ -19,6 +19,7 @@ export interface Product {
   category_name: string | null;
   has_variations: boolean;
   is_available: boolean;
+  sku: string | null;
   variations: ProductVariation[];
 }
 
@@ -48,6 +49,7 @@ export function useProducts() {
           category_id,
           has_variations,
           is_available,
+          sku,
           categories (
             name
           )
@@ -95,6 +97,7 @@ export function useProducts() {
         category_name: (p.categories as { name: string } | null)?.name || null,
         has_variations: p.has_variations || false,
         is_available: p.is_available || true,
+        sku: p.sku || null,
         variations: variationsMap[p.id] || [],
       }));
     },
