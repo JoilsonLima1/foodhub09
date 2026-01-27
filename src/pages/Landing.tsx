@@ -9,6 +9,7 @@ import { usePublicSettings } from '@/hooks/usePublicSettings';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import fallbackLogo from '@/assets/logo.png';
+import PartnersCarousel from '@/components/landing/PartnersCarousel';
 
 export default function Landing() {
   const navigate = useNavigate();
@@ -208,6 +209,9 @@ export default function Landing() {
           </div>
         </div>
       </section>
+
+      {/* Partners Carousel */}
+      <PartnersCarousel />
 
       {/* Features Section */}
       <section className="py-20 px-4 bg-card/50">
