@@ -26,8 +26,8 @@ export default function SuperAdmin() {
   const { roles } = useAuth();
   const { stats } = useSubscribers();
   
-  // Check for super_admin role - for demo, also allow admin
-  const isSuperAdmin = roles.includes('super_admin') || roles.includes('admin');
+  // Only super_admin role can access this page
+  const isSuperAdmin = roles.includes('super_admin');
 
   if (!isSuperAdmin) {
     return <Navigate to="/dashboard" replace />;
