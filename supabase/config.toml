@@ -23,3 +23,12 @@ verify_jwt = false
 
 [functions.ifood-api]
 verify_jwt = false
+
+[functions.manage-users]
+verify_jwt = false
+
+[functions.check-subscription]
+verify_jwt = false
+
+[functions.debug-redirect]
+verify_jwt = false
