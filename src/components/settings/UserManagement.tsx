@@ -463,14 +463,17 @@ export function UserManagement() {
                 {ASSIGNABLE_ROLES.map(role => {
                   const Icon = ROLE_ICONS[role];
                   return (
-                    <Card key={role} className={`border-l-4 ${ROLE_COLORS[role].split(' ')[0].replace('/10', '')}`}>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="flex items-center gap-2 text-base">
-                          <div className={`p-2 rounded-lg ${ROLE_COLORS[role]}`}>
-                            <Icon className="h-4 w-4" />
-                          </div>
-                          {ROLE_LABELS[role]}
-                        </CardTitle>
+                    <Card key={role} className="border-0 bg-[#1a1a1a] overflow-hidden">
+                      {/* Barra colorida superior com nome do perfil */}
+                      <div className={`px-4 py-3 ${ROLE_COLORS[role]}`}>
+                        <div className="flex items-center gap-2">
+                          <Icon className="h-5 w-5" />
+                          <span className="font-semibold text-base">{ROLE_LABELS[role]}</span>
+                        </div>
+                      </div>
+                      
+                      {/* Conteúdo com fundo escuro uniforme */}
+                      <CardHeader className="pb-2 pt-4">
                         <CardDescription className="text-sm font-medium text-foreground">
                           {ROLE_DESCRIPTIONS[role]}
                         </CardDescription>
@@ -484,7 +487,7 @@ export function UserManagement() {
                             </li>
                           ))}
                         </ul>
-                        <div className="mt-3 pt-3 border-t">
+                        <div className="mt-3 pt-3 border-t border-border/50">
                           <p className="text-sm font-semibold text-foreground">
                             {users.filter(u => u.roles.includes(role)).length} usuário(s) com esta permissão
                           </p>
