@@ -120,11 +120,19 @@ export default function AuthPage() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center space-y-4">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => navigate('/')}
+            className="absolute top-4 left-4"
+          >
+            ← Voltar
+          </Button>
           <div className="flex justify-center">
-            <img src={logo} alt="FoodHub09 Logo" className="h-24 w-auto" />
+            <img src={logo} alt="FoodHub Logo" className="h-24 w-auto cursor-pointer" onClick={() => navigate('/')} />
           </div>
           <div>
-            <CardTitle className="text-2xl font-bold">FoodHub09</CardTitle>
+            <CardTitle className="text-2xl font-bold">FoodHub</CardTitle>
             <CardDescription>Sistema de Gestão para Restaurantes</CardDescription>
           </div>
         </CardHeader>
