@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Dialog,
   DialogContent,
@@ -236,13 +237,14 @@ export function CourierManagement() {
               Novo Entregador
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="sm:max-w-md max-h-[85vh] flex flex-col">
             <DialogHeader>
               <DialogTitle>
                 {editingCourier ? 'Editar Entregador' : 'Novo Entregador'}
               </DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <ScrollArea className="flex-1 pr-4">
+              <form onSubmit={handleSubmit} className="space-y-4 pb-2">
               <div className="space-y-2">
                 <Label htmlFor="name">Nome *</Label>
                 <Input
@@ -361,7 +363,8 @@ export function CourierManagement() {
                   {editingCourier ? 'Salvar' : 'Cadastrar'}
                 </Button>
               </div>
-            </form>
+              </form>
+            </ScrollArea>
           </DialogContent>
         </Dialog>
       </CardHeader>
