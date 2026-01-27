@@ -20,9 +20,10 @@ export default function PublicMenu() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
 
-  // TODO: Get from tenant settings
-  const whatsappNumber = '5511999999999';
-  const tenantName = 'Restaurante Demo';
+  // Get from tenant settings dynamically
+  const whatsappNumber = data?.tenant?.whatsapp_number || '';
+  const tenantName = data?.tenant?.name || 'Restaurante';
+  const tenantLogo = data?.tenant?.logo_url;
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -152,7 +153,11 @@ export default function PublicMenu() {
       <header className="sticky top-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b z-40">
         <div className="container max-w-3xl mx-auto px-4 py-4">
           <div className="flex items-center gap-3 mb-3">
-            <UtensilsCrossed className="h-6 w-6 text-primary" />
+            {tenantLogo ? (
+              <img src={tenantLogo} alt={tenantName} className="h-8 w-auto" />
+            ) : (
+              <UtensilsCrossed className="h-6 w-6 text-primary" />
+            )}
             <h1 className="text-xl font-bold">{tenantName}</h1>
             {tableNumber && (
               <Badge variant="outline" className="ml-auto">

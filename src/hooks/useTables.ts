@@ -308,35 +308,107 @@ export function useTableSessionMutations() {
   });
 
   const closeSession = useMutation({
-    mutationFn: async (data: { sessionId: string; discount?: number }) => {
-      // First, get the current session
+    mutationFn: async (data: { sessionId: string; discount?: number; paymentMethod?: string }) => {
+      if (!tenantId) throw new Error('Tenant não configurado');
+
+      // First, get the current session with its items
       const { data: session, error: fetchError } = await supabase
         .from('table_sessions')
-        .select('subtotal')
+        .select('*, table_id')
         .eq('id', data.sessionId)
         .single();
 
       if (fetchError) throw fetchError;
 
-      const discount = data.discount || 0;
-      const total = (session.subtotal || 0) - discount;
+      // Get session items
+      const { data: items, error: itemsError } = await supabase
+        .from('table_session_items')
+        .select('*')
+        .eq('session_id', data.sessionId)
+        .neq('status', 'cancelled');
 
-      const { error } = await supabase
+      if (itemsError) throw itemsError;
+
+      const discount = data.discount || 0;
+      const subtotal = session.subtotal || 0;
+      const total = Math.max(0, subtotal - discount);
+
+      // Create order record for reports
+      const { data: order, error: orderError } = await supabase
+        .from('orders')
+        .insert({
+          tenant_id: tenantId,
+          origin: 'pos' as const,
+          status: 'delivered' as const,
+          is_delivery: false,
+          customer_name: session.customer_name,
+          customer_phone: session.customer_phone,
+          subtotal,
+          discount,
+          total,
+          notes: session.notes,
+          created_by: user?.id,
+        })
+        .select()
+        .single();
+
+      if (orderError) throw orderError;
+
+      // Create order items from session items
+      if (items && items.length > 0) {
+        const orderItems = items.map(item => ({
+          order_id: order.id,
+          product_id: item.product_id,
+          product_name: item.product_name,
+          variation_id: item.variation_id,
+          variation_name: item.variation_name,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          total_price: item.total_price,
+          notes: item.notes,
+        }));
+
+        const { error: orderItemsError } = await supabase
+          .from('order_items')
+          .insert(orderItems);
+
+        if (orderItemsError) throw orderItemsError;
+      }
+
+      // Create payment record
+      const { error: paymentError } = await supabase
+        .from('payments')
+        .insert([{
+          tenant_id: tenantId,
+          order_id: order.id,
+          amount: total,
+          payment_method: (data.paymentMethod || 'cash') as 'cash' | 'pix' | 'credit_card' | 'debit_card' | 'voucher' | 'mixed',
+          status: 'approved' as const,
+          paid_at: new Date().toISOString(),
+        }]);
+
+      if (paymentError) throw paymentError;
+
+      // Update session as closed
+      const { error: updateError } = await supabase
         .from('table_sessions')
         .update({
           status: 'closed',
           closed_at: new Date().toISOString(),
           closed_by: user?.id,
           discount,
-          total: Math.max(0, total),
+          total,
         })
         .eq('id', data.sessionId);
 
-      if (error) throw error;
+      if (updateError) throw updateError;
+
+      return { session, order };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tables'] });
       queryClient.invalidateQueries({ queryKey: ['table-session'] });
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
       toast({ title: 'Comanda fechada com sucesso!' });
     },
   });

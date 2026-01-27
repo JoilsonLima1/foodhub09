@@ -32,6 +32,7 @@ import {
   Trash2,
   Edit,
   ExternalLink,
+  History,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -41,6 +42,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useTables, useTableSessionMutations, type Table } from '@/hooks/useTables';
 import { TableSessionPanel } from '@/components/tables/TableSessionPanel';
+import { TableHistoryPanel } from '@/components/tables/TableHistoryPanel';
 import { QRCodeDialog } from '@/components/tables/QRCodeDialog';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -57,6 +59,7 @@ export default function Tables() {
   const [isSessionPanelOpen, setIsSessionPanelOpen] = useState(false);
   
   const [qrCodeTable, setQrCodeTable] = useState<Table | null>(null);
+  const [historyTable, setHistoryTable] = useState<Table | null>(null);
   const [deleteConfirmTable, setDeleteConfirmTable] = useState<Table | null>(null);
 
   const handleCreateTable = async () => {
@@ -197,6 +200,13 @@ export default function Tables() {
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={(e) => {
                         e.stopPropagation();
+                        setHistoryTable(table);
+                      }}>
+                        <History className="h-4 w-4 mr-2" />
+                        Histórico
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={(e) => {
+                        e.stopPropagation();
                         window.open(getMenuUrl(table), '_blank');
                       }}>
                         <ExternalLink className="h-4 w-4 mr-2" />
@@ -302,6 +312,16 @@ export default function Tables() {
           menuUrl={getMenuUrl(qrCodeTable)}
           open={!!qrCodeTable}
           onOpenChange={(open) => !open && setQrCodeTable(null)}
+        />
+      )}
+
+      {/* History Panel */}
+      {historyTable && (
+        <TableHistoryPanel
+          tableId={historyTable.id}
+          tableNumber={historyTable.number}
+          open={!!historyTable}
+          onOpenChange={(open) => !open && setHistoryTable(null)}
         />
       )}
 
