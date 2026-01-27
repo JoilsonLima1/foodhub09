@@ -328,24 +328,29 @@ export function CourierManagement() {
                 </Select>
               </div>
 
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Switch
-                    id="is_internal"
-                    checked={formData.is_internal}
-                    onCheckedChange={(checked) => setFormData({ ...formData, is_internal: checked })}
-                  />
-                  <Label htmlFor="is_internal">Entregador próprio</Label>
-                </div>
+              <div className="space-y-2">
+                <Label>Tipo de Vínculo</Label>
+                <Select
+                  value={formData.is_internal ? "proprio" : "particular"}
+                  onValueChange={(value) => setFormData({ ...formData, is_internal: value === "proprio" })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="proprio">Entregador Próprio (CLT/Fixo)</SelectItem>
+                    <SelectItem value="particular">Entregador Particular (Freelancer)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-                <div className="flex items-center gap-2">
-                  <Switch
-                    id="is_active"
-                    checked={formData.is_active}
-                    onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
-                  />
-                  <Label htmlFor="is_active">Ativo</Label>
-                </div>
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="is_active"
+                  checked={formData.is_active}
+                  onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
+                />
+                <Label htmlFor="is_active">Ativo</Label>
               </div>
 
               <div className="flex justify-end gap-2 pt-4">
