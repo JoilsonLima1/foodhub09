@@ -129,7 +129,7 @@ export default function Landing() {
             <span className="text-xl font-bold text-primary">FoodHub</span>
           </div>
           <div className="flex items-center gap-4">
-            <Button variant="ghost" onClick={() => navigate('/auth')}>
+            <Button variant="ghost" onClick={() => navigate('/auth?intent=login')}>
               Entrar
             </Button>
             <Button onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })}>
@@ -167,7 +167,7 @@ export default function Landing() {
               size="lg" 
               variant="outline" 
               className="text-lg h-14 px-8"
-              onClick={() => navigate('/auth')}
+              onClick={() => navigate('/auth?intent=signup')}
             >
               Teste Grátis por 14 Dias
             </Button>
@@ -306,7 +306,7 @@ export default function Landing() {
           <Button 
             size="lg" 
             className="text-lg h-14 px-8"
-            onClick={() => navigate('/auth')}
+            onClick={() => navigate('/auth?intent=signup')}
           >
             Criar Conta Grátis
             <ArrowRight className="ml-2 h-5 w-5" />
