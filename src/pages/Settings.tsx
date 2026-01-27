@@ -1,6 +1,5 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,6 +22,7 @@ import { ThemeCustomizer } from '@/components/settings/ThemeCustomizer';
 import { IFoodIntegration } from '@/components/integrations/IFoodIntegration';
 import { BusinessCategorySelector } from '@/components/settings/BusinessCategorySelector';
 import { HardwareTutorial } from '@/components/settings/HardwareTutorial';
+import { UserManagement } from '@/components/settings/UserManagement';
 
 export default function Settings() {
   const { profile, roles } = useAuth();
@@ -267,31 +267,7 @@ export default function Settings() {
 
         {/* Users Settings */}
         <TabsContent value="users">
-          <Card>
-            <CardHeader>
-              <CardTitle>Gerenciamento de Usuários</CardTitle>
-              <CardDescription>
-                Adicione e gerencie usuários e permissões
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-8">
-                <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">Em Desenvolvimento</h3>
-                <p className="text-muted-foreground mb-4">
-                  O gerenciamento completo de usuários estará disponível em breve.
-                </p>
-                <div className="flex justify-center gap-2">
-                  <Badge>Admin</Badge>
-                  <Badge variant="secondary">Gerente</Badge>
-                  <Badge variant="secondary">Caixa</Badge>
-                  <Badge variant="secondary">Cozinha</Badge>
-                  <Badge variant="secondary">Estoque</Badge>
-                  <Badge variant="secondary">Entregador</Badge>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <UserManagement />
         </TabsContent>
 
         {/* Security Settings */}
