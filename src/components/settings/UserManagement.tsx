@@ -7,6 +7,8 @@ import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Dialog,
   DialogContent,
@@ -50,6 +52,17 @@ import {
   UserX,
   Loader2,
   Users,
+  Crown,
+  Settings,
+  ShoppingCart,
+  ChefHat,
+  Package,
+  Truck,
+  Sparkles,
+  Eye,
+  Edit3,
+  Ban,
+  CheckCircle2,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { AppRole } from '@/types/database';
@@ -66,13 +79,23 @@ const ROLE_LABELS: Record<AppRole, string> = {
 };
 
 const ROLE_DESCRIPTIONS: Record<AppRole, string> = {
-  admin: 'Acesso total ao sistema',
-  manager: 'Gerencia equipe e operações',
-  cashier: 'Opera o PDV e pagamentos',
-  kitchen: 'Visualiza e gerencia pedidos',
-  stock: 'Controle de estoque e insumos',
-  delivery: 'Gerencia entregas atribuídas',
-  super_admin: 'Administração do SaaS',
+  admin: 'Acesso total ao sistema, pode gerenciar usuários, configurações e todos os recursos',
+  manager: 'Gerencia equipe, operações, relatórios e pode configurar produtos/categorias',
+  cashier: 'Opera o PDV, processa pagamentos e visualiza pedidos',
+  kitchen: 'Visualiza e gerencia pedidos em preparo, atualiza status de produção',
+  stock: 'Controle completo de estoque, insumos, receitas e fornecedores',
+  delivery: 'Visualiza e gerencia entregas atribuídas, atualiza status de entrega',
+  super_admin: 'Administração completa do SaaS, todos os tenants',
+};
+
+const ROLE_ICONS: Record<AppRole, typeof Crown> = {
+  admin: Crown,
+  manager: Settings,
+  cashier: ShoppingCart,
+  kitchen: ChefHat,
+  stock: Package,
+  delivery: Truck,
+  super_admin: Sparkles,
 };
 
 const ROLE_COLORS: Record<AppRole, string> = {
@@ -83,6 +106,56 @@ const ROLE_COLORS: Record<AppRole, string> = {
   stock: 'bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-500/20',
   delivery: 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border-yellow-500/20',
   super_admin: 'bg-pink-500/10 text-pink-700 dark:text-pink-400 border-pink-500/20',
+};
+
+const ROLE_PERMISSIONS: Record<AppRole, string[]> = {
+  admin: [
+    'Gerenciar usuários e permissões',
+    'Configurações do sistema',
+    'Acesso a relatórios completos',
+    'Gerenciar produtos e categorias',
+    'Visualizar logs de auditoria',
+    'Configurar integrações',
+  ],
+  manager: [
+    'Gerenciar produtos e categorias',
+    'Visualizar relatórios de vendas',
+    'Gerenciar metas de vendas',
+    'Aprovar cancelamentos',
+    'Visualizar dashboard completo',
+  ],
+  cashier: [
+    'Operar PDV',
+    'Processar pagamentos',
+    'Visualizar pedidos',
+    'Abertura/Fechamento de caixa',
+    'Aplicar descontos (limitado)',
+  ],
+  kitchen: [
+    'Visualizar pedidos em preparo',
+    'Atualizar status de produção',
+    'Marcar itens como prontos',
+    'Visualizar ficha técnica',
+  ],
+  stock: [
+    'Gerenciar ingredientes',
+    'Registrar entradas de estoque',
+    'Configurar receitas (BOM)',
+    'Alertas de estoque baixo',
+    'Gerenciar fornecedores',
+  ],
+  delivery: [
+    'Visualizar entregas atribuídas',
+    'Atualizar status de entrega',
+    'Confirmar recebimento',
+    'Visualizar endereços',
+  ],
+  super_admin: [
+    'Gerenciar todos os tenants',
+    'Configurar planos de assinatura',
+    'Gerenciar gateways de pagamento',
+    'Configurar branding global',
+  ],
 };
 
 const ASSIGNABLE_ROLES: AppRole[] = ['admin', 'manager', 'cashier', 'kitchen', 'stock', 'delivery'];
@@ -104,6 +177,7 @@ export function UserManagement() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showViewDialog, setShowViewDialog] = useState(false);
   const [selectedUser, setSelectedUser] = useState<TenantUser | null>(null);
 
   // Create form state
@@ -178,6 +252,11 @@ export function UserManagement() {
     setShowDeleteDialog(true);
   };
 
+  const openViewDialog = (user: TenantUser) => {
+    setSelectedUser(user);
+    setShowViewDialog(true);
+  };
+
   const toggleRole = (role: AppRole, form: 'create' | 'edit') => {
     if (form === 'create') {
       setCreateForm(prev => ({
@@ -249,111 +328,174 @@ export function UserManagement() {
           </Button>
         </CardHeader>
         <CardContent>
-          {users.length === 0 ? (
-            <div className="text-center py-8">
-              <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Nenhum usuário encontrado</h3>
-              <p className="text-muted-foreground mb-4">
-                Clique no botão acima para adicionar o primeiro usuário.
-              </p>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Usuário</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Permissões</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="w-[70px]">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {users.map(user => (
-                  <TableRow key={user.id}>
-                    <TableCell>
-                      <div className="font-medium">{user.full_name}</div>
-                      {user.phone && (
-                        <div className="text-sm text-muted-foreground">{user.phone}</div>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {user.email}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1">
-                        {user.roles.map(role => (
-                          <Badge 
-                            key={role} 
-                            variant="outline"
-                            className={ROLE_COLORS[role]}
-                            title={ROLE_DESCRIPTIONS[role]}
-                          >
-                            {ROLE_LABELS[role]}
-                          </Badge>
-                        ))}
-                        {user.roles.length === 0 && (
-                          <span className="text-sm text-muted-foreground italic">Sem permissões</span>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Switch
-                          checked={user.is_active}
-                          onCheckedChange={(checked) => toggleUserStatus(user.user_id, checked)}
-                          disabled={user.user_id === currentUser?.id}
-                        />
-                        <span className={user.is_active ? 'text-green-600' : 'text-muted-foreground'}>
-                          {user.is_active ? 'Ativo' : 'Inativo'}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => openEditDialog(user)}>
-                            <Pencil className="h-4 w-4 mr-2" />
-                            Editar
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            onClick={() => toggleUserStatus(user.user_id, !user.is_active)}
-                            disabled={user.user_id === currentUser?.id}
-                          >
-                            {user.is_active ? (
-                              <>
-                                <UserX className="h-4 w-4 mr-2" />
-                                Desativar
-                              </>
-                            ) : (
-                              <>
-                                <UserCheck className="h-4 w-4 mr-2" />
-                                Ativar
-                              </>
+          <Tabs defaultValue="users" className="space-y-4">
+            <TabsList>
+              <TabsTrigger value="users">
+                <Users className="h-4 w-4 mr-2" />
+                Usuários
+              </TabsTrigger>
+              <TabsTrigger value="permissions">
+                <Shield className="h-4 w-4 mr-2" />
+                Permissões
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="users">
+              {users.length === 0 ? (
+                <div className="text-center py-8">
+                  <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Nenhum usuário encontrado</h3>
+                  <p className="text-muted-foreground mb-4">
+                    Clique no botão acima para adicionar o primeiro usuário.
+                  </p>
+                </div>
+              ) : (
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Usuário</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Permissões</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="w-[70px]">Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {users.map(user => (
+                        <TableRow key={user.id}>
+                          <TableCell>
+                            <div className="font-medium">{user.full_name}</div>
+                            {user.phone && (
+                              <div className="text-sm text-muted-foreground">{user.phone}</div>
                             )}
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem 
-                            onClick={() => openDeleteDialog(user)}
-                            className="text-destructive"
-                            disabled={user.user_id === currentUser?.id}
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Excluir
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {user.email}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-wrap gap-1">
+                              {user.roles.map(role => {
+                                const Icon = ROLE_ICONS[role];
+                                return (
+                                  <Badge 
+                                    key={role} 
+                                    variant="outline"
+                                    className={`${ROLE_COLORS[role]} flex items-center gap-1`}
+                                    title={ROLE_DESCRIPTIONS[role]}
+                                  >
+                                    <Icon className="h-3 w-3" />
+                                    {ROLE_LABELS[role]}
+                                  </Badge>
+                                );
+                              })}
+                              {user.roles.length === 0 && (
+                                <span className="text-sm text-muted-foreground italic">Sem permissões</span>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Switch
+                                checked={user.is_active}
+                                onCheckedChange={(checked) => toggleUserStatus(user.user_id, checked)}
+                                disabled={user.user_id === currentUser?.id}
+                              />
+                              <span className={user.is_active ? 'text-green-600' : 'text-muted-foreground'}>
+                                {user.is_active ? 'Ativo' : 'Inativo'}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => openViewDialog(user)}>
+                                  <Eye className="h-4 w-4 mr-2" />
+                                  Ver Detalhes
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => openEditDialog(user)}>
+                                  <Edit3 className="h-4 w-4 mr-2" />
+                                  Editar
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  onClick={() => toggleUserStatus(user.user_id, !user.is_active)}
+                                  disabled={user.user_id === currentUser?.id}
+                                >
+                                  {user.is_active ? (
+                                    <>
+                                      <Ban className="h-4 w-4 mr-2" />
+                                      Desativar
+                                    </>
+                                  ) : (
+                                    <>
+                                      <CheckCircle2 className="h-4 w-4 mr-2" />
+                                      Ativar
+                                    </>
+                                  )}
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem 
+                                  onClick={() => openDeleteDialog(user)}
+                                  className="text-destructive"
+                                  disabled={user.user_id === currentUser?.id}
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Excluir
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="permissions">
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {ASSIGNABLE_ROLES.map(role => {
+                  const Icon = ROLE_ICONS[role];
+                  return (
+                    <Card key={role} className={`border-l-4 ${ROLE_COLORS[role].split(' ')[0].replace('/10', '')}`}>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="flex items-center gap-2 text-base">
+                          <div className={`p-2 rounded-lg ${ROLE_COLORS[role]}`}>
+                            <Icon className="h-4 w-4" />
+                          </div>
+                          {ROLE_LABELS[role]}
+                        </CardTitle>
+                        <CardDescription className="text-xs">
+                          {ROLE_DESCRIPTIONS[role]}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <ul className="space-y-1">
+                          {ROLE_PERMISSIONS[role].map((permission, idx) => (
+                            <li key={idx} className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <CheckCircle2 className="h-3 w-3 text-green-500 flex-shrink-0" />
+                              {permission}
+                            </li>
+                          ))}
+                        </ul>
+                        <div className="mt-3 pt-3 border-t">
+                          <p className="text-xs text-muted-foreground">
+                            {users.filter(u => u.roles.includes(role)).length} usuário(s) com esta permissão
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
 
@@ -546,6 +688,109 @@ export function UserManagement() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* View User Details Dialog */}
+      <Dialog open={showViewDialog} onOpenChange={setShowViewDialog}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Detalhes do Usuário
+            </DialogTitle>
+          </DialogHeader>
+          {selectedUser && (
+            <div className="space-y-6 py-4">
+              {/* User Info */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-4">
+                  <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Users className="h-8 w-8 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold">{selectedUser.full_name}</h3>
+                    <p className="text-sm text-muted-foreground">{selectedUser.email}</p>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Telefone</Label>
+                    <p className="text-sm font-medium">{selectedUser.phone || 'Não informado'}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Status</Label>
+                    <div className="flex items-center gap-2">
+                      <div className={`h-2 w-2 rounded-full ${selectedUser.is_active ? 'bg-green-500' : 'bg-muted-foreground'}`} />
+                      <span className="text-sm font-medium">
+                        {selectedUser.is_active ? 'Ativo' : 'Inativo'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="space-y-1 md:col-span-2">
+                    <Label className="text-xs text-muted-foreground">Cadastrado em</Label>
+                    <p className="text-sm font-medium">
+                      {new Date(selectedUser.created_at).toLocaleDateString('pt-BR', {
+                        day: '2-digit',
+                        month: 'long',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Permissions */}
+              <div className="space-y-3">
+                <Label className="text-sm font-medium">Permissões Atribuídas</Label>
+                {selectedUser.roles.length === 0 ? (
+                  <p className="text-sm text-muted-foreground italic">Nenhuma permissão atribuída</p>
+                ) : (
+                  <div className="space-y-2">
+                    {selectedUser.roles.map(role => {
+                      const Icon = ROLE_ICONS[role];
+                      return (
+                        <div key={role} className={`p-3 rounded-lg border ${ROLE_COLORS[role]}`}>
+                          <div className="flex items-center gap-2 mb-2">
+                            <Icon className="h-4 w-4" />
+                            <span className="font-medium">{ROLE_LABELS[role]}</span>
+                          </div>
+                          <ul className="space-y-1 ml-6">
+                            {ROLE_PERMISSIONS[role].slice(0, 3).map((perm, idx) => (
+                              <li key={idx} className="text-xs flex items-center gap-1">
+                                <CheckCircle2 className="h-3 w-3" />
+                                {perm}
+                              </li>
+                            ))}
+                            {ROLE_PERMISSIONS[role].length > 3 && (
+                              <li className="text-xs text-muted-foreground">
+                                +{ROLE_PERMISSIONS[role].length - 3} mais...
+                              </li>
+                            )}
+                          </ul>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowViewDialog(false)}>
+              Fechar
+            </Button>
+            <Button onClick={() => {
+              setShowViewDialog(false);
+              if (selectedUser) openEditDialog(selectedUser);
+            }}>
+              <Pencil className="h-4 w-4 mr-2" />
+              Editar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
