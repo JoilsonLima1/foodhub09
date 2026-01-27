@@ -156,8 +156,44 @@ Usar o histórico de vendas para prever o faturamento dos próximos dias usando 
 
 ---
 
+## 4. Integração com Balança e Leitor de Código de Barras
+
+### O que foi implementado
+
+**Sistema de Balança (Web Serial API)**
+- Hook `useScale` para comunicação serial com balanças Toledo, Filizola, Urano e compatíveis
+- Componente `ScaleDisplay` com configuração de baudrate, paridade, bits de dados/parada
+- Leitura contínua de peso com indicador de estabilidade
+- Botão de ativação no PDV para mostrar/ocultar painel da balança
+
+**Sistema de Leitura de Código de Barras**
+- Hook `useBarcodeScanner` com dois modos:
+  - **Keyboard**: captura automática de leitores USB que emulam teclado
+  - **Camera**: leitura via câmera usando Barcode Detection API
+- Componente `BarcodeScanner` com tabs para modo automático/manual
+- `QuickScanButton` para acesso rápido no toolbar
+- Suporte a formatos: EAN-13, EAN-8, UPC-A, Code39, Code128, QR Code
+- Busca automática de produto por SKU, ID ou nome
+
+### Arquivos Criados
+| Arquivo | Propósito |
+|---------|-----------|
+| `src/hooks/useScale.ts` | Hook para comunicação serial com balança |
+| `src/hooks/useBarcodeScanner.ts` | Hook para leitura de código de barras |
+| `src/components/pos/ScaleDisplay.tsx` | Componente de exibição da balança |
+| `src/components/pos/BarcodeScanner.tsx` | Componente de scanner de código de barras |
+
+### Arquivos Modificados
+| Arquivo | Modificação |
+|---------|-------------|
+| `src/pages/POS.tsx` | Integração de balança e código de barras |
+| `src/hooks/useProducts.ts` | Adicionado campo SKU para busca por código de barras |
+
+---
+
 ## Resultado Final
 
 - Gestores recebem email automático quando metas são batidas
 - Entregadores têm dashboard dedicado no celular
 - Dashboard principal mostra previsão de vendas inteligente para os próximos 7 dias
+- PDV integra com balança serial e leitor de código de barras USB/câmera

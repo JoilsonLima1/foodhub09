@@ -1,9 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Calculator, Search } from 'lucide-react';
+import { Calculator, Search, Scale, Scan } from 'lucide-react';
 import { useProducts, useCategories, type Product, type ProductVariation } from '@/hooks/useProducts';
 import { useCreateOrder } from '@/hooks/useCreateOrder';
 import { ProductGrid } from '@/components/pos/ProductGrid';
@@ -11,9 +11,13 @@ import { CartPanel } from '@/components/pos/CartPanel';
 import { PaymentDialog } from '@/components/pos/PaymentDialog';
 import { ReceiptDialog } from '@/components/pos/ReceiptDialog';
 import { CustomerInfoDialog } from '@/components/pos/CustomerInfoDialog';
+import { ScaleDisplay } from '@/components/pos/ScaleDisplay';
+import { BarcodeScanner, QuickScanButton } from '@/components/pos/BarcodeScanner';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
+import { useBarcodeScanner, BarcodeScanResult } from '@/hooks/useBarcodeScanner';
 import type { CartItem, PaymentMethod } from '@/types/database';
 import fallbackLogo from '@/assets/logo.png';
+import { toast } from '@/hooks/use-toast';
 
 interface CompletedOrder {
   orderNumber: number;
@@ -48,12 +52,48 @@ export default function POS() {
   const [customerName, setCustomerName] = useState('');
   const [orderNotes, setOrderNotes] = useState('');
 
+  // State for hardware integrations
+  const [showScalePanel, setShowScalePanel] = useState(false);
+
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL',
     }).format(value);
   };
+
+  // Handle barcode scan - find product by SKU, ID or name containing the code
+  const handleBarcodeScan = useCallback((result: BarcodeScanResult) => {
+    const code = result.code;
+    
+    // Find product by SKU, ID, or name containing the code
+    const product = products.find(p => 
+      p.sku === code || 
+      p.id === code || 
+      p.name.toLowerCase().includes(code.toLowerCase())
+    );
+    
+    if (product) {
+      addToCart(product);
+      toast({
+        title: 'Produto adicionado',
+        description: `${product.name} foi adicionado ao carrinho.`,
+      });
+    } else {
+      toast({
+        title: 'Produto não encontrado',
+        description: `Nenhum produto encontrado com código: ${code}`,
+        variant: 'destructive',
+      });
+    }
+  }, [products]);
+
+  // Initialize barcode scanner in keyboard mode (for USB scanners)
+  useBarcodeScanner({
+    mode: 'keyboard',
+    onScan: handleBarcodeScan,
+    enabled: true,
+  });
 
   const filteredProducts = useMemo(() => {
     return products.filter(product => {
@@ -186,17 +226,36 @@ export default function POS() {
           </Badge>
         </div>
 
-        {/* Search and Categories */}
+        {/* Search and Hardware Controls */}
         <div className="space-y-3 mb-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar produto..."
-              className="pl-10"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar produto ou usar leitor de código..."
+                className="pl-10"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <QuickScanButton onScan={handleBarcodeScan} />
+            <Button
+              variant={showScalePanel ? 'default' : 'outline'}
+              size="icon"
+              onClick={() => setShowScalePanel(!showScalePanel)}
+              title="Balança"
+            >
+              <Scale className="h-4 w-4" />
+            </Button>
           </div>
+
+          {/* Scale Panel */}
+          {showScalePanel && (
+            <div className="p-3 border rounded-lg bg-muted/50">
+              <ScaleDisplay compact />
+            </div>
+          )}
+
           <div className="flex gap-2 overflow-x-auto pb-2">
             <Button
               variant={selectedCategory === null ? 'default' : 'outline'}
