@@ -3,6 +3,7 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/hooks/useTheme';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
+import { useFeatureAccess } from '@/hooks/useFeatureAccess';
 import {
   LayoutDashboard,
   ClipboardList,
@@ -66,18 +67,29 @@ export function AppSidebar() {
   const { profile, roles, signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { branding } = useSystemSettings();
+  const { hasAccess, isTrialActive, reason } = useFeatureAccess();
   const [isOpen, setIsOpen] = useState(false);
 
   // Use dynamic branding or fallback
   const logoUrl = branding?.logo_url || fallbackLogo;
   const companyName = branding?.company_name || 'FoodHub09';
 
-  // Filter nav items based on roles
+  // Filter nav items based on subscription/trial status and roles
   const getNavItems = (): NavItem[] => {
-    // Super admin has access to everything including super admin panel
+    // Super admin always has access to everything
     if (roles.includes('super_admin')) {
       return allNavItems.filter(item => item.path !== '/courier-dashboard');
     }
+    
+    // During trial or with active subscription, show all features (except super-admin and courier-specific)
+    // This ensures users can explore and use all features during their trial period
+    if (hasAccess && (isTrialActive || reason === 'subscribed')) {
+      return allNavItems.filter(item => 
+        item.path !== '/courier-dashboard' && item.path !== '/super-admin'
+      );
+    }
+    
+    // After trial expires or no subscription, apply role-based restrictions
     // Admin has access to most things but not super admin panel
     if (roles.includes('admin')) {
       return allNavItems.filter(item => 
