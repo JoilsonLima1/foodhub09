@@ -47,7 +47,8 @@ export function useTenantUserManagement() {
   const [isCreating, setIsCreating] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
 
-  const canManageUsers = hasRole("admin") || hasRole("manager") || hasRole("super_admin");
+  const isSuperAdmin = hasRole("super_admin");
+  const canManageUsers = hasRole("admin") || hasRole("manager") || isSuperAdmin;
 
   const fetchUsers = useCallback(async () => {
     if (!canManageUsers) {
@@ -75,7 +76,16 @@ export function useTenantUserManagement() {
       if (res.error) throw res.error;
       if (res.data?.error) throw new Error(res.data.error);
 
-      setUsers((res.data?.users as TenantUser[]) || []);
+      let fetchedUsers = (res.data?.users as TenantUser[]) || [];
+      
+      // Non-super_admin users should NOT see super_admin users in the list
+      if (!isSuperAdmin) {
+        fetchedUsers = fetchedUsers.filter(
+          (user) => !user.roles.includes("super_admin")
+        );
+      }
+
+      setUsers(fetchedUsers);
     } catch (error: any) {
       console.error("[useTenantUserManagement] Error fetching users:", error);
       toast({
@@ -87,7 +97,7 @@ export function useTenantUserManagement() {
     } finally {
       setIsLoading(false);
     }
-  }, [canManageUsers, tenantId]);
+  }, [canManageUsers, tenantId, isSuperAdmin]);
 
   useEffect(() => {
     fetchUsers();
@@ -260,6 +270,7 @@ export function useTenantUserManagement() {
     isCreating,
     isUpdating,
     canManageUsers,
+    isSuperAdmin,
     fetchUsers,
     createUser,
     updateUser,
