@@ -1501,6 +1501,165 @@ export type Database = {
           },
         ]
       }
+      subscription_plans: {
+        Row: {
+          created_at: string
+          currency: string
+          description: string | null
+          display_order: number | null
+          feature_ai_forecast: boolean | null
+          feature_api_access: boolean | null
+          feature_cmv_reports: boolean | null
+          feature_courier_app: boolean | null
+          feature_custom_integrations: boolean | null
+          feature_delivery_management: boolean | null
+          feature_goal_notifications: boolean | null
+          feature_kitchen_display: boolean | null
+          feature_multi_branch: boolean | null
+          feature_pos: boolean | null
+          feature_priority_support: boolean | null
+          feature_reports_advanced: boolean | null
+          feature_reports_basic: boolean | null
+          feature_stock_control: boolean | null
+          feature_white_label: boolean | null
+          id: string
+          is_active: boolean | null
+          max_orders_per_month: number | null
+          max_products: number | null
+          max_users: number | null
+          monthly_price: number
+          name: string
+          slug: string
+          stripe_price_id: string | null
+          stripe_product_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          currency?: string
+          description?: string | null
+          display_order?: number | null
+          feature_ai_forecast?: boolean | null
+          feature_api_access?: boolean | null
+          feature_cmv_reports?: boolean | null
+          feature_courier_app?: boolean | null
+          feature_custom_integrations?: boolean | null
+          feature_delivery_management?: boolean | null
+          feature_goal_notifications?: boolean | null
+          feature_kitchen_display?: boolean | null
+          feature_multi_branch?: boolean | null
+          feature_pos?: boolean | null
+          feature_priority_support?: boolean | null
+          feature_reports_advanced?: boolean | null
+          feature_reports_basic?: boolean | null
+          feature_stock_control?: boolean | null
+          feature_white_label?: boolean | null
+          id?: string
+          is_active?: boolean | null
+          max_orders_per_month?: number | null
+          max_products?: number | null
+          max_users?: number | null
+          monthly_price?: number
+          name: string
+          slug: string
+          stripe_price_id?: string | null
+          stripe_product_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          description?: string | null
+          display_order?: number | null
+          feature_ai_forecast?: boolean | null
+          feature_api_access?: boolean | null
+          feature_cmv_reports?: boolean | null
+          feature_courier_app?: boolean | null
+          feature_custom_integrations?: boolean | null
+          feature_delivery_management?: boolean | null
+          feature_goal_notifications?: boolean | null
+          feature_kitchen_display?: boolean | null
+          feature_multi_branch?: boolean | null
+          feature_pos?: boolean | null
+          feature_priority_support?: boolean | null
+          feature_reports_advanced?: boolean | null
+          feature_reports_basic?: boolean | null
+          feature_stock_control?: boolean | null
+          feature_white_label?: boolean | null
+          id?: string
+          is_active?: boolean | null
+          max_orders_per_month?: number | null
+          max_products?: number | null
+          max_users?: number | null
+          monthly_price?: number
+          name?: string
+          slug?: string
+          stripe_price_id?: string | null
+          stripe_product_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      subscriptions: {
+        Row: {
+          canceled_at: string | null
+          created_at: string
+          current_period_end: string | null
+          current_period_start: string | null
+          id: string
+          plan_id: string | null
+          status: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          tenant_id: string
+          trial_ends_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          canceled_at?: string | null
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          plan_id?: string | null
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          tenant_id: string
+          trial_ends_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          canceled_at?: string | null
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          plan_id?: string | null
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          tenant_id?: string
+          trial_ends_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscriptions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       suppliers: {
         Row: {
           address: string | null
@@ -1565,6 +1724,8 @@ export type Database = {
           phone: string | null
           slug: string
           state: string | null
+          subscription_status: string | null
+          trial_ends_at: string | null
           updated_at: string | null
           whatsapp_number: string | null
           zip_code: string | null
@@ -1588,6 +1749,8 @@ export type Database = {
           phone?: string | null
           slug: string
           state?: string | null
+          subscription_status?: string | null
+          trial_ends_at?: string | null
           updated_at?: string | null
           whatsapp_number?: string | null
           zip_code?: string | null
@@ -1611,6 +1774,8 @@ export type Database = {
           phone?: string | null
           slug?: string
           state?: string | null
+          subscription_status?: string | null
+          trial_ends_at?: string | null
           updated_at?: string | null
           whatsapp_number?: string | null
           zip_code?: string | null
