@@ -17,6 +17,7 @@ import {
   X,
   Moon,
   Sun,
+  Crown,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
@@ -32,6 +33,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Warehouse,
   BarChart3,
   Settings,
+  Crown,
 };
 
 interface NavItem {
@@ -51,6 +53,7 @@ const allNavItems: NavItem[] = [
   { path: '/stock', label: 'Estoque', icon: 'Warehouse' },
   { path: '/reports', label: 'Relatórios', icon: 'BarChart3' },
   { path: '/settings', label: 'Configurações', icon: 'Settings' },
+  { path: '/super-admin', label: 'Super Admin', icon: 'Crown' },
 ];
 
 export function AppSidebar() {
@@ -61,12 +64,19 @@ export function AppSidebar() {
 
   // Filter nav items based on roles
   const getNavItems = (): NavItem[] => {
-    if (roles.includes('admin')) {
+    // Super admin has access to everything including super admin panel
+    if (roles.includes('super_admin')) {
       return allNavItems.filter(item => item.path !== '/courier-dashboard');
+    }
+    // Admin has access to most things but not super admin panel
+    if (roles.includes('admin')) {
+      return allNavItems.filter(item => 
+        item.path !== '/courier-dashboard' && item.path !== '/super-admin'
+      );
     }
     if (roles.includes('manager')) {
       return allNavItems.filter(item => 
-        !['pos', 'kitchen', 'courier-dashboard'].includes(item.path.replace('/', ''))
+        !['pos', 'kitchen', 'courier-dashboard', 'super-admin'].includes(item.path.replace('/', ''))
       );
     }
     if (roles.includes('cashier')) {

@@ -1,6 +1,6 @@
 // Custom types that extend the auto-generated Supabase types
 
-export type AppRole = 'admin' | 'manager' | 'cashier' | 'kitchen' | 'stock' | 'delivery';
+export type AppRole = 'admin' | 'manager' | 'cashier' | 'kitchen' | 'stock' | 'delivery' | 'super_admin';
 
 export type OrderStatus = 
   | 'pending_payment' 
@@ -26,6 +26,8 @@ export type FraudAlertLevel = 'low' | 'medium' | 'high' | 'blocked';
 
 export type PaymentProvider = 'stone_connect' | 'stone_tef' | 'stone_android' | 'cielo_lio' | 'pagbank' | 'manual';
 
+export type SubscriptionStatus = 'trialing' | 'active' | 'past_due' | 'canceled' | 'unpaid';
+
 // User with profile and roles
 export interface UserWithProfile {
   id: string;
@@ -39,6 +41,71 @@ export interface UserWithProfile {
     is_active: boolean;
   } | null;
   roles: AppRole[];
+}
+
+// Subscription plan with features
+export interface SubscriptionPlan {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  stripe_price_id: string | null;
+  stripe_product_id: string | null;
+  monthly_price: number;
+  currency: string;
+  is_active: boolean;
+  display_order: number;
+  
+  // Feature limits
+  max_users: number;
+  max_products: number;
+  max_orders_per_month: number;
+  
+  // Feature toggles
+  feature_pos: boolean;
+  feature_kitchen_display: boolean;
+  feature_delivery_management: boolean;
+  feature_stock_control: boolean;
+  feature_reports_basic: boolean;
+  feature_reports_advanced: boolean;
+  feature_ai_forecast: boolean;
+  feature_multi_branch: boolean;
+  feature_api_access: boolean;
+  feature_white_label: boolean;
+  feature_priority_support: boolean;
+  feature_custom_integrations: boolean;
+  feature_cmv_reports: boolean;
+  feature_goal_notifications: boolean;
+  feature_courier_app: boolean;
+  
+  created_at: string;
+  updated_at: string;
+}
+
+// Subscription
+export interface Subscription {
+  id: string;
+  tenant_id: string;
+  plan_id: string | null;
+  stripe_subscription_id: string | null;
+  stripe_customer_id: string | null;
+  status: SubscriptionStatus;
+  current_period_start: string | null;
+  current_period_end: string | null;
+  trial_ends_at: string | null;
+  canceled_at: string | null;
+  created_at: string;
+  updated_at: string;
+  plan?: SubscriptionPlan;
+}
+
+// Feature definition for UI
+export interface PlanFeature {
+  key: keyof SubscriptionPlan;
+  label: string;
+  description: string;
+  type: 'boolean' | 'number';
+  category: 'limits' | 'core' | 'reports' | 'advanced';
 }
 
 // Cart item for POS and Online Store
