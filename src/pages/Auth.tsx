@@ -135,7 +135,7 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-start bg-background pt-8 px-4">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-background px-4">
       <Button 
         variant="ghost" 
         size="sm" 
@@ -145,11 +145,11 @@ export default function AuthPage() {
         ← Voltar
       </Button>
       
-      <div className="flex flex-col items-center gap-1 mb-4">
+      <div className="flex flex-col items-center gap-2 mb-6">
         <img 
           src={logoUrl} 
           alt={`${companyName} Logo`} 
-          className="h-48 w-auto cursor-pointer object-contain" 
+          className="h-24 w-auto cursor-pointer object-contain" 
           onClick={() => navigate('/')} 
         />
         <h1 className="text-2xl font-bold text-foreground">{companyName}</h1>
