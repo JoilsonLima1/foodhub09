@@ -14,7 +14,9 @@ import { KPIDashboard } from '@/components/dashboard/KPIDashboard';
 import { SalesGoalsCard } from '@/components/dashboard/SalesGoalsCard';
 import { SalesForecastCard } from '@/components/dashboard/SalesForecastCard';
 import { ForecastAccuracyCard } from '@/components/dashboard/ForecastAccuracyCard';
-
+import { YesterdayComparisonCard } from '@/components/dashboard/YesterdayComparisonCard';
+import { TopProductsTodayCard } from '@/components/dashboard/TopProductsTodayCard';
+import { LowStockAlertCard } from '@/components/dashboard/LowStockAlertCard';
 interface RecentOrder {
   id: string;
   order_number: number;
@@ -149,6 +151,13 @@ export default function Dashboard() {
 
       {/* KPI Dashboard */}
       <KPIDashboard />
+
+      {/* Quick Insights Row */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <YesterdayComparisonCard />
+        <TopProductsTodayCard />
+        <LowStockAlertCard />
+      </div>
 
       {/* Sales Goals */}
       <SalesGoalsCard />
