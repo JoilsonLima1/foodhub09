@@ -42,41 +42,41 @@ export default function Settings() {
       </div>
 
       <Tabs defaultValue="category" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5 lg:grid-cols-9">
-          <TabsTrigger value="category">
-            <Building2 className="h-4 w-4 mr-2" />
+        <TabsList className="w-full h-auto flex flex-nowrap gap-2 overflow-x-auto justify-start md:flex-wrap md:overflow-visible">
+          <TabsTrigger value="category" className="shrink-0 flex items-center gap-2 whitespace-nowrap">
+            <Building2 className="h-4 w-4" />
             Categoria
           </TabsTrigger>
-          <TabsTrigger value="store">
-            <Store className="h-4 w-4 mr-2" />
+          <TabsTrigger value="store" className="shrink-0 flex items-center gap-2 whitespace-nowrap">
+            <Store className="h-4 w-4" />
             Loja
           </TabsTrigger>
-          <TabsTrigger value="hardware">
-            <HardDrive className="h-4 w-4 mr-2" />
+          <TabsTrigger value="hardware" className="shrink-0 flex items-center gap-2 whitespace-nowrap">
+            <HardDrive className="h-4 w-4" />
             Hardware
           </TabsTrigger>
-          <TabsTrigger value="appearance">
-            <Palette className="h-4 w-4 mr-2" />
+          <TabsTrigger value="appearance" className="shrink-0 flex items-center gap-2 whitespace-nowrap">
+            <Palette className="h-4 w-4" />
             Aparência
           </TabsTrigger>
-          <TabsTrigger value="payments">
-            <CreditCard className="h-4 w-4 mr-2" />
+          <TabsTrigger value="payments" className="shrink-0 flex items-center gap-2 whitespace-nowrap">
+            <CreditCard className="h-4 w-4" />
             Pagamentos
           </TabsTrigger>
-          <TabsTrigger value="integrations">
-            <Plug2 className="h-4 w-4 mr-2" />
+          <TabsTrigger value="integrations" className="shrink-0 flex items-center gap-2 whitespace-nowrap">
+            <Plug2 className="h-4 w-4" />
             Integrações
           </TabsTrigger>
-          <TabsTrigger value="notifications">
-            <Bell className="h-4 w-4 mr-2" />
+          <TabsTrigger value="notifications" className="shrink-0 flex items-center gap-2 whitespace-nowrap">
+            <Bell className="h-4 w-4" />
             Notificações
           </TabsTrigger>
-          <TabsTrigger value="users">
-            <Users className="h-4 w-4 mr-2" />
+          <TabsTrigger value="users" className="shrink-0 flex items-center gap-2 whitespace-nowrap">
+            <Users className="h-4 w-4" />
             Usuários
           </TabsTrigger>
-          <TabsTrigger value="security">
-            <Shield className="h-4 w-4 mr-2" />
+          <TabsTrigger value="security" className="shrink-0 flex items-center gap-2 whitespace-nowrap">
+            <Shield className="h-4 w-4" />
             Segurança
           </TabsTrigger>
         </TabsList>
