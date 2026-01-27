@@ -23,6 +23,7 @@ export interface FeatureAccessResult {
   daysRemaining: number;
   trialDays: number;
   reason: 'trial_active' | 'subscribed' | 'trial_expired' | 'no_subscription';
+  isLoading: boolean;
 }
 
 /**
@@ -33,7 +34,7 @@ export interface FeatureAccessResult {
  * With active subscription: Features based on plan
  */
 export function useFeatureAccess(feature?: FeatureKey): FeatureAccessResult {
-  const { subscriptionStatus, getDaysRemaining } = useTrialStatus();
+  const { subscriptionStatus, getDaysRemaining, isLoading } = useTrialStatus();
   const { trialPeriod } = usePublicSettings();
   const { user } = useAuth();
 
@@ -49,10 +50,24 @@ export function useFeatureAccess(feature?: FeatureKey): FeatureAccessResult {
       daysRemaining: 0,
       trialDays,
       reason: 'no_subscription',
+      isLoading,
     };
   }
 
-  // User has active paid subscription
+  // Still loading subscription status
+  if (isLoading) {
+    return {
+      hasAccess: true, // Assume access while loading to avoid flicker
+      isTrialActive: false,
+      isTrialExpired: false,
+      daysRemaining: 0,
+      trialDays,
+      reason: 'no_subscription',
+      isLoading: true,
+    };
+  }
+
+  // User has active paid subscription (not trialing)
   if (subscriptionStatus?.isSubscribed && !subscriptionStatus?.isTrialing) {
     return {
       hasAccess: true,
@@ -61,6 +76,7 @@ export function useFeatureAccess(feature?: FeatureKey): FeatureAccessResult {
       daysRemaining: 0,
       trialDays,
       reason: 'subscribed',
+      isLoading: false,
     };
   }
 
@@ -73,6 +89,7 @@ export function useFeatureAccess(feature?: FeatureKey): FeatureAccessResult {
       daysRemaining,
       trialDays,
       reason: 'trial_active',
+      isLoading: false,
     };
   }
 
@@ -88,6 +105,7 @@ export function useFeatureAccess(feature?: FeatureKey): FeatureAccessResult {
     daysRemaining: 0,
     trialDays,
     reason: isTrialExpired ? 'trial_expired' : 'no_subscription',
+    isLoading: false,
   };
 }
 
