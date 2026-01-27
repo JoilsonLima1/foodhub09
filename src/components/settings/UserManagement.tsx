@@ -478,7 +478,7 @@ export function UserManagement() {
                       <CardContent>
                         <ul className="space-y-1">
                           {ROLE_PERMISSIONS[role].map((permission, idx) => (
-                            <li key={idx} className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <li key={idx} className="flex items-center gap-2 text-sm text-foreground">
                               <CheckCircle2 className="h-3 w-3 text-green-500 flex-shrink-0" />
                               {permission}
                             </li>
@@ -572,7 +572,7 @@ export function UserManagement() {
                       >
                         {ROLE_LABELS[role]}
                       </Label>
-                      <p className="text-xs text-muted-foreground">{ROLE_DESCRIPTIONS[role]}</p>
+                      <p className="text-xs text-foreground/80">{ROLE_DESCRIPTIONS[role]}</p>
                     </div>
                   </div>
                 ))}
@@ -645,7 +645,7 @@ export function UserManagement() {
                       >
                         {ROLE_LABELS[role]}
                       </Label>
-                      <p className="text-xs text-muted-foreground">{ROLE_DESCRIPTIONS[role]}</p>
+                      <p className="text-xs text-foreground/80">{ROLE_DESCRIPTIONS[role]}</p>
                     </div>
                   </div>
                 ))}
