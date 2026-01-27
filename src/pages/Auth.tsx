@@ -152,26 +152,27 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-background px-4">
+    <div className="min-h-screen flex flex-col bg-background overflow-y-auto">
       <Button 
         variant="ghost" 
         size="sm" 
         onClick={() => navigate('/')}
-        className="absolute top-4 left-4"
+        className="absolute top-4 left-4 z-10"
       >
         ← Voltar
       </Button>
       
-      <div className="flex flex-col items-center gap-3 mb-8">
-        <img 
-          src={logoUrl} 
-          alt={`${companyName} Logo`} 
-          className="h-40 w-auto cursor-pointer object-contain"
-          onClick={() => navigate('/')} 
-        />
-        <h1 className="text-2xl font-bold text-foreground">{companyName}</h1>
-        <p className="text-sm text-muted-foreground">Sistema de Gestão para Restaurantes</p>
-      </div>
+      <div className="flex-1 flex flex-col items-center justify-start px-4 py-8 pt-16">
+        <div className="flex flex-col items-center gap-3 mb-8">
+          <img 
+            src={logoUrl} 
+            alt={`${companyName} Logo`} 
+            className="h-32 w-auto cursor-pointer object-contain"
+            onClick={() => navigate('/')} 
+          />
+          <h1 className="text-2xl font-bold text-foreground">{companyName}</h1>
+          <p className="text-sm text-muted-foreground">Sistema de Gestão para Restaurantes</p>
+        </div>
       
       <Card className="w-full max-w-md border-0 shadow-none bg-transparent">
         <CardContent className="pt-0 px-0">
@@ -280,6 +281,7 @@ export default function AuthPage() {
           </Tabs>
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }
