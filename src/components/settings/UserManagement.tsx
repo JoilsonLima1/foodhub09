@@ -471,7 +471,7 @@ export function UserManagement() {
                           </div>
                           {ROLE_LABELS[role]}
                         </CardTitle>
-                        <CardDescription className="text-xs">
+                        <CardDescription className="text-sm font-medium text-foreground">
                           {ROLE_DESCRIPTIONS[role]}
                         </CardDescription>
                       </CardHeader>
@@ -485,7 +485,7 @@ export function UserManagement() {
                           ))}
                         </ul>
                         <div className="mt-3 pt-3 border-t">
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-sm font-semibold text-foreground">
                             {users.filter(u => u.roles.includes(role)).length} usuário(s) com esta permissão
                           </p>
                         </div>
