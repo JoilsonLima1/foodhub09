@@ -8,6 +8,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 
 import Auth from "./pages/Auth";
+import Landing from "./pages/Landing";
 import Dashboard from "./pages/Dashboard";
 import Orders from "./pages/Orders";
 import POS from "./pages/POS";
@@ -31,8 +32,8 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <Routes>
+            <Route path="/" element={<Landing />} />
             <Route path="/auth" element={<Auth />} />
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
             
             <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
               <Route path="/dashboard" element={<Dashboard />} />
