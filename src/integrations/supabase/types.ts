@@ -1980,6 +1980,13 @@ export type Database = {
       }
     }
     Functions: {
+      get_public_settings: {
+        Args: never
+        Returns: {
+          setting_key: string
+          setting_value: Json
+        }[]
+      }
       get_user_tenant_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
