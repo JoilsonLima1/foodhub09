@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Dialog,
   DialogContent,
@@ -237,128 +236,124 @@ export function CourierManagement() {
               Novo Entregador
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-md max-h-[85vh] flex flex-col overflow-hidden">
-            <DialogHeader className="flex-shrink-0">
+          <DialogContent className="sm:max-w-md max-h-[90vh]">
+            <DialogHeader>
               <DialogTitle>
                 {editingCourier ? 'Editar Entregador' : 'Novo Entregador'}
               </DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
-              <ScrollArea className="flex-1 pr-4">
-                <div className="space-y-4 pb-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Nome *</Label>
-                    <Input
-                      id="name"
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      placeholder="Nome do entregador"
-                      required
-                    />
-                  </div>
+            <form onSubmit={handleSubmit} className="space-y-4 max-h-[65vh] overflow-y-auto pr-2">
+              <div className="space-y-2">
+                <Label htmlFor="name">Nome *</Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="Nome do entregador"
+                  required
+                />
+              </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Telefone *</Label>
-                    <Input
-                      id="phone"
-                      value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      placeholder="(00) 00000-0000"
-                      required
-                    />
-                  </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone">Telefone *</Label>
+                <Input
+                  id="phone"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  placeholder="(00) 00000-0000"
+                  required
+                />
+              </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="vehicle_type">Veículo</Label>
-                      <Select
-                        value={formData.vehicle_type}
-                        onValueChange={(value) => setFormData({ ...formData, vehicle_type: value })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {Object.entries(vehicleTypes).map(([key, label]) => (
-                            <SelectItem key={key} value={key}>
-                              {label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="license_plate">Placa</Label>
-                      <Input
-                        id="license_plate"
-                        value={formData.license_plate}
-                        onChange={(e) => setFormData({ ...formData, license_plate: e.target.value })}
-                        placeholder="ABC-1234"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="delivery_fee">Taxa de Entrega (R$)</Label>
-                    <Input
-                      id="delivery_fee"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={formData.delivery_fee}
-                      onChange={(e) => setFormData({ ...formData, delivery_fee: e.target.value })}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="user_id">Vincular a Usuário (para acesso ao App)</Label>
-                    <Select
-                      value={formData.user_id || "none"}
-                      onValueChange={(value) => setFormData({ ...formData, user_id: value === "none" ? "" : value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione um usuário (opcional)" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Nenhum</SelectItem>
-                        {users.map((user) => (
-                          <SelectItem key={user.id} value={user.id}>
-                            {user.full_name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Tipo de Vínculo</Label>
-                    <Select
-                      value={formData.is_internal ? "proprio" : "particular"}
-                      onValueChange={(value) => setFormData({ ...formData, is_internal: value === "proprio" })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="proprio">Entregador Próprio (CLT/Fixo)</SelectItem>
-                        <SelectItem value="particular">Entregador Particular (Freelancer)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      id="is_active"
-                      checked={formData.is_active}
-                      onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
-                    />
-                    <Label htmlFor="is_active">Ativo</Label>
-                  </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="vehicle_type">Veículo</Label>
+                  <Select
+                    value={formData.vehicle_type}
+                    onValueChange={(value) => setFormData({ ...formData, vehicle_type: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(vehicleTypes).map(([key, label]) => (
+                        <SelectItem key={key} value={key}>
+                          {label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-              </ScrollArea>
-              
-              <div className="flex justify-end gap-2 pt-4 mt-4 border-t flex-shrink-0">
+
+                <div className="space-y-2">
+                  <Label htmlFor="license_plate">Placa</Label>
+                  <Input
+                    id="license_plate"
+                    value={formData.license_plate}
+                    onChange={(e) => setFormData({ ...formData, license_plate: e.target.value })}
+                    placeholder="ABC-1234"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="delivery_fee">Taxa de Entrega (R$)</Label>
+                <Input
+                  id="delivery_fee"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={formData.delivery_fee}
+                  onChange={(e) => setFormData({ ...formData, delivery_fee: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="user_id">Vincular a Usuário (para acesso ao App)</Label>
+                <Select
+                  value={formData.user_id || "none"}
+                  onValueChange={(value) => setFormData({ ...formData, user_id: value === "none" ? "" : value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um usuário (opcional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nenhum</SelectItem>
+                    {users.map((user) => (
+                      <SelectItem key={user.id} value={user.id}>
+                        {user.full_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Tipo de Vínculo</Label>
+                <Select
+                  value={formData.is_internal ? "proprio" : "particular"}
+                  onValueChange={(value) => setFormData({ ...formData, is_internal: value === "proprio" })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="proprio">Entregador Próprio (CLT/Fixo)</SelectItem>
+                    <SelectItem value="particular">Entregador Particular (Freelancer)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="is_active"
+                  checked={formData.is_active}
+                  onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
+                />
+                <Label htmlFor="is_active">Ativo</Label>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-4 border-t">
                 <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                   Cancelar
                 </Button>
