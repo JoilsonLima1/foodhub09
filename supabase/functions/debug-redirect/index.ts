@@ -27,7 +27,11 @@ function resolveLocation(currentUrl: string, location: string) {
   return new URL(location, currentUrl).toString();
 }
 
-async function fetchRedirectChain(url: string, maxHops = 10): Promise<Hop[]> {
+async function fetchRedirectChain(
+  url: string,
+  maxHops = 10,
+  requestHeaders?: Record<string, string>,
+): Promise<Hop[]> {
   const chain: Hop[] = [];
   let current = url;
 
@@ -39,6 +43,7 @@ async function fetchRedirectChain(url: string, maxHops = 10): Promise<Hop[]> {
         // Avoid cached redirects skewing results.
         "Cache-Control": "no-cache",
         Pragma: "no-cache",
+        ...(requestHeaders ?? {}),
       },
     });
 
@@ -99,7 +104,7 @@ serve(async (req) => {
   }
 
   try {
-    const { url, maxHops } = await req.json().catch(() => ({}));
+    const { url, maxHops, userAgent, acceptLanguage } = await req.json().catch(() => ({}));
     if (!url || typeof url !== "string") {
       return new Response(JSON.stringify({ error: "url is required" }), {
         status: 400,
@@ -146,7 +151,21 @@ serve(async (req) => {
       }
     }
 
-    const chain = await fetchRedirectChain(url, typeof maxHops === "number" ? maxHops : 10);
+    const extraHeaders: Record<string, string> = {};
+    if (typeof userAgent === "string" && userAgent.trim()) {
+      extraHeaders["User-Agent"] = userAgent.trim();
+    }
+    if (typeof acceptLanguage === "string" && acceptLanguage.trim()) {
+      extraHeaders["Accept-Language"] = acceptLanguage.trim();
+    }
+    // Ensure we request HTML (closest to a browser navigation).
+    extraHeaders["Accept"] = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8";
+
+    const chain = await fetchRedirectChain(
+      url,
+      typeof maxHops === "number" ? maxHops : 10,
+      extraHeaders,
+    );
 
     return new Response(JSON.stringify({ chain, auth: authUserId ? "ok" : "none" }), {
       status: 200,
