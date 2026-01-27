@@ -1,9 +1,18 @@
 import { Badge } from '@/components/ui/badge';
-import { Clock, Crown, AlertTriangle, Gift } from 'lucide-react';
+import { Clock, Crown, AlertTriangle, Gift, Loader2 } from 'lucide-react';
 import { useFeatureAccess } from '@/hooks/useFeatureAccess';
 
 export function TrialStatusBadge() {
-  const { isTrialActive, isTrialExpired, daysRemaining, reason } = useFeatureAccess();
+  const { isTrialActive, isTrialExpired, daysRemaining, reason, isLoading } = useFeatureAccess();
+
+  if (isLoading) {
+    return (
+      <Badge variant="secondary" className="bg-muted">
+        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+        Carregando...
+      </Badge>
+    );
+  }
 
   if (reason === 'subscribed') {
     return (
@@ -35,5 +44,11 @@ export function TrialStatusBadge() {
     );
   }
 
-  return null;
+  // No subscription yet - show a neutral badge
+  return (
+    <Badge variant="outline" className="text-muted-foreground">
+      <Gift className="h-3 w-3 mr-1" />
+      Sem assinatura
+    </Badge>
+  );
 }

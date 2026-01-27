@@ -6,6 +6,7 @@ import { TrialExpirationBanner } from '@/components/trial/TrialExpirationBanner'
 import { TrialExpiredOverlay } from '@/components/trial/TrialExpiredOverlay';
 import { useFeatureAccess } from '@/hooks/useFeatureAccess';
 import { useAuth } from '@/contexts/AuthContext';
+import { Loader2 } from 'lucide-react';
 
 // Pages that don't require feature access check (always accessible)
 const ALWAYS_ACCESSIBLE_PAGES = ['/dashboard', '/settings', '/super-admin'];
@@ -13,7 +14,7 @@ const ALWAYS_ACCESSIBLE_PAGES = ['/dashboard', '/settings', '/super-admin'];
 export function AppLayout() {
   const location = useLocation();
   const { roles } = useAuth();
-  const { hasAccess, isTrialExpired, reason } = useFeatureAccess();
+  const { hasAccess, isTrialExpired, reason, isLoading } = useFeatureAccess();
   
   // Enable low stock alerts globally
   useLowStockAlerts();
@@ -44,6 +45,23 @@ export function AppLayout() {
     };
     return featureMap[path] || 'esta funcionalidade';
   };
+
+  // Show loading state while checking subscription
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex w-full">
+        <AppSidebar />
+        <main className="flex-1 md:ml-64">
+          <div className="p-4 md:p-6 lg:p-8 flex items-center justify-center min-h-screen">
+            <div className="flex flex-col items-center gap-4">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="text-muted-foreground">Verificando assinatura...</p>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex w-full">
