@@ -165,12 +165,9 @@ const ASSIGNABLE_ROLES: AppRole[] = ['admin', 'manager', 'cashier', 'kitchen', '
 const ALL_ROLES: AppRole[] = ['super_admin', 'admin', 'manager', 'cashier', 'kitchen', 'stock', 'delivery'];
 
 export function UserManagement() {
-  const { user: currentUser, hasRole: currentUserHasRole, roles: currentUserRoles } = useAuth();
+  const { user: currentUser, hasRole: currentUserHasRole } = useAuth();
   const isSuperAdmin = currentUserHasRole('super_admin');
-  
-  // Debug: log current user roles
-  console.log('[UserManagement] Current user roles:', currentUserRoles, 'isSuperAdmin:', isSuperAdmin);
-  
+
   const {
     users, 
     isLoading, 
