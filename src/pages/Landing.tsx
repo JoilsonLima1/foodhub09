@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Check, Zap, Shield, TrendingUp, ChefHat, Truck, BarChart3, Crown, ArrowRight, Star, Gift } from 'lucide-react';
+import { Check, Zap, Shield, TrendingUp, ChefHat, Truck, BarChart3, Crown, ArrowRight, Star, Gift, Lock } from 'lucide-react';
 import { useSubscriptionPlans } from '@/hooks/useSubscriptionPlans';
 import { usePublicSettings } from '@/hooks/usePublicSettings';
 import { supabase } from '@/integrations/supabase/client';
@@ -168,7 +168,7 @@ export default function Landing() {
         <div className="bg-gradient-to-r from-primary via-primary to-primary/80 py-4 px-4">
           <div className="container mx-auto max-w-6xl text-center">
             <p className="text-lg md:text-xl font-bold text-primary-foreground animate-pulse">
-              🎁 Tenha em seu restaurante, pizzaria ou lanchonete o <span className="underline decoration-2">MELHOR SISTEMA DO MERCADO</span> — <span className="text-2xl md:text-3xl">GRÁTIS</span>, sem pegadinha!
+              🎁 Use TODAS as funcionalidades por <span className="text-2xl md:text-3xl underline decoration-2">{trialDays} DIAS GRÁTIS</span> — Teste, venda, conheça o sistema sem compromisso!
             </p>
           </div>
         </div>
@@ -204,9 +204,13 @@ export default function Landing() {
               className="text-lg h-14 px-8"
               onClick={() => navigate('/auth?intent=signup')}
             >
-              Teste Grátis por {trialDays} Dias
+              <Gift className="mr-2 h-5 w-5" />
+              {trialDays} Dias Grátis - Acesso Total
             </Button>
           </div>
+          <p className="text-sm text-muted-foreground mt-4">
+            Teste TODAS as funcionalidades durante {trialDays} dias. Sem compromisso!
+          </p>
         </div>
       </section>
 
@@ -352,17 +356,26 @@ export default function Landing() {
           <h2 className="text-3xl md:text-4xl font-bold mb-6">
             Pronto para revolucionar seu negócio?
           </h2>
-          <p className="text-xl text-muted-foreground mb-8">
+          <p className="text-xl text-muted-foreground mb-4">
             Junte-se a centenas de restaurantes que já transformaram suas operações com o {companyName}.
           </p>
-          <Button 
-            size="lg" 
-            className="text-lg h-14 px-8"
-            onClick={() => navigate('/auth?intent=signup')}
-          >
-            Criar Conta Grátis
-            <ArrowRight className="ml-2 h-5 w-5" />
-          </Button>
+          <p className="text-lg text-primary font-medium mb-8">
+            🎁 {trialDays} dias grátis com acesso a TODAS as funcionalidades!
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Button 
+              size="lg" 
+              className="text-lg h-14 px-8"
+              onClick={() => navigate('/auth?intent=signup')}
+            >
+              <Gift className="mr-2 h-5 w-5" />
+              Começar Teste Grátis
+              <ArrowRight className="ml-2 h-5 w-5" />
+            </Button>
+          </div>
+          <p className="text-sm text-muted-foreground mt-4">
+            Sem cartão de crédito. Cancele quando quiser.
+          </p>
         </div>
       </section>
 
