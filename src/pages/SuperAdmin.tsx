@@ -19,18 +19,31 @@ import { FeatureComparison } from '@/components/superadmin/FeatureComparison';
 import { SubscribersManager } from '@/components/superadmin/SubscribersManager';
 import { PaymentGatewaysManager } from '@/components/superadmin/PaymentGatewaysManager';
 import { BrandingSettings } from '@/components/superadmin/BrandingSettings';
-import { Navigate } from 'react-router-dom';
 import { useSubscribers } from '@/hooks/useSubscribers';
 
 export default function SuperAdmin() {
   const { roles } = useAuth();
   const { stats } = useSubscribers();
   
-  // Only super_admin role can access this page
+  // SECURITY NOTE: This is a UI-level check for user experience.
+  // All actual permissions are enforced server-side via RLS policies.
+  // Database operations for subscription_plans, payment_gateways, 
+  // system_settings, and branding storage all require super_admin role.
   const isSuperAdmin = roles.includes('super_admin');
 
   if (!isSuperAdmin) {
-    return <Navigate to="/dashboard" replace />;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Alert variant="destructive" className="max-w-md">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Acesso Negado</AlertTitle>
+          <AlertDescription>
+            Você não tem permissão para acessar esta página. 
+            Apenas usuários com privilégios de Super Admin podem visualizar este conteúdo.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
   }
 
   return (

@@ -33,7 +33,8 @@ serve(async (req) => {
 
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
     if (!resendApiKey) {
-      throw new Error("RESEND_API_KEY não configurada");
+      console.error("[send-goal-notification] Missing RESEND_API_KEY configuration");
+      throw new Error("Service configuration error");
     }
 
     const resend = new Resend(resendApiKey);
@@ -82,9 +83,9 @@ serve(async (req) => {
       .single();
     
     if (profileError || !userProfile || userProfile.tenant_id !== tenantId) {
-      console.error("User does not belong to tenant:", { userId, tenantId, userTenant: userProfile?.tenant_id });
+      console.error("[send-goal-notification] Authorization failed:", { userId, tenantId, userTenant: userProfile?.tenant_id });
       return new Response(
-        JSON.stringify({ error: "Unauthorized for this tenant" }),
+        JSON.stringify({ error: "Access denied", code: "NOTIF_001" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -97,9 +98,9 @@ serve(async (req) => {
       .single();
     
     if (goalError || !goal || goal.tenant_id !== tenantId) {
-      console.error("Goal does not belong to tenant:", { goalId, tenantId, goalTenant: goal?.tenant_id });
+      console.error("[send-goal-notification] Invalid goal access:", { goalId, tenantId, goalTenant: goal?.tenant_id });
       return new Response(
-        JSON.stringify({ error: "Invalid goal for tenant" }),
+        JSON.stringify({ error: "Access denied", code: "NOTIF_002" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -247,9 +248,9 @@ serve(async (req) => {
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error("Erro na edge function:", error);
+    console.error("[send-goal-notification] Error:", error instanceof Error ? error.message : error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Erro desconhecido" }),
+      JSON.stringify({ error: "Falha ao enviar notificação", code: "NOTIF_ERROR" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

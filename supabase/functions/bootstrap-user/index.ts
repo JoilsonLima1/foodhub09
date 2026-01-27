@@ -56,9 +56,9 @@ Deno.serve(async (req) => {
       .single()
 
     if (tenantError || !tenant) {
-      console.error('Tenant error:', tenantError)
+      console.error('[bootstrap-user] Tenant lookup error:', { error: tenantError, userId })
       return new Response(
-        JSON.stringify({ error: 'Demo tenant not found' }),
+        JSON.stringify({ error: 'Resource not found', code: 'SETUP_001' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -91,9 +91,9 @@ Deno.serve(async (req) => {
       .eq('user_id', userId)
 
     if (profileError) {
-      console.error('Profile update error:', profileError)
+      console.error('[bootstrap-user] Profile update error:', { error: profileError, userId })
       return new Response(
-        JSON.stringify({ error: 'Failed to update profile' }),
+        JSON.stringify({ error: 'Operation failed', code: 'SETUP_002' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -128,9 +128,9 @@ Deno.serve(async (req) => {
         })
 
       if (roleError) {
-        console.error('Role insert error:', roleError)
+        console.error('[bootstrap-user] Role assignment error:', { error: roleError, userId, role: roleToAssign })
         return new Response(
-          JSON.stringify({ error: 'Failed to assign role' }),
+          JSON.stringify({ error: 'Operation failed', code: 'SETUP_003' }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
       }
