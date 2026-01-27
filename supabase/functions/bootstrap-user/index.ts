@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
     const { data: tenant, error: tenantError } = await supabaseAdmin
       .from('tenants')
       .select('id')
-      .eq('slug', 'pizzaria-foodhub-demo')
+      .eq('slug', 'foodhub-demo')
       .single()
 
     if (tenantError || !tenant) {
