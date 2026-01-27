@@ -23,6 +23,8 @@ import { CMVReportView } from '@/components/reports/CMVReportView';
 import { ReportExport } from '@/components/reports/ReportExport';
 import { PeriodComparisonCard } from '@/components/reports/PeriodComparisonCard';
 import { DayOfWeekChart } from '@/components/reports/DayOfWeekChart';
+import { useSystemSettings } from '@/hooks/useSystemSettings';
+import fallbackLogo from '@/assets/logo.png';
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat('pt-BR', {
@@ -46,6 +48,12 @@ export default function Reports() {
   const { products: topProducts, categories, isLoading: productsLoading } = useTopProductsWithCategory(period, 10, selectedCategory);
   const { report: cmvReport, isLoading: cmvLoading } = useCMVReport(period);
   const { comparison, isLoading: comparisonLoading } = usePeriodComparison(period);
+  const { settings } = useSystemSettings();
+  
+  // Get branding from system settings
+  const branding = settings?.branding as { logo_url?: string; company_name?: string } | undefined;
+  const logoUrl = branding?.logo_url || fallbackLogo;
+  const companyName = branding?.company_name || 'FoodHub09';
 
   const isLoading = salesLoading || productsLoading || cmvLoading;
 
@@ -57,16 +65,19 @@ export default function Reports() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Header with Logo */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <BarChart3 className="h-6 w-6" />
-            Relatórios
-          </h1>
-          <p className="text-muted-foreground">
-            Análises e métricas do seu negócio
-          </p>
+        <div className="flex items-center gap-4">
+          <img src={logoUrl} alt={companyName} className="h-12 w-auto" />
+          <div>
+            <h1 className="text-2xl font-bold flex items-center gap-2">
+              <BarChart3 className="h-6 w-6" />
+              Relatórios
+            </h1>
+            <p className="text-muted-foreground">
+              {companyName} - Análises e métricas
+            </p>
+          </div>
         </div>
         <div className="flex flex-wrap gap-2">
           {periods.map((p) => (
@@ -85,6 +96,7 @@ export default function Reports() {
             cmvReport={cmvReport}
             topProducts={topProducts}
             period={period}
+            companyName={companyName}
           />
         </div>
       </div>

@@ -9,6 +9,7 @@ interface ReceiptPrintProps {
   paymentMethod: string;
   cashierName: string;
   tenantName?: string;
+  tenantLogo?: string | null;
 }
 
 const paymentMethodLabels: Record<string, string> = {
@@ -21,7 +22,7 @@ const paymentMethodLabels: Record<string, string> = {
 };
 
 export const ReceiptPrint = forwardRef<HTMLDivElement, ReceiptPrintProps>(
-  ({ orderNumber, items, subtotal, total, paymentMethod, cashierName, tenantName = 'FoodHub09' }, ref) => {
+  ({ orderNumber, items, subtotal, total, paymentMethod, cashierName, tenantName = 'FoodHub09', tenantLogo }, ref) => {
     const formatCurrency = (value: number) => {
       return new Intl.NumberFormat('pt-BR', {
         style: 'currency',
@@ -35,8 +36,11 @@ export const ReceiptPrint = forwardRef<HTMLDivElement, ReceiptPrintProps>(
 
     return (
       <div ref={ref} className="receipt-print p-4 bg-white text-black font-mono text-sm max-w-[300px] mx-auto">
-        {/* Header */}
+        {/* Header with Logo */}
         <div className="text-center border-b border-dashed border-gray-400 pb-3 mb-3">
+          {tenantLogo && (
+            <img src={tenantLogo} alt={tenantName} className="h-12 w-auto mx-auto mb-2" />
+          )}
           <h1 className="text-lg font-bold">{tenantName}</h1>
           <p className="text-xs text-gray-600">Cupom não fiscal</p>
         </div>

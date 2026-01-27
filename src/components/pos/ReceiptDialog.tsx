@@ -20,6 +20,7 @@ interface ReceiptDialogProps {
   paymentMethod: string;
   cashierName: string;
   tenantName?: string;
+  tenantLogo?: string | null;
 }
 
 export function ReceiptDialog({
@@ -32,6 +33,7 @@ export function ReceiptDialog({
   paymentMethod,
   cashierName,
   tenantName,
+  tenantLogo,
 }: ReceiptDialogProps) {
   const receiptRef = useRef<HTMLDivElement>(null);
 
@@ -59,6 +61,7 @@ export function ReceiptDialog({
             paymentMethod={paymentMethod}
             cashierName={cashierName}
             tenantName={tenantName}
+            tenantLogo={tenantLogo}
           />
         </div>
 
