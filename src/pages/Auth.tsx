@@ -152,17 +152,22 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-background overflow-y-auto">
-      <Button 
-        variant="ghost" 
-        size="sm" 
-        onClick={() => navigate('/')}
-        className="absolute top-4 left-4 z-10"
-      >
-        ← Voltar
-      </Button>
-      
-      <div className="flex-1 flex flex-col items-center justify-start px-4 py-8 pt-16">
+    <div className="bg-background">
+      <div className="relative h-[100dvh] overflow-y-auto">
+        <header className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/70">
+          <div className="p-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate('/')}
+              className="w-fit"
+            >
+              ← Voltar
+            </Button>
+          </div>
+        </header>
+
+        <main className="flex flex-col items-center justify-start px-4 py-4 pb-10">
         <div className="flex flex-col items-center gap-3 mb-8">
           <img 
             src={logoUrl} 
@@ -281,6 +286,7 @@ export default function AuthPage() {
           </Tabs>
         </CardContent>
       </Card>
+        </main>
       </div>
     </div>
   );
