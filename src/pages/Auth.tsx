@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePublicSettings } from '@/hooks/usePublicSettings';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { z } from 'zod';
-import logo from '@/assets/logo.png';
+import fallbackLogo from '@/assets/logo.png';
 
 const loginSchema = z.object({
   email: z.string().email('Email inválido'),
@@ -30,6 +31,7 @@ export default function AuthPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { signIn, signUp, user } = useAuth();
+  const { branding } = usePublicSettings();
   
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -43,6 +45,10 @@ export default function AuthPage() {
   const [signupEmail, setSignupEmail] = useState('');
   const [signupPassword, setSignupPassword] = useState('');
   const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
+
+  // Use dynamic branding or fallback
+  const logoUrl = branding.logo_url || fallbackLogo;
+  const companyName = branding.company_name || 'FoodHub09';
 
   // Workaround: se o usuário foi parar em /auth sem intenção (sem ?intent, ?plan ou state.from),
   // redirecionamos para a Landing. Isso cobre redirecionamentos externos indesejados.
@@ -141,10 +147,15 @@ export default function AuthPage() {
             ← Voltar
           </Button>
           <div className="flex justify-center">
-            <img src={logo} alt="FoodHub Logo" className="h-24 w-auto cursor-pointer" onClick={() => navigate('/')} />
+            <img 
+              src={logoUrl} 
+              alt={`${companyName} Logo`} 
+              className="h-24 w-auto cursor-pointer object-contain" 
+              onClick={() => navigate('/')} 
+            />
           </div>
           <div>
-            <CardTitle className="text-2xl font-bold">FoodHub</CardTitle>
+            <CardTitle className="text-2xl font-bold">{companyName}</CardTitle>
             <CardDescription>Sistema de Gestão para Restaurantes</CardDescription>
           </div>
         </CardHeader>

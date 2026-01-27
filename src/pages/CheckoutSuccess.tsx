@@ -4,16 +4,22 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { CheckCircle, Loader2, ArrowRight, PartyPopper } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import logo from '@/assets/logo.png';
+import { usePublicSettings } from '@/hooks/usePublicSettings';
+import fallbackLogo from '@/assets/logo.png';
 
 export default function CheckoutSuccess() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { branding } = usePublicSettings();
   const [isVerifying, setIsVerifying] = useState(true);
   const [subscriptionInfo, setSubscriptionInfo] = useState<{
     planName?: string;
     nextBilling?: string;
   } | null>(null);
+
+  // Use dynamic branding or fallback
+  const logoUrl = branding.logo_url || fallbackLogo;
+  const companyName = branding.company_name || 'FoodHub09';
 
   useEffect(() => {
     const verifySubscription = async () => {
@@ -53,7 +59,7 @@ export default function CheckoutSuccess() {
       <Card className="w-full max-w-lg text-center">
         <CardHeader className="space-y-4 pb-2">
           <div className="flex justify-center mb-4">
-            <img src={logo} alt="FoodHub" className="h-16 w-auto" />
+            <img src={logoUrl} alt={companyName} className="h-16 w-auto object-contain" />
           </div>
           
           {isVerifying ? (
@@ -74,7 +80,7 @@ export default function CheckoutSuccess() {
                 Assinatura Confirmada!
               </CardTitle>
               <CardDescription className="text-lg">
-                Bem-vindo ao FoodHub! Sua jornada começa agora.
+                Bem-vindo ao {companyName}! Sua jornada começa agora.
               </CardDescription>
             </>
           )}

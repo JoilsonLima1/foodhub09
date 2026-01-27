@@ -75,6 +75,18 @@ serve(async (req) => {
     }
     logStep("Plan found", { name: plan.name, price: plan.monthly_price });
 
+    // If it's a free plan, don't create checkout - just return success
+    if (plan.monthly_price === 0) {
+      logStep("Free plan selected, no checkout needed");
+      return new Response(
+        JSON.stringify({ success: true, free: true, message: "Free plan activated" }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        }
+      );
+    }
+
     // Initialize Stripe
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
@@ -123,6 +135,23 @@ serve(async (req) => {
       logStep("Stripe product and price created", { productId: product.id, priceId });
     }
 
+    // Get trial period from system settings
+    let trialDays = 14; // Default fallback
+    try {
+      const { data: trialSetting } = await supabase
+        .from("system_settings")
+        .select("setting_value")
+        .eq("setting_key", "trial_period")
+        .single();
+      
+      if (trialSetting?.setting_value?.days) {
+        trialDays = trialSetting.setting_value.days;
+      }
+      logStep("Trial period from settings", { trialDays });
+    } catch (e) {
+      logStep("Using default trial period", { trialDays });
+    }
+
     // Get origin for redirect URLs
     const origin = req.headers.get("origin") || "https://start-a-new-quest.lovable.app";
 
@@ -140,7 +169,7 @@ serve(async (req) => {
       success_url: `${origin}/dashboard?checkout=success`,
       cancel_url: `${origin}/?checkout=cancelled`,
       subscription_data: {
-        trial_period_days: 14,
+        trial_period_days: trialDays,
         metadata: {
           plan_id: plan.id,
           user_id: user.id
@@ -152,7 +181,7 @@ serve(async (req) => {
       }
     });
 
-    logStep("Checkout session created", { sessionId: session.id, url: session.url });
+    logStep("Checkout session created", { sessionId: session.id, url: session.url, trialDays });
 
     return new Response(
       JSON.stringify({ url: session.url, sessionId: session.id }),
