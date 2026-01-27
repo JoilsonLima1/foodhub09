@@ -44,6 +44,18 @@ export default function AuthPage() {
   const [signupPassword, setSignupPassword] = useState('');
   const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
 
+  // Workaround: se o usuário foi parar em /auth sem intenção (sem ?intent, ?plan ou state.from),
+  // redirecionamos para a Landing. Isso cobre redirecionamentos externos indesejados.
+  const searchParams = new URLSearchParams(location.search);
+  const hasIntent = searchParams.has('intent') || searchParams.has('plan');
+  const hasFromState = !!location.state?.from;
+
+  if (!user && !hasIntent && !hasFromState) {
+    // Usuário não logado, chegou direto em /auth sem ação própria → Landing
+    navigate('/', { replace: true });
+    return null;
+  }
+
   // Redirect if already logged in
   if (user) {
     const from = location.state?.from?.pathname || '/dashboard';
