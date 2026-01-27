@@ -135,32 +135,29 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center space-y-4">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={() => navigate('/')}
-            className="absolute top-4 left-4"
-          >
-            ← Voltar
-          </Button>
-          <div className="flex justify-center">
-            <img 
-              src={logoUrl} 
-              alt={`${companyName} Logo`} 
-              className="h-80 w-auto cursor-pointer object-contain" 
-              onClick={() => navigate('/')} 
-            />
-          </div>
-          <div>
-            <CardTitle className="text-2xl font-bold">{companyName}</CardTitle>
-            <CardDescription>Sistema de Gestão para Restaurantes</CardDescription>
-          </div>
-        </CardHeader>
-        
-        <CardContent>
+    <div className="min-h-screen flex flex-col items-center justify-start bg-background pt-8 px-4">
+      <Button 
+        variant="ghost" 
+        size="sm" 
+        onClick={() => navigate('/')}
+        className="absolute top-4 left-4"
+      >
+        ← Voltar
+      </Button>
+      
+      <div className="flex flex-col items-center gap-1 mb-4">
+        <img 
+          src={logoUrl} 
+          alt={`${companyName} Logo`} 
+          className="h-48 w-auto cursor-pointer object-contain" 
+          onClick={() => navigate('/')} 
+        />
+        <h1 className="text-2xl font-bold text-foreground">{companyName}</h1>
+        <p className="text-sm text-muted-foreground">Sistema de Gestão para Restaurantes</p>
+      </div>
+      
+      <Card className="w-full max-w-md border-0 shadow-none bg-transparent">
+        <CardContent className="pt-0 px-0">
           {error && (
             <Alert variant="destructive" className="mb-4">
               <AlertCircle className="h-4 w-4" />
