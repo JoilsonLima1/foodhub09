@@ -152,35 +152,41 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="bg-background">
-      <div className="relative h-[100dvh] overflow-y-auto">
-        <header className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/70">
-          <div className="p-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate('/')}
-              className="w-fit"
-            >
-              ← Voltar
-            </Button>
-          </div>
-        </header>
-
-        <main className="flex flex-col items-center justify-start px-4 py-4 pb-10">
-        <div className="flex flex-col items-center gap-3 mb-8">
-          <img 
-            src={logoUrl} 
-            alt={`${companyName} Logo`} 
-            className="h-32 w-auto cursor-pointer object-contain"
-            onClick={() => navigate('/')} 
-          />
-          <h1 className="text-2xl font-bold text-foreground">{companyName}</h1>
-          <p className="text-sm text-muted-foreground">Sistema de Gestão para Restaurantes</p>
+    <div className="min-h-[100dvh] bg-background flex flex-col">
+      {/* Fixed header */}
+      <header className="shrink-0 bg-background border-b border-border/40">
+        <div className="p-3 sm:p-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate('/')}
+            className="w-fit gap-2"
+          >
+            ← Voltar
+          </Button>
         </div>
+      </header>
+
+      {/* Main content - scrollable */}
+      <main className="flex-1 overflow-y-auto">
+        <div className="min-h-full flex flex-col items-center justify-center px-4 py-6 sm:py-8">
+          <div className="w-full max-w-md flex flex-col items-center">
+            {/* Logo and branding - compact on mobile */}
+            <div className="flex flex-col items-center gap-2 sm:gap-4 mb-6 sm:mb-8">
+              <img 
+                src={logoUrl} 
+                alt={`${companyName} Logo`} 
+                className="h-16 sm:h-24 w-auto cursor-pointer object-contain hover:scale-105 transition-transform"
+                onClick={() => navigate('/')} 
+              />
+              <div className="text-center">
+                <h1 className="text-xl sm:text-2xl font-bold text-foreground">{companyName}</h1>
+                <p className="text-xs sm:text-sm text-muted-foreground mt-1">Sistema de Gestão para Restaurantes</p>
+              </div>
+            </div>
       
-      <Card className="w-full max-w-md border-0 shadow-none bg-transparent">
-        <CardContent className="pt-0 px-0">
+            <Card className="w-full border-0 shadow-none bg-transparent">
+              <CardContent className="pt-0 px-0">
           {error && (
             <Alert variant="destructive" className="mb-4">
               <AlertCircle className="h-4 w-4" />
@@ -284,10 +290,11 @@ export default function AuthPage() {
               </form>
             </TabsContent>
           </Tabs>
-        </CardContent>
-      </Card>
-        </main>
-      </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </main>
     </div>
   );
 }
