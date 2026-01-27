@@ -178,6 +178,28 @@ export function useCourierDeliveries() {
   useEffect(() => {
     if (!tenantId || !courierId) return;
 
+    const handleNewDeliveryNotification = async (orderId: string) => {
+      // Buscar detalhes do pedido para a notificação
+      const { data: order } = await supabase
+        .from('orders_safe')
+        .select('order_number, customer_name, delivery_address')
+        .eq('id', orderId)
+        .single();
+
+      if (order) {
+        notifyNewDelivery(order.order_number, order.customer_name, order.delivery_address);
+        toast.info(`Nova entrega atribuída: Pedido #${order.order_number}`, {
+          duration: 8000,
+          action: {
+            label: 'Ver',
+            onClick: () => fetchDeliveries()
+          }
+        });
+      }
+      
+      fetchDeliveries();
+    };
+
     const channel = supabase
       .channel('courier-deliveries')
       .on(
@@ -193,20 +215,7 @@ export function useCourierDeliveries() {
           
           // Verificar se é uma nova entrega para este courier
           if (newDelivery.courier_id === courierId && !previousDeliveryIdsRef.current.has(newDelivery.id)) {
-            // Buscar detalhes do pedido para a notificação
-            // Use orders_safe view for PII masking (delivery role can see customer data)
-            const { data: order } = await supabase
-              .from('orders_safe')
-              .select('order_number, customer_name, delivery_address')
-              .eq('id', newDelivery.order_id)
-              .single();
-
-            if (order) {
-              notifyNewDelivery(order.order_number, order.customer_name, order.delivery_address);
-              toast.info(`Nova entrega atribuída: Pedido #${order.order_number}`);
-            }
-            
-            fetchDeliveries();
+            await handleNewDeliveryNotification(newDelivery.order_id);
           }
         }
       )
@@ -218,11 +227,15 @@ export function useCourierDeliveries() {
           table: 'deliveries',
           filter: `tenant_id=eq.${tenantId}`,
         },
-        (payload) => {
-          const updatedDelivery = payload.new as { courier_id: string | null };
+        async (payload) => {
+          const updatedDelivery = payload.new as { id: string; courier_id: string | null; order_id: string };
+          const oldDelivery = payload.old as { courier_id: string | null };
           
-          // Verificar se a entrega foi atribuída a este courier
-          if (updatedDelivery.courier_id === courierId) {
+          // Verificar se a entrega foi ATRIBUÍDA a este courier (mudou de outro courier ou null)
+          if (updatedDelivery.courier_id === courierId && oldDelivery.courier_id !== courierId) {
+            await handleNewDeliveryNotification(updatedDelivery.order_id);
+          } else if (updatedDelivery.courier_id === courierId) {
+            // Apenas atualizar dados se já era deste courier
             fetchDeliveries();
           }
         }
