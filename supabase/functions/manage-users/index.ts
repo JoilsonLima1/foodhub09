@@ -62,12 +62,145 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const { action, tenantId, userId, userData, userIds, roles: newRoles } = body;
+    const { action, tenantId, userId, userData, userIds, roles: newRoles, profileData } = body;
 
     console.log(`[manage-users] Action: ${action}, TenantId: ${tenantId}, UserId: ${userId || 'N/A'}`);
     console.log(`[manage-users] Body:`, JSON.stringify(body, null, 2));
 
+    // Resolve requester tenant id (used to prevent tenant spoofing)
+    const { data: requesterProfile, error: requesterProfileError } = await supabaseAdmin
+      .from('profiles')
+      .select('tenant_id')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (requesterProfileError) {
+      console.error('[manage-users] requesterProfileError:', requesterProfileError);
+    }
+
+    const requesterTenantId = requesterProfile?.tenant_id ?? null;
+
+    // Super admins can act on the tenantId provided; others are locked to their own tenant.
+    const effectiveTenantId = isAdmin && roles.includes('super_admin')
+      ? (tenantId || requesterTenantId)
+      : requesterTenantId;
+
+    if (!effectiveTenantId) {
+      return new Response(
+        JSON.stringify({ error: 'Tenant não encontrado para o usuário autenticado' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Prevent non-super-admin from spoofing tenantId
+    if (!roles.includes('super_admin') && tenantId && tenantId !== effectiveTenantId) {
+      return new Response(
+        JSON.stringify({ error: 'Tenant inválido' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     switch (action) {
+      case 'list-users': {
+        const { data: profiles, error: profilesError } = await supabaseAdmin
+          .from('profiles')
+          .select('id, user_id, full_name, phone, avatar_url, is_active, created_at')
+          .eq('tenant_id', effectiveTenantId);
+
+        if (profilesError) {
+          console.error('[manage-users] list-users profilesError:', profilesError);
+          return new Response(
+            JSON.stringify({ error: 'Falha ao carregar perfis' }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        if (!profiles || profiles.length === 0) {
+          return new Response(
+            JSON.stringify({ users: [] }),
+            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const ids = profiles.map(p => p.user_id);
+
+        const { data: tenantRoles, error: rolesError } = await supabaseAdmin
+          .from('user_roles')
+          .select('user_id, role')
+          .eq('tenant_id', effectiveTenantId)
+          .in('user_id', ids);
+
+        if (rolesError) {
+          console.error('[manage-users] list-users rolesError:', rolesError);
+          return new Response(
+            JSON.stringify({ error: 'Falha ao carregar permissões' }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const rolesByUser: Record<string, string[]> = {};
+        (tenantRoles || []).forEach((r: any) => {
+          if (!rolesByUser[r.user_id]) rolesByUser[r.user_id] = [];
+          rolesByUser[r.user_id].push(r.role);
+        });
+
+        const emailsByUser: Record<string, string> = {};
+        for (const uid of ids) {
+          const { data: u } = await supabaseAdmin.auth.admin.getUserById(uid);
+          if (u?.user?.email) emailsByUser[uid] = u.user.email;
+        }
+
+        const users = profiles.map(p => ({
+          id: p.id,
+          user_id: p.user_id,
+          email: emailsByUser[p.user_id] || 'Email não disponível',
+          full_name: p.full_name,
+          phone: p.phone,
+          avatar_url: p.avatar_url,
+          is_active: p.is_active ?? true,
+          roles: rolesByUser[p.user_id] || [],
+          created_at: p.created_at,
+        }));
+
+        return new Response(
+          JSON.stringify({ users }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'update-profile': {
+        if (!userId || !profileData) {
+          return new Response(
+            JSON.stringify({ error: 'userId and profileData required' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const allowed: Record<string, any> = {};
+        if ('full_name' in profileData) allowed.full_name = profileData.full_name;
+        if ('phone' in profileData) allowed.phone = profileData.phone;
+        if ('is_active' in profileData) allowed.is_active = profileData.is_active;
+
+        const { error: updErr } = await supabaseAdmin
+          .from('profiles')
+          .update(allowed)
+          .eq('tenant_id', effectiveTenantId)
+          .eq('user_id', userId);
+
+        if (updErr) {
+          console.error('[manage-users] update-profile updErr:', updErr);
+          return new Response(
+            JSON.stringify({ error: 'Failed to update profile' }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        return new Response(
+          JSON.stringify({ success: true }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       case 'get-emails': {
         if (!userIds || !Array.isArray(userIds)) {
           return new Response(
@@ -92,7 +225,7 @@ serve(async (req) => {
       }
 
       case 'create': {
-        if (!tenantId || !userData) {
+        if (!effectiveTenantId || !userData) {
           return new Response(
             JSON.stringify({ error: 'tenantId and userData required' }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -133,7 +266,7 @@ serve(async (req) => {
             user_id: newUserId,
             full_name,
             phone: phone || null,
-            tenant_id: tenantId,
+            tenant_id: effectiveTenantId,
             is_active: true,
           });
 
@@ -152,7 +285,7 @@ serve(async (req) => {
           const roleInserts = userRolesToAdd.map((role: string) => ({
             user_id: newUserId,
             role,
-            tenant_id: tenantId,
+              tenant_id: effectiveTenantId,
           }));
 
           const { error: rolesError } = await supabaseAdmin
@@ -173,7 +306,7 @@ serve(async (req) => {
       }
 
       case 'update-roles': {
-        if (!tenantId || !userId || !newRoles) {
+        if (!effectiveTenantId || !userId || !newRoles) {
           return new Response(
             JSON.stringify({ error: 'tenantId, userId and roles required' }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -185,7 +318,7 @@ serve(async (req) => {
           .from('user_roles')
           .delete()
           .eq('user_id', userId)
-          .eq('tenant_id', tenantId);
+          .eq('tenant_id', effectiveTenantId);
 
         if (deleteError) {
           console.error('[manage-users] Delete roles error:', deleteError);
@@ -200,7 +333,7 @@ serve(async (req) => {
           const roleInserts = newRoles.map((role: string) => ({
             user_id: userId,
             role,
-            tenant_id: tenantId,
+            tenant_id: effectiveTenantId,
           }));
 
           const { error: insertError } = await supabaseAdmin
@@ -225,7 +358,7 @@ serve(async (req) => {
       }
 
       case 'delete': {
-        if (!tenantId || !userId) {
+        if (!effectiveTenantId || !userId) {
           return new Response(
             JSON.stringify({ error: 'tenantId and userId required' }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -245,14 +378,14 @@ serve(async (req) => {
           .from('user_roles')
           .delete()
           .eq('user_id', userId)
-          .eq('tenant_id', tenantId);
+          .eq('tenant_id', effectiveTenantId);
 
         // Delete profile
         await supabaseAdmin
           .from('profiles')
           .delete()
           .eq('user_id', userId)
-          .eq('tenant_id', tenantId);
+          .eq('tenant_id', effectiveTenantId);
 
         // Delete auth user
         const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userId);
