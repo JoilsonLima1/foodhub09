@@ -29,12 +29,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchUserData = async (userId: string) => {
     try {
+      // Prevent role leakage between sessions/users while we refetch
+      setRoles([]);
+      setTenantId(null);
+
       // Fetch profile
-      const { data: profileData } = await supabase
+      const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('user_id', userId)
         .single();
+
+      if (profileError) {
+        console.error('Error fetching profile:', profileError);
+      }
 
       if (profileData) {
         setProfile({
@@ -46,19 +54,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           is_active: profileData.is_active ?? true,
         });
         setTenantId(profileData.tenant_id);
+      } else {
+        setProfile(null);
       }
 
       // Fetch roles
-      const { data: rolesData } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', userId);
+      // NOTE: roles are tenant-scoped; never load roles from other tenants.
+      if (profileData?.tenant_id) {
+        const { data: rolesData, error: rolesError } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', userId)
+          .eq('tenant_id', profileData.tenant_id);
 
-      if (rolesData) {
-        setRoles(rolesData.map(r => r.role as AppRole));
+        if (rolesError) {
+          console.error('Error fetching roles:', rolesError);
+          setRoles([]);
+        } else {
+          setRoles((rolesData ?? []).map((r) => r.role as AppRole));
+        }
+      } else {
+        setRoles([]);
       }
     } catch (error) {
       console.error('Error fetching user data:', error);
+      setProfile(null);
+      setRoles([]);
+      setTenantId(null);
     }
   };
 
