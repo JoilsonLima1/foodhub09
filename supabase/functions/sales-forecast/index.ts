@@ -143,7 +143,8 @@ serve(async (req) => {
     // Chamar Lovable AI para análise e previsão
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY não configurada");
+      console.error("[sales-forecast] Missing LOVABLE_API_KEY configuration");
+      throw new Error("Service configuration error");
     }
 
     const prompt = `Você é um analista de dados especializado em previsão de vendas para restaurantes.
@@ -273,9 +274,9 @@ Responda APENAS em formato JSON válido:
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error("Erro na edge function:", error);
+    console.error("[sales-forecast] Error:", error instanceof Error ? error.message : error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Erro desconhecido" }),
+      JSON.stringify({ error: "Falha ao processar previsão", code: "FORECAST_ERROR" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

@@ -21,7 +21,10 @@ serve(async (req) => {
     logStep("Function started");
 
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
-    if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
+    if (!stripeKey) {
+      logStep("ERROR: Missing Stripe configuration");
+      throw new Error("Payment service unavailable");
+    }
     logStep("Stripe key verified");
 
     const supabaseClient = createClient(
@@ -31,20 +34,30 @@ serve(async (req) => {
     );
 
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) throw new Error("No authorization header provided");
+    if (!authHeader) {
+      logStep("ERROR: Missing authorization header");
+      throw new Error("Authentication required");
+    }
     logStep("Authorization header found");
 
     const token = authHeader.replace("Bearer ", "");
     const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
-    if (userError) throw new Error(`Authentication error: ${userError.message}`);
+    if (userError) {
+      logStep("Token validation failed", { error: userError.message });
+      throw new Error("Authentication required");
+    }
     const user = userData.user;
-    if (!user?.email) throw new Error("User not authenticated or email not available");
+    if (!user?.email) {
+      logStep("User email not available");
+      throw new Error("Authentication required");
+    }
     logStep("User authenticated", { userId: user.id, email: user.email });
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
     if (customers.data.length === 0) {
-      throw new Error("No Stripe customer found for this user");
+      logStep("No Stripe customer found for user");
+      throw new Error("Customer record not found");
     }
     const customerId = customers.data[0].id;
     logStep("Found Stripe customer", { customerId });
@@ -61,9 +74,14 @@ serve(async (req) => {
       status: 200,
     });
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    logStep("ERROR in customer-portal", { message: errorMessage });
-    return new Response(JSON.stringify({ error: errorMessage }), {
+    const errorMessage = error instanceof Error ? error.message : "Portal access failed";
+    logStep("ERROR", { message: errorMessage });
+    
+    // Return generic error for unexpected exceptions
+    const safeErrors = ["Authentication required", "Customer record not found", "Payment service unavailable"];
+    const clientError = safeErrors.includes(errorMessage) ? errorMessage : "Portal access failed";
+    
+    return new Response(JSON.stringify({ error: clientError, code: "PORTAL_ERROR" }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
     });

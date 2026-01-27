@@ -23,7 +23,8 @@ serve(async (req) => {
 
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeKey) {
-      throw new Error("STRIPE_SECRET_KEY is not set");
+      logStep("ERROR: Missing Stripe configuration");
+      throw new Error("Payment service unavailable");
     }
     logStep("Stripe key verified");
 
@@ -33,7 +34,8 @@ serve(async (req) => {
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      throw new Error("No authorization header provided");
+      logStep("ERROR: Missing authorization header");
+      throw new Error("Authentication required");
     }
     logStep("Authorization header found");
 
@@ -48,8 +50,8 @@ serve(async (req) => {
     // Validate user token
     const { data: userData, error: userError } = await supabaseUser.auth.getUser();
     if (userError || !userData?.user) {
-      logStep("Invalid token", { error: userError?.message });
-      throw new Error("User not authenticated");
+      logStep("Token validation failed", { error: userError?.message });
+      throw new Error("Authentication required");
     }
 
     const user = userData.user;
@@ -58,7 +60,8 @@ serve(async (req) => {
     // Get request body
     const { planId } = await req.json();
     if (!planId) {
-      throw new Error("Plan ID is required");
+      logStep("ERROR: Missing plan ID");
+      throw new Error("Invalid request");
     }
     logStep("Plan ID received", { planId });
 
@@ -70,8 +73,8 @@ serve(async (req) => {
       .single();
 
     if (planError || !plan) {
-      logStep("Plan not found", { error: planError?.message });
-      throw new Error("Plan not found");
+      logStep("Plan lookup failed", { planId, error: planError?.message });
+      throw new Error("Resource not found");
     }
     logStep("Plan found", { name: plan.name, price: plan.monthly_price });
 
@@ -191,11 +194,15 @@ serve(async (req) => {
       }
     );
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorMessage = error instanceof Error ? error.message : "Checkout failed";
     logStep("ERROR", { message: errorMessage });
     
+    // Return generic error for unexpected exceptions to avoid info leakage
+    const safeErrors = ["Authentication required", "Invalid request", "Resource not found", "Payment service unavailable"];
+    const clientError = safeErrors.includes(errorMessage) ? errorMessage : "Checkout failed";
+    
     return new Response(
-      JSON.stringify({ error: errorMessage }),
+      JSON.stringify({ error: clientError, code: "CHECKOUT_ERROR" }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 500,
