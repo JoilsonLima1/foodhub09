@@ -15,12 +15,14 @@ import {
   Palette,
   Plug2,
   Building2,
+  HardDrive,
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PAYMENT_PROVIDER_LABELS } from '@/lib/constants';
 import { ThemeCustomizer } from '@/components/settings/ThemeCustomizer';
 import { IFoodIntegration } from '@/components/integrations/IFoodIntegration';
 import { BusinessCategorySelector } from '@/components/settings/BusinessCategorySelector';
+import { HardwareTutorial } from '@/components/settings/HardwareTutorial';
 
 export default function Settings() {
   const { profile, roles } = useAuth();
@@ -40,7 +42,7 @@ export default function Settings() {
       </div>
 
       <Tabs defaultValue="category" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4 lg:grid-cols-8">
+        <TabsList className="grid w-full grid-cols-5 lg:grid-cols-9">
           <TabsTrigger value="category">
             <Building2 className="h-4 w-4 mr-2" />
             Categoria
@@ -48,6 +50,10 @@ export default function Settings() {
           <TabsTrigger value="store">
             <Store className="h-4 w-4 mr-2" />
             Loja
+          </TabsTrigger>
+          <TabsTrigger value="hardware">
+            <HardDrive className="h-4 w-4 mr-2" />
+            Hardware
           </TabsTrigger>
           <TabsTrigger value="appearance">
             <Palette className="h-4 w-4 mr-2" />
@@ -115,6 +121,11 @@ export default function Settings() {
               <Button>Salvar Alterações</Button>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Hardware Tutorial */}
+        <TabsContent value="hardware">
+          <HardwareTutorial />
         </TabsContent>
 
         {/* Appearance Settings */}
