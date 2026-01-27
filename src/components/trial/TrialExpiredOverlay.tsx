@@ -31,6 +31,9 @@ export function TrialExpiredOverlay({ featureName }: TrialExpiredOverlayProps) {
 
       const { data, error } = await supabase.functions.invoke('create-checkout', {
         body: { planId: 'starter' },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
       });
 
       if (error) throw error;
