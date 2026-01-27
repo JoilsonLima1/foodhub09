@@ -108,10 +108,16 @@ Deno.serve(async (req) => {
       .maybeSingle()
 
     if (!existingRole) {
-      // All new users get 'admin' role to have full access during trial
-      // After trial ends, access is controlled by subscription status, not roles
-      // Roles only matter for internal permissions (cashier can't manage products, etc.)
-      const roleToAssign = 'admin'
+      // Check if this tenant already has an admin (first user gets admin, others get cashier)
+      const { data: existingAdmins } = await supabaseAdmin
+        .from('user_roles')
+        .select('id')
+        .eq('tenant_id', tenant.id)
+        .eq('role', 'admin')
+        .limit(1)
+
+      // First user in tenant becomes admin, subsequent users become cashier
+      const roleToAssign = (!existingAdmins || existingAdmins.length === 0) ? 'admin' : 'cashier'
       
       const { error: roleError } = await supabaseAdmin
         .from('user_roles')
@@ -128,7 +134,7 @@ Deno.serve(async (req) => {
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
       }
-      console.log(`Role assigned: ${roleToAssign} (full access during trial)`)
+      console.log(`Role assigned: ${roleToAssign}`)
     } else {
       console.log('User already has a role assigned')
     }
