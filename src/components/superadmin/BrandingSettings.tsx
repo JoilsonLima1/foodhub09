@@ -3,11 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
-import { Save, Upload, Image, Palette, MessageSquare, Calendar, Layout } from 'lucide-react';
+import { Save, Image, Palette, MessageSquare, Calendar, Layout } from 'lucide-react';
 import { useSystemSettings, BrandingSettings as BrandingType, ColorSettings, WhatsAppSettings, TrialSettings, LandingLayoutSettings } from '@/hooks/useSystemSettings';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import { ImageUploader } from './ImageUploader';
 
 export function BrandingSettings() {
   const { settings, isLoading, updateSetting, branding, colors, whatsapp, trialPeriod, landingLayout } = useSystemSettings();
@@ -91,32 +91,37 @@ export function BrandingSettings() {
             Configure a identidade visual do sistema
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label>Nome da Empresa</Label>
-              <Input
-                value={brandingData.company_name}
-                onChange={(e) => setBrandingData({ ...brandingData, company_name: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>URL do Logo</Label>
-              <Input
-                value={brandingData.logo_url || ''}
-                onChange={(e) => setBrandingData({ ...brandingData, logo_url: e.target.value })}
-                placeholder="https://..."
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>URL do Ícone (Favicon)</Label>
-              <Input
-                value={brandingData.icon_url || ''}
-                onChange={(e) => setBrandingData({ ...brandingData, icon_url: e.target.value })}
-                placeholder="https://..."
-              />
-            </div>
+        <CardContent className="space-y-6">
+          <div className="space-y-2">
+            <Label>Nome da Empresa</Label>
+            <Input
+              value={brandingData.company_name}
+              onChange={(e) => setBrandingData({ ...brandingData, company_name: e.target.value })}
+            />
           </div>
+          
+          <div className="grid gap-6 md:grid-cols-2">
+            <ImageUploader
+              value={brandingData.logo_url}
+              onChange={(url) => setBrandingData({ ...brandingData, logo_url: url })}
+              label="Logo da Empresa"
+              description="Arraste ou clique para enviar. O fundo será removido automaticamente com IA."
+              folder="logos"
+              maxSizeMB={10}
+              removeBackground={true}
+            />
+            
+            <ImageUploader
+              value={brandingData.icon_url}
+              onChange={(url) => setBrandingData({ ...brandingData, icon_url: url })}
+              label="Ícone (Favicon)"
+              description="Ícone quadrado para navegador. Fundo removido automaticamente."
+              folder="icons"
+              maxSizeMB={5}
+              removeBackground={true}
+            />
+          </div>
+          
           <Button onClick={handleSaveBranding} disabled={updateSetting.isPending}>
             <Save className="h-4 w-4 mr-2" />
             Salvar Branding
