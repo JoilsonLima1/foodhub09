@@ -11,7 +11,7 @@ interface AuthContextType {
   tenantId: string | null;
   isLoading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string, fullName: string, tenantName: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   hasRole: (role: AppRole) => boolean;
   hasAnyRole: (roles: AppRole[]) => boolean;
@@ -135,7 +135,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error };
   };
 
-  const signUp = async (email: string, password: string, fullName: string) => {
+  const signUp = async (email: string, password: string, fullName: string, tenantName: string) => {
     const redirectUrl = `${window.location.origin}/`;
     
     const { data, error } = await supabase.auth.signUp({
@@ -145,30 +145,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         emailRedirectTo: redirectUrl,
         data: {
           full_name: fullName,
+          tenant_name: tenantName,
         },
       },
     });
 
     if (!error && data.user) {
-      // Create profile for the new user
-      await supabase.from('profiles').insert({
-        user_id: data.user.id,
-        full_name: fullName,
-      });
-
-      // Bootstrap user to demo tenant with admin role
+      // Bootstrap user: create tenant (organization) + profile + admin role
       try {
-        const { data: session } = await supabase.auth.getSession();
-        if (session?.session?.access_token) {
-          await supabase.functions.invoke('bootstrap-user', {
-            headers: {
-              Authorization: `Bearer ${session.session.access_token}`
-            }
-          });
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData.session?.access_token;
+        if (!token) {
+          return { error: new Error('Conta criada. Confirme seu email para entrar.') };
         }
-      } catch (bootstrapError) {
+
+        const res = await supabase.functions.invoke('bootstrap-user', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: {
+            tenantName,
+          },
+        });
+
+        if (res.error) throw res.error;
+        if (res.data?.error) throw new Error(res.data.error);
+      } catch (bootstrapError: any) {
         console.error('Bootstrap error:', bootstrapError);
-        // Don't fail signup if bootstrap fails
+        return { error: new Error(bootstrapError?.message || 'Falha ao criar sua organização') };
       }
     }
 

@@ -45,25 +45,19 @@ Deno.serve(async (req) => {
 
     const userId = claims.claims.sub as string
     const userEmail = claims.claims.email as string
+    const userMetadata = (claims.claims as any)?.user_metadata ?? {}
+
+    // Optional: tenant/org name sent by the client during signup
+    let requestedTenantName: string | undefined
+    try {
+      // Not all requests will contain JSON (e.g., legacy callers)
+      const body = await req.json().catch(() => null)
+      requestedTenantName = body?.tenantName
+    } catch {
+      // ignore
+    }
     
     console.log(`Bootstrapping user: ${userId} (${userEmail})`)
-
-    // Get the demo tenant
-    const { data: tenant, error: tenantError } = await supabaseAdmin
-      .from('tenants')
-      .select('id')
-      .eq('slug', 'foodhub-demo')
-      .single()
-
-    if (tenantError || !tenant) {
-      console.error('[bootstrap-user] Tenant lookup error:', { error: tenantError, userId })
-      return new Response(
-        JSON.stringify({ error: 'Resource not found', code: 'SETUP_001' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    console.log(`Found demo tenant: ${tenant.id}`)
 
     // Check if profile already has tenant
     const { data: existingProfile } = await supabaseAdmin
@@ -84,74 +78,121 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Update profile with tenant_id
-    const { error: profileError } = await supabaseAdmin
-      .from('profiles')
-      .update({ tenant_id: tenant.id })
-      .eq('user_id', userId)
+    // Create a new tenant (organization) for this signup
+    const baseNameRaw = (requestedTenantName || userMetadata?.tenant_name || userMetadata?.business_name || userMetadata?.full_name || userEmail)?.toString()
+    const baseName = (baseNameRaw || 'Novo restaurante').trim().slice(0, 80)
 
-    if (profileError) {
-      console.error('[bootstrap-user] Profile update error:', { error: profileError, userId })
+    const slugify = (input: string) => {
+      const normalized = input
+        .toLowerCase()
+        .normalize('NFKD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+      return normalized || 'restaurante'
+    }
+
+    const slugBase = slugify(baseName)
+    const makeSlug = () => `${slugBase}-${crypto.randomUUID().slice(0, 8)}`
+
+    let tenantId: string | null = null
+    let lastTenantError: any = null
+
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const slug = makeSlug()
+      const { data: tenant, error: tenantError } = await supabaseAdmin
+        .from('tenants')
+        .insert({ name: baseName, slug })
+        .select('id')
+        .single()
+
+      if (!tenantError && tenant?.id) {
+        tenantId = tenant.id
+        break
+      }
+
+      lastTenantError = tenantError
+    }
+
+    if (!tenantId) {
+      console.error('[bootstrap-user] Failed to create tenant:', { error: lastTenantError, userId })
       return new Response(
-        JSON.stringify({ error: 'Operation failed', code: 'SETUP_002' }),
+        JSON.stringify({ error: 'Operation failed', code: 'SETUP_001' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    console.log('Profile updated with tenant_id')
+    console.log(`Created tenant: ${tenantId} for user: ${userId}`)
 
-    // Check if user already has any role
-    const { data: existingRole } = await supabaseAdmin
+    // Upsert profile with tenant_id (create if missing)
+    const fullName = (userMetadata?.full_name || baseName || userEmail)?.toString().trim().slice(0, 120) || 'Usuário'
+    if (existingProfile?.id) {
+      const { error: profileError } = await supabaseAdmin
+        .from('profiles')
+        .update({ tenant_id: tenantId })
+        .eq('user_id', userId)
+
+      if (profileError) {
+        console.error('[bootstrap-user] Profile update error:', { error: profileError, userId })
+        return new Response(
+          JSON.stringify({ error: 'Operation failed', code: 'SETUP_002' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+    } else {
+      const { error: profileInsertError } = await supabaseAdmin
+        .from('profiles')
+        .insert({
+          user_id: userId,
+          full_name: fullName,
+          tenant_id: tenantId,
+          is_active: true,
+        })
+
+      if (profileInsertError) {
+        console.error('[bootstrap-user] Profile insert error:', { error: profileInsertError, userId })
+        return new Response(
+          JSON.stringify({ error: 'Operation failed', code: 'SETUP_002' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+    }
+
+    console.log('Profile ensured with tenant_id')
+
+    // First user in this tenant becomes admin
+    const { data: existingRoleInTenant } = await supabaseAdmin
       .from('user_roles')
       .select('id')
       .eq('user_id', userId)
+      .eq('tenant_id', tenantId)
       .maybeSingle()
 
-    if (!existingRole) {
-      // Check if this tenant already has an admin (first user gets admin, others get cashier)
-      const { data: existingAdmins } = await supabaseAdmin
-        .from('user_roles')
-        .select('id')
-        .eq('tenant_id', tenant.id)
-        .eq('role', 'admin')
-        .limit(1)
-
-      // First user in tenant becomes admin, subsequent users become cashier
-      const roleToAssign = (!existingAdmins || existingAdmins.length === 0) ? 'admin' : 'cashier'
-      
+    if (!existingRoleInTenant) {
       const { error: roleError } = await supabaseAdmin
         .from('user_roles')
         .insert({
           user_id: userId,
-          role: roleToAssign,
-          tenant_id: tenant.id
+          role: 'admin',
+          tenant_id: tenantId,
         })
 
       if (roleError) {
-        console.error('[bootstrap-user] Role assignment error:', { error: roleError, userId, role: roleToAssign })
+        console.error('[bootstrap-user] Role assignment error:', { error: roleError, userId, role: 'admin' })
         return new Response(
           JSON.stringify({ error: 'Operation failed', code: 'SETUP_003' }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
       }
-      console.log(`Role assigned: ${roleToAssign}`)
-    } else {
-      console.log('User already has a role assigned')
+      console.log('Role assigned: admin')
     }
 
-    // Determine what role was assigned for the response
-    const { data: userRole } = await supabaseAdmin
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', userId)
-      .single()
-
     return new Response(
-      JSON.stringify({ 
-        success: true, 
+      JSON.stringify({
+        success: true,
         message: 'User bootstrapped successfully',
-        tenant_id: tenant.id,
-        role: userRole?.role || 'unknown'
+        tenant_id: tenantId,
+        role: 'admin',
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
