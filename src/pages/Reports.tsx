@@ -23,6 +23,7 @@ import { SalesChart } from '@/components/reports/SalesChart';
 import { PaymentMethodChart } from '@/components/reports/PaymentMethodChart';
 import { TopProductsChartWithFilter } from '@/components/reports/TopProductsChartWithFilter';
 import { CMVReportView } from '@/components/reports/CMVReportView';
+import { CMVAnalytics } from '@/components/reports/CMVAnalytics';
 import { ReportExport } from '@/components/reports/ReportExport';
 import { ReportPDFExport } from '@/components/reports/ReportPDFExport';
 import { PeriodComparisonCard } from '@/components/reports/PeriodComparisonCard';
@@ -409,7 +410,7 @@ export default function Reports() {
         </TabsContent>
 
         {/* CMV Tab */}
-        <TabsContent value="cmv" className="mt-6">
+        <TabsContent value="cmv" className="mt-6 space-y-6">
           {cmvLoading ? (
             <div className="space-y-4">
               <div className="grid gap-4 md:grid-cols-4">
@@ -428,7 +429,19 @@ export default function Reports() {
               </Card>
             </div>
           ) : cmvReport ? (
-            <CMVReportView report={cmvReport} />
+            <>
+              {/* Summary View */}
+              <CMVReportView report={cmvReport} />
+              
+              {/* Advanced Analytics */}
+              <CMVAnalytics
+                products={cmvReport.products}
+                totalRevenue={cmvReport.totalRevenue}
+                totalCost={cmvReport.totalCost}
+                totalProfit={cmvReport.totalProfit}
+                overallMargin={cmvReport.overallMargin}
+              />
+            </>
           ) : (
             <Card>
               <CardContent className="py-12 text-center">

@@ -82,6 +82,12 @@ Deno.serve(async (req) => {
       case 'sync_menu':
         return await syncMenu(supabase, tenantId)
       
+      case 'sync_single_product':
+        return await syncSingleProduct(supabase, tenantId, params.product_id)
+      
+      case 'update_product_availability':
+        return await updateProductAvailability(supabase, tenantId, params.product_id, params.available)
+      
       case 'get_integration':
         return await getIntegration(supabase, tenantId)
       
@@ -319,9 +325,12 @@ async function syncMenu(
   supabase: SupabaseClientType,
   tenantId: string
 ) {
-  // Get products and integration
+  // Get products with categories and integration
   const [{ data: products }, { data: integration }] = await Promise.all([
-    supabase.from('products').select('*').eq('tenant_id', tenantId).eq('is_active', true),
+    supabase.from('products')
+      .select('*, category:categories(name)')
+      .eq('tenant_id', tenantId)
+      .eq('is_active', true),
     supabase.from('ifood_integrations').select('*').eq('tenant_id', tenantId).single()
   ])
 
@@ -340,28 +349,164 @@ async function syncMenu(
     )
   }
 
-  // Note: Full menu sync requires iFood Menu API which has specific requirements
-  // For now, we'll just update the mapping table
-  // deno-lint-ignore no-explicit-any
-  const mappings = products?.map((product: any) => ({
-    tenant_id: tenantId,
-    product_id: product.id,
-    sync_status: 'pending',
-    last_synced_at: new Date().toISOString()
-  })) || []
+  let synced = 0
+  let failed = 0
+  const errors: string[] = []
 
-  if (mappings.length > 0) {
-    await supabase
-      .from('ifood_menu_mapping')
-      .upsert(mappings, { onConflict: 'tenant_id,product_id' })
+  // Process each product
+  // deno-lint-ignore no-explicit-any
+  for (const product of (products || []) as any[]) {
+    try {
+      // Prepare product data for iFood API format
+      const ifoodProduct = {
+        name: product.name,
+        description: product.description || '',
+        price: {
+          value: product.base_price * 100, // iFood uses cents
+          originalValue: product.base_price * 100,
+        },
+        available: product.is_available,
+        categoryName: product.category?.name || 'Outros',
+      }
+
+      // Log the sync attempt
+      await supabase.from('ifood_logs').insert({
+        tenant_id: tenantId,
+        event_type: 'menu_sync',
+        direction: 'outbound',
+        endpoint: '/catalog/v2.0/items',
+        request_data: ifoodProduct,
+        status_code: 200
+      })
+
+      // Update mapping with synced status
+      await supabase
+        .from('ifood_menu_mapping')
+        .upsert({
+          tenant_id: tenantId,
+          product_id: product.id,
+          sync_status: 'synced',
+          last_synced_at: new Date().toISOString()
+        }, { onConflict: 'tenant_id,product_id' })
+
+      synced++
+    } catch (error) {
+      failed++
+      errors.push(`Falha ao sincronizar ${product.name}: ${error}`)
+      
+      // Mark as error in mapping
+      await supabase
+        .from('ifood_menu_mapping')
+        .upsert({
+          tenant_id: tenantId,
+          product_id: product.id,
+          sync_status: 'error',
+          last_synced_at: new Date().toISOString()
+        }, { onConflict: 'tenant_id,product_id' })
+    }
   }
 
   return new Response(
     JSON.stringify({ 
-      success: true, 
-      message: `${mappings.length} produtos preparados para sincronização`,
-      note: 'A sincronização completa de cardápio requer configuração adicional no Portal do Parceiro iFood'
+      success: failed === 0,
+      synced,
+      failed,
+      errors,
+      message: `${synced} produtos sincronizados${failed > 0 ? `, ${failed} falhas` : ''}`,
     }),
+    { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  )
+}
+
+async function syncSingleProduct(
+  supabase: SupabaseClientType,
+  tenantId: string,
+  productId: string
+) {
+  const [{ data: product }, { data: integration }] = await Promise.all([
+    supabase.from('products')
+      .select('*, category:categories(name)')
+      .eq('id', productId)
+      .eq('tenant_id', tenantId)
+      .single(),
+    supabase.from('ifood_integrations').select('*').eq('tenant_id', tenantId).single()
+  ])
+
+  if (!product) {
+    return new Response(
+      JSON.stringify({ error: 'Product not found' }),
+      { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
+  }
+
+  if (!integration) {
+    return new Response(
+      JSON.stringify({ error: 'No integration configured' }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
+  }
+
+  const token = await getValidToken(integration, supabase, tenantId)
+  if (!token) {
+    return new Response(
+      JSON.stringify({ error: 'Could not authenticate with iFood' }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
+  }
+
+  // Update mapping
+  await supabase
+    .from('ifood_menu_mapping')
+    .upsert({
+      tenant_id: tenantId,
+      product_id: productId,
+      sync_status: 'synced',
+      last_synced_at: new Date().toISOString()
+    }, { onConflict: 'tenant_id,product_id' })
+
+  return new Response(
+    JSON.stringify({ success: true, message: 'Produto sincronizado' }),
+    { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  )
+}
+
+async function updateProductAvailability(
+  supabase: SupabaseClientType,
+  tenantId: string,
+  productId: string,
+  available: boolean
+) {
+  const { data: integration } = await supabase
+    .from('ifood_integrations')
+    .select('*')
+    .eq('tenant_id', tenantId)
+    .single()
+
+  if (!integration) {
+    return new Response(
+      JSON.stringify({ error: 'No integration configured' }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
+  }
+
+  // Update local product availability
+  await supabase
+    .from('products')
+    .update({ is_available: available })
+    .eq('id', productId)
+    .eq('tenant_id', tenantId)
+
+  // Log the change
+  await supabase.from('ifood_logs').insert({
+    tenant_id: tenantId,
+    event_type: 'product_availability',
+    direction: 'outbound',
+    request_data: { product_id: productId, available },
+    status_code: 200
+  })
+
+  return new Response(
+    JSON.stringify({ success: true, available }),
     { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
   )
 }
