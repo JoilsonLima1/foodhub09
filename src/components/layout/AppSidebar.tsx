@@ -19,6 +19,7 @@ import {
   Moon,
   Sun,
   Crown,
+  Grid3X3,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
@@ -35,6 +36,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   BarChart3,
   Settings,
   Crown,
+  Grid3X3,
 };
 
 interface NavItem {
@@ -47,6 +49,7 @@ const allNavItems: NavItem[] = [
   { path: '/dashboard', label: 'Dashboard', icon: 'LayoutDashboard' },
   { path: '/orders', label: 'Pedidos', icon: 'ClipboardList' },
   { path: '/pos', label: 'PDV/Caixa', icon: 'Calculator' },
+  { path: '/tables', label: 'Mesas', icon: 'Grid3X3' },
   { path: '/kitchen', label: 'Cozinha', icon: 'ChefHat' },
   { path: '/deliveries', label: 'Entregas', icon: 'Truck' },
   { path: '/courier-dashboard', label: 'Minhas Entregas', icon: 'Truck' },
