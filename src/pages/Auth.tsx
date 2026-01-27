@@ -18,6 +18,7 @@ const loginSchema = z.object({
 });
 
 const signupSchema = z.object({
+  tenantName: z.string().min(2, 'Nome do restaurante deve ter pelo menos 2 caracteres'),
   fullName: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
   email: z.string().email('Email inválido'),
   password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres'),
@@ -41,6 +42,7 @@ export default function AuthPage() {
   const [loginPassword, setLoginPassword] = useState('');
   
   // Signup form
+  const [signupTenantName, setSignupTenantName] = useState('');
   const [signupName, setSignupName] = useState('');
   const [signupEmail, setSignupEmail] = useState('');
   const [signupPassword, setSignupPassword] = useState('');
@@ -122,6 +124,7 @@ export default function AuthPage() {
     
     try {
       signupSchema.parse({
+        tenantName: signupTenantName,
         fullName: signupName,
         email: signupEmail,
         password: signupPassword,
@@ -136,7 +139,7 @@ export default function AuthPage() {
 
     setIsLoading(true);
     
-    const { error } = await signUp(signupEmail, signupPassword, signupName);
+    const { error } = await signUp(signupEmail, signupPassword, signupName, signupTenantName);
     
     if (error) {
       if (error.message.includes('already registered')) {
@@ -235,6 +238,18 @@ export default function AuthPage() {
             
             <TabsContent value="signup">
               <form onSubmit={handleSignup} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="signup-tenant">Restaurante / Organização</Label>
+                  <Input
+                    id="signup-tenant"
+                    type="text"
+                    placeholder="Nome do seu restaurante"
+                    value={signupTenantName}
+                    onChange={(e) => setSignupTenantName(e.target.value)}
+                    required
+                  />
+                </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="signup-name">Nome Completo</Label>
                   <Input

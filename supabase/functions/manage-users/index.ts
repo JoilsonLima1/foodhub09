@@ -46,29 +46,20 @@ serve(async (req) => {
       );
     }
 
-    // Verify user has admin or manager role
-    const { data: userRoles } = await supabaseAdmin
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', user.id);
-
-    const roles = userRoles?.map(r => r.role) || [];
-    const isAdmin = roles.includes('admin') || roles.includes('manager') || roles.includes('super_admin');
-    
-    if (!isAdmin) {
-      return new Response(
-        JSON.stringify({ error: 'Insufficient permissions' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
     const body = await req.json();
     const { action, tenantId, userId, userData, userIds, roles: newRoles, profileData } = body;
 
     console.log(`[manage-users] Action: ${action}, TenantId: ${tenantId}, UserId: ${userId || 'N/A'}`);
-    console.log(`[manage-users] Body:`, JSON.stringify(body, null, 2));
+    // Never log raw passwords or sensitive data
+    const safeBody = {
+      ...body,
+      userData: userData
+        ? { ...userData, password: userData.password ? '[REDACTED]' : undefined }
+        : undefined,
+    };
+    console.log(`[manage-users] Body:`, JSON.stringify(safeBody, null, 2));
 
-    // Resolve requester tenant id (used to prevent tenant spoofing)
+    // Resolve requester tenant id (used to prevent tenant spoofing and enforce isolation)
     const { data: requesterProfile, error: requesterProfileError } = await supabaseAdmin
       .from('profiles')
       .select('tenant_id')
@@ -81,8 +72,36 @@ serve(async (req) => {
 
     const requesterTenantId = requesterProfile?.tenant_id ?? null;
 
+    // Verify permissions (tenant-scoped). super_admin is treated as global.
+    const { data: allRoles, error: rolesFetchError } = await supabaseAdmin
+      .from('user_roles')
+      .select('role, tenant_id')
+      .eq('user_id', user.id);
+
+    if (rolesFetchError) {
+      console.error('[manage-users] rolesFetchError:', rolesFetchError);
+      return new Response(
+        JSON.stringify({ error: 'Falha ao validar permissões' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const isSuperAdmin = (allRoles ?? []).some((r: any) => r.role === 'super_admin');
+    const tenantScopedRoles = (allRoles ?? [])
+      .filter((r: any) => requesterTenantId && r.tenant_id === requesterTenantId)
+      .map((r: any) => r.role);
+
+    const canManageUsers = isSuperAdmin || tenantScopedRoles.includes('admin') || tenantScopedRoles.includes('manager');
+
+    if (!canManageUsers) {
+      return new Response(
+        JSON.stringify({ error: 'Insufficient permissions' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Super admins can act on the tenantId provided; others are locked to their own tenant.
-    const effectiveTenantId = isAdmin && roles.includes('super_admin')
+    const effectiveTenantId = isSuperAdmin
       ? (tenantId || requesterTenantId)
       : requesterTenantId;
 
@@ -94,7 +113,7 @@ serve(async (req) => {
     }
 
     // Prevent non-super-admin from spoofing tenantId
-    if (!roles.includes('super_admin') && tenantId && tenantId !== effectiveTenantId) {
+    if (!isSuperAdmin && tenantId && tenantId !== effectiveTenantId) {
       return new Response(
         JSON.stringify({ error: 'Tenant inválido' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
