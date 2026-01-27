@@ -11,13 +11,20 @@ import {
   BarChart3,
   AlertTriangle,
   Package,
+  Palette,
+  Settings2,
 } from 'lucide-react';
 import { PlanEditor } from '@/components/superadmin/PlanEditor';
 import { FeatureComparison } from '@/components/superadmin/FeatureComparison';
+import { SubscribersManager } from '@/components/superadmin/SubscribersManager';
+import { PaymentGatewaysManager } from '@/components/superadmin/PaymentGatewaysManager';
+import { BrandingSettings } from '@/components/superadmin/BrandingSettings';
 import { Navigate } from 'react-router-dom';
+import { useSubscribers } from '@/hooks/useSubscribers';
 
 export default function SuperAdmin() {
   const { roles } = useAuth();
+  const { stats } = useSubscribers();
   
   // Check for super_admin role - for demo, also allow admin
   const isSuperAdmin = roles.includes('super_admin') || roles.includes('admin');
@@ -69,12 +76,12 @@ export default function SuperAdmin() {
         
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Tenants</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Assinantes</CardTitle>
             <Building2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">1</div>
-            <p className="text-xs text-muted-foreground">Pizzaria Demo ativa</p>
+            <div className="text-2xl font-bold">{stats.total}</div>
+            <p className="text-xs text-muted-foreground">{stats.active} ativos</p>
           </CardContent>
         </Card>
         
@@ -84,67 +91,68 @@ export default function SuperAdmin() {
             <CreditCard className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">R$ 0</div>
-            <p className="text-xs text-muted-foreground">Demo não cobra</p>
+            <div className="text-2xl font-bold">
+              R$ {stats.monthlyRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </div>
+            <p className="text-xs text-muted-foreground">De assinaturas ativas</p>
           </CardContent>
         </Card>
         
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Usuários Ativos</CardTitle>
+            <CardTitle className="text-sm font-medium">Em Teste</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">1</div>
-            <p className="text-xs text-muted-foreground">Across all tenants</p>
+            <div className="text-2xl font-bold">{stats.trialing}</div>
+            <p className="text-xs text-muted-foreground">Período gratuito</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Main Content */}
-      <Tabs defaultValue="plans" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-grid">
-          <TabsTrigger value="plans">
-            <Package className="h-4 w-4 mr-2" />
-            Gestão de Planos
+      <Tabs defaultValue="subscribers" className="space-y-6">
+        <TabsList className="flex flex-wrap h-auto gap-2">
+          <TabsTrigger value="subscribers" className="flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            Assinantes
           </TabsTrigger>
-          <TabsTrigger value="comparison">
-            <BarChart3 className="h-4 w-4 mr-2" />
+          <TabsTrigger value="plans" className="flex items-center gap-2">
+            <Package className="h-4 w-4" />
+            Planos
+          </TabsTrigger>
+          <TabsTrigger value="gateways" className="flex items-center gap-2">
+            <CreditCard className="h-4 w-4" />
+            Pagamentos
+          </TabsTrigger>
+          <TabsTrigger value="branding" className="flex items-center gap-2">
+            <Palette className="h-4 w-4" />
+            Branding
+          </TabsTrigger>
+          <TabsTrigger value="comparison" className="flex items-center gap-2">
+            <BarChart3 className="h-4 w-4" />
             Comparativo
           </TabsTrigger>
-          <TabsTrigger value="tenants">
-            <Building2 className="h-4 w-4 mr-2" />
-            Tenants
-          </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="subscribers">
+          <SubscribersManager />
+        </TabsContent>
 
         <TabsContent value="plans">
           <PlanEditor />
         </TabsContent>
 
-        <TabsContent value="comparison">
-          <FeatureComparison />
+        <TabsContent value="gateways">
+          <PaymentGatewaysManager />
         </TabsContent>
 
-        <TabsContent value="tenants">
-          <Card>
-            <CardHeader>
-              <CardTitle>Gestão de Tenants</CardTitle>
-              <CardDescription>
-                Visualize e gerencie todos os tenants do sistema
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-12">
-                <Building2 className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">Em Desenvolvimento</h3>
-                <p className="text-muted-foreground max-w-md mx-auto">
-                  O painel completo de gestão de tenants estará disponível em breve, 
-                  incluindo upgrade/downgrade de planos, métricas de uso e gestão de assinaturas.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+        <TabsContent value="branding">
+          <BrandingSettings />
+        </TabsContent>
+
+        <TabsContent value="comparison">
+          <FeatureComparison />
         </TabsContent>
       </Tabs>
     </div>

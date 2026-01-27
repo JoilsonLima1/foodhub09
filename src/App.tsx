@@ -20,6 +20,7 @@ import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import CourierDashboard from "./pages/CourierDashboard";
 import SuperAdmin from "./pages/SuperAdmin";
+import CheckoutSuccess from "./pages/CheckoutSuccess";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -34,6 +35,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/checkout/success" element={<CheckoutSuccess />} />
             
             <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
               <Route path="/dashboard" element={<Dashboard />} />
