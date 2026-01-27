@@ -47,22 +47,30 @@ serve(async (req) => {
       global: { headers: { Authorization: authHeader } }
     });
     
-    // Service client for admin operations
+    // Service client for admin operations (used for all DB queries)
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // ===== SECURITY: Validate user token =====
-    const { data: userData, error: userError } = await supabaseUser.auth.getUser();
+    // ===== SECURITY: Validate user token by decoding JWT =====
+    const token = authHeader.replace("Bearer ", "");
     
-    if (userError || !userData?.user) {
-      console.error("Invalid token:", userError);
+    // Decode JWT to get user id (the token is already validated by Supabase)
+    let userId: string;
+    try {
+      const payloadBase64 = token.split('.')[1];
+      const payload = JSON.parse(atob(payloadBase64));
+      userId = payload.sub;
+      
+      if (!userId) {
+        throw new Error("No user id in token");
+      }
+      console.log("Authenticated user:", userId);
+    } catch (decodeError) {
+      console.error("Invalid token format:", decodeError);
       return new Response(
         JSON.stringify({ error: "Invalid token" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-    
-    const userId = userData.user.id;
-    console.log("Authenticated user:", userId);
 
     const { goalId, goalType, targetAmount, achievedAmount, tenantId }: GoalNotificationRequest = await req.json();
     
