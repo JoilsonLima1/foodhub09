@@ -40,6 +40,13 @@ export function useUserManagement() {
 
   const canManageUsers = hasRole('admin') || hasRole('manager') || hasRole('super_admin');
 
+  const getAuthHeaders = useCallback(async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    if (!token) return null;
+    return { Authorization: `Bearer ${token}` };
+  }, []);
+
   const fetchUsers = useCallback(async () => {
     if (!tenantId || !canManageUsers) {
       setIsLoading(false);
@@ -85,9 +92,16 @@ export function useUserManagement() {
 
       // Combine data - we don't have direct access to auth.users email
       // We'll use edge function to get emails
+      const authHeaders = await getAuthHeaders();
+      if (!authHeaders) {
+        throw new Error('Sessão não encontrada. Faça login novamente.');
+      }
       const { data: emailsData, error: emailsError } = await supabase.functions.invoke('manage-users', {
-        body: { action: 'get-emails', userIds }
+        body: { action: 'get-emails', userIds },
+        headers: authHeaders,
       });
+
+      if (emailsError) throw emailsError;
 
       const emailsByUser: Record<string, string> = emailsData?.emails || {};
 
@@ -114,7 +128,7 @@ export function useUserManagement() {
     } finally {
       setIsLoading(false);
     }
-  }, [tenantId, canManageUsers]);
+  }, [tenantId, canManageUsers, getAuthHeaders]);
 
   useEffect(() => {
     fetchUsers();
@@ -135,12 +149,18 @@ export function useUserManagement() {
 
       console.log('[useUserManagement] Creating user:', { tenantId, email: data.email });
 
+      const authHeaders = await getAuthHeaders();
+      if (!authHeaders) {
+        throw new Error('Sessão não encontrada. Faça login novamente.');
+      }
+
       const response = await supabase.functions.invoke('manage-users', {
         body: {
           action: 'create',
           tenantId,
           userData: data,
-        }
+        },
+        headers: authHeaders,
       });
 
       console.log('[useUserManagement] Create response:', response);
@@ -215,6 +235,11 @@ export function useUserManagement() {
       // Update roles if provided
       if (data.roles) {
         console.log('[useUserManagement] Updating roles:', data.roles);
+
+        const authHeaders = await getAuthHeaders();
+        if (!authHeaders) {
+          throw new Error('Sessão não encontrada. Faça login novamente.');
+        }
         
         const response = await supabase.functions.invoke('manage-users', {
           body: {
@@ -222,7 +247,8 @@ export function useUserManagement() {
             tenantId,
             userId,
             roles: data.roles,
-          }
+          },
+          headers: authHeaders,
         });
 
         console.log('[useUserManagement] Roles update response:', response);
@@ -269,12 +295,18 @@ export function useUserManagement() {
     }
 
     try {
+      const authHeaders = await getAuthHeaders();
+      if (!authHeaders) {
+        throw new Error('Sessão não encontrada. Faça login novamente.');
+      }
+
       const { data: result, error } = await supabase.functions.invoke('manage-users', {
         body: {
           action: 'delete',
           tenantId,
           userId,
-        }
+        },
+        headers: authHeaders,
       });
 
       if (error) throw error;
