@@ -62,7 +62,8 @@ serve(async (req) => {
     const body = await req.json();
     const { action, tenantId, userId, userData, userIds, roles: newRoles } = body;
 
-    console.log(`[manage-users] Action: ${action}, TenantId: ${tenantId}`);
+    console.log(`[manage-users] Action: ${action}, TenantId: ${tenantId}, UserId: ${userId || 'N/A'}`);
+    console.log(`[manage-users] Body:`, JSON.stringify(body, null, 2));
 
     switch (action) {
       case 'get-emails': {
