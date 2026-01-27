@@ -100,42 +100,58 @@ Deno.serve(async (req) => {
 
     console.log('Profile updated with tenant_id')
 
-    // Check if user already has admin role
+    // Check if user already has any role
     const { data: existingRole } = await supabaseAdmin
       .from('user_roles')
       .select('id')
       .eq('user_id', userId)
-      .eq('role', 'admin')
       .maybeSingle()
 
     if (!existingRole) {
-      // Assign admin role
+      // Check if this tenant already has an admin (first user gets admin, others get cashier)
+      const { data: existingAdmins } = await supabaseAdmin
+        .from('user_roles')
+        .select('id')
+        .eq('tenant_id', tenant.id)
+        .eq('role', 'admin')
+        .limit(1)
+
+      // First user in tenant becomes admin, subsequent users become cashier
+      const roleToAssign = (!existingAdmins || existingAdmins.length === 0) ? 'admin' : 'cashier'
+      
       const { error: roleError } = await supabaseAdmin
         .from('user_roles')
         .insert({
           user_id: userId,
-          role: 'admin',
+          role: roleToAssign,
           tenant_id: tenant.id
         })
 
       if (roleError) {
         console.error('Role insert error:', roleError)
         return new Response(
-          JSON.stringify({ error: 'Failed to assign admin role' }),
+          JSON.stringify({ error: 'Failed to assign role' }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
       }
-      console.log('Admin role assigned')
+      console.log(`Role assigned: ${roleToAssign}`)
     } else {
-      console.log('User already has admin role')
+      console.log('User already has a role assigned')
     }
+
+    // Determine what role was assigned for the response
+    const { data: userRole } = await supabaseAdmin
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', userId)
+      .single()
 
     return new Response(
       JSON.stringify({ 
         success: true, 
         message: 'User bootstrapped successfully',
         tenant_id: tenant.id,
-        role: 'admin'
+        role: userRole?.role || 'unknown'
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
