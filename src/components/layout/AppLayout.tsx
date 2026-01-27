@@ -1,15 +1,49 @@
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { AppSidebar } from './AppSidebar';
 import { useLowStockAlerts } from '@/hooks/useLowStockAlerts';
 import { usePreparingAlerts } from '@/hooks/usePreparingAlerts';
 import { TrialExpirationBanner } from '@/components/trial/TrialExpirationBanner';
+import { TrialExpiredOverlay } from '@/components/trial/TrialExpiredOverlay';
+import { useFeatureAccess } from '@/hooks/useFeatureAccess';
+import { useAuth } from '@/contexts/AuthContext';
+
+// Pages that don't require feature access check (always accessible)
+const ALWAYS_ACCESSIBLE_PAGES = ['/dashboard', '/settings', '/super-admin'];
 
 export function AppLayout() {
+  const location = useLocation();
+  const { roles } = useAuth();
+  const { hasAccess, isTrialExpired, reason } = useFeatureAccess();
+  
   // Enable low stock alerts globally
   useLowStockAlerts();
   
   // Enable preparing order alerts globally
   usePreparingAlerts();
+
+  // Check if current page requires feature access
+  const currentPath = location.pathname;
+  const isAlwaysAccessible = ALWAYS_ACCESSIBLE_PAGES.some(page => currentPath.startsWith(page));
+  const isSuperAdmin = roles.includes('super_admin');
+  
+  // Show trial expired overlay if trial expired and not on always-accessible pages
+  const showTrialExpiredOverlay = isTrialExpired && !hasAccess && !isAlwaysAccessible && !isSuperAdmin;
+
+  // Get feature name for the current page
+  const getFeatureNameFromPath = (path: string): string => {
+    const featureMap: Record<string, string> = {
+      '/pos': 'PDV',
+      '/orders': 'Pedidos',
+      '/kitchen': 'Cozinha',
+      '/deliveries': 'Entregas',
+      '/products': 'Produtos',
+      '/stock': 'Estoque',
+      '/reports': 'Relatórios',
+      '/tables': 'Mesas',
+      '/courier-dashboard': 'Dashboard do Entregador',
+    };
+    return featureMap[path] || 'esta funcionalidade';
+  };
 
   return (
     <div className="min-h-screen flex w-full">
@@ -17,6 +51,9 @@ export function AppLayout() {
       <main className="flex-1 md:ml-64">
         <div className="p-4 md:p-6 lg:p-8">
           <TrialExpirationBanner />
+          {showTrialExpiredOverlay && (
+            <TrialExpiredOverlay featureName={getFeatureNameFromPath(currentPath)} />
+          )}
           <Outlet />
         </div>
       </main>

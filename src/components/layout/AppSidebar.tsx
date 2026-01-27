@@ -24,6 +24,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import fallbackLogo from '@/assets/logo.png';
+import { TrialStatusBadge } from '@/components/trial/TrialStatusBadge';
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   LayoutDashboard,
@@ -140,10 +141,15 @@ export function AppSidebar() {
         {/* Logo */}
         <div className="flex items-center gap-3 px-6 py-5 border-b border-sidebar-border">
           <img src={logoUrl} alt={`${companyName} Logo`} className="h-10 w-10 rounded-lg object-contain" />
-          <div>
+          <div className="flex-1">
             <h1 className="font-bold text-lg">{companyName}</h1>
             <p className="text-xs text-sidebar-foreground/60">Sistema de Gestão</p>
           </div>
+        </div>
+
+        {/* Trial Status Badge */}
+        <div className="px-4 py-3 border-b border-sidebar-border">
+          <TrialStatusBadge />
         </div>
 
         {/* Navigation */}
