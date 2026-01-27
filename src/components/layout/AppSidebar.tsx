@@ -2,6 +2,7 @@ import { useLocation, Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/hooks/useTheme';
+import { useSystemSettings } from '@/hooks/useSystemSettings';
 import {
   LayoutDashboard,
   ClipboardList,
@@ -21,7 +22,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
-import logo from '@/assets/logo.png';
+import fallbackLogo from '@/assets/logo.png';
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   LayoutDashboard,
@@ -60,7 +61,12 @@ export function AppSidebar() {
   const location = useLocation();
   const { profile, roles, signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { branding } = useSystemSettings();
   const [isOpen, setIsOpen] = useState(false);
+
+  // Use dynamic branding or fallback
+  const logoUrl = branding?.logo_url || fallbackLogo;
+  const companyName = branding?.company_name || 'FoodHub09';
 
   // Filter nav items based on roles
   const getNavItems = (): NavItem[] => {
@@ -130,9 +136,9 @@ export function AppSidebar() {
       >
         {/* Logo */}
         <div className="flex items-center gap-3 px-6 py-5 border-b border-sidebar-border">
-          <img src={logo} alt="FoodHub09 Logo" className="h-10 w-10 rounded-lg" />
+          <img src={logoUrl} alt={`${companyName} Logo`} className="h-10 w-10 rounded-lg object-contain" />
           <div>
-            <h1 className="font-bold text-lg">FoodHub09</h1>
+            <h1 className="font-bold text-lg">{companyName}</h1>
             <p className="text-xs text-sidebar-foreground/60">Sistema de Gestão</p>
           </div>
         </div>
