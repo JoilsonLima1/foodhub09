@@ -145,11 +145,11 @@ export default function AuthPage() {
         ← Voltar
       </Button>
       
-      <div className="flex flex-col items-center gap-2 mb-6">
+      <div className="flex flex-col items-center gap-3 mb-8">
         <img 
           src={logoUrl} 
           alt={`${companyName} Logo`} 
-          className="h-24 w-auto cursor-pointer object-contain" 
+          className="h-40 w-auto cursor-pointer object-contain"
           onClick={() => navigate('/')} 
         />
         <h1 className="text-2xl font-bold text-foreground">{companyName}</h1>
