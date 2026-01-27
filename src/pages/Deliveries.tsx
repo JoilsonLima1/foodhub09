@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
   SelectContent,
@@ -20,9 +21,11 @@ import {
   MapPin,
   Clock,
   CheckCircle,
+  Users,
 } from 'lucide-react';
 import { DELIVERY_STATUS_LABELS } from '@/lib/constants';
 import type { DeliveryStatus } from '@/types/database';
+import { CourierManagement } from '@/components/couriers/CourierManagement';
 
 interface Delivery {
   id: string;
@@ -230,142 +233,161 @@ export default function Deliveries() {
         </p>
       </div>
 
-      {/* Filters */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por pedido, cliente ou entregador..."
-                className="pl-10"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full sm:w-48">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os status</SelectItem>
-                {Object.entries(DELIVERY_STATUS_LABELS).map(([value, label]) => (
-                  <SelectItem key={value} value={value}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
+      <Tabs defaultValue="deliveries" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="deliveries" className="gap-2">
+            <Truck className="h-4 w-4" />
+            Entregas
+          </TabsTrigger>
+          <TabsTrigger value="couriers" className="gap-2">
+            <Users className="h-4 w-4" />
+            Entregadores
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Deliveries List */}
-      {isLoading ? (
-        <div className="space-y-4">
-          {[1, 2, 3].map((i) => (
-            <Card key={i} className="animate-pulse">
-              <CardContent className="h-32" />
-            </Card>
-          ))}
-        </div>
-      ) : filteredDeliveries.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <Truck className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Nenhuma entrega encontrada</h3>
-            <p className="text-muted-foreground">
-              As entregas aparecerão aqui
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-3">
-          {filteredDeliveries.map((delivery) => (
-            <Card key={delivery.id} className="hover:shadow-md transition-shadow">
-              <CardContent className="py-4">
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                  {/* Order Info */}
-                  <div className="flex items-start gap-4">
-                    <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                      <span className="text-lg font-bold text-primary">
-                        #{delivery.order?.order_number}
-                      </span>
-                    </div>
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold">
-                          {delivery.order?.customer_name || 'Cliente anônimo'}
-                        </span>
-                        <Badge variant="outline" className={getStatusColor(delivery.status)}>
-                          {DELIVERY_STATUS_LABELS[delivery.status]}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
-                        {delivery.order?.customer_phone && (
-                          <span className="flex items-center gap-1">
-                            <Phone className="h-3 w-3" />
-                            {delivery.order.customer_phone}
-                          </span>
-                        )}
-                        <span className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          {formatTime(delivery.created_at)}
-                        </span>
-                        <span className="font-semibold text-foreground">
-                          {formatCurrency(delivery.order?.total || 0)}
-                        </span>
-                      </div>
-                      {delivery.order?.delivery_address && (
-                        <p className="text-sm text-muted-foreground flex items-center gap-1">
-                          <MapPin className="h-3 w-3 shrink-0" />
-                          {delivery.order.delivery_address}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Courier and Actions */}
-                  <div className="flex items-center gap-4 flex-wrap">
-                    {delivery.courier ? (
-                      <div className="flex items-center gap-2 text-sm bg-muted px-3 py-2 rounded-lg">
-                        <User className="h-4 w-4" />
-                        <span className="font-medium">{delivery.courier.name}</span>
-                      </div>
-                    ) : delivery.status === 'pending' ? (
-                      <Select onValueChange={(courierId) => assignCourier(delivery.id, courierId)}>
-                        <SelectTrigger className="w-48">
-                          <SelectValue placeholder="Atribuir entregador" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {couriers.map((courier) => (
-                            <SelectItem key={courier.id} value={courier.id}>
-                              {courier.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    ) : null}
-
-                    {getNextAction(delivery.status) && (
-                      <Button
-                        size="sm"
-                        onClick={() => updateDeliveryStatus(
-                          delivery.id, 
-                          getNextAction(delivery.status)!.nextStatus
-                        )}
-                      >
-                        <CheckCircle className="h-4 w-4 mr-2" />
-                        {getNextAction(delivery.status)!.label}
-                      </Button>
-                    )}
-                  </div>
+        <TabsContent value="deliveries" className="space-y-4">
+          {/* Filters */}
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar por pedido, cliente ou entregador..."
+                    className="pl-10"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
                 </div>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-full sm:w-48">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os status</SelectItem>
+                    {Object.entries(DELIVERY_STATUS_LABELS).map(([value, label]) => (
+                      <SelectItem key={value} value={value}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Deliveries List */}
+          {isLoading ? (
+            <div className="space-y-4">
+              {[1, 2, 3].map((i) => (
+                <Card key={i} className="animate-pulse">
+                  <CardContent className="h-32" />
+                </Card>
+              ))}
+            </div>
+          ) : filteredDeliveries.length === 0 ? (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <Truck className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <h3 className="text-lg font-semibold mb-2">Nenhuma entrega encontrada</h3>
+                <p className="text-muted-foreground">
+                  As entregas aparecerão aqui
+                </p>
               </CardContent>
             </Card>
-          ))}
-        </div>
-      )}
+          ) : (
+            <div className="space-y-3">
+              {filteredDeliveries.map((delivery) => (
+                <Card key={delivery.id} className="hover:shadow-md transition-shadow">
+                  <CardContent className="py-4">
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                      {/* Order Info */}
+                      <div className="flex items-start gap-4">
+                        <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                          <span className="text-lg font-bold text-primary">
+                            #{delivery.order?.order_number}
+                          </span>
+                        </div>
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-semibold">
+                              {delivery.order?.customer_name || 'Cliente anônimo'}
+                            </span>
+                            <Badge variant="outline" className={getStatusColor(delivery.status)}>
+                              {DELIVERY_STATUS_LABELS[delivery.status]}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
+                            {delivery.order?.customer_phone && (
+                              <span className="flex items-center gap-1">
+                                <Phone className="h-3 w-3" />
+                                {delivery.order.customer_phone}
+                              </span>
+                            )}
+                            <span className="flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              {formatTime(delivery.created_at)}
+                            </span>
+                            <span className="font-semibold text-foreground">
+                              {formatCurrency(delivery.order?.total || 0)}
+                            </span>
+                          </div>
+                          {delivery.order?.delivery_address && (
+                            <p className="text-sm text-muted-foreground flex items-center gap-1">
+                              <MapPin className="h-3 w-3 shrink-0" />
+                              {delivery.order.delivery_address}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Courier and Actions */}
+                      <div className="flex items-center gap-4 flex-wrap">
+                        {delivery.courier ? (
+                          <div className="flex items-center gap-2 text-sm bg-muted px-3 py-2 rounded-lg">
+                            <User className="h-4 w-4" />
+                            <span className="font-medium">{delivery.courier.name}</span>
+                          </div>
+                        ) : delivery.status === 'pending' ? (
+                          <Select onValueChange={(courierId) => assignCourier(delivery.id, courierId)}>
+                            <SelectTrigger className="w-48">
+                              <SelectValue placeholder="Atribuir entregador" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {couriers.map((courier) => (
+                                <SelectItem key={courier.id} value={courier.id}>
+                                  {courier.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : null}
+
+                        {getNextAction(delivery.status) && (
+                          <Button
+                            size="sm"
+                            onClick={() => updateDeliveryStatus(
+                              delivery.id, 
+                              getNextAction(delivery.status)!.nextStatus
+                            )}
+                          >
+                            <CheckCircle className="h-4 w-4 mr-2" />
+                            {getNextAction(delivery.status)!.label}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="couriers">
+          <CourierManagement />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
