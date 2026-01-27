@@ -14,11 +14,13 @@ import {
   Users,
   Palette,
   Plug2,
+  Building2,
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PAYMENT_PROVIDER_LABELS } from '@/lib/constants';
 import { ThemeCustomizer } from '@/components/settings/ThemeCustomizer';
 import { IFoodIntegration } from '@/components/integrations/IFoodIntegration';
+import { BusinessCategorySelector } from '@/components/settings/BusinessCategorySelector';
 
 export default function Settings() {
   const { profile, roles } = useAuth();
@@ -37,8 +39,12 @@ export default function Settings() {
         </p>
       </div>
 
-      <Tabs defaultValue="store" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3 lg:grid-cols-7">
+      <Tabs defaultValue="category" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-4 lg:grid-cols-8">
+          <TabsTrigger value="category">
+            <Building2 className="h-4 w-4 mr-2" />
+            Categoria
+          </TabsTrigger>
           <TabsTrigger value="store">
             <Store className="h-4 w-4 mr-2" />
             Loja
@@ -68,6 +74,11 @@ export default function Settings() {
             Segurança
           </TabsTrigger>
         </TabsList>
+
+        {/* Business Category */}
+        <TabsContent value="category">
+          <BusinessCategorySelector />
+        </TabsContent>
 
         {/* Store Settings */}
         <TabsContent value="store">

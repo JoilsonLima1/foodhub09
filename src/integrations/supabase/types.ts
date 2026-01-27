@@ -64,6 +64,51 @@ export type Database = {
           },
         ]
       }
+      business_category_configs: {
+        Row: {
+          category_key: string
+          created_at: string | null
+          description: string | null
+          display_order: number | null
+          features: Json
+          icon: string
+          id: string
+          is_active: boolean | null
+          name: string
+          terminology: Json
+          theme: Json
+          updated_at: string | null
+        }
+        Insert: {
+          category_key: string
+          created_at?: string | null
+          description?: string | null
+          display_order?: number | null
+          features?: Json
+          icon?: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          terminology?: Json
+          theme?: Json
+          updated_at?: string | null
+        }
+        Update: {
+          category_key?: string
+          created_at?: string | null
+          description?: string | null
+          display_order?: number | null
+          features?: Json
+          icon?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          terminology?: Json
+          theme?: Json
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       cash_movements: {
         Row: {
           amount: number
@@ -2186,6 +2231,7 @@ export type Database = {
       tenants: {
         Row: {
           address: string | null
+          business_category: string | null
           city: string | null
           created_at: string | null
           email: string | null
@@ -2211,6 +2257,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          business_category?: string | null
           city?: string | null
           created_at?: string | null
           email?: string | null
@@ -2236,6 +2283,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          business_category?: string | null
           city?: string | null
           created_at?: string | null
           email?: string | null

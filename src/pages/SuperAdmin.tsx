@@ -13,6 +13,7 @@ import {
   Package,
   Palette,
   Bell,
+  Store,
 } from 'lucide-react';
 import { PlanEditor } from '@/components/superadmin/PlanEditor';
 import { FeatureComparison } from '@/components/superadmin/FeatureComparison';
@@ -20,6 +21,7 @@ import { SubscribersManager } from '@/components/superadmin/SubscribersManager';
 import { PaymentGatewaysManager } from '@/components/superadmin/PaymentGatewaysManager';
 import { BrandingSettings } from '@/components/superadmin/BrandingSettings';
 import { TrialNotificationSettings } from '@/components/superadmin/TrialNotificationSettings';
+import { BusinessCategoryManager } from '@/components/superadmin/BusinessCategoryManager';
 import { useSubscribers } from '@/hooks/useSubscribers';
 
 export default function SuperAdmin() {
@@ -135,6 +137,10 @@ export default function SuperAdmin() {
             <Package className="h-4 w-4" />
             Planos
           </TabsTrigger>
+          <TabsTrigger value="categories" className="flex items-center gap-2">
+            <Store className="h-4 w-4" />
+            Categorias
+          </TabsTrigger>
           <TabsTrigger value="gateways" className="flex items-center gap-2">
             <CreditCard className="h-4 w-4" />
             Pagamentos
@@ -159,6 +165,10 @@ export default function SuperAdmin() {
 
         <TabsContent value="plans">
           <PlanEditor />
+        </TabsContent>
+
+        <TabsContent value="categories">
+          <BusinessCategoryManager />
         </TabsContent>
 
         <TabsContent value="gateways">
