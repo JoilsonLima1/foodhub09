@@ -25,6 +25,13 @@ export interface PublicCategory {
   display_order: number;
 }
 
+export interface TenantInfo {
+  id: string;
+  name: string;
+  whatsapp_number: string | null;
+  logo_url: string | null;
+}
+
 export function usePublicMenu(tenantSlug: string) {
   return useQuery({
     queryKey: ['public-menu', tenantSlug],
@@ -32,6 +39,15 @@ export function usePublicMenu(tenantSlug: string) {
       // For now, we'll use the tenant ID directly
       // In production, you'd resolve the slug to tenant ID
       const tenantId = tenantSlug;
+
+      // Fetch tenant info (name, whatsapp, logo)
+      const { data: tenant, error: tenantError } = await supabase
+        .from('tenants')
+        .select('id, name, whatsapp_number, logo_url')
+        .eq('id', tenantId)
+        .single();
+
+      if (tenantError) throw tenantError;
 
       // Fetch categories
       const { data: categories, error: categoriesError } = await supabase
@@ -89,6 +105,7 @@ export function usePublicMenu(tenantSlug: string) {
       }
 
       return {
+        tenant: tenant as TenantInfo,
         categories: categories as PublicCategory[],
         products: (products || []).map(p => ({
           id: p.id,
