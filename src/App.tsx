@@ -22,6 +22,8 @@ import CourierDashboard from "./pages/CourierDashboard";
 import SuperAdmin from "./pages/SuperAdmin";
 import CheckoutSuccess from "./pages/CheckoutSuccess";
 import NotFound from "./pages/NotFound";
+import Tables from "./pages/Tables";
+import PublicMenu from "./pages/PublicMenu";
 
 const queryClient = new QueryClient();
 
@@ -37,10 +39,14 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/checkout/success" element={<CheckoutSuccess />} />
             
+            {/* Public Menu - accessible without auth */}
+            <Route path="/menu/:tenantId" element={<PublicMenu />} />
+            
             <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/orders" element={<Orders />} />
               <Route path="/pos" element={<POS />} />
+              <Route path="/tables" element={<Tables />} />
               <Route path="/kitchen" element={<Kitchen />} />
               <Route path="/deliveries" element={<Deliveries />} />
               <Route path="/products" element={<Products />} />
