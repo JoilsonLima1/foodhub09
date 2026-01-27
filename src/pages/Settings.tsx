@@ -13,10 +13,12 @@ import {
   Shield,
   Users,
   Palette,
+  Plug2,
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PAYMENT_PROVIDER_LABELS } from '@/lib/constants';
 import { ThemeCustomizer } from '@/components/settings/ThemeCustomizer';
+import { IFoodIntegration } from '@/components/integrations/IFoodIntegration';
 
 export default function Settings() {
   const { profile, roles } = useAuth();
@@ -36,7 +38,7 @@ export default function Settings() {
       </div>
 
       <Tabs defaultValue="store" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6">
+        <TabsList className="grid w-full grid-cols-3 lg:grid-cols-7">
           <TabsTrigger value="store">
             <Store className="h-4 w-4 mr-2" />
             Loja
@@ -48,6 +50,10 @@ export default function Settings() {
           <TabsTrigger value="payments">
             <CreditCard className="h-4 w-4 mr-2" />
             Pagamentos
+          </TabsTrigger>
+          <TabsTrigger value="integrations">
+            <Plug2 className="h-4 w-4 mr-2" />
+            Integrações
           </TabsTrigger>
           <TabsTrigger value="notifications">
             <Bell className="h-4 w-4 mr-2" />
@@ -188,6 +194,11 @@ export default function Settings() {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        {/* Integrations */}
+        <TabsContent value="integrations">
+          <IFoodIntegration />
         </TabsContent>
 
         {/* Notifications Settings */}

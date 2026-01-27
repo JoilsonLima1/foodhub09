@@ -17,3 +17,9 @@ verify_jwt = false
 
 [functions.remove-background]
 verify_jwt = false
+
+[functions.ifood-webhook]
+verify_jwt = false
+
+[functions.ifood-api]
+verify_jwt = false

@@ -526,6 +526,242 @@ export type Database = {
           },
         ]
       }
+      ifood_integrations: {
+        Row: {
+          access_token: string | null
+          auto_accept_orders: boolean | null
+          client_id: string | null
+          client_secret: string | null
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          merchant_id: string | null
+          refresh_token: string | null
+          sync_menu: boolean | null
+          tenant_id: string
+          token_expires_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          access_token?: string | null
+          auto_accept_orders?: boolean | null
+          client_id?: string | null
+          client_secret?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          merchant_id?: string | null
+          refresh_token?: string | null
+          sync_menu?: boolean | null
+          tenant_id: string
+          token_expires_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          access_token?: string | null
+          auto_accept_orders?: boolean | null
+          client_id?: string | null
+          client_secret?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          merchant_id?: string | null
+          refresh_token?: string | null
+          sync_menu?: boolean | null
+          tenant_id?: string
+          token_expires_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ifood_integrations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ifood_logs: {
+        Row: {
+          created_at: string | null
+          direction: string
+          endpoint: string | null
+          error_message: string | null
+          event_type: string
+          id: string
+          request_data: Json | null
+          response_data: Json | null
+          status_code: number | null
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          direction: string
+          endpoint?: string | null
+          error_message?: string | null
+          event_type: string
+          id?: string
+          request_data?: Json | null
+          response_data?: Json | null
+          status_code?: number | null
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string | null
+          direction?: string
+          endpoint?: string | null
+          error_message?: string | null
+          event_type?: string
+          id?: string
+          request_data?: Json | null
+          response_data?: Json | null
+          status_code?: number | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ifood_logs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ifood_menu_mapping: {
+        Row: {
+          created_at: string | null
+          id: string
+          ifood_item_id: string | null
+          last_synced_at: string | null
+          product_id: string
+          sync_status: string | null
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          ifood_item_id?: string | null
+          last_synced_at?: string | null
+          product_id: string
+          sync_status?: string | null
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          ifood_item_id?: string | null
+          last_synced_at?: string | null
+          product_id?: string
+          sync_status?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ifood_menu_mapping_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ifood_menu_mapping_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ifood_orders: {
+        Row: {
+          created_at: string | null
+          customer_name: string | null
+          customer_phone: string | null
+          delivery_address: Json | null
+          delivery_fee: number | null
+          discount: number | null
+          id: string
+          ifood_order_id: string
+          ifood_short_id: string | null
+          items: Json
+          order_id: string | null
+          payment_method: string | null
+          raw_data: Json | null
+          scheduled_to: string | null
+          status: Database["public"]["Enums"]["ifood_order_status"] | null
+          subtotal: number | null
+          tenant_id: string
+          total: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          delivery_address?: Json | null
+          delivery_fee?: number | null
+          discount?: number | null
+          id?: string
+          ifood_order_id: string
+          ifood_short_id?: string | null
+          items: Json
+          order_id?: string | null
+          payment_method?: string | null
+          raw_data?: Json | null
+          scheduled_to?: string | null
+          status?: Database["public"]["Enums"]["ifood_order_status"] | null
+          subtotal?: number | null
+          tenant_id: string
+          total?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          delivery_address?: Json | null
+          delivery_fee?: number | null
+          discount?: number | null
+          id?: string
+          ifood_order_id?: string
+          ifood_short_id?: string | null
+          items?: Json
+          order_id?: string | null
+          payment_method?: string | null
+          raw_data?: Json | null
+          scheduled_to?: string | null
+          status?: Database["public"]["Enums"]["ifood_order_status"] | null
+          subtotal?: number | null
+          tenant_id?: string
+          total?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ifood_orders_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ifood_orders_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ifood_orders_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ingredients: {
         Row: {
           cost_per_unit: number | null
@@ -2017,6 +2253,16 @@ export type Database = {
         | "delivered"
         | "failed"
       fraud_alert_level: "low" | "medium" | "high" | "blocked"
+      ifood_order_status:
+        | "PLACED"
+        | "CONFIRMED"
+        | "INTEGRATED"
+        | "CANCELLED"
+        | "PREPARATION_STARTED"
+        | "READY_TO_PICKUP"
+        | "DISPATCHED"
+        | "DELIVERED"
+        | "CONCLUDED"
       order_origin: "online" | "pos" | "whatsapp" | "ifood" | "marketplace"
       order_status:
         | "pending_payment"
@@ -2193,6 +2439,17 @@ export const Constants = {
         "failed",
       ],
       fraud_alert_level: ["low", "medium", "high", "blocked"],
+      ifood_order_status: [
+        "PLACED",
+        "CONFIRMED",
+        "INTEGRATED",
+        "CANCELLED",
+        "PREPARATION_STARTED",
+        "READY_TO_PICKUP",
+        "DISPATCHED",
+        "DELIVERED",
+        "CONCLUDED",
+      ],
       order_origin: ["online", "pos", "whatsapp", "ifood", "marketplace"],
       order_status: [
         "pending_payment",
