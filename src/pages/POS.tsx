@@ -1,9 +1,9 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Calculator, Search, Scale, Scan } from 'lucide-react';
+import { Calculator, Search, Scale, Scan, CreditCard, Trash2 } from 'lucide-react';
 import { useProducts, useCategories, type Product, type ProductVariation } from '@/hooks/useProducts';
 import { useCreateOrder } from '@/hooks/useCreateOrder';
 import { ProductGrid } from '@/components/pos/ProductGrid';
@@ -13,8 +13,10 @@ import { ReceiptDialog } from '@/components/pos/ReceiptDialog';
 import { CustomerInfoDialog } from '@/components/pos/CustomerInfoDialog';
 import { ScaleDisplay } from '@/components/pos/ScaleDisplay';
 import { BarcodeScanner, QuickScanButton } from '@/components/pos/BarcodeScanner';
+import { KeyboardShortcutsBar, ShortcutInfo } from '@/components/pos/KeyboardShortcutsBar';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { useBarcodeScanner, BarcodeScanResult } from '@/hooks/useBarcodeScanner';
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import type { CartItem, PaymentMethod } from '@/types/database';
 import fallbackLogo from '@/assets/logo.png';
 import { toast } from '@/hooks/use-toast';
@@ -54,6 +56,58 @@ export default function POS() {
 
   // State for hardware integrations
   const [showScalePanel, setShowScalePanel] = useState(false);
+  const [showScannerDialog, setShowScannerDialog] = useState(false);
+  const scannerButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Keyboard shortcuts for POS operations
+  const shortcutDefinitions = useMemo(() => [
+    {
+      key: 'F2',
+      label: 'Leitor',
+      description: 'Abre o leitor de código de barras',
+      action: () => setShowScannerDialog(true),
+    },
+    {
+      key: 'F3',
+      label: 'Balança',
+      description: 'Mostra/oculta painel da balança',
+      action: () => setShowScalePanel(prev => !prev),
+    },
+    {
+      key: 'F4',
+      label: 'Pagamento',
+      description: 'Abre tela de pagamento',
+      action: () => {
+        if (cart.length > 0) setIsCustomerInfoOpen(true);
+      },
+      enabled: cart.length > 0,
+    },
+    {
+      key: 'F8',
+      label: 'Limpar',
+      description: 'Limpa o carrinho',
+      action: () => {
+        if (cart.length > 0) {
+          clearCart();
+          toast({ title: 'Carrinho limpo', description: 'Todos os itens foram removidos.' });
+        }
+      },
+      enabled: cart.length > 0,
+    },
+  ], [cart.length]);
+
+  useKeyboardShortcuts({
+    shortcuts: shortcutDefinitions,
+    enabled: !isPaymentOpen && !isCustomerInfoOpen && !isReceiptOpen,
+  });
+
+  // Shortcut info for display bar
+  const shortcutsDisplay: ShortcutInfo[] = useMemo(() => [
+    { key: 'F2', label: 'Leitor', description: 'Abre o leitor de código de barras', icon: <Scan className="h-3 w-3" /> },
+    { key: 'F3', label: 'Balança', description: 'Mostra/oculta painel da balança', icon: <Scale className="h-3 w-3" />, isActive: showScalePanel },
+    { key: 'F4', label: 'Pagar', description: 'Abre tela de pagamento', icon: <CreditCard className="h-3 w-3" /> },
+    { key: 'F8', label: 'Limpar', description: 'Limpa o carrinho', icon: <Trash2 className="h-3 w-3" /> },
+  ], [showScalePanel]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -226,6 +280,9 @@ export default function POS() {
           </Badge>
         </div>
 
+        {/* Keyboard Shortcuts Bar */}
+        <KeyboardShortcutsBar shortcuts={shortcutsDisplay} className="mb-3" />
+
         {/* Search and Hardware Controls */}
         <div className="space-y-3 mb-4">
           <div className="flex gap-2">
@@ -238,12 +295,16 @@ export default function POS() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <QuickScanButton onScan={handleBarcodeScan} />
+            <QuickScanButton 
+              onScan={handleBarcodeScan} 
+              isOpen={showScannerDialog}
+              onOpenChange={setShowScannerDialog}
+            />
             <Button
               variant={showScalePanel ? 'default' : 'outline'}
               size="icon"
               onClick={() => setShowScalePanel(!showScalePanel)}
-              title="Balança"
+              title="Balança (F3)"
             >
               <Scale className="h-4 w-4" />
             </Button>

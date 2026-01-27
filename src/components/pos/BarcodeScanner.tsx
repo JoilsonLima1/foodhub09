@@ -304,10 +304,15 @@ function CameraScannerDialog({ videoRef, isScanning, onClose, error }: CameraSca
 // Quick scan button for toolbar usage
 interface QuickScanButtonProps {
   onScan: (result: BarcodeScanResult) => void;
+  isOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function QuickScanButton({ onScan }: QuickScanButtonProps) {
-  const [isOpen, setIsOpen] = useState(false);
+export function QuickScanButton({ onScan, isOpen: controlledOpen, onOpenChange }: QuickScanButtonProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  
+  const isOpen = controlledOpen ?? internalOpen;
+  const setIsOpen = onOpenChange ?? setInternalOpen;
   
   const handleScan = (result: BarcodeScanResult) => {
     onScan(result);
@@ -317,7 +322,7 @@ export function QuickScanButton({ onScan }: QuickScanButtonProps) {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="icon">
+        <Button variant="outline" size="icon" title="Leitor de Código (F2)">
           <QrCode className="h-4 w-4" />
         </Button>
       </DialogTrigger>
