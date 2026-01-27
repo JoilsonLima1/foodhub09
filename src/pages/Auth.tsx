@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePublicSettings } from '@/hooks/usePublicSettings';
@@ -30,7 +30,7 @@ const signupSchema = z.object({
 export default function AuthPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { signIn, signUp, user } = useAuth();
+  const { signIn, signUp, user, isLoading: authLoading } = useAuth();
   const { branding } = usePublicSettings();
   
   const [isLoading, setIsLoading] = useState(false);
@@ -50,22 +50,39 @@ export default function AuthPage() {
   const logoUrl = branding.logo_url || fallbackLogo;
   const companyName = branding.company_name || 'FoodHub09';
 
-  // Workaround: se o usuário foi parar em /auth sem intenção (sem ?intent, ?plan ou state.from),
-  // redirecionamos para a Landing. Isso cobre redirecionamentos externos indesejados.
+  // Check intent params
   const searchParams = new URLSearchParams(location.search);
   const hasIntent = searchParams.has('intent') || searchParams.has('plan');
   const hasFromState = !!location.state?.from;
 
-  if (!user && !hasIntent && !hasFromState) {
-    // Usuário não logado, chegou direto em /auth sem ação própria → Landing
-    navigate('/', { replace: true });
-    return null;
+  // Handle redirects in useEffect to avoid loops
+  useEffect(() => {
+    if (authLoading) return; // Wait for auth state to be determined
+    
+    // Redirect to landing if no intent and not logged in
+    if (!user && !hasIntent && !hasFromState) {
+      navigate('/', { replace: true });
+      return;
+    }
+    
+    // Redirect to dashboard if already logged in
+    if (user) {
+      const from = location.state?.from?.pathname || '/dashboard';
+      navigate(from, { replace: true });
+    }
+  }, [user, authLoading, hasIntent, hasFromState, navigate, location.state]);
+
+  // Show loading while auth is being determined
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
   }
 
-  // Redirect if already logged in
+  // Don't render form if user is logged in (redirect will happen in useEffect)
   if (user) {
-    const from = location.state?.from?.pathname || '/dashboard';
-    navigate(from, { replace: true });
     return null;
   }
 
