@@ -162,8 +162,19 @@ export default function Landing() {
         </div>
       </header>
 
+      {/* Highlight Banner */}
+      <section className="pt-20 mt-16">
+        <div className="bg-gradient-to-r from-primary via-primary to-primary/80 py-4 px-4">
+          <div className="container mx-auto max-w-6xl text-center">
+            <p className="text-lg md:text-xl font-bold text-primary-foreground animate-pulse">
+              🎁 Tenha em seu restaurante, pizzaria ou lanchonete o <span className="underline decoration-2">MELHOR SISTEMA DO MERCADO</span> — <span className="text-2xl md:text-3xl">GRÁTIS</span>, sem pegadinha!
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* Hero Section */}
-      <section className="pt-32 pb-20 px-4">
+      <section className="pt-12 pb-20 px-4">
         <div className="container mx-auto max-w-6xl text-center">
           <Badge variant="outline" className="mb-6 border-primary text-primary">
             <Star className="h-3 w-3 mr-1 fill-primary" />
