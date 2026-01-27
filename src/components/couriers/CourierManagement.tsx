@@ -311,14 +311,14 @@ export function CourierManagement() {
               <div className="space-y-2">
                 <Label htmlFor="user_id">Vincular a Usuário (para acesso ao App)</Label>
                 <Select
-                  value={formData.user_id}
-                  onValueChange={(value) => setFormData({ ...formData, user_id: value })}
+                  value={formData.user_id || "none"}
+                  onValueChange={(value) => setFormData({ ...formData, user_id: value === "none" ? "" : value })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione um usuário (opcional)" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Nenhum</SelectItem>
+                    <SelectItem value="none">Nenhum</SelectItem>
                     {users.map((user) => (
                       <SelectItem key={user.id} value={user.id}>
                         {user.full_name}
