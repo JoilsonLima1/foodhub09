@@ -14,20 +14,15 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   DialogFooter,
 } from '@/components/ui/dialog';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { 
   Save, 
   Plus, 
@@ -37,22 +32,27 @@ import {
   Package, 
   BarChart3,
   Zap,
-  Check,
-  X,
   Infinity,
   DollarSign,
   Pencil,
+  MoreVertical,
+  Power,
+  PowerOff,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { useSubscriptionPlans, PLAN_FEATURES } from '@/hooks/useSubscriptionPlans';
+import { PasswordConfirmDialog } from './PasswordConfirmDialog';
 import type { SubscriptionPlan } from '@/types/database';
 
 interface PlanCardProps {
   plan: SubscriptionPlan;
   onEdit: (plan: SubscriptionPlan) => void;
-  onDelete: (id: string) => void;
+  onDelete: (plan: SubscriptionPlan) => void;
+  onToggleActive: (plan: SubscriptionPlan) => void;
 }
 
-function PlanCard({ plan, onEdit, onDelete }: PlanCardProps) {
+function PlanCard({ plan, onEdit, onDelete, onToggleActive }: PlanCardProps) {
   const formatLimit = (value: number) => {
     return value === -1 ? <Infinity className="h-4 w-4" /> : value;
   };
@@ -62,44 +62,50 @@ function PlanCard({ plan, onEdit, onDelete }: PlanCardProps) {
   ).length;
 
   return (
-    <Card className={`relative ${!plan.is_active ? 'opacity-60' : ''}`}>
+    <Card className={`relative ${!plan.is_active ? 'opacity-60 border-dashed' : ''}`}>
       {!plan.is_active && (
-        <Badge variant="secondary" className="absolute top-2 right-2">
+        <Badge variant="secondary" className="absolute top-2 right-12">
+          <EyeOff className="h-3 w-3 mr-1" />
           Inativo
         </Badge>
       )}
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <CardTitle className="text-xl">{plan.name}</CardTitle>
-          <div className="flex gap-2">
-            <Button variant="ghost" size="icon" onClick={() => onEdit(plan)}>
-              <Pencil className="h-4 w-4" />
-            </Button>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Remover plano?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Esta ação não pode ser desfeita. Tenants com este plano precisarão ser migrados.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                  <AlertDialogAction 
-                    onClick={() => onDelete(plan.id)}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  >
-                    Remover
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => onEdit(plan)}>
+                <Pencil className="h-4 w-4 mr-2" />
+                Editar
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onToggleActive(plan)}>
+                {plan.is_active ? (
+                  <>
+                    <PowerOff className="h-4 w-4 mr-2" />
+                    Desativar
+                  </>
+                ) : (
+                  <>
+                    <Power className="h-4 w-4 mr-2" />
+                    Ativar
+                  </>
+                )}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem 
+                onClick={() => onDelete(plan)}
+                className="text-destructive focus:text-destructive"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Excluir
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
         <CardDescription>{plan.description}</CardDescription>
       </CardHeader>
@@ -137,6 +143,23 @@ function PlanCard({ plan, onEdit, onDelete }: PlanCardProps) {
         <div className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground">Recursos incluídos</span>
           <Badge variant="secondary">{featureCount} de {PLAN_FEATURES.filter(f => f.type === 'boolean').length}</Badge>
+        </div>
+
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-muted-foreground">Visibilidade</span>
+          <Badge variant={plan.is_active ? 'default' : 'outline'}>
+            {plan.is_active ? (
+              <>
+                <Eye className="h-3 w-3 mr-1" />
+                Público
+              </>
+            ) : (
+              <>
+                <EyeOff className="h-3 w-3 mr-1" />
+                Oculto
+              </>
+            )}
+          </Badge>
         </div>
 
         {plan.stripe_price_id && (
@@ -190,7 +213,6 @@ function EditPlanDialog({ plan, open, onOpenChange, onSave, isLoading }: EditPla
 
   const [formData, setFormData] = useState<Partial<SubscriptionPlan>>(getDefaultFormData);
 
-  // Reset form when plan changes or dialog opens
   useEffect(() => {
     if (open) {
       setFormData(plan || getDefaultFormData());
@@ -295,7 +317,7 @@ function EditPlanDialog({ plan, open, onOpenChange, onSave, isLoading }: EditPla
                 />
               </div>
               <div className="flex items-center justify-between pt-6">
-                <Label htmlFor="active">Plano Ativo</Label>
+                <Label htmlFor="active">Plano Ativo (visível na loja)</Label>
                 <Switch
                   id="active"
                   checked={formData.is_active}
@@ -409,6 +431,9 @@ export function PlanEditor() {
   const { plans, isLoading, updatePlan, createPlan, deletePlan } = useSubscriptionPlans();
   const [editingPlan, setEditingPlan] = useState<SubscriptionPlan | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [planToDelete, setPlanToDelete] = useState<SubscriptionPlan | null>(null);
+  const [showInactive, setShowInactive] = useState(true);
 
   const handleEdit = (plan: SubscriptionPlan) => {
     setEditingPlan(plan);
@@ -432,9 +457,26 @@ export function PlanEditor() {
     }
   };
 
-  const handleDelete = (id: string) => {
-    deletePlan.mutate(id);
+  const handleDeleteRequest = (plan: SubscriptionPlan) => {
+    setPlanToDelete(plan);
+    setDeleteConfirmOpen(true);
   };
+
+  const handleDeleteConfirm = () => {
+    if (planToDelete) {
+      deletePlan.mutate(planToDelete.id);
+      setPlanToDelete(null);
+    }
+  };
+
+  const handleToggleActive = (plan: SubscriptionPlan) => {
+    updatePlan.mutate({
+      id: plan.id,
+      is_active: !plan.is_active,
+    });
+  };
+
+  const filteredPlans = plans?.filter(plan => showInactive || plan.is_active);
 
   if (isLoading) {
     return (
@@ -453,19 +495,32 @@ export function PlanEditor() {
             Configure os planos de assinatura e seus recursos
           </p>
         </div>
-        <Button onClick={handleCreate}>
-          <Plus className="h-4 w-4 mr-2" />
-          Novo Plano
-        </Button>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <Switch
+              id="show-inactive"
+              checked={showInactive}
+              onCheckedChange={setShowInactive}
+            />
+            <Label htmlFor="show-inactive" className="text-sm">
+              Mostrar inativos
+            </Label>
+          </div>
+          <Button onClick={handleCreate}>
+            <Plus className="h-4 w-4 mr-2" />
+            Novo Plano
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {plans?.map((plan) => (
+        {filteredPlans?.map((plan) => (
           <PlanCard
             key={plan.id}
             plan={plan}
             onEdit={handleEdit}
-            onDelete={handleDelete}
+            onDelete={handleDeleteRequest}
+            onToggleActive={handleToggleActive}
           />
         ))}
       </div>
@@ -476,6 +531,16 @@ export function PlanEditor() {
         onOpenChange={setDialogOpen}
         onSave={handleSave}
         isLoading={updatePlan.isPending || createPlan.isPending}
+      />
+
+      <PasswordConfirmDialog
+        open={deleteConfirmOpen}
+        onOpenChange={setDeleteConfirmOpen}
+        onConfirm={handleDeleteConfirm}
+        title="Excluir Plano"
+        description={`Você está prestes a excluir o plano "${planToDelete?.name}". Esta ação não pode ser desfeita e tenants com este plano precisarão ser migrados.`}
+        confirmLabel="Excluir Plano"
+        isLoading={deletePlan.isPending}
       />
     </div>
   );
