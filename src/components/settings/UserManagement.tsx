@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useUserManagement, TenantUser } from '@/hooks/useUserManagement';
+import { useTenantUserManagement, TenantUser } from '@/hooks/useTenantUserManagement';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -172,7 +172,7 @@ export function UserManagement() {
     updateUser, 
     deleteUser,
     toggleUserStatus,
-  } = useUserManagement();
+  } = useTenantUserManagement();
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
