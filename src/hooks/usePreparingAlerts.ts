@@ -37,8 +37,9 @@ export function usePreparingAlerts() {
     try {
       const thresholdTime = new Date(Date.now() - ALERT_THRESHOLD_MINUTES * 60 * 1000).toISOString();
 
+      // Use orders_safe view for PII masking based on user roles
       const { data: stuckOrders } = await supabase
-        .from('orders')
+        .from('orders_safe')
         .select('id, order_number, customer_name, updated_at')
         .eq('tenant_id', tenantId)
         .eq('status', 'preparing')

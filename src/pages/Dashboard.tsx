@@ -38,8 +38,9 @@ export default function Dashboard() {
       }
 
       try {
+        // Use orders_safe view for PII masking based on user roles
         const { data: recent } = await supabase
-          .from('orders')
+          .from('orders_safe')
           .select('id, order_number, customer_name, total, status, origin, created_at')
           .eq('tenant_id', tenantId)
           .order('created_at', { ascending: false })

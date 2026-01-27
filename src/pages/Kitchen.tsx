@@ -41,8 +41,9 @@ export default function Kitchen() {
     if (!tenantId) return;
 
     try {
+      // Use orders_safe view for PII masking (kitchen role gets masked customer data)
       const { data, error } = await supabase
-        .from('orders')
+        .from('orders_safe')
         .select(`
           id,
           order_number,
