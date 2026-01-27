@@ -150,7 +150,7 @@ export default function AuthPage() {
             <img 
               src={logoUrl} 
               alt={`${companyName} Logo`} 
-              className="h-24 w-auto cursor-pointer object-contain" 
+              className="h-36 w-auto cursor-pointer object-contain" 
               onClick={() => navigate('/')} 
             />
           </div>
