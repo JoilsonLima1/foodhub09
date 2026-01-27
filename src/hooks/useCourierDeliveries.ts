@@ -194,8 +194,9 @@ export function useCourierDeliveries() {
           // Verificar se é uma nova entrega para este courier
           if (newDelivery.courier_id === courierId && !previousDeliveryIdsRef.current.has(newDelivery.id)) {
             // Buscar detalhes do pedido para a notificação
+            // Use orders_safe view for PII masking (delivery role can see customer data)
             const { data: order } = await supabase
-              .from('orders')
+              .from('orders_safe')
               .select('order_number, customer_name, delivery_address')
               .eq('id', newDelivery.order_id)
               .single();

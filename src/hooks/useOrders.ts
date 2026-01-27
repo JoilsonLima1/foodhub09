@@ -43,8 +43,9 @@ export function useOrders(dateFilter?: 'today' | 'week' | 'month') {
     queryFn: async (): Promise<OrderWithDetails[]> => {
       if (!tenantId) return [];
 
+      // Use orders_safe view for PII masking based on user roles
       let query = supabase
-        .from('orders')
+        .from('orders_safe')
         .select(`
           id,
           order_number,
