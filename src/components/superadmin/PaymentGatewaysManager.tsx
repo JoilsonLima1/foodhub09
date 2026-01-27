@@ -38,6 +38,7 @@ const gatewayProviders = [
   { value: 'stripe', label: 'Stripe' },
   { value: 'mercadopago', label: 'Mercado Pago' },
   { value: 'pagseguro', label: 'PagSeguro' },
+  { value: 'asaas', label: 'Asaas' },
   { value: 'pix', label: 'PIX Manual' },
   { value: 'stone', label: 'Stone' },
   { value: 'cielo', label: 'Cielo' },
