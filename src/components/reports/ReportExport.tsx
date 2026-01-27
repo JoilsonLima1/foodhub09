@@ -57,6 +57,7 @@ interface ReportExportProps {
   cmvReport?: CMVReport | null;
   topProducts?: TopProduct[];
   period: number;
+  companyName?: string;
 }
 
 const formatCurrency = (value: number) =>
@@ -65,11 +66,12 @@ const formatCurrency = (value: number) =>
     currency: 'BRL',
   }).format(value);
 
-export function ReportExport({ salesReport, cmvReport, topProducts, period }: ReportExportProps) {
+export function ReportExport({ salesReport, cmvReport, topProducts, period, companyName = 'FoodHub09' }: ReportExportProps) {
   const exportToCSV = () => {
     const lines: string[] = [];
     
-    // Header
+    // Header with company name
+    lines.push(companyName);
     lines.push(`Relatório de Vendas - Últimos ${period} dias`);
     lines.push(`Gerado em: ${new Date().toLocaleString('pt-BR')}`);
     lines.push('');
@@ -135,6 +137,7 @@ export function ReportExport({ salesReport, cmvReport, topProducts, period }: Re
 
   const exportToJSON = () => {
     const data = {
+      company: companyName,
       generatedAt: new Date().toISOString(),
       period: `${period} dias`,
       sales: salesReport,

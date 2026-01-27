@@ -148,9 +148,9 @@ export default function Landing() {
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 border-b border-border bg-background/80 backdrop-blur-md">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <img src={logoUrl} alt={companyName} className="h-8 w-auto" />
-            <span className="text-xl font-bold text-primary">{companyName}</span>
+          <div className="flex items-center gap-3">
+            <img src={logoUrl} alt={companyName} className="h-14 w-auto" />
+            <span className="text-2xl font-bold text-primary">{companyName}</span>
           </div>
           <div className="flex items-center gap-4">
             <Button variant="ghost" onClick={() => navigate('/auth?intent=login')}>
@@ -370,9 +370,9 @@ export default function Landing() {
       <footer className="py-8 px-4 border-t border-border">
         <div className="container mx-auto max-w-6xl">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <img src={logoUrl} alt={companyName} className="h-6 w-auto" />
-              <span className="font-bold text-primary">{companyName}</span>
+            <div className="flex items-center gap-3">
+              <img src={logoUrl} alt={companyName} className="h-10 w-auto" />
+              <span className="text-lg font-bold text-primary">{companyName}</span>
             </div>
             <p className="text-sm text-muted-foreground">
               © {new Date().getFullYear()} {companyName}. Todos os direitos reservados.

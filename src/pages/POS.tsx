@@ -11,7 +11,9 @@ import { CartPanel } from '@/components/pos/CartPanel';
 import { PaymentDialog } from '@/components/pos/PaymentDialog';
 import { ReceiptDialog } from '@/components/pos/ReceiptDialog';
 import { CustomerInfoDialog } from '@/components/pos/CustomerInfoDialog';
+import { useSystemSettings } from '@/hooks/useSystemSettings';
 import type { CartItem, PaymentMethod } from '@/types/database';
+import fallbackLogo from '@/assets/logo.png';
 
 interface CompletedOrder {
   orderNumber: number;
@@ -26,6 +28,12 @@ export default function POS() {
   const { data: products = [], isLoading: isLoadingProducts } = useProducts();
   const { data: categories = [], isLoading: isLoadingCategories } = useCategories();
   const createOrder = useCreateOrder();
+  const { settings } = useSystemSettings();
+  
+  // Get branding from system settings
+  const branding = settings?.branding as { logo_url?: string; company_name?: string } | undefined;
+  const tenantLogoUrl = branding?.logo_url || fallbackLogo;
+  const tenantCompanyName = branding?.company_name || 'FoodHub09';
 
   const [cart, setCart] = useState<CartItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -268,7 +276,8 @@ export default function POS() {
           total={completedOrder.total}
           paymentMethod={completedOrder.paymentMethod}
           cashierName={profile?.full_name || 'Operador'}
-          tenantName="FoodHub09"
+          tenantName={tenantCompanyName}
+          tenantLogo={tenantLogoUrl}
         />
       )}
     </div>
