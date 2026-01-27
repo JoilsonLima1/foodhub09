@@ -38,7 +38,15 @@ export interface AnalyticsSettings {
   facebook_pixel_id: string | null;
 }
 
-type SettingKey = 'branding' | 'colors' | 'whatsapp' | 'trial_period' | 'landing_layout' | 'analytics';
+export interface TrialNotificationSettings {
+  days_before_expiration: number;
+  show_frequency_hours: number;
+  banner_image_url: string | null;
+  banner_type: 'info' | 'warning' | 'critical';
+  show_expiration_datetime: boolean;
+}
+
+type SettingKey = 'branding' | 'colors' | 'whatsapp' | 'trial_period' | 'landing_layout' | 'analytics' | 'trial_notifications';
 
 type SettingsMap = {
   branding?: BrandingSettings;
@@ -47,11 +55,12 @@ type SettingsMap = {
   trial_period?: TrialSettings;
   landing_layout?: LandingLayoutSettings;
   analytics?: AnalyticsSettings;
+  trial_notifications?: TrialNotificationSettings;
 };
 
 interface UpdateSettingParams {
   key: SettingKey;
-  value: BrandingSettings | ColorSettings | WhatsAppSettings | TrialSettings | LandingLayoutSettings | AnalyticsSettings;
+  value: BrandingSettings | ColorSettings | WhatsAppSettings | TrialSettings | LandingLayoutSettings | AnalyticsSettings | TrialNotificationSettings;
 }
 
 export function useSystemSettings() {
@@ -85,6 +94,8 @@ export function useSystemSettings() {
           settingsMap.landing_layout = value as unknown as LandingLayoutSettings;
         } else if (key === 'analytics') {
           settingsMap.analytics = value as unknown as AnalyticsSettings;
+        } else if (key === 'trial_notifications') {
+          settingsMap.trial_notifications = value as unknown as TrialNotificationSettings;
         }
       });
 
@@ -131,5 +142,6 @@ export function useSystemSettings() {
     trialPeriod: settings?.trial_period,
     landingLayout: settings?.landing_layout,
     analytics: settings?.analytics,
+    trialNotifications: settings?.trial_notifications,
   };
 }

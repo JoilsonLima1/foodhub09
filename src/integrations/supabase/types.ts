@@ -2261,6 +2261,27 @@ export type Database = {
         }
         Relationships: []
       }
+      trial_notification_dismissals: {
+        Row: {
+          dismissed_at: string
+          id: string
+          trial_end_date: string
+          user_id: string
+        }
+        Insert: {
+          dismissed_at?: string
+          id?: string
+          trial_end_date: string
+          user_id: string
+        }
+        Update: {
+          dismissed_at?: string
+          id?: string
+          trial_end_date?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string | null
