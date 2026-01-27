@@ -65,14 +65,24 @@ const ROLE_LABELS: Record<AppRole, string> = {
   super_admin: 'Super Admin',
 };
 
+const ROLE_DESCRIPTIONS: Record<AppRole, string> = {
+  admin: 'Acesso total ao sistema',
+  manager: 'Gerencia equipe e operações',
+  cashier: 'Opera o PDV e pagamentos',
+  kitchen: 'Visualiza e gerencia pedidos',
+  stock: 'Controle de estoque e insumos',
+  delivery: 'Gerencia entregas atribuídas',
+  super_admin: 'Administração do SaaS',
+};
+
 const ROLE_COLORS: Record<AppRole, string> = {
-  admin: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-  manager: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-  cashier: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-  kitchen: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
-  stock: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
-  delivery: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
-  super_admin: 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200',
+  admin: 'bg-destructive/10 text-destructive border-destructive/20',
+  manager: 'bg-primary/10 text-primary border-primary/20',
+  cashier: 'bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20',
+  kitchen: 'bg-orange-500/10 text-orange-700 dark:text-orange-400 border-orange-500/20',
+  stock: 'bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-500/20',
+  delivery: 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border-yellow-500/20',
+  super_admin: 'bg-pink-500/10 text-pink-700 dark:text-pink-400 border-pink-500/20',
 };
 
 const ASSIGNABLE_ROLES: AppRole[] = ['admin', 'manager', 'cashier', 'kitchen', 'stock', 'delivery'];
@@ -275,14 +285,15 @@ export function UserManagement() {
                         {user.roles.map(role => (
                           <Badge 
                             key={role} 
-                            variant="secondary"
+                            variant="outline"
                             className={ROLE_COLORS[role]}
+                            title={ROLE_DESCRIPTIONS[role]}
                           >
                             {ROLE_LABELS[role]}
                           </Badge>
                         ))}
                         {user.roles.length === 0 && (
-                          <span className="text-sm text-muted-foreground">Sem permissões</span>
+                          <span className="text-sm text-muted-foreground italic">Sem permissões</span>
                         )}
                       </div>
                     </TableCell>
@@ -396,20 +407,31 @@ export function UserManagement() {
             </div>
             <div className="space-y-2">
               <Label>Permissões</Label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto p-1">
                 {ASSIGNABLE_ROLES.map(role => (
-                  <div key={role} className="flex items-center space-x-2">
+                  <div 
+                    key={role} 
+                    className={`flex items-center space-x-3 p-2 rounded-md border cursor-pointer transition-colors ${
+                      createForm.roles.includes(role) 
+                        ? 'bg-primary/5 border-primary' 
+                        : 'border-border hover:bg-muted/50'
+                    }`}
+                    onClick={() => toggleRole(role, 'create')}
+                  >
                     <Checkbox
                       id={`create-role-${role}`}
                       checked={createForm.roles.includes(role)}
                       onCheckedChange={() => toggleRole(role, 'create')}
                     />
-                    <Label 
-                      htmlFor={`create-role-${role}`} 
-                      className="text-sm font-normal cursor-pointer"
-                    >
-                      {ROLE_LABELS[role]}
-                    </Label>
+                    <div className="flex-1">
+                      <Label 
+                        htmlFor={`create-role-${role}`} 
+                        className="text-sm font-medium cursor-pointer"
+                      >
+                        {ROLE_LABELS[role]}
+                      </Label>
+                      <p className="text-xs text-muted-foreground">{ROLE_DESCRIPTIONS[role]}</p>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -458,20 +480,31 @@ export function UserManagement() {
             </div>
             <div className="space-y-2">
               <Label>Permissões</Label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto p-1">
                 {ASSIGNABLE_ROLES.map(role => (
-                  <div key={role} className="flex items-center space-x-2">
+                  <div 
+                    key={role} 
+                    className={`flex items-center space-x-3 p-2 rounded-md border cursor-pointer transition-colors ${
+                      editForm.roles.includes(role) 
+                        ? 'bg-primary/5 border-primary' 
+                        : 'border-border hover:bg-muted/50'
+                    }`}
+                    onClick={() => toggleRole(role, 'edit')}
+                  >
                     <Checkbox
                       id={`edit-role-${role}`}
                       checked={editForm.roles.includes(role)}
                       onCheckedChange={() => toggleRole(role, 'edit')}
                     />
-                    <Label 
-                      htmlFor={`edit-role-${role}`} 
-                      className="text-sm font-normal cursor-pointer"
-                    >
-                      {ROLE_LABELS[role]}
-                    </Label>
+                    <div className="flex-1">
+                      <Label 
+                        htmlFor={`edit-role-${role}`} 
+                        className="text-sm font-medium cursor-pointer"
+                      >
+                        {ROLE_LABELS[role]}
+                      </Label>
+                      <p className="text-xs text-muted-foreground">{ROLE_DESCRIPTIONS[role]}</p>
+                    </div>
                   </div>
                 ))}
               </div>
