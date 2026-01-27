@@ -294,9 +294,16 @@ export function UserManagement() {
   if (isLoading) {
     return (
       <Card>
-        <CardHeader>
-          <Skeleton className="h-6 w-48" />
-          <Skeleton className="h-4 w-72 mt-2" />
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Gerenciamento de Usuários
+            </CardTitle>
+            <CardDescription>
+              Carregando usuários...
+            </CardDescription>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
