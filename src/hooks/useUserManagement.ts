@@ -48,8 +48,15 @@ export function useUserManagement() {
   }, []);
 
   const fetchUsers = useCallback(async () => {
-    if (!tenantId || !canManageUsers) {
+    // If user doesn't have permission, just set loading to false - UI will show appropriate message
+    if (!canManageUsers) {
       setIsLoading(false);
+      return;
+    }
+
+    // If tenantId is not yet loaded, wait for it
+    if (tenantId === null) {
+      // Keep loading state while waiting for tenantId to be resolved
       return;
     }
 
@@ -62,7 +69,10 @@ export function useUserManagement() {
         .select('id, user_id, full_name, phone, avatar_url, is_active, created_at')
         .eq('tenant_id', tenantId);
 
-      if (profilesError) throw profilesError;
+      if (profilesError) {
+        console.error('[useUserManagement] Profiles error:', profilesError);
+        throw profilesError;
+      }
 
       if (!profiles || profiles.length === 0) {
         setUsers([]);
@@ -79,7 +89,10 @@ export function useUserManagement() {
         .eq('tenant_id', tenantId)
         .in('user_id', userIds);
 
-      if (rolesError) throw rolesError;
+      if (rolesError) {
+        console.error('[useUserManagement] Roles error:', rolesError);
+        throw rolesError;
+      }
 
       // Group roles by user
       const rolesByUser: Record<string, AppRole[]> = {};
@@ -101,7 +114,10 @@ export function useUserManagement() {
         headers: authHeaders,
       });
 
-      if (emailsError) throw emailsError;
+      if (emailsError) {
+        console.error('[useUserManagement] Emails fetch error:', emailsError);
+        throw emailsError;
+      }
 
       const emailsByUser: Record<string, string> = emailsData?.emails || {};
 
@@ -118,11 +134,12 @@ export function useUserManagement() {
       }));
 
       setUsers(combinedUsers);
-    } catch (error) {
-      console.error('Error fetching users:', error);
+    } catch (error: any) {
+      console.error('[useUserManagement] Error fetching users:', error);
+      const message = error?.message || 'Não foi possível carregar os usuários';
       toast({
-        title: 'Erro',
-        description: 'Não foi possível carregar os usuários',
+        title: 'Erro ao carregar usuários',
+        description: message,
         variant: 'destructive',
       });
     } finally {
