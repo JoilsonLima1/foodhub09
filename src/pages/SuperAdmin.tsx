@@ -12,13 +12,14 @@ import {
   AlertTriangle,
   Package,
   Palette,
-  Settings2,
+  Bell,
 } from 'lucide-react';
 import { PlanEditor } from '@/components/superadmin/PlanEditor';
 import { FeatureComparison } from '@/components/superadmin/FeatureComparison';
 import { SubscribersManager } from '@/components/superadmin/SubscribersManager';
 import { PaymentGatewaysManager } from '@/components/superadmin/PaymentGatewaysManager';
 import { BrandingSettings } from '@/components/superadmin/BrandingSettings';
+import { TrialNotificationSettings } from '@/components/superadmin/TrialNotificationSettings';
 import { useSubscribers } from '@/hooks/useSubscribers';
 
 export default function SuperAdmin() {
@@ -142,6 +143,10 @@ export default function SuperAdmin() {
             <Palette className="h-4 w-4" />
             Branding
           </TabsTrigger>
+          <TabsTrigger value="notifications" className="flex items-center gap-2">
+            <Bell className="h-4 w-4" />
+            Notificações
+          </TabsTrigger>
           <TabsTrigger value="comparison" className="flex items-center gap-2">
             <BarChart3 className="h-4 w-4" />
             Comparativo
@@ -162,6 +167,10 @@ export default function SuperAdmin() {
 
         <TabsContent value="branding">
           <BrandingSettings />
+        </TabsContent>
+
+        <TabsContent value="notifications">
+          <TrialNotificationSettings />
         </TabsContent>
 
         <TabsContent value="comparison">
