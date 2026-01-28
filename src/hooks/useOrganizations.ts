@@ -203,14 +203,11 @@ export function useOrganizations() {
       if (res.error) throw res.error;
       if (res.data?.error) throw new Error(res.data.error);
 
-      // Optimistic update: remove from list immediately
-      setOrganizations(prev => prev.filter(org => org.id !== organizationId));
+    // Update list immediately - no refetch needed since delete was successful
+    setOrganizations(prev => prev.filter(org => org.id !== organizationId));
 
-      toast({ title: "Sucesso", description: "Organização excluída permanentemente" });
-      
-      // Also refetch to ensure consistency with server
-      await fetchOrganizations();
-      return true;
+    toast({ title: "Sucesso", description: "Organização excluída permanentemente" });
+    return true;
     } catch (error: any) {
       console.error("[useOrganizations] Error deleting:", error);
       toast({
