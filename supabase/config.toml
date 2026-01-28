@@ -32,3 +32,6 @@ verify_jwt = false
 
 [functions.debug-redirect]
 verify_jwt = false
+
+[functions.manage-organizations]
+verify_jwt = false
