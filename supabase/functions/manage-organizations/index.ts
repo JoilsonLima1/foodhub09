@@ -229,6 +229,25 @@ serve(async (req) => {
           );
         }
 
+        // =========================================================================
+        // CRITICAL SECURITY CHECK: Prevent super admin from deleting their own org
+        // =========================================================================
+        const { data: currentUserProfile } = await supabaseAdmin
+          .from('profiles')
+          .select('tenant_id')
+          .eq('user_id', user.id)
+          .single();
+
+        if (currentUserProfile?.tenant_id === organizationId) {
+          console.error('[manage-organizations] BLOCKED: Super admin attempted to delete their own organization');
+          return new Response(
+            JSON.stringify({ 
+              error: 'Você não pode excluir sua própria organização. Para isso, transfira seu usuário para outra organização primeiro.' 
+            }),
+            { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
         console.log(`[manage-organizations] Starting permanent deletion of organization: ${organizationId}`);
 
         // Get all users from this organization
@@ -239,14 +258,50 @@ serve(async (req) => {
 
         const userIds = profiles?.map(p => p.user_id) || [];
 
-        // Delete in order to respect foreign keys
-        // 1. Delete user_roles for users in this org
+        // =========================================================================
+        // SAFETY: Filter out super_admin users - they should NEVER be deleted
+        // =========================================================================
+        const safeUserIds: string[] = [];
+        const protectedUsers: string[] = [];
+
         for (const uid of userIds) {
+          const { data: userRoles } = await supabaseAdmin
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', uid);
+
+          const hasSuperAdmin = (userRoles ?? []).some((r: any) => r.role === 'super_admin');
+          
+          if (hasSuperAdmin) {
+            protectedUsers.push(uid);
+            console.log(`[manage-organizations] PROTECTED: Super admin user ${uid} will NOT be deleted`);
+          } else {
+            safeUserIds.push(uid);
+          }
+        }
+
+        // Delete in order to respect foreign keys
+        // 1. Delete user_roles for SAFE users only (not super admins)
+        for (const uid of safeUserIds) {
           await supabaseAdmin.from('user_roles').delete().eq('user_id', uid);
         }
 
-        // 2. Delete profiles
-        await supabaseAdmin.from('profiles').delete().eq('tenant_id', organizationId);
+        // 2. Delete profiles for SAFE users only
+        for (const uid of safeUserIds) {
+          await supabaseAdmin.from('profiles').delete().eq('user_id', uid);
+        }
+
+        // If there are protected super admin users, move them to a different tenant or orphan them
+        if (protectedUsers.length > 0) {
+          console.log(`[manage-organizations] Orphaning ${protectedUsers.length} super admin profile(s) from deleted org`);
+          for (const uid of protectedUsers) {
+            // Set tenant_id to NULL - super admin will need to be reassigned
+            await supabaseAdmin
+              .from('profiles')
+              .update({ tenant_id: null })
+              .eq('user_id', uid);
+          }
+        }
 
         // 3. Delete related data (order by dependency)
         const tablesToClean = [
@@ -307,8 +362,8 @@ serve(async (req) => {
           );
         }
 
-        // 5. Delete auth users
-        for (const uid of userIds) {
+        // 5. Delete auth users (ONLY safe users, never super admins)
+        for (const uid of safeUserIds) {
           try {
             await supabaseAdmin.auth.admin.deleteUser(uid);
             console.log(`[manage-organizations] Deleted auth user: ${uid}`);
@@ -318,9 +373,14 @@ serve(async (req) => {
         }
 
         console.log(`[manage-organizations] Organization permanently deleted: ${organizationId}`);
+        console.log(`[manage-organizations] Deleted ${safeUserIds.length} users, protected ${protectedUsers.length} super admins`);
 
         return new Response(
-          JSON.stringify({ success: true }),
+          JSON.stringify({ 
+            success: true,
+            deletedUsers: safeUserIds.length,
+            protectedSuperAdmins: protectedUsers.length
+          }),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
