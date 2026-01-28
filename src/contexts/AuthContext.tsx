@@ -153,12 +153,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!error && data.user) {
       // Bootstrap user: create tenant (organization) + profile + admin role
       try {
-        const { data: sessionData } = await supabase.auth.getSession();
-        const token = sessionData.session?.access_token;
+        // Use session from signup response directly (more reliable than getSession)
+        let token = data.session?.access_token;
+        
+        // Fallback: try getSession if signup didn't return session immediately
         if (!token) {
-          return { error: new Error('Conta criada. Confirme seu email para entrar.') };
+          // Wait briefly for session to be established
+          await new Promise(resolve => setTimeout(resolve, 500));
+          const { data: sessionData } = await supabase.auth.getSession();
+          token = sessionData.session?.access_token;
+        }
+        
+        if (!token) {
+          console.error('[signUp] No session token available after signup');
+          return { error: new Error('Conta criada. Faça login para continuar.') };
         }
 
+        console.log('[signUp] Calling bootstrap-user function...');
         const res = await supabase.functions.invoke('bootstrap-user', {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -168,10 +179,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           },
         });
 
-        if (res.error) throw res.error;
-        if (res.data?.error) throw new Error(res.data.error);
+        if (res.error) {
+          console.error('[signUp] Bootstrap function error:', res.error);
+          throw res.error;
+        }
+        if (res.data?.error) {
+          console.error('[signUp] Bootstrap response error:', res.data.error);
+          throw new Error(res.data.error);
+        }
+        
+        console.log('[signUp] Bootstrap successful:', res.data);
+        
+        // Refresh user data after bootstrap
+        await fetchUserData(data.user.id);
       } catch (bootstrapError: any) {
-        console.error('Bootstrap error:', bootstrapError);
+        console.error('[signUp] Bootstrap error:', bootstrapError);
         return { error: new Error(bootstrapError?.message || 'Falha ao criar sua organização') };
       }
     }
