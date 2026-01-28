@@ -26,7 +26,11 @@ export interface TrialSettings {
   end_date: string | null;
 }
 
-export type AnnouncementBannerStyle = 'gradient' | 'minimal' | 'glass' | 'ribbon' | 'badge' | 'glow';
+export type AnnouncementBannerStyle = 
+  | 'gradient' | 'minimal' | 'glass' | 'ribbon' | 'badge' | 'glow'
+  | 'bubbles' | 'neon' | 'stripes' | 'confetti' | 'wave' | 'sparkle'
+  | 'geometric' | 'aurora' | 'pulse' | 'retro' | 'cyber' | 'elegant'
+  | 'festive' | 'sunset' | 'ocean' | 'forest' | 'fire' | 'holographic';
 
 export interface AnnouncementBannerSettings {
   is_visible: boolean;
@@ -39,6 +43,8 @@ export interface LandingLayoutSettings {
   hero_badge: string;
   hero_title: string;
   hero_title_highlight: string;
+  hero_title_part3?: string;
+  hero_title_part4?: string;
   hero_subtitle: string;
   hero_description: string;
   trust_badge_1: string;
@@ -122,9 +128,22 @@ export function useSystemSettings() {
 
   const updateSetting = useMutation({
     mutationFn: async ({ key, value }: UpdateSettingParams) => {
+      // Transform landing_layout to include part names for the public settings hook
+      let transformedValue: unknown = value;
+      if (key === 'landing_layout') {
+        const layout = value as LandingLayoutSettings;
+        transformedValue = {
+          ...layout,
+          // Map hero_title to hero_title_part1 for consistency
+          hero_title_part1: layout.hero_title,
+          // Map hero_title_highlight to hero_title_part2 for consistency
+          hero_title_part2: layout.hero_title_highlight,
+        };
+      }
+      
       const { data, error } = await supabase
         .from('system_settings')
-        .update({ setting_value: value as unknown as Json })
+        .update({ setting_value: transformedValue as Json })
         .eq('setting_key', key)
         .select()
         .single();
