@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useBusinessCategoryContext } from '@/contexts/BusinessCategoryContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -29,6 +30,7 @@ interface RecentOrder {
 
 export default function Dashboard() {
   const { profile, tenantId } = useAuth();
+  const { t } = useBusinessCategoryContext();
   const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -171,13 +173,13 @@ export default function Dashboard() {
       {/* Recent Orders */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Pedidos Recentes</CardTitle>
+          <CardTitle className="text-lg">{t('order')}s Recentes</CardTitle>
         </CardHeader>
         <CardContent>
           {recentOrders.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <ShoppingCart className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p>Nenhum pedido ainda</p>
+              <p>Nenhum {t('order').toLowerCase()} ainda</p>
             </div>
           ) : (
             <div className="space-y-3">

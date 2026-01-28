@@ -3,6 +3,7 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/hooks/useTheme';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
+import { useBusinessCategoryContext } from '@/contexts/BusinessCategoryContext';
 import {
   LayoutDashboard,
   ClipboardList,
@@ -20,9 +21,10 @@ import {
   Sun,
   Crown,
   Grid3X3,
+  CalendarClock,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import fallbackLogo from '@/assets/logo.png';
 import { TrialStatusBadge } from '@/components/trial/TrialStatusBadge';
 
@@ -38,22 +40,25 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Settings,
   Crown,
   Grid3X3,
+  CalendarClock,
 };
 
 interface NavItem {
   path: string;
   label: string;
   icon: string;
+  feature?: string; // Feature flag to check
 }
 
+// Nav items with feature flags
 const allNavItems: NavItem[] = [
   { path: '/dashboard', label: 'Dashboard', icon: 'LayoutDashboard' },
   { path: '/orders', label: 'Pedidos', icon: 'ClipboardList' },
-  { path: '/pos', label: 'PDV/Caixa', icon: 'Calculator' },
-  { path: '/tables', label: 'Mesas', icon: 'Grid3X3' },
-  { path: '/kitchen', label: 'Cozinha', icon: 'ChefHat' },
-  { path: '/deliveries', label: 'Entregas', icon: 'Truck' },
-  { path: '/courier-dashboard', label: 'Minhas Entregas', icon: 'Truck' },
+  { path: '/pos', label: 'PDV/Caixa', icon: 'Calculator', feature: 'pos' },
+  { path: '/tables', label: 'Mesas', icon: 'Grid3X3', feature: 'tables' },
+  { path: '/kitchen', label: 'Cozinha', icon: 'ChefHat', feature: 'kitchen_display' },
+  { path: '/deliveries', label: 'Entregas', icon: 'Truck', feature: 'delivery' },
+  { path: '/courier-dashboard', label: 'Minhas Entregas', icon: 'Truck', feature: 'delivery' },
   { path: '/products', label: 'Produtos', icon: 'Package' },
   { path: '/stock', label: 'Estoque', icon: 'Warehouse' },
   { path: '/reports', label: 'Relatórios', icon: 'BarChart3' },
@@ -66,50 +71,69 @@ export function AppSidebar() {
   const { profile, roles, signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { branding } = useSystemSettings();
+  const { t, hasFeature } = useBusinessCategoryContext();
   const [isOpen, setIsOpen] = useState(false);
 
   // Use dynamic branding or fallback
   const logoUrl = branding?.logo_url || fallbackLogo;
   const companyName = branding?.company_name || 'FoodHub09';
 
-  // Filter nav items based on roles - super_admin is always checked first
-  const getNavItems = (): NavItem[] => {
+  // Apply terminology to labels
+  const getLocalizedLabel = (path: string, defaultLabel: string): string => {
+    const labelMap: Record<string, string> = {
+      '/orders': t('order') + 's',
+      '/products': t('products'),
+      '/kitchen': t('kitchen'),
+      '/tables': t('table') + 's',
+    };
+    return labelMap[path] || defaultLabel;
+  };
+
+  // Filter nav items based on roles and features
+  const getNavItems = useMemo((): NavItem[] => {
+    // First filter by features
+    const featureFiltered = allNavItems.filter(item => {
+      if (!item.feature) return true; // No feature flag = always show
+      return hasFeature(item.feature as any);
+    });
+
+    // Then filter by roles
     // Super admin has access to everything including super admin panel
     if (roles.includes('super_admin')) {
-      return allNavItems.filter(item => item.path !== '/courier-dashboard');
+      return featureFiltered.filter(item => item.path !== '/courier-dashboard');
     }
     
     // Admin has access to most things but NOT super admin panel
     if (roles.includes('admin')) {
-      return allNavItems.filter(item => 
+      return featureFiltered.filter(item => 
         item.path !== '/courier-dashboard' && item.path !== '/super-admin'
       );
     }
     if (roles.includes('manager')) {
-      return allNavItems.filter(item => 
+      return featureFiltered.filter(item => 
         !['pos', 'kitchen', 'courier-dashboard', 'super-admin'].includes(item.path.replace('/', ''))
       );
     }
     if (roles.includes('cashier')) {
-      return allNavItems.filter(item => 
+      return featureFiltered.filter(item => 
         ['/pos', '/orders'].includes(item.path)
       );
     }
     if (roles.includes('kitchen')) {
-      return allNavItems.filter(item => item.path === '/kitchen');
+      return featureFiltered.filter(item => item.path === '/kitchen');
     }
     if (roles.includes('stock')) {
-      return allNavItems.filter(item => 
+      return featureFiltered.filter(item => 
         ['/stock', '/products'].includes(item.path)
       );
     }
     if (roles.includes('delivery')) {
-      return allNavItems.filter(item => item.path === '/courier-dashboard');
+      return featureFiltered.filter(item => item.path === '/courier-dashboard');
     }
     return [{ path: '/dashboard', label: 'Dashboard', icon: 'LayoutDashboard' }];
-  };
+  }, [roles, hasFeature]);
 
-  const navItems = getNavItems();
+  const navItems = getNavItems;
 
   return (
     <>
@@ -159,6 +183,7 @@ export function AppSidebar() {
             {navItems.map((item) => {
               const Icon = iconMap[item.icon];
               const isActive = location.pathname === item.path;
+              const label = getLocalizedLabel(item.path, item.label);
 
               return (
                 <li key={item.path}>
@@ -173,7 +198,7 @@ export function AppSidebar() {
                     )}
                   >
                     {Icon && <Icon className="h-5 w-5" />}
-                    {item.label}
+                    {label}
                   </Link>
                 </li>
               );

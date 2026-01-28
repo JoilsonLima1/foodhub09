@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useBusinessCategoryContext } from '@/contexts/BusinessCategoryContext';
 import { useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -32,6 +33,7 @@ import type { OrderStatus } from '@/types/database';
 
 export default function Orders() {
   const { tenantId, user } = useAuth();
+  const { t } = useBusinessCategoryContext();
   const queryClient = useQueryClient();
   const { data: orders = [], isLoading, refetch } = useOrders('today');
   const [searchTerm, setSearchTerm] = useState('');
@@ -174,14 +176,14 @@ export default function Orders() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
-            Pedidos do Dia
+            {t('order')}s do Dia
             <Badge variant="outline" className="flex items-center gap-1">
               <Zap className="h-3 w-3 text-green-500" />
               Tempo Real
             </Badge>
           </h1>
           <p className="text-muted-foreground">
-            {ordersCount} {ordersCount === 1 ? 'pedido' : 'pedidos'} • Total: {formatCurrency(totalToday)}
+            {ordersCount} {ordersCount === 1 ? t('order').toLowerCase() : t('order').toLowerCase() + 's'} • Total: {formatCurrency(totalToday)}
           </p>
         </div>
         <div className="flex items-center gap-4">
@@ -366,11 +368,11 @@ export default function Orders() {
             <Card>
               <CardContent className="py-12 text-center">
                 <ChefHat className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">Nenhum pedido encontrado</h3>
+                <h3 className="text-lg font-semibold mb-2">Nenhum {t('order').toLowerCase()} encontrado</h3>
                 <p className="text-muted-foreground">
                   {searchTerm || statusFilter !== 'all'
                     ? 'Tente ajustar os filtros'
-                    : 'Os pedidos de hoje aparecerão aqui'}
+                    : `Os ${t('order').toLowerCase()}s de hoje aparecerão aqui`}
                 </p>
               </CardContent>
             </Card>

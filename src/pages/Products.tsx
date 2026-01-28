@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useBusinessCategoryContext } from '@/contexts/BusinessCategoryContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -52,6 +53,7 @@ interface Category {
 
 export default function Products() {
   const { tenantId } = useAuth();
+  const { t } = useBusinessCategoryContext();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -142,15 +144,15 @@ export default function Products() {
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Package className="h-6 w-6" />
-            Produtos
+            {t('products')}
           </h1>
           <p className="text-muted-foreground">
-            Gerencie o catálogo de produtos
+            Gerencie o catálogo de {t('products').toLowerCase()}
           </p>
         </div>
         <Button>
           <Plus className="h-4 w-4 mr-2" />
-          Novo Produto
+          Novo {t('product')}
         </Button>
       </div>
 
@@ -160,7 +162,7 @@ export default function Products() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Buscar por nome, descrição ou categoria..."
+              placeholder={`Buscar por nome, descrição ou ${t('category').toLowerCase()}...`}
               className="pl-10"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -192,21 +194,21 @@ export default function Products() {
           ) : filteredProducts.length === 0 ? (
             <div className="text-center py-12">
               <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Nenhum produto encontrado</h3>
+              <h3 className="text-lg font-semibold mb-2">Nenhum {t('product').toLowerCase()} encontrado</h3>
               <p className="text-muted-foreground mb-4">
-                {searchTerm ? 'Tente ajustar a busca' : 'Comece adicionando produtos ao catálogo'}
+                {searchTerm ? 'Tente ajustar a busca' : `Comece adicionando ${t('products').toLowerCase()} ao catálogo`}
               </p>
               <Button>
                 <Plus className="h-4 w-4 mr-2" />
-                Adicionar Produto
+                Adicionar {t('product')}
               </Button>
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Produto</TableHead>
-                  <TableHead>Categoria</TableHead>
+                  <TableHead>{t('product')}</TableHead>
+                  <TableHead>{t('category')}</TableHead>
                   <TableHead>Preço Base</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
