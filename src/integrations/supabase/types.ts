@@ -2247,6 +2247,8 @@ export type Database = {
           online_gateway_enabled: boolean | null
           online_gateway_pix: boolean | null
           phone: string | null
+          pos_allow_cashier_mode_change: boolean | null
+          pos_display_mode: string | null
           slug: string
           state: string | null
           subscription_status: string | null
@@ -2273,6 +2275,8 @@ export type Database = {
           online_gateway_enabled?: boolean | null
           online_gateway_pix?: boolean | null
           phone?: string | null
+          pos_allow_cashier_mode_change?: boolean | null
+          pos_display_mode?: string | null
           slug: string
           state?: string | null
           subscription_status?: string | null
@@ -2299,6 +2303,8 @@ export type Database = {
           online_gateway_enabled?: boolean | null
           online_gateway_pix?: boolean | null
           phone?: string | null
+          pos_allow_cashier_mode_change?: boolean | null
+          pos_display_mode?: string | null
           slug?: string
           state?: string | null
           subscription_status?: string | null

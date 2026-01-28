@@ -8,6 +8,7 @@ import { Calculator, Search, Scale, Scan, CreditCard, Trash2 } from 'lucide-reac
 import { useProducts, useCategories, type Product, type ProductVariation } from '@/hooks/useProducts';
 import { useCreateOrder } from '@/hooks/useCreateOrder';
 import { ProductGrid } from '@/components/pos/ProductGrid';
+import { ProductImageGrid } from '@/components/pos/ProductImageGrid';
 import { CartPanel } from '@/components/pos/CartPanel';
 import { PaymentDialog } from '@/components/pos/PaymentDialog';
 import { ReceiptDialog } from '@/components/pos/ReceiptDialog';
@@ -15,7 +16,9 @@ import { CustomerInfoDialog } from '@/components/pos/CustomerInfoDialog';
 import { ScaleDisplay } from '@/components/pos/ScaleDisplay';
 import { BarcodeScanner, QuickScanButton } from '@/components/pos/BarcodeScanner';
 import { KeyboardShortcutsBar, ShortcutInfo } from '@/components/pos/KeyboardShortcutsBar';
+import { POSDisplayModeToggle } from '@/components/pos/POSDisplayModeToggle';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
+import { usePOSSettings } from '@/hooks/usePOSSettings';
 import { useBarcodeScanner, BarcodeScanResult } from '@/hooks/useBarcodeScanner';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import type { CartItem, PaymentMethod } from '@/types/database';
@@ -37,6 +40,12 @@ export default function POS() {
   const { data: categories = [], isLoading: isLoadingCategories } = useCategories();
   const createOrder = useCreateOrder();
   const { settings } = useSystemSettings();
+  const { 
+    displayMode, 
+    allowCashierModeChange, 
+    updateDisplayMode,
+    isLoading: isLoadingPOSSettings,
+  } = usePOSSettings();
   
   // Get branding from system settings
   const branding = settings?.branding as { logo_url?: string; company_name?: string } | undefined;
@@ -277,6 +286,15 @@ export default function POS() {
             <Calculator className="h-6 w-6" />
             <h1 className="text-2xl font-bold">PDV</h1>
           </div>
+          
+          {/* Display Mode Toggle */}
+          <POSDisplayModeToggle
+            mode={displayMode}
+            onChange={updateDisplayMode}
+            allowChange={allowCashierModeChange}
+            compact
+          />
+          
           <Badge variant="outline" className="ml-auto">
             Caixa: {profile?.full_name}
           </Badge>
@@ -340,14 +358,23 @@ export default function POS() {
           </div>
         </div>
 
-        {/* Products Grid */}
+        {/* Products Grid/List */}
         <div className="flex-1 overflow-y-auto">
-          <ProductGrid
-            products={filteredProducts}
-            isLoading={isLoadingProducts}
-            onSelectProduct={addToCart}
-            formatCurrency={formatCurrency}
-          />
+          {displayMode === 'grid_images' ? (
+            <ProductImageGrid
+              products={filteredProducts}
+              isLoading={isLoadingProducts}
+              onSelectProduct={addToCart}
+              formatCurrency={formatCurrency}
+            />
+          ) : (
+            <ProductGrid
+              products={filteredProducts}
+              isLoading={isLoadingProducts}
+              onSelectProduct={addToCart}
+              formatCurrency={formatCurrency}
+            />
+          )}
         </div>
       </div>
 
