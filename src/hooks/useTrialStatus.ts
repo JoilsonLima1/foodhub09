@@ -16,7 +16,7 @@ export interface SubscriptionStatus {
   trialEndDate: string | null;
   currentPeriodEnd: string | null;
   planId: string | null;
-  status: 'active' | 'trialing' | 'canceled' | 'past_due' | 'none';
+  status: 'active' | 'trialing' | 'canceled' | 'past_due' | 'none' | 'expired';
 }
 
 export function useTrialStatus() {
