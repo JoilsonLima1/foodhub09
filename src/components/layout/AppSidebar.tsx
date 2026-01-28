@@ -21,9 +21,17 @@ import {
   Sun,
   Crown,
   Grid3X3,
-  CalendarClock,
+  ChevronDown,
+  User,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useState, useMemo } from 'react';
 import fallbackLogo from '@/assets/logo.png';
 import { TrialStatusBadge } from '@/components/trial/TrialStatusBadge';
@@ -40,17 +48,15 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Settings,
   Crown,
   Grid3X3,
-  CalendarClock,
 };
 
 interface NavItem {
   path: string;
   label: string;
   icon: string;
-  feature?: string; // Feature flag to check
+  feature?: string;
 }
 
-// Nav items with feature flags
 const allNavItems: NavItem[] = [
   { path: '/dashboard', label: 'Dashboard', icon: 'LayoutDashboard' },
   { path: '/orders', label: 'Pedidos', icon: 'ClipboardList' },
@@ -74,11 +80,9 @@ export function AppSidebar() {
   const { t, hasFeature } = useBusinessCategoryContext();
   const [isOpen, setIsOpen] = useState(false);
 
-  // Use dynamic branding or fallback
   const logoUrl = branding?.logo_url || fallbackLogo;
   const companyName = branding?.company_name || 'FoodHub09';
 
-  // Apply terminology to labels
   const getLocalizedLabel = (path: string, defaultLabel: string): string => {
     const labelMap: Record<string, string> = {
       '/orders': t('order') + 's',
@@ -89,21 +93,16 @@ export function AppSidebar() {
     return labelMap[path] || defaultLabel;
   };
 
-  // Filter nav items based on roles and features
   const getNavItems = useMemo((): NavItem[] => {
-    // First filter by features
     const featureFiltered = allNavItems.filter(item => {
-      if (!item.feature) return true; // No feature flag = always show
+      if (!item.feature) return true;
       return hasFeature(item.feature as any);
     });
 
-    // Then filter by roles
-    // Super admin has access to everything including super admin panel
     if (roles.includes('super_admin')) {
       return featureFiltered.filter(item => item.path !== '/courier-dashboard');
     }
     
-    // Admin has access to most things but NOT super admin panel
     if (roles.includes('admin')) {
       return featureFiltered.filter(item => 
         item.path !== '/courier-dashboard' && item.path !== '/super-admin'
@@ -135,16 +134,38 @@ export function AppSidebar() {
 
   const navItems = getNavItems;
 
+  const getUserInitials = () => {
+    if (!profile?.full_name) return 'U';
+    const names = profile.full_name.split(' ');
+    if (names.length >= 2) {
+      return `${names[0].charAt(0)}${names[names.length - 1].charAt(0)}`.toUpperCase();
+    }
+    return names[0].charAt(0).toUpperCase();
+  };
+
+  const getRoleLabel = () => {
+    const roleLabels: Record<string, string> = {
+      super_admin: 'Super Admin',
+      admin: 'Administrador',
+      manager: 'Gerente',
+      cashier: 'Caixa',
+      kitchen: 'Cozinha',
+      stock: 'Estoque',
+      delivery: 'Entregador',
+    };
+    return roleLabels[roles[0]] || 'Usuário';
+  };
+
   return (
     <>
       {/* Mobile Toggle */}
       <Button
         variant="ghost"
         size="icon"
-        className="fixed top-4 left-4 z-50 md:hidden"
+        className="fixed top-3 left-3 z-50 md:hidden h-9 w-9"
         onClick={() => setIsOpen(!isOpen)}
       >
-        {isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        {isOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
       </Button>
 
       {/* Overlay */}
@@ -158,28 +179,27 @@ export function AppSidebar() {
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed top-0 left-0 z-40 h-full w-64 bg-sidebar text-sidebar-foreground transition-transform duration-300',
+          'fixed top-0 left-0 z-40 h-full w-56 bg-sidebar text-sidebar-foreground transition-transform duration-300',
           'flex flex-col',
           isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         )}
       >
-        {/* Logo */}
-        <div className="flex items-center gap-3 px-6 py-5 border-b border-sidebar-border">
-          <img src={logoUrl} alt={`${companyName} Logo`} className="h-10 w-10 rounded-lg object-contain" />
-          <div className="flex-1">
-            <h1 className="font-bold text-lg">{companyName}</h1>
-            <p className="text-xs text-sidebar-foreground/60">Sistema de Gestão</p>
+        {/* Logo - Compact */}
+        <div className="flex items-center gap-2.5 px-4 py-3 border-b border-sidebar-border">
+          <img src={logoUrl} alt={`${companyName} Logo`} className="h-8 w-8 rounded-md object-contain" />
+          <div className="flex-1 min-w-0">
+            <h1 className="font-semibold text-sm truncate">{companyName}</h1>
           </div>
         </div>
 
-        {/* Trial Status Badge */}
-        <div className="px-4 py-3 border-b border-sidebar-border">
+        {/* Trial Status Badge - Compact */}
+        <div className="px-3 py-2 border-b border-sidebar-border">
           <TrialStatusBadge />
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto py-4 px-3">
-          <ul className="space-y-1">
+        {/* Navigation - Compact */}
+        <nav className="flex-1 overflow-y-auto py-2 px-2">
+          <ul className="space-y-0.5">
             {navItems.map((item) => {
               const Icon = iconMap[item.icon];
               const isActive = location.pathname === item.path;
@@ -191,14 +211,14 @@ export function AppSidebar() {
                     to={item.path}
                     onClick={() => setIsOpen(false)}
                     className={cn(
-                      'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                      'flex items-center gap-2.5 px-2.5 py-2 rounded-md text-xs font-medium transition-colors',
                       isActive
                         ? 'bg-sidebar-primary text-sidebar-primary-foreground'
-                        : 'text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                        : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
                     )}
                   >
-                    {Icon && <Icon className="h-5 w-5" />}
-                    {label}
+                    {Icon && <Icon className="h-4 w-4 shrink-0" />}
+                    <span className="truncate">{label}</span>
                   </Link>
                 </li>
               );
@@ -206,50 +226,56 @@ export function AppSidebar() {
           </ul>
         </nav>
 
-        {/* Footer */}
-        <div className="border-t border-sidebar-border p-4 space-y-3">
-          {/* Theme Toggle */}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full justify-start text-sidebar-foreground/80 hover:bg-sidebar-accent"
-            onClick={toggleTheme}
-          >
-            {theme === 'dark' ? (
-              <Sun className="h-4 w-4 mr-2" />
-            ) : (
-              <Moon className="h-4 w-4 mr-2" />
-            )}
-            {theme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}
-          </Button>
-
-          {/* User Info */}
-          {profile && (
-            <div className="flex items-center gap-3 px-2 py-2">
-              <div className="h-8 w-8 rounded-full bg-sidebar-accent flex items-center justify-center">
-                <span className="text-sm font-medium">
-                  {profile.full_name?.charAt(0).toUpperCase()}
-                </span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{profile.full_name}</p>
-                <p className="text-xs text-sidebar-foreground/60 capitalize">
-                  {roles[0] || 'Usuário'}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Logout */}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full justify-start text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-destructive"
-            onClick={signOut}
-          >
-            <LogOut className="h-4 w-4 mr-2" />
-            Sair
-          </Button>
+        {/* User Profile Dropdown - Footer */}
+        <div className="border-t border-sidebar-border p-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className={cn(
+                  'w-full flex items-center gap-2.5 px-2 py-2 rounded-md transition-colors',
+                  'hover:bg-sidebar-accent text-left'
+                )}
+              >
+                <div className="h-7 w-7 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+                  <span className="text-[10px] font-semibold text-primary">
+                    {getUserInitials()}
+                  </span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium truncate text-sidebar-foreground">
+                    {profile?.full_name || 'Usuário'}
+                  </p>
+                  <p className="text-[10px] text-sidebar-foreground/50 truncate">
+                    {getRoleLabel()}
+                  </p>
+                </div>
+                <ChevronDown className="h-3.5 w-3.5 text-sidebar-foreground/50 shrink-0" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem onClick={toggleTheme} className="cursor-pointer">
+                {theme === 'dark' ? (
+                  <>
+                    <Sun className="h-4 w-4 mr-2" />
+                    Modo Claro
+                  </>
+                ) : (
+                  <>
+                    <Moon className="h-4 w-4 mr-2" />
+                    Modo Escuro
+                  </>
+                )}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem 
+                onClick={signOut} 
+                className="cursor-pointer text-destructive focus:text-destructive"
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Sair
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </aside>
     </>
