@@ -2,11 +2,279 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Scale, ScanBarcode, Usb, Monitor, Settings, CheckCircle2, AlertCircle, Info, Chrome } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Scale, ScanBarcode, Usb, Monitor, Settings, CheckCircle2, AlertCircle, Info, Chrome, Printer, Download, ExternalLink, Wifi, Cable } from 'lucide-react';
 
 export function HardwareTutorial() {
+  const handleTestPrint = () => {
+    const testContent = `
+      <html>
+        <head>
+          <style>
+            body { font-family: monospace; font-size: 10pt; width: 80mm; margin: 0; padding: 5mm; }
+            .center { text-align: center; }
+            .line { border-top: 1px dashed #000; margin: 5mm 0; }
+            h1 { font-size: 14pt; margin: 0; }
+          </style>
+        </head>
+        <body>
+          <div class="center">
+            <h1>TESTE DE IMPRESSÃO</h1>
+            <p>FoodHub09</p>
+          </div>
+          <div class="line"></div>
+          <p>Se você está vendo esta página impressa corretamente, sua impressora está configurada!</p>
+          <div class="line"></div>
+          <p class="center">Data: ${new Date().toLocaleString('pt-BR')}</p>
+          <div class="line"></div>
+          <p class="center">✓ Impressora OK</p>
+        </body>
+      </html>
+    `;
+    
+    const printWindow = window.open('', '_blank', 'width=300,height=400');
+    if (printWindow) {
+      printWindow.document.write(testContent);
+      printWindow.document.close();
+      printWindow.focus();
+      printWindow.print();
+      printWindow.close();
+    }
+  };
+
   return (
     <div className="space-y-6">
+      {/* Impressora Térmica */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Printer className="h-5 w-5" />
+            Configuração da Impressora Térmica
+          </CardTitle>
+          <CardDescription>
+            Tutorial para instalação e configuração de impressoras térmicas para cupons e recibos
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Alert className="mb-4">
+            <CheckCircle2 className="h-4 w-4 text-green-500" />
+            <AlertTitle>Impressão via Navegador</AlertTitle>
+            <AlertDescription>
+              O sistema utiliza impressão nativa do navegador. Basta configurar a impressora como padrão 
+              no Windows/Mac/Linux para imprimir cupons automaticamente.
+            </AlertDescription>
+          </Alert>
+
+          <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="models">
+              <AccordionTrigger>
+                <span className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  Impressoras Compatíveis
+                </span>
+              </AccordionTrigger>
+              <AccordionContent className="space-y-3">
+                <p className="text-muted-foreground">
+                  O sistema é compatível com qualquer impressora térmica que funcione com o sistema operacional:
+                </p>
+                <div className="grid gap-2 md:grid-cols-2">
+                  <div className="p-3 border rounded-lg">
+                    <h4 className="font-medium">Epson</h4>
+                    <p className="text-sm text-muted-foreground">TM-T20, TM-T88, TM-M30</p>
+                    <Badge className="mt-2" variant="default">Recomendado</Badge>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <h4 className="font-medium">Elgin</h4>
+                    <p className="text-sm text-muted-foreground">i7, i9, VOX</p>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <h4 className="font-medium">Bematech</h4>
+                    <p className="text-sm text-muted-foreground">MP-4200 TH, MP-2800 TH</p>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <h4 className="font-medium">Outras</h4>
+                    <p className="text-sm text-muted-foreground">Qualquer impressora térmica 58mm ou 80mm</p>
+                  </div>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="connection">
+              <AccordionTrigger>
+                <span className="flex items-center gap-2">
+                  <Cable className="h-4 w-4" />
+                  Passo 1: Conexão Física
+                </span>
+              </AccordionTrigger>
+              <AccordionContent className="space-y-4">
+                <div className="space-y-2">
+                  <h4 className="font-medium flex items-center gap-2">
+                    <Usb className="h-4 w-4" />
+                    Impressora USB (Mais Comum):
+                  </h4>
+                  <ol className="list-decimal list-inside text-sm text-muted-foreground space-y-1">
+                    <li>Conecte o cabo USB da impressora ao computador</li>
+                    <li>Ligue a impressora</li>
+                    <li>O Windows detectará automaticamente (aguarde alguns segundos)</li>
+                    <li>Se o driver não instalar automaticamente, baixe do site do fabricante</li>
+                  </ol>
+                </div>
+                <div className="space-y-2">
+                  <h4 className="font-medium flex items-center gap-2">
+                    <Wifi className="h-4 w-4" />
+                    Impressora de Rede/Wi-Fi:
+                  </h4>
+                  <ol className="list-decimal list-inside text-sm text-muted-foreground space-y-1">
+                    <li>Conecte a impressora à mesma rede do computador</li>
+                    <li>Descubra o IP da impressora (geralmente impresso ao ligar)</li>
+                    <li>Adicione a impressora via Painel de Controle → Impressoras</li>
+                    <li>Use "Adicionar impressora de rede" e insira o IP</li>
+                  </ol>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="driver">
+              <AccordionTrigger>
+                <span className="flex items-center gap-2">
+                  <Download className="h-4 w-4" />
+                  Passo 2: Instalação do Driver
+                </span>
+              </AccordionTrigger>
+              <AccordionContent className="space-y-4">
+                <div className="p-4 bg-muted rounded-lg space-y-3">
+                  <h4 className="font-medium">Links para Download de Drivers:</h4>
+                  <div className="space-y-2">
+                    <a 
+                      href="https://epson.com.br/Suporte/Impressoras/Impressoras-POS/T%C3%A9rmicas/s/SPT_ThermalReceipt" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 text-sm text-primary hover:underline"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                      Epson - Drivers Impressoras Térmicas
+                    </a>
+                    <a 
+                      href="https://www.elgin.com.br/automacao/downloads" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 text-sm text-primary hover:underline"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                      Elgin - Central de Downloads
+                    </a>
+                    <a 
+                      href="https://www.bematech.com.br/suporte" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 text-sm text-primary hover:underline"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                      Bematech - Suporte e Downloads
+                    </a>
+                  </div>
+                </div>
+                <ol className="list-decimal list-inside text-sm text-muted-foreground space-y-2">
+                  <li>Acesse o site do fabricante da sua impressora</li>
+                  <li>Localize o modelo exato e baixe o driver para seu sistema (Windows 10/11)</li>
+                  <li>Execute o instalador como Administrador</li>
+                  <li>Siga as instruções na tela e reinicie se solicitado</li>
+                </ol>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="config">
+              <AccordionTrigger>
+                <span className="flex items-center gap-2">
+                  <Settings className="h-4 w-4" />
+                  Passo 3: Configurar como Padrão
+                </span>
+              </AccordionTrigger>
+              <AccordionContent className="space-y-4">
+                <div className="space-y-2">
+                  <h4 className="font-medium">Windows 10/11:</h4>
+                  <ol className="list-decimal list-inside text-sm text-muted-foreground space-y-1">
+                    <li>Pressione <Badge variant="outline">Win + I</Badge> para abrir Configurações</li>
+                    <li>Vá em <strong>Bluetooth e dispositivos → Impressoras e scanners</strong></li>
+                    <li>Clique na sua impressora térmica</li>
+                    <li>Clique em <strong>"Definir como padrão"</strong></li>
+                  </ol>
+                </div>
+                <div className="p-4 bg-muted rounded-lg space-y-2">
+                  <h4 className="font-medium">Configurações Recomendadas do Papel:</h4>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <span>Largura do Papel:</span>
+                    <Badge variant="secondary">80mm (padrão) ou 58mm</Badge>
+                    <span>Margens:</span>
+                    <Badge variant="secondary">Mínimas (2-3mm)</Badge>
+                    <span>Orientação:</span>
+                    <Badge variant="secondary">Retrato</Badge>
+                  </div>
+                </div>
+                <Alert>
+                  <Info className="h-4 w-4" />
+                  <AlertDescription>
+                    Para cupons menores, configure o tamanho do papel como "Personalizado" 
+                    e defina 80mm x 297mm (ou o comprimento desejado).
+                  </AlertDescription>
+                </Alert>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="chrome">
+              <AccordionTrigger>
+                <span className="flex items-center gap-2">
+                  <Chrome className="h-4 w-4" />
+                  Passo 4: Configurar Navegador
+                </span>
+              </AccordionTrigger>
+              <AccordionContent className="space-y-4">
+                <p className="text-muted-foreground">
+                  Para impressão automática sem diálogo, configure o Chrome:
+                </p>
+                <ol className="list-decimal list-inside text-sm text-muted-foreground space-y-2">
+                  <li>Abra o Chrome e vá em <strong>chrome://settings/printing</strong></li>
+                  <li>Ative a opção <strong>"Usar destino de impressão padrão"</strong></li>
+                  <li>Na primeira impressão, marque <strong>"Lembrar minha escolha"</strong></li>
+                </ol>
+                <div className="p-4 bg-primary/10 rounded-lg">
+                  <h4 className="font-medium mb-2">Dica para Impressão Silenciosa:</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Você pode usar o atalho <Badge variant="outline">Ctrl + P</Badge> para abrir a impressão 
+                    e depois <Badge variant="outline">Enter</Badge> para confirmar rapidamente.
+                  </p>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="test">
+              <AccordionTrigger>
+                <span className="flex items-center gap-2">
+                  <Monitor className="h-4 w-4" />
+                  Passo 5: Testar Impressão
+                </span>
+              </AccordionTrigger>
+              <AccordionContent className="space-y-4">
+                <p className="text-muted-foreground">
+                  Clique no botão abaixo para imprimir uma página de teste:
+                </p>
+                <Button onClick={handleTestPrint} className="w-full sm:w-auto">
+                  <Printer className="h-4 w-4 mr-2" />
+                  Imprimir Página de Teste
+                </Button>
+                <Alert variant="default">
+                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  <AlertDescription>
+                    Se a página de teste imprimir corretamente, sua impressora está pronta! 
+                    Os cupons do PDV serão impressos automaticamente ao finalizar vendas.
+                  </AlertDescription>
+                </Alert>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </CardContent>
+      </Card>
+
       {/* Balança */}
       <Card>
         <CardHeader>
