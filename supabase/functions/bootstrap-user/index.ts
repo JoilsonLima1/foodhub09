@@ -2,7 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 }
 
 Deno.serve(async (req) => {
@@ -12,40 +12,47 @@ Deno.serve(async (req) => {
   }
 
   try {
+    console.log('[bootstrap-user] Function called')
+    
     const authHeader = req.headers.get('Authorization')
     if (!authHeader?.startsWith('Bearer ')) {
+      console.error('[bootstrap-user] Missing or invalid authorization header')
       return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
+        JSON.stringify({ error: 'Unauthorized - missing token' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
+    
+    console.log('[bootstrap-user] Authorization header present')
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     
     // Client with user's token for auth
     const supabaseUser = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, {
-      global: { headers: { Authorization: authHeader } }
+      global: { headers: { Authorization: authHeader } },
+      auth: { autoRefreshToken: false, persistSession: false }
     })
 
     // Service client for admin operations
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: { autoRefreshToken: false, persistSession: false }
+    })
 
-    // Verify user
-    const token = authHeader.replace('Bearer ', '')
-    const { data: claims, error: claimsError } = await supabaseUser.auth.getClaims(token)
+    // Verify user using getUser() - more reliable than getClaims()
+    const { data: { user }, error: userError } = await supabaseUser.auth.getUser()
     
-    if (claimsError || !claims?.claims) {
-      console.error('Claims error:', claimsError)
+    if (userError || !user) {
+      console.error('[bootstrap-user] User auth error:', userError)
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    const userId = claims.claims.sub as string
-    const userEmail = claims.claims.email as string
-    const userMetadata = (claims.claims as any)?.user_metadata ?? {}
+    const userId = user.id
+    const userEmail = user.email || ''
+    const userMetadata = user.user_metadata ?? {}
 
     // Optional: tenant/org name sent by the client during signup
     let requestedTenantName: string | undefined
