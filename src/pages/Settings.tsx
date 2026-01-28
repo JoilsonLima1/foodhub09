@@ -15,6 +15,7 @@ import {
   Plug2,
   Building2,
   HardDrive,
+  Crown,
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PAYMENT_PROVIDER_LABELS } from '@/lib/constants';
@@ -23,6 +24,7 @@ import { IFoodIntegration } from '@/components/integrations/IFoodIntegration';
 import { BusinessCategorySelector } from '@/components/settings/BusinessCategorySelector';
 import { HardwareTutorial } from '@/components/settings/HardwareTutorial';
 import { UserManagement } from '@/components/settings/UserManagement';
+import { SubscriptionSettings } from '@/components/settings/SubscriptionSettings';
 
 export default function Settings() {
   const { profile, roles } = useAuth();
@@ -41,8 +43,12 @@ export default function Settings() {
         </p>
       </div>
 
-      <Tabs defaultValue="category" className="space-y-6">
+      <Tabs defaultValue="subscription" className="space-y-6">
         <TabsList className="w-full h-auto flex flex-nowrap gap-2 overflow-x-auto justify-start md:flex-wrap md:overflow-visible">
+          <TabsTrigger value="subscription" className="shrink-0 flex items-center gap-2 whitespace-nowrap">
+            <Crown className="h-4 w-4" />
+            Assinatura
+          </TabsTrigger>
           <TabsTrigger value="category" className="shrink-0 flex items-center gap-2 whitespace-nowrap">
             <Building2 className="h-4 w-4" />
             Categoria
@@ -80,6 +86,11 @@ export default function Settings() {
             Segurança
           </TabsTrigger>
         </TabsList>
+
+        {/* Subscription Settings */}
+        <TabsContent value="subscription">
+          <SubscriptionSettings />
+        </TabsContent>
 
         {/* Business Category */}
         <TabsContent value="category">
