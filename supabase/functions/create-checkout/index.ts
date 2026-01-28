@@ -138,8 +138,8 @@ serve(async (req) => {
       logStep("Stripe product and price created", { productId: product.id, priceId });
     }
 
-    // Get trial period from system settings
-    let trialDays = 14; // Default fallback
+    // Get global trial period from system settings (used for initial free access)
+    let globalTrialDays = 14; // Default fallback
     try {
       const { data: trialSetting } = await supabase
         .from("system_settings")
@@ -148,15 +148,49 @@ serve(async (req) => {
         .single();
       
       if (trialSetting?.setting_value?.days) {
-        trialDays = trialSetting.setting_value.days;
+        globalTrialDays = trialSetting.setting_value.days;
       }
-      logStep("Trial period from settings", { trialDays });
+      logStep("Global trial period from settings", { globalTrialDays });
     } catch (e) {
-      logStep("Using default trial period", { trialDays });
+      logStep("Using default global trial period", { globalTrialDays });
     }
+
+    // Calculate days already used since user registration
+    const userCreatedAt = new Date(user.created_at);
+    const now = new Date();
+    const daysUsed = Math.floor((now.getTime() - userCreatedAt.getTime()) / (1000 * 60 * 60 * 24));
+    logStep("Days used since registration", { userCreatedAt: user.created_at, daysUsed });
+
+    // Plan's trial days = global trial days (all plans share the same trial config)
+    // Remaining trial = max(0, globalTrialDays - daysUsed)
+    // If user already consumed all trial days, no additional trial is given
+    const remainingTrialDays = Math.max(0, globalTrialDays - daysUsed);
+    logStep("Trial calculation", { 
+      globalTrialDays, 
+      daysUsed, 
+      remainingTrialDays,
+      willHaveTrial: remainingTrialDays > 0 
+    });
 
     // Get origin for redirect URLs
     const origin = req.headers.get("origin") || "https://start-a-new-quest.lovable.app";
+
+    // Build subscription data - only include trial if there are remaining days
+    const subscriptionData: {
+      trial_period_days?: number;
+      metadata: { plan_id: string; user_id: string; days_used_before_upgrade: number };
+    } = {
+      metadata: {
+        plan_id: plan.id,
+        user_id: user.id,
+        days_used_before_upgrade: daysUsed
+      }
+    };
+
+    // Only add trial period if user has remaining trial days
+    if (remainingTrialDays > 0) {
+      subscriptionData.trial_period_days = remainingTrialDays;
+    }
 
     // Create checkout session
     const session = await stripe.checkout.sessions.create({
@@ -171,20 +205,15 @@ serve(async (req) => {
       mode: "subscription",
       success_url: `${origin}/dashboard?checkout=success`,
       cancel_url: `${origin}/?checkout=cancelled`,
-      subscription_data: {
-        trial_period_days: trialDays,
-        metadata: {
-          plan_id: plan.id,
-          user_id: user.id
-        }
-      },
+      subscription_data: subscriptionData,
       metadata: {
         plan_id: plan.id,
-        user_id: user.id
+        user_id: user.id,
+        days_used_before_upgrade: daysUsed.toString()
       }
     });
 
-    logStep("Checkout session created", { sessionId: session.id, url: session.url, trialDays });
+    logStep("Checkout session created", { sessionId: session.id, url: session.url, remainingTrialDays });
 
     return new Response(
       JSON.stringify({ url: session.url, sessionId: session.id }),
