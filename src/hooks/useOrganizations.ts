@@ -59,17 +59,31 @@ export function useOrganizations() {
     try {
       setIsLoading(true);
       const headers = await getAuthHeaders();
-      if (!headers) throw new Error("Sessão não encontrada. Faça login novamente.");
+      if (!headers) {
+        console.warn("[useOrganizations] No auth headers - user may not be logged in");
+        throw new Error("Sessão não encontrada. Faça login novamente.");
+      }
 
+      console.log("[useOrganizations] Fetching organizations...");
       const res = await supabase.functions.invoke("manage-organizations", {
         body: { action: "list" },
         headers,
       });
 
-      if (res.error) throw res.error;
-      if (res.data?.error) throw new Error(res.data.error);
+      console.log("[useOrganizations] Response:", res);
 
-      setOrganizations((res.data?.organizations as Organization[]) || []);
+      if (res.error) {
+        console.error("[useOrganizations] Function error:", res.error);
+        throw res.error;
+      }
+      if (res.data?.error) {
+        console.error("[useOrganizations] Data error:", res.data.error);
+        throw new Error(res.data.error);
+      }
+
+      const orgs = (res.data?.organizations as Organization[]) || [];
+      console.log("[useOrganizations] Loaded organizations:", orgs.length);
+      setOrganizations(orgs);
     } catch (error: any) {
       console.error("[useOrganizations] Error fetching:", error);
       toast({
