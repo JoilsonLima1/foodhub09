@@ -15,6 +15,7 @@ import {
   Bell,
   Store,
   Building,
+  UserCog,
 } from 'lucide-react';
 import { PlanEditor } from '@/components/superadmin/PlanEditor';
 import { FeatureComparison } from '@/components/superadmin/FeatureComparison';
@@ -24,6 +25,7 @@ import { BrandingSettings } from '@/components/superadmin/BrandingSettings';
 import { TrialNotificationSettings } from '@/components/superadmin/TrialNotificationSettings';
 import { BusinessCategoryManager } from '@/components/superadmin/BusinessCategoryManager';
 import { OrganizationsManager } from '@/components/superadmin/OrganizationsManager';
+import { UsersManager } from '@/components/superadmin/UsersManager';
 import { useSubscribers } from '@/hooks/useSubscribers';
 import { useOrganizations } from '@/hooks/useOrganizations';
 
@@ -148,6 +150,10 @@ export default function SuperAdmin() {
             <Building className="h-4 w-4" />
             Organizações
           </TabsTrigger>
+          <TabsTrigger value="users" className="flex items-center gap-2">
+            <UserCog className="h-4 w-4" />
+            Usuários
+          </TabsTrigger>
           <TabsTrigger value="subscribers" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
             Assinantes
@@ -180,6 +186,10 @@ export default function SuperAdmin() {
 
         <TabsContent value="organizations">
           <OrganizationsManager />
+        </TabsContent>
+
+        <TabsContent value="users">
+          <UsersManager />
         </TabsContent>
 
         <TabsContent value="subscribers">
