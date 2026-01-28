@@ -34,8 +34,10 @@ export interface PublicAnnouncementBanner {
 
 export interface PublicLandingLayout {
   hero_badge: string;
-  hero_title: string;
-  hero_title_highlight: string;
+  hero_title_part1: string;
+  hero_title_part2: string;
+  hero_title_part3: string;
+  hero_title_part4: string;
   hero_subtitle: string;
   hero_description: string;
   trust_badge_1: string;
@@ -69,8 +71,10 @@ const DEFAULT_TRIAL: PublicTrialPeriod = {
 
 const DEFAULT_LANDING: PublicLandingLayout = {
   hero_badge: 'Plataforma #1 para Gestão de Restaurantes',
-  hero_title: 'Transforme seu restaurante em uma',
-  hero_title_highlight: 'máquina de vendas',
+  hero_title_part1: 'Transforme seu',
+  hero_title_part2: 'restaurante',
+  hero_title_part3: 'em uma',
+  hero_title_part4: 'máquina de vendas',
   hero_subtitle: 'Unifique pedidos de múltiplas origens, gerencie entregas, controle estoque e tome decisões inteligentes com relatórios em tempo real e previsões com IA.',
   hero_description: '',
   trust_badge_1: 'Sem cartão de crédito',
