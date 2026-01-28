@@ -1,10 +1,47 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Clock, X, Sparkles, AlertTriangle, Info } from 'lucide-react';
 import { useTrialStatus } from '@/hooks/useTrialStatus';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+
+type BannerTone = 'warning' | 'critical' | 'info';
+
+function BannerChip({
+  tone,
+  children,
+  className,
+}: {
+  tone: BannerTone | 'neutral' | 'muted';
+  children: ReactNode;
+  className?: string;
+}) {
+  const toneClass =
+    tone === 'critical'
+      ? 'border-destructive/30 bg-destructive/10 text-destructive'
+      : tone === 'info'
+        ? 'border-info/30 bg-info/10 text-info-foreground'
+        : tone === 'warning'
+          ? 'border-warning/30 bg-warning/10 text-warning-foreground'
+          : tone === 'muted'
+            ? 'border-border/40 bg-muted/60 text-muted-foreground'
+            : 'border-border/50 bg-muted/40 text-foreground';
+
+  return (
+    <span
+      className={[
+        'inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium leading-none',
+        toneClass,
+        className,
+      ]
+        .filter(Boolean)
+        .join(' ')}
+    >
+      {children}
+    </span>
+  );
+}
 
 export function TrialExpirationBanner() {
   const { session } = useAuth();
@@ -25,7 +62,7 @@ export function TrialExpirationBanner() {
 
   const daysRemaining = getDaysRemaining();
   const expirationDisplay = getExpirationDisplay();
-  const bannerType = notificationSettings?.banner_type ?? 'warning';
+  const bannerType = (notificationSettings?.banner_type ?? 'warning') as BannerTone;
   const bannerImageUrl = notificationSettings?.banner_image_url;
 
   const handleUpgrade = async () => {
@@ -56,17 +93,6 @@ export function TrialExpirationBanner() {
     dismissNotification.mutate();
   };
 
-  const getAlertVariant = () => {
-    switch (bannerType) {
-      case 'critical':
-        return 'destructive';
-      case 'info':
-        return 'default';
-      default:
-        return 'default';
-    }
-  };
-
   const getIcon = () => {
     switch (bannerType) {
       case 'critical':
@@ -78,85 +104,76 @@ export function TrialExpirationBanner() {
     }
   };
 
-  const getBannerStyles = () => {
-    switch (bannerType) {
-      case 'critical':
-        return 'border-destructive bg-destructive/10';
-      case 'info':
-        return 'border-blue-500 bg-blue-50 dark:bg-blue-950/30';
-      default:
-        return 'border-yellow-500 bg-yellow-50 dark:bg-yellow-950/30';
-    }
-  };
+  const titleText =
+    daysRemaining === 0
+      ? 'Seu período de teste expira hoje!'
+      : daysRemaining === 1
+        ? 'Seu período de teste expira amanhã!'
+        : `Seu período de teste expira em ${daysRemaining} dias`;
 
   return (
-    <Alert 
-      variant={getAlertVariant()} 
-      className={`mb-4 relative ${getBannerStyles()}`}
-    >
-      {bannerImageUrl && (
-        <div className="absolute right-16 top-1/2 -translate-y-1/2 hidden md:block">
-          <img
-            src={bannerImageUrl}
-            alt="Trial banner"
-            className="h-12 w-auto object-contain"
-          />
+    <Alert variant="default" className="mb-4 border-none bg-transparent p-0">
+      <div className="flex flex-col gap-3">
+        {/* Mantém semântica do componente Alert para leitores de tela */}
+        <AlertTitle className="sr-only">{titleText}</AlertTitle>
+        <AlertDescription className="sr-only">Expira em: {expirationDisplay}</AlertDescription>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <BannerChip tone={bannerType}>
+            {getIcon()}
+            <span>{titleText}</span>
+          </BannerChip>
+
+          <BannerChip tone="neutral">
+            <span>
+              Expira em: <strong className="font-semibold">{expirationDisplay}</strong>
+            </span>
+          </BannerChip>
+
+          {subscriptionStatus?.status === 'trialing' && (
+            <BannerChip tone="muted">
+              Após o término, seu acesso será limitado ao plano gratuito
+            </BannerChip>
+          )}
+
+          <div className="ml-auto flex items-center gap-2">
+            {bannerImageUrl && (
+              <img
+                src={bannerImageUrl}
+                alt="Banner do período de teste"
+                className="hidden md:block h-8 w-auto object-contain"
+                loading="lazy"
+              />
+            )}
+
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={handleDismiss}
+              disabled={dismissNotification.isPending}
+            >
+              <X className="h-4 w-4" />
+              <span className="sr-only">Fechar</span>
+            </Button>
+          </div>
         </div>
-      )}
-      
-      <div className="flex items-start gap-3">
-        {getIcon()}
-        <div className="flex-1">
-          <AlertTitle className="flex items-center gap-2">
-            {daysRemaining === 0 
-              ? 'Seu período de teste expira hoje!' 
-              : daysRemaining === 1 
-                ? 'Seu período de teste expira amanhã!' 
-                : `Seu período de teste expira em ${daysRemaining} dias`
-            }
-          </AlertTitle>
-          <AlertDescription className="mt-1">
-            <p className="text-sm mb-3">
-              Expira em: <strong>{expirationDisplay}</strong>
-              {subscriptionStatus?.status === 'trialing' && (
-                <span className="ml-2 text-muted-foreground">
-                  • Após o término, seu acesso será limitado ao plano gratuito
-                </span>
-              )}
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                size="sm"
-                onClick={handleUpgrade}
-                disabled={isUpgrading}
-                className="gap-2"
-              >
-                <Sparkles className="h-4 w-4" />
-                {isUpgrading ? 'Redirecionando...' : 'Fazer Upgrade Agora'}
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={handleDismiss}
-                disabled={dismissNotification.isPending}
-              >
-                Continuar sem Upgrade
-              </Button>
-            </div>
-          </AlertDescription>
+
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" onClick={handleUpgrade} disabled={isUpgrading} className="gap-2">
+            <Sparkles className="h-4 w-4" />
+            {isUpgrading ? 'Redirecionando...' : 'Fazer Upgrade Agora'}
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={handleDismiss}
+            disabled={dismissNotification.isPending}
+          >
+            Continuar sem Upgrade
+          </Button>
         </div>
       </div>
-
-      <Button
-        variant="ghost"
-        size="icon"
-        className="absolute right-2 top-2 h-6 w-6"
-        onClick={handleDismiss}
-        disabled={dismissNotification.isPending}
-      >
-        <X className="h-4 w-4" />
-        <span className="sr-only">Fechar</span>
-      </Button>
     </Alert>
   );
 }
