@@ -1,7 +1,15 @@
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowRight, Gift, Star, Play, CheckCircle2 } from 'lucide-react';
+import { ArrowRight, Star, Play, CheckCircle2 } from 'lucide-react';
+import { AnnouncementBanner, type BannerStyle } from './AnnouncementBanner';
+
+interface AnnouncementBannerConfig {
+  is_visible: boolean;
+  text: string;
+  highlight_text: string;
+  style: BannerStyle;
+}
 
 interface HeroSectionProps {
   companyName: string;
@@ -15,6 +23,7 @@ interface HeroSectionProps {
   trustBadge2?: string;
   trustBadge3?: string;
   socialProofText?: string;
+  announcementBanner?: AnnouncementBannerConfig;
 }
 
 export function HeroSection({ 
@@ -29,6 +38,7 @@ export function HeroSection({
   trustBadge2 = 'Cancele quando quiser',
   trustBadge3 = 'Suporte em português',
   socialProofText = 'Mais de 500+ restaurantes já confiam no',
+  announcementBanner,
 }: HeroSectionProps) {
   const navigate = useNavigate();
 
@@ -36,22 +46,23 @@ export function HeroSection({
     document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  // Default banner config if not provided
+  const bannerConfig: AnnouncementBannerConfig = announcementBanner || {
+    is_visible: true,
+    text: `Use TODAS as funcionalidades por ${trialDays} DIAS GRÁTIS — Teste, venda, conheça o sistema sem compromisso!`,
+    highlight_text: '',
+    style: 'gradient',
+  };
+
   return (
     <>
-      {/* Trial Banner */}
-      <section className="pt-24">
-        <div className="bg-gradient-to-r from-primary via-primary/90 to-primary/80 py-4 px-4 relative overflow-hidden">
-          <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAwIDEwIEwgNDAgMTAgTSAxMCAwIEwgMTAgNDAgTSAwIDIwIEwgNDAgMjAgTSAyMCAwIEwgMjAgNDAgTSAwIDMwIEwgNDAgMzAgTSAzMCAwIEwgMzAgNDAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgwLDAsMCwwLjEpIiBzdHJva2Utd2lkdGg9IjEiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JpZCkiLz48L3N2Zz4=')] opacity-20"></div>
-          <div className="container mx-auto max-w-6xl text-center relative">
-            <p className="text-lg md:text-xl font-bold text-primary-foreground flex items-center justify-center gap-2 flex-wrap">
-              <Gift className="h-6 w-6 animate-bounce" />
-              Use TODAS as funcionalidades por 
-              <span className="text-2xl md:text-3xl underline decoration-4 decoration-primary-foreground/50 mx-1">{trialDays} DIAS GRÁTIS</span>
-              — Teste, venda, conheça o sistema sem compromisso!
-            </p>
-          </div>
-        </div>
-      </section>
+      {/* Announcement Banner */}
+      <AnnouncementBanner
+        text={bannerConfig.text}
+        highlightText={bannerConfig.highlight_text}
+        style={bannerConfig.style}
+        isVisible={bannerConfig.is_visible}
+      />
 
       {/* Hero Section */}
       <section className="py-20 md:py-32 px-4 relative overflow-hidden">
