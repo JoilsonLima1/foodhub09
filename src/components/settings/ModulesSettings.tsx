@@ -16,6 +16,8 @@ import {
   Truck,
   ShoppingCart,
   MessageSquare,
+  Gift,
+  CreditCard,
 } from 'lucide-react';
 import { 
   useAddonModules, 
@@ -86,6 +88,36 @@ export function ModulesSettings() {
     window.open(`https://wa.me/5511999999999?text=${message}`, '_blank');
   };
 
+  // Get subscription badge info
+  const getSubscriptionBadge = (subscription: ReturnType<typeof getSubscriptionInfo>) => {
+    if (!subscription) return null;
+
+    if (subscription.is_free || subscription.source === 'plan_included') {
+      return {
+        label: 'Incluso no Plano',
+        variant: 'default' as const,
+        icon: Gift,
+        description: 'Gratuito',
+      };
+    }
+
+    if (subscription.price_paid > 0) {
+      return {
+        label: ADDON_STATUS_LABELS[subscription.status],
+        variant: 'default' as const,
+        icon: CreditCard,
+        description: `Pago: ${formatPrice(subscription.price_paid)}/mês`,
+      };
+    }
+
+    return {
+      label: ADDON_STATUS_LABELS[subscription.status],
+      variant: subscription.status === 'trial' ? 'secondary' as const : 'default' as const,
+      icon: subscription.status === 'trial' ? Clock : Check,
+      description: subscription.status === 'trial' ? 'Período de teste' : 'Ativo',
+    };
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -130,18 +162,23 @@ export function ModulesSettings() {
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-2">
-              {subscriptions.map(sub => (
-                <Badge 
-                  key={sub.id} 
-                  variant={sub.status === 'active' ? 'default' : 'secondary'}
-                  className="gap-1"
-                >
-                  {sub.addon_module?.name}
-                  {sub.status === 'trial' && (
-                    <Clock className="h-3 w-3 ml-1" />
-                  )}
-                </Badge>
-              ))}
+              {subscriptions.map(sub => {
+                const badgeInfo = getSubscriptionBadge(sub);
+                return (
+                  <Badge 
+                    key={sub.id} 
+                    variant={sub.status === 'active' ? 'default' : 'secondary'}
+                    className="gap-1"
+                  >
+                    {sub.is_free || sub.source === 'plan_included' ? (
+                      <Gift className="h-3 w-3" />
+                    ) : sub.status === 'trial' ? (
+                      <Clock className="h-3 w-3" />
+                    ) : null}
+                    {sub.addon_module?.name}
+                  </Badge>
+                );
+              })}
             </div>
           </CardContent>
         </Card>
@@ -187,6 +224,7 @@ export function ModulesSettings() {
                 const subscription = getSubscriptionInfo(module.id);
                 const isSubscribed = !!subscription && ['active', 'trial'].includes(subscription.status);
                 const ModuleIcon = getModuleIcon(module.icon);
+                const badgeInfo = getSubscriptionBadge(subscription);
                 
                 return (
                   <Card 
@@ -201,10 +239,10 @@ export function ModulesSettings() {
                         <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
                           <ModuleIcon className="h-5 w-5 text-primary" />
                         </div>
-                        {isSubscribed ? (
-                          <Badge variant="default" className="gap-1">
-                            <Check className="h-3 w-3" />
-                            {ADDON_STATUS_LABELS[subscription.status]}
+                        {isSubscribed && badgeInfo ? (
+                          <Badge variant={badgeInfo.variant} className="gap-1">
+                            <badgeInfo.icon className="h-3 w-3" />
+                            {badgeInfo.label}
                           </Badge>
                         ) : (
                           <Badge variant="secondary">
@@ -241,22 +279,49 @@ export function ModulesSettings() {
                     <CardFooter className="flex-col items-stretch gap-3 pt-4 border-t">
                       <div className="flex items-baseline justify-between">
                         <div>
-                          {module.setup_fee > 0 && (
-                            <span className="text-xs text-muted-foreground block">
-                              Setup: {formatPrice(module.setup_fee)}
-                            </span>
+                          {isSubscribed && badgeInfo ? (
+                            <>
+                              <span className="text-sm text-muted-foreground block">
+                                {badgeInfo.description}
+                              </span>
+                              {subscription?.is_free || subscription?.source === 'plan_included' ? (
+                                <span className="text-xl font-bold text-primary">Grátis</span>
+                              ) : (
+                                <span className="text-xl font-bold">
+                                  {formatPrice(subscription?.price_paid || module.monthly_price)}
+                                  <span className="text-sm text-muted-foreground font-normal">/mês</span>
+                                </span>
+                              )}
+                            </>
+                          ) : (
+                            <>
+                              {module.setup_fee > 0 && (
+                                <span className="text-xs text-muted-foreground block">
+                                  Setup: {formatPrice(module.setup_fee)}
+                                </span>
+                              )}
+                              <span className="text-xl font-bold">
+                                {formatPrice(module.monthly_price)}
+                              </span>
+                              <span className="text-sm text-muted-foreground">/mês</span>
+                            </>
                           )}
-                          <span className="text-xl font-bold">
-                            {formatPrice(module.monthly_price)}
-                          </span>
-                          <span className="text-sm text-muted-foreground">/mês</span>
                         </div>
                       </div>
                       
                       {isSubscribed ? (
                         <Button variant="outline" disabled className="w-full">
-                          <Check className="h-4 w-4 mr-2" />
-                          Ativo
+                          {subscription?.is_free || subscription?.source === 'plan_included' ? (
+                            <>
+                              <Gift className="h-4 w-4 mr-2" />
+                              Incluso no Plano
+                            </>
+                          ) : (
+                            <>
+                              <Check className="h-4 w-4 mr-2" />
+                              Instalado
+                            </>
+                          )}
                         </Button>
                       ) : (
                         <Button 

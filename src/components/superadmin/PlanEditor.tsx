@@ -40,9 +40,11 @@ import {
   PowerOff,
   Eye,
   EyeOff,
+  Gift,
 } from 'lucide-react';
 import { useSubscriptionPlans, PLAN_FEATURES } from '@/hooks/useSubscriptionPlans';
 import { PasswordConfirmDialog } from './PasswordConfirmDialog';
+import { PlanAddonModulesTab } from './PlanAddonModulesTab';
 import type { SubscriptionPlan } from '@/types/database';
 
 interface PlanCardProps {
@@ -486,6 +488,8 @@ export function PlanEditor() {
     );
   }
 
+  const [activeTab, setActiveTab] = useState('plans');
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -495,35 +499,55 @@ export function PlanEditor() {
             Configure os planos de assinatura e seus recursos
           </p>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <Switch
-              id="show-inactive"
-              checked={showInactive}
-              onCheckedChange={setShowInactive}
-            />
-            <Label htmlFor="show-inactive" className="text-sm">
-              Mostrar inativos
-            </Label>
-          </div>
-          <Button onClick={handleCreate}>
-            <Plus className="h-4 w-4 mr-2" />
-            Novo Plano
-          </Button>
-        </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {filteredPlans?.map((plan) => (
-          <PlanCard
-            key={plan.id}
-            plan={plan}
-            onEdit={handleEdit}
-            onDelete={handleDeleteRequest}
-            onToggleActive={handleToggleActive}
-          />
-        ))}
-      </div>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger value="plans" className="gap-2">
+            <Package className="h-4 w-4" />
+            Planos
+          </TabsTrigger>
+          <TabsTrigger value="addons" className="gap-2">
+            <Gift className="h-4 w-4" />
+            Módulos Inclusos
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="plans" className="mt-6 space-y-4">
+          <div className="flex items-center justify-end gap-4">
+            <div className="flex items-center gap-2">
+              <Switch
+                id="show-inactive"
+                checked={showInactive}
+                onCheckedChange={setShowInactive}
+              />
+              <Label htmlFor="show-inactive" className="text-sm">
+                Mostrar inativos
+              </Label>
+            </div>
+            <Button onClick={handleCreate}>
+              <Plus className="h-4 w-4 mr-2" />
+              Novo Plano
+            </Button>
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {filteredPlans?.map((plan) => (
+              <PlanCard
+                key={plan.id}
+                plan={plan}
+                onEdit={handleEdit}
+                onDelete={handleDeleteRequest}
+                onToggleActive={handleToggleActive}
+              />
+            ))}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="addons" className="mt-6">
+          <PlanAddonModulesTab />
+        </TabsContent>
+      </Tabs>
 
       <EditPlanDialog
         plan={editingPlan}

@@ -1419,6 +1419,45 @@ export type Database = {
           },
         ]
       }
+      plan_addon_modules: {
+        Row: {
+          addon_module_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          plan_id: string
+        }
+        Insert: {
+          addon_module_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          plan_id: string
+        }
+        Update: {
+          addon_module_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          plan_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_addon_modules_addon_module_id_fkey"
+            columns: ["addon_module_id"]
+            isOneToOne: false
+            referencedRelation: "addon_modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_addon_modules_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_addon_mapping: {
         Row: {
           addon_id: string
@@ -2442,7 +2481,10 @@ export type Database = {
           created_by: string | null
           expires_at: string | null
           id: string
+          is_free: boolean | null
           notes: string | null
+          price_paid: number | null
+          source: string | null
           started_at: string
           status: Database["public"]["Enums"]["addon_subscription_status"]
           tenant_id: string
@@ -2456,7 +2498,10 @@ export type Database = {
           created_by?: string | null
           expires_at?: string | null
           id?: string
+          is_free?: boolean | null
           notes?: string | null
+          price_paid?: number | null
+          source?: string | null
           started_at?: string
           status?: Database["public"]["Enums"]["addon_subscription_status"]
           tenant_id: string
@@ -2470,7 +2515,10 @@ export type Database = {
           created_by?: string | null
           expires_at?: string | null
           id?: string
+          is_free?: boolean | null
           notes?: string | null
+          price_paid?: number | null
+          source?: string | null
           started_at?: string
           status?: Database["public"]["Enums"]["addon_subscription_status"]
           tenant_id?: string
@@ -3004,6 +3052,14 @@ export type Database = {
           sync_menu: boolean
           tenant_id: string
           updated_at: string
+        }[]
+      }
+      get_plan_addon_modules: {
+        Args: { p_plan_id: string }
+        Returns: {
+          addon_module_id: string
+          addon_name: string
+          addon_slug: string
         }[]
       }
       get_public_business_categories: {

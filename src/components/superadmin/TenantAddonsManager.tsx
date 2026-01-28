@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
 import {
   Card,
   CardContent,
@@ -52,6 +53,8 @@ import {
   Package,
   Building2,
   Calendar,
+  Gift,
+  CreditCard,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -84,8 +87,12 @@ export function TenantAddonsManager() {
   const [selectedStatus, setSelectedStatus] = useState<AddonSubscriptionStatus>('active');
   const [trialDays, setTrialDays] = useState<number>(0);
   const [notes, setNotes] = useState<string>('');
+  const [isFree, setIsFree] = useState<boolean>(false);
+  const [pricePaid, setPricePaid] = useState<number>(0);
 
   const isLoading = modulesLoading || subsLoading || tenantsLoading;
+
+  const selectedModule = modules?.find(m => m.id === selectedModuleId);
 
   const handleAssignModule = async () => {
     if (!selectedTenantId || !selectedModuleId) return;
@@ -100,13 +107,22 @@ export function TenantAddonsManager() {
       status: trialDays > 0 ? 'trial' : selectedStatus,
       trial_ends_at: trialEndsAt,
       notes: notes || undefined,
+      is_free: isFree,
+      price_paid: isFree ? 0 : pricePaid,
+      source: isFree ? 'plan_included' : 'manual',
     });
 
     setIsDialogOpen(false);
+    resetForm();
+  };
+
+  const resetForm = () => {
     setSelectedTenantId('');
     setSelectedModuleId('');
     setTrialDays(0);
     setNotes('');
+    setIsFree(false);
+    setPricePaid(0);
   };
 
   const handleRemove = async (id: string) => {
@@ -128,6 +144,13 @@ export function TenantAddonsManager() {
     );
   });
 
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    }).format(price);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-8">
@@ -145,7 +168,7 @@ export function TenantAddonsManager() {
             Gerencie os módulos atribuídos a cada organização
           </p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) resetForm(); }}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="h-4 w-4 mr-2" />
@@ -182,7 +205,11 @@ export function TenantAddonsManager() {
 
               <div className="space-y-2">
                 <Label>Módulo</Label>
-                <Select value={selectedModuleId} onValueChange={setSelectedModuleId}>
+                <Select value={selectedModuleId} onValueChange={(v) => {
+                  setSelectedModuleId(v);
+                  const mod = modules?.find(m => m.id === v);
+                  if (mod) setPricePaid(mod.monthly_price);
+                }}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione um módulo" />
                   </SelectTrigger>
@@ -193,7 +220,7 @@ export function TenantAddonsManager() {
                           <Package className="h-4 w-4" />
                           <span>{module.name}</span>
                           <span className="text-muted-foreground text-xs">
-                            R$ {module.monthly_price.toFixed(2)}/mês
+                            {formatPrice(module.monthly_price)}/mês
                           </span>
                         </div>
                       </SelectItem>
@@ -201,6 +228,41 @@ export function TenantAddonsManager() {
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Free toggle */}
+              <div className="flex items-center justify-between p-3 border rounded-lg bg-accent/50">
+                <div className="flex items-center gap-2">
+                  <Gift className="h-4 w-4 text-primary" />
+                  <div>
+                    <Label htmlFor="is-free">Liberar Gratuitamente</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Módulo será incluso sem cobrança
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  id="is-free"
+                  checked={isFree}
+                  onCheckedChange={setIsFree}
+                />
+              </div>
+
+              {/* Price paid - only show if not free */}
+              {!isFree && selectedModule && (
+                <div className="space-y-2">
+                  <Label>Valor Cobrado (R$/mês)</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={pricePaid}
+                    onChange={(e) => setPricePaid(parseFloat(e.target.value) || 0)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Preço padrão: {formatPrice(selectedModule.monthly_price)}
+                  </p>
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -284,6 +346,7 @@ export function TenantAddonsManager() {
                 <TableHead>Tenant</TableHead>
                 <TableHead>Módulo</TableHead>
                 <TableHead>Categoria</TableHead>
+                <TableHead>Tipo</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Início</TableHead>
                 <TableHead>Expiração</TableHead>
@@ -293,7 +356,7 @@ export function TenantAddonsManager() {
             <TableBody>
               {filteredSubscriptions?.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                     Nenhuma assinatura encontrada
                   </TableCell>
                 </TableRow>
@@ -316,6 +379,19 @@ export function TenantAddonsManager() {
                       {sub.addon_module?.category && (
                         <Badge variant="outline">
                           {ADDON_CATEGORY_LABELS[sub.addon_module.category]}
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {sub.is_free || sub.source === 'plan_included' ? (
+                        <Badge variant="default" className="gap-1">
+                          <Gift className="h-3 w-3" />
+                          Grátis
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary" className="gap-1">
+                          <CreditCard className="h-3 w-3" />
+                          {formatPrice(sub.price_paid || 0)}/mês
                         </Badge>
                       )}
                     </TableCell>
