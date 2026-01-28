@@ -12,6 +12,8 @@ interface IFoodIntegration {
   sync_menu: boolean;
   created_at: string;
   updated_at: string;
+  credentials_configured: boolean;
+  has_valid_token: boolean;
 }
 
 interface SaveCredentialsParams {
@@ -26,9 +28,11 @@ export function useIFoodIntegration() {
   const [isTestingConnection, setIsTestingConnection] = useState(false);
 
   // Fetch current integration status
+  // Use safe function that doesn't expose credentials
   const { data: integration, isLoading, error } = useQuery({
     queryKey: ['ifood-integration'],
     queryFn: async () => {
+      // Call the secure edge function that proxies through service role
       const { data, error } = await supabase.functions.invoke('ifood-api', {
         body: { action: 'get_integration' }
       });

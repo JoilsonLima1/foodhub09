@@ -622,14 +622,39 @@ async function getIntegration(
   supabase: SupabaseClientType,
   tenantId: string
 ) {
-  const { data: integration } = await supabase
+  // Fetch integration data using service role (bypasses RLS)
+  // SECURITY: Never expose credentials to client - only return safe fields
+  const { data: rawIntegration } = await supabase
     .from('ifood_integrations')
-    .select('id, tenant_id, merchant_id, is_active, auto_accept_orders, sync_menu, created_at, updated_at')
+    .select('*')
     .eq('tenant_id', tenantId)
     .single()
 
+  if (!rawIntegration) {
+    return new Response(
+      JSON.stringify({ integration: null }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
+  }
+
+  // Return only safe fields - never expose client_id, client_secret, access_token, refresh_token
+  const safeIntegration = {
+    id: rawIntegration.id,
+    tenant_id: rawIntegration.tenant_id,
+    merchant_id: rawIntegration.merchant_id,
+    is_active: rawIntegration.is_active,
+    auto_accept_orders: rawIntegration.auto_accept_orders,
+    sync_menu: rawIntegration.sync_menu,
+    created_at: rawIntegration.created_at,
+    updated_at: rawIntegration.updated_at,
+    // Indicate credential status without exposing actual values
+    credentials_configured: !!(rawIntegration.client_id && rawIntegration.client_secret),
+    has_valid_token: !!(rawIntegration.access_token && rawIntegration.token_expires_at && 
+      new Date(rawIntegration.token_expires_at) > new Date())
+  }
+
   return new Response(
-    JSON.stringify({ integration }),
+    JSON.stringify({ integration: safeIntegration }),
     { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
   )
 }
