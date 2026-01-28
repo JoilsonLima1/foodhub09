@@ -2521,6 +2521,21 @@ export type Database = {
       }
     }
     Functions: {
+      get_ifood_integration_safe: {
+        Args: { p_tenant_id: string }
+        Returns: {
+          auto_accept_orders: boolean
+          created_at: string
+          credentials_configured: boolean
+          has_valid_token: boolean
+          id: string
+          is_active: boolean
+          merchant_id: string
+          sync_menu: boolean
+          tenant_id: string
+          updated_at: string
+        }[]
+      }
       get_public_categories: {
         Args: { p_tenant_id: string }
         Returns: {
