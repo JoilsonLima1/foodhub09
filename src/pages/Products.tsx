@@ -7,13 +7,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import {
   Table,
   TableBody,
   TableCell,
@@ -29,6 +22,7 @@ import {
   Trash2,
   Image as ImageIcon,
 } from 'lucide-react';
+import { ProductFormDialog } from '@/components/products/ProductFormDialog';
 
 interface Product {
   id: string;
@@ -38,6 +32,7 @@ interface Product {
   image_url: string | null;
   is_available: boolean;
   is_active: boolean;
+  category_id: string | null;
   category: {
     id: string;
     name: string;
@@ -58,6 +53,8 @@ export default function Products() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
   const fetchProducts = async () => {
     if (!tenantId) return;
@@ -73,6 +70,7 @@ export default function Products() {
           image_url,
           is_available,
           is_active,
+          category_id,
           category:categories (
             id,
             name
@@ -150,11 +148,28 @@ export default function Products() {
             Gerencie o catálogo de {t('products').toLowerCase()}
           </p>
         </div>
-        <Button>
+        <Button onClick={() => { setEditingProduct(null); setIsFormOpen(true); }}>
           <Plus className="h-4 w-4 mr-2" />
           Novo {t('product')}
         </Button>
       </div>
+
+      {/* Product Form Dialog */}
+      <ProductFormDialog
+        open={isFormOpen}
+        onOpenChange={setIsFormOpen}
+        categories={categories}
+        onSuccess={() => fetchProducts()}
+        editProduct={editingProduct ? {
+          id: editingProduct.id,
+          name: editingProduct.name,
+          description: editingProduct.description,
+          base_price: editingProduct.base_price,
+          image_url: editingProduct.image_url,
+          category_id: editingProduct.category_id,
+          is_available: editingProduct.is_available,
+        } : null}
+      />
 
       {/* Search */}
       <Card>
@@ -198,86 +213,93 @@ export default function Products() {
               <p className="text-muted-foreground mb-4">
                 {searchTerm ? 'Tente ajustar a busca' : `Comece adicionando ${t('products').toLowerCase()} ao catálogo`}
               </p>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Adicionar {t('product')}
-              </Button>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t('product')}</TableHead>
-                  <TableHead>{t('category')}</TableHead>
-                  <TableHead>Preço Base</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredProducts.map((product) => (
-                  <TableRow key={product.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center overflow-hidden">
-                          {product.image_url ? (
-                            <img
-                              src={product.image_url}
-                              alt={product.name}
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            <ImageIcon className="h-5 w-5 text-muted-foreground" />
-                          )}
-                        </div>
-                        <div>
-                          <p className="font-medium">{product.name}</p>
-                          {product.description && (
-                            <p className="text-sm text-muted-foreground line-clamp-1">
-                              {product.description}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {product.category ? (
-                        <Badge variant="outline">{product.category.name}</Badge>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="font-semibold">
-                      {formatCurrency(product.base_price)}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-1">
-                        {product.is_available ? (
-                          <Badge className="bg-success/10 text-success border-success/20">
-                            Disponível
-                          </Badge>
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              Adicionar {t('product')}
+            </Button>
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t('product')}</TableHead>
+                <TableHead>{t('category')}</TableHead>
+                <TableHead>Preço Base</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredProducts.map((product) => (
+                <TableRow key={product.id}>
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center overflow-hidden">
+                        {product.image_url ? (
+                          <img
+                            src={product.image_url}
+                            alt={product.name}
+                            className="h-full w-full object-cover"
+                          />
                         ) : (
-                          <Badge variant="secondary">Indisponível</Badge>
+                          <ImageIcon className="h-5 w-5 text-muted-foreground" />
                         )}
                       </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="icon">
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                      <div>
+                        <p className="font-medium">{product.name}</p>
+                        {product.description && (
+                          <p className="text-sm text-muted-foreground line-clamp-1">
+                            {product.description}
+                          </p>
+                        )}
                       </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  );
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    {product.category ? (
+                      <Badge variant="outline">{product.category.name}</Badge>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="font-semibold">
+                    {formatCurrency(product.base_price)}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex gap-1">
+                      {product.is_available ? (
+                        <Badge className="bg-success/10 text-success border-success/20">
+                          Disponível
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary">Indisponível</Badge>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          setEditingProduct(product);
+                          setIsFormOpen(true);
+                        }}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
+  </div>
+);
 }

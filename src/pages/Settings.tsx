@@ -16,6 +16,7 @@ import {
   Building2,
   HardDrive,
   Crown,
+  Monitor,
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PAYMENT_PROVIDER_LABELS } from '@/lib/constants';
@@ -25,6 +26,7 @@ import { BusinessCategorySelector } from '@/components/settings/BusinessCategory
 import { HardwareTutorial } from '@/components/settings/HardwareTutorial';
 import { UserManagement } from '@/components/settings/UserManagement';
 import { SubscriptionSettings } from '@/components/settings/SubscriptionSettings';
+import { POSSettings } from '@/components/settings/POSSettings';
 
 export default function Settings() {
   const { profile, roles } = useAuth();
@@ -60,6 +62,10 @@ export default function Settings() {
           <TabsTrigger value="hardware" className="shrink-0 flex items-center gap-2 whitespace-nowrap">
             <HardDrive className="h-4 w-4" />
             Hardware
+          </TabsTrigger>
+          <TabsTrigger value="pos" className="shrink-0 flex items-center gap-2 whitespace-nowrap">
+            <Monitor className="h-4 w-4" />
+            PDV
           </TabsTrigger>
           <TabsTrigger value="appearance" className="shrink-0 flex items-center gap-2 whitespace-nowrap">
             <Palette className="h-4 w-4" />
@@ -137,6 +143,11 @@ export default function Settings() {
         {/* Hardware Tutorial */}
         <TabsContent value="hardware">
           <HardwareTutorial />
+        </TabsContent>
+
+        {/* POS Settings */}
+        <TabsContent value="pos">
+          <POSSettings />
         </TabsContent>
 
         {/* Appearance Settings */}
