@@ -350,6 +350,48 @@ export type Database = {
           },
         ]
       }
+      customer_push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string | null
+          endpoint: string
+          id: string
+          order_id: string | null
+          p256dh: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string | null
+          endpoint: string
+          id?: string
+          order_id?: string | null
+          p256dh: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string | null
+          endpoint?: string
+          id?: string
+          order_id?: string | null
+          p256dh?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_push_subscriptions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_push_subscriptions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deliveries: {
         Row: {
           courier_id: string | null
@@ -2628,6 +2670,31 @@ export type Database = {
           tenant_logo_url: string
           tenant_name: string
           tenant_whatsapp: string
+        }[]
+      }
+      get_public_order_history: {
+        Args: { p_order_id: string }
+        Returns: {
+          created_at: string
+          id: string
+          notes: string
+          status: Database["public"]["Enums"]["order_status"]
+        }[]
+      }
+      get_public_order_tracking: {
+        Args: { p_order_number: number; p_tenant_id?: string }
+        Returns: {
+          created_at: string
+          estimated_time_minutes: number
+          id: string
+          is_delivery: boolean
+          order_number: number
+          origin: Database["public"]["Enums"]["order_origin"]
+          status: Database["public"]["Enums"]["order_status"]
+          tenant_logo_url: string
+          tenant_name: string
+          total: number
+          updated_at: string
         }[]
       }
       get_public_product_variations: {

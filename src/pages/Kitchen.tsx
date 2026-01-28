@@ -13,6 +13,7 @@ import {
   Timer,
 } from 'lucide-react';
 import { ORDER_STATUS_LABELS } from '@/lib/constants';
+import { updateOrderStatusWithNotification } from '@/lib/orderNotifications';
 import type { OrderStatus } from '@/types/database';
 
 interface KitchenOrder {
@@ -34,7 +35,7 @@ interface KitchenOrder {
 const KITCHEN_STATUSES: OrderStatus[] = ['confirmed', 'preparing', 'ready'];
 
 export default function Kitchen() {
-  const { tenantId } = useAuth();
+  const { tenantId, user } = useAuth();
   const { t } = useBusinessCategoryContext();
   const [orders, setOrders] = useState<KitchenOrder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -98,21 +99,15 @@ export default function Kitchen() {
     };
   }, [tenantId]);
 
-  const updateOrderStatus = async (orderId: string, newStatus: OrderStatus) => {
+  const updateOrderStatus = async (orderId: string, orderNumber: number, newStatus: OrderStatus) => {
     try {
-      const { error } = await supabase
-        .from('orders')
-        .update({ status: newStatus })
-        .eq('id', orderId);
-
-      if (error) throw error;
-
-      // Add to status history
-      await supabase.from('order_status_history').insert({
-        order_id: orderId,
-        status: newStatus,
-      });
-
+      await updateOrderStatusWithNotification(
+        orderId,
+        newStatus,
+        orderNumber,
+        user?.id,
+        `Atualizado pela cozinha`
+      );
       fetchOrders();
     } catch (error) {
       console.error('Error updating order status:', error);
@@ -264,7 +259,7 @@ export default function Kitchen() {
                       <Button
                         size="sm"
                         className="w-full"
-                        onClick={() => updateOrderStatus(order.id, getNextStatus(status)!)}
+                        onClick={() => updateOrderStatus(order.id, order.order_number, getNextStatus(status)!)}
                       >
                         {getNextStatusLabel(status)}
                       </Button>

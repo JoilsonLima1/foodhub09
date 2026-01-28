@@ -26,6 +26,7 @@ import CheckoutSuccess from "./pages/CheckoutSuccess";
 import NotFound from "./pages/NotFound";
 import Tables from "./pages/Tables";
 import PublicMenu from "./pages/PublicMenu";
+import TrackOrder from "./pages/TrackOrder";
 
 const queryClient = new QueryClient();
 
@@ -51,6 +52,10 @@ const App = () => (
               
               {/* Public Menu - accessible without auth */}
               <Route path="/menu/:tenantId" element={<PublicMenu />} />
+              
+              {/* Order Tracking - accessible without auth */}
+              <Route path="/rastrear" element={<TrackOrder />} />
+              <Route path="/rastrear/:tenantId" element={<TrackOrder />} />
               
               <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
                 <Route path="/dashboard" element={<Dashboard />} />

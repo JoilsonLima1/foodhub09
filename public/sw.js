@@ -80,8 +80,14 @@ self.addEventListener('notificationclick', (event) => {
     return;
   }
 
-  // Default action or 'open' action
-  const urlToOpen = event.notification.data?.url || '/courier';
+  // Get URL from notification data or use default
+  let urlToOpen = '/courier';
+  
+  if (event.action === 'track' || event.action === 'open') {
+    urlToOpen = event.notification.data?.url || '/rastrear';
+  } else if (event.notification.data?.url) {
+    urlToOpen = event.notification.data.url;
+  }
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
@@ -111,6 +117,24 @@ self.addEventListener('message', (event) => {
       badge: options.badge || '/favicon.ico',
       requireInteraction: true,
       vibrate: [200, 100, 200],
+    });
+  }
+
+  // Handle order status update broadcasts
+  if (event.data.type === 'BROADCAST_ORDER_UPDATE') {
+    const { notification, orderNumber, status } = event.data;
+    self.registration.showNotification(notification.title, {
+      body: notification.body,
+      icon: '/favicon.ico',
+      badge: '/favicon.ico',
+      tag: notification.tag || `order-${orderNumber}`,
+      requireInteraction: true,
+      vibrate: [200, 100, 200, 100, 200],
+      data: notification.data,
+      actions: [
+        { action: 'track', title: 'Ver Pedido' },
+        { action: 'dismiss', title: 'Dispensar' }
+      ]
     });
   }
 });
