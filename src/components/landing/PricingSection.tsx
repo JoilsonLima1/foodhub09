@@ -6,19 +6,10 @@ import { Badge } from '@/components/ui/badge';
 import { Check, Zap, TrendingUp, Crown, Gift, Sparkles } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-
-interface Plan {
-  id: string;
-  name: string;
-  slug: string;
-  description: string;
-  monthly_price: number;
-  display_order: number;
-  is_active: boolean;
-}
+import type { SubscriptionPlan } from '@/types/database';
 
 interface PricingSectionProps {
-  plans: Plan[] | undefined;
+  plans: SubscriptionPlan[] | undefined;
   isLoading: boolean;
   trialDays: number;
   trialText: string;
@@ -76,52 +67,45 @@ export function PricingSection({ plans, isLoading, trialDays, trialText }: Prici
     }
   };
 
-  const getPlanFeatures = (slug: string) => {
-    switch (slug) {
-      case 'free':
-        return [
-          'Até 1 usuário',
-          'PDV básico',
-          'Até 20 produtos',
-          'Até 50 pedidos/mês',
-          'Suporte por email'
-        ];
-      case 'starter':
-        return [
-          'Até 3 usuários',
-          'PDV completo',
-          'Produtos ilimitados',
-          'Painel da cozinha',
-          'Gestão de entregas',
-          'Relatórios básicos',
-          'Suporte via email e chat'
-        ];
-      case 'professional':
-        return [
-          'Até 10 usuários',
-          'Tudo do Starter +',
-          'Controle de estoque',
-          'Relatório CMV',
-          'App do entregador',
-          'Relatórios avançados',
-          'Integração iFood',
-          'Suporte prioritário'
-        ];
-      case 'enterprise':
-        return [
-          'Usuários ilimitados',
-          'Tudo do Professional +',
-          'Previsão com IA',
-          'Metas e notificações',
-          'Multi-unidades',
-          'Acesso à API',
-          'White Label',
-          'Integrações personalizadas',
-          'Gerente de conta dedicado'
-        ];
-      default:
-        return [];
+  /**
+   * Generate features dynamically from plan data configured in Super Admin
+   */
+  const getPlanFeatures = (plan: SubscriptionPlan): string[] => {
+    const features: string[] = [];
+    
+    // Limits
+    if (plan.max_users !== undefined && plan.max_users !== null) {
+      features.push(plan.max_users === -1 ? 'Usuários ilimitados' : `Até ${plan.max_users} usuário${plan.max_users > 1 ? 's' : ''}`);
     }
+    if (plan.max_products !== undefined && plan.max_products !== null) {
+      features.push(plan.max_products === -1 ? 'Produtos ilimitados' : `Até ${plan.max_products} produtos`);
+    }
+    if (plan.max_orders_per_month !== undefined && plan.max_orders_per_month !== null) {
+      features.push(plan.max_orders_per_month === -1 ? 'Pedidos ilimitados' : `Até ${plan.max_orders_per_month} pedidos/mês`);
+    }
+    
+    // Core features
+    if (plan.feature_pos) features.push('PDV completo');
+    if (plan.feature_kitchen_display) features.push('Painel da cozinha');
+    if (plan.feature_delivery_management) features.push('Gestão de entregas');
+    if (plan.feature_stock_control) features.push('Controle de estoque');
+    if (plan.feature_courier_app) features.push('App do entregador');
+    
+    // Reports
+    if (plan.feature_reports_basic) features.push('Relatórios básicos');
+    if (plan.feature_reports_advanced) features.push('Relatórios avançados');
+    if (plan.feature_cmv_reports) features.push('Relatório CMV');
+    if (plan.feature_ai_forecast) features.push('Previsão com IA');
+    if (plan.feature_goal_notifications) features.push('Metas e notificações');
+    
+    // Advanced
+    if (plan.feature_multi_branch) features.push('Multi-unidades');
+    if (plan.feature_api_access) features.push('Acesso à API');
+    if (plan.feature_white_label) features.push('White Label');
+    if (plan.feature_custom_integrations) features.push('Integrações personalizadas');
+    if (plan.feature_priority_support) features.push('Suporte prioritário');
+    
+    return features;
   };
 
   const getPlanGradient = (slug: string) => {
@@ -133,6 +117,9 @@ export function PricingSection({ plans, isLoading, trialDays, trialText }: Prici
       default: return 'from-primary/20 to-primary/5';
     }
   };
+
+  // Get active plans sorted by display order
+  const activePlans = plans?.filter(p => p.is_active).sort((a, b) => a.display_order - b.display_order) || [];
 
   return (
     <section id="pricing" className="py-20 px-4 bg-gradient-to-b from-background via-card/30 to-background">
@@ -154,7 +141,7 @@ export function PricingSection({ plans, isLoading, trialDays, trialText }: Prici
           </div>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {plans?.filter(p => p.is_active).sort((a, b) => a.display_order - b.display_order).map((plan) => {
+            {activePlans.map((plan) => {
               const Icon = getPlanIcon(plan.slug);
               const isPopular = plan.slug === 'professional';
               const isFree = plan.monthly_price === 0;
@@ -214,7 +201,7 @@ export function PricingSection({ plans, isLoading, trialDays, trialText }: Prici
                     </div>
                     
                     <ul className="space-y-3">
-                      {getPlanFeatures(plan.slug).map((feature, idx) => (
+                      {getPlanFeatures(plan).map((feature, idx) => (
                         <li key={idx} className="flex items-start gap-3">
                           <Check className={`h-5 w-5 ${isFree ? 'text-emerald-500' : 'text-primary'} shrink-0 mt-0.5`} />
                           <span className="text-sm">{feature}</span>
