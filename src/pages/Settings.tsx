@@ -30,6 +30,7 @@ import { UserManagement } from '@/components/settings/UserManagement';
 import { SubscriptionSettings } from '@/components/settings/SubscriptionSettings';
 import { POSSettings } from '@/components/settings/POSSettings';
 import { SuggestionForm } from '@/components/suggestions/SuggestionForm';
+import { StoreSettingsForm } from '@/components/settings/StoreSettingsForm';
 
 export default function Settings() {
   const { user, profile, roles } = useAuth();
@@ -112,39 +113,7 @@ export default function Settings() {
 
         {/* Store Settings */}
         <TabsContent value="store">
-          <Card>
-            <CardHeader>
-              <CardTitle>Informações da Loja</CardTitle>
-              <CardDescription>
-                Dados básicos do seu estabelecimento
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="store-name">Nome do Estabelecimento</Label>
-                  <Input id="store-name" placeholder="Nome da sua loja" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="store-phone">Telefone</Label>
-                  <Input id="store-phone" placeholder="(11) 99999-9999" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="store-email">Email</Label>
-                  <Input id="store-email" type="email" placeholder="contato@loja.com" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="store-whatsapp">WhatsApp</Label>
-                  <Input id="store-whatsapp" placeholder="(11) 99999-9999" />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="store-address">Endereço</Label>
-                <Input id="store-address" placeholder="Rua, número, bairro" />
-              </div>
-              <Button>Salvar Alterações</Button>
-            </CardContent>
-          </Card>
+          <StoreSettingsForm />
         </TabsContent>
 
         {/* Hardware Tutorial */}
