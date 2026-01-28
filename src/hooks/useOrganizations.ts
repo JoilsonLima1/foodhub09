@@ -203,7 +203,12 @@ export function useOrganizations() {
       if (res.error) throw res.error;
       if (res.data?.error) throw new Error(res.data.error);
 
+      // Optimistic update: remove from list immediately
+      setOrganizations(prev => prev.filter(org => org.id !== organizationId));
+
       toast({ title: "Sucesso", description: "Organização excluída permanentemente" });
+      
+      // Also refetch to ensure consistency with server
       await fetchOrganizations();
       return true;
     } catch (error: any) {
@@ -213,6 +218,8 @@ export function useOrganizations() {
         description: error?.message || "Ocorreu um erro ao excluir a organização",
         variant: "destructive",
       });
+      // Refetch to restore correct state after error
+      await fetchOrganizations();
       return false;
     } finally {
       setIsDeleting(false);
