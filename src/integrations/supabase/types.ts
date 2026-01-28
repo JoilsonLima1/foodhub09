@@ -2364,6 +2364,56 @@ export type Database = {
       }
     }
     Views: {
+      ifood_orders_kitchen: {
+        Row: {
+          created_at: string | null
+          id: string | null
+          ifood_order_id: string | null
+          ifood_short_id: string | null
+          items: Json | null
+          scheduled_to: string | null
+          status: Database["public"]["Enums"]["ifood_order_status"] | null
+          subtotal: number | null
+          tenant_id: string | null
+          total: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string | null
+          ifood_order_id?: string | null
+          ifood_short_id?: string | null
+          items?: Json | null
+          scheduled_to?: string | null
+          status?: Database["public"]["Enums"]["ifood_order_status"] | null
+          subtotal?: number | null
+          tenant_id?: string | null
+          total?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string | null
+          ifood_order_id?: string | null
+          ifood_short_id?: string | null
+          items?: Json | null
+          scheduled_to?: string | null
+          status?: Database["public"]["Enums"]["ifood_order_status"] | null
+          subtotal?: number | null
+          tenant_id?: string | null
+          total?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ifood_orders_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orders_safe: {
         Row: {
           coupon_id: string | null
