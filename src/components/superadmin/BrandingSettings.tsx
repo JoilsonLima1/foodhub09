@@ -37,7 +37,8 @@ export function BrandingSettings() {
 
   const [landingData, setLandingData] = useState<LandingLayoutSettings>({
     hero_badge: 'Plataforma #1 para Gestão de Restaurantes',
-    hero_title: 'Transforme seu restaurante em uma máquina de vendas',
+    hero_title: 'Transforme seu restaurante em uma',
+    hero_title_highlight: 'máquina de vendas',
     hero_subtitle: 'Unifique pedidos de múltiplas origens, gerencie entregas, controle estoque e tome decisões inteligentes com relatórios em tempo real e previsões com IA.',
     hero_description: '',
     trust_badge_1: 'Sem cartão de crédito',
@@ -310,15 +311,36 @@ export function BrandingSettings() {
 
           {/* Hero Title */}
           <div className="space-y-2">
-            <Label>Título Principal (Hero)</Label>
-            <Textarea
+            <Label>Título Principal (Parte 1 - Cor normal)</Label>
+            <Input
               value={landingData.hero_title}
               onChange={(e) => setLandingData({ ...landingData, hero_title: e.target.value })}
-              rows={2}
-              placeholder="Transforme seu restaurante em uma máquina de vendas"
+              placeholder="Transforme seu restaurante em uma"
             />
             <p className="text-xs text-muted-foreground">
-              Título grande principal da landing page
+              Primeira parte do título em cor normal
+            </p>
+          </div>
+
+          {/* Hero Title Highlight */}
+          <div className="space-y-2">
+            <Label>Título Principal (Parte 2 - Cor destaque)</Label>
+            <Input
+              value={landingData.hero_title_highlight}
+              onChange={(e) => setLandingData({ ...landingData, hero_title_highlight: e.target.value })}
+              placeholder="máquina de vendas"
+            />
+            <p className="text-xs text-muted-foreground">
+              Segunda parte do título em cor primária (destaque)
+            </p>
+          </div>
+
+          {/* Preview */}
+          <div className="p-4 bg-muted rounded-lg">
+            <Label className="text-xs text-muted-foreground mb-2 block">Prévia do título:</Label>
+            <p className="text-xl font-bold">
+              {landingData.hero_title}{' '}
+              <span className="text-primary">{landingData.hero_title_highlight}</span>
             </p>
           </div>
 

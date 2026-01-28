@@ -29,6 +29,7 @@ export interface TrialSettings {
 export interface LandingLayoutSettings {
   hero_badge: string;
   hero_title: string;
+  hero_title_highlight: string;
   hero_subtitle: string;
   hero_description: string;
   trust_badge_1: string;
