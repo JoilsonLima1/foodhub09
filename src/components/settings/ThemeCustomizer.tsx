@@ -1,11 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Palette, RotateCcw, Check, Shield } from 'lucide-react';
+import { Palette, RotateCcw, Check, Shield, Save, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useSystemSettings } from '@/hooks/useSystemSettings';
 
 interface ColorPreset {
   id: string;
@@ -65,23 +66,59 @@ interface ThemeCustomizerProps {
 }
 
 export function ThemeCustomizer({ isSuperAdmin = false }: ThemeCustomizerProps) {
+  const { colors, updateSetting, isLoading } = useSystemSettings();
   const [selectedPreset, setSelectedPreset] = useState<string>('gold-black');
   const [customPrimary, setCustomPrimary] = useState('#FFD700');
   const [customSidebar, setCustomSidebar] = useState('#0D0D0D');
   const [customAccent, setCustomAccent] = useState('#FFF8E7');
   const [isCustomMode, setIsCustomMode] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Load saved colors on mount
+  useEffect(() => {
+    if (colors) {
+      const primaryHex = hslToHex(colors.primary);
+      const secondaryHex = hslToHex(colors.secondary);
+      const accentHex = hslToHex(colors.accent);
+      
+      setCustomPrimary(primaryHex);
+      setCustomSidebar(secondaryHex);
+      setCustomAccent(accentHex);
+      
+      // Check if it matches a preset
+      const matchingPreset = colorPresets.find(
+        p => p.primary === colors.primary && p.sidebar === colors.secondary && p.accent === colors.accent
+      );
+      
+      if (matchingPreset) {
+        setSelectedPreset(matchingPreset.id);
+        setIsCustomMode(false);
+      } else {
+        setIsCustomMode(true);
+        setSelectedPreset('');
+      }
+      
+      // Apply colors to CSS
+      applyColorsToCSS(colors.primary, colors.secondary, colors.accent);
+    }
+  }, [colors]);
+
+  const applyColorsToCSS = (primary: string, sidebar: string, accent: string) => {
+    const root = document.documentElement;
+    root.style.setProperty('--primary', primary);
+    root.style.setProperty('--sidebar-background', sidebar);
+    root.style.setProperty('--accent', accent);
+    root.style.setProperty('--ring', primary);
+    root.style.setProperty('--sidebar-primary', primary);
+  };
 
   const applyPreset = (preset: ColorPreset) => {
     setSelectedPreset(preset.id);
     setIsCustomMode(false);
-    
-    // Apply to CSS variables
-    const root = document.documentElement;
-    root.style.setProperty('--primary', preset.primary);
-    root.style.setProperty('--sidebar-background', preset.sidebar);
-    root.style.setProperty('--accent', preset.accent);
-    root.style.setProperty('--ring', preset.primary);
-    root.style.setProperty('--sidebar-primary', preset.primary);
+    setCustomPrimary(hslToHex(preset.primary));
+    setCustomSidebar(hslToHex(preset.sidebar));
+    setCustomAccent(hslToHex(preset.accent));
+    applyColorsToCSS(preset.primary, preset.sidebar, preset.accent);
   };
 
   const hexToHSL = (hex: string): string => {
@@ -112,28 +149,75 @@ export function ThemeCustomizer({ isSuperAdmin = false }: ThemeCustomizerProps) 
     return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
   };
 
+  const hslToHex = (hsl: string): string => {
+    const parts = hsl.match(/(\d+\.?\d*)/g);
+    if (!parts || parts.length < 3) return '#000000';
+    
+    const h = parseFloat(parts[0]) / 360;
+    const s = parseFloat(parts[1]) / 100;
+    const l = parseFloat(parts[2]) / 100;
+
+    let r, g, b;
+    if (s === 0) {
+      r = g = b = l;
+    } else {
+      const hue2rgb = (p: number, q: number, t: number) => {
+        if (t < 0) t += 1;
+        if (t > 1) t -= 1;
+        if (t < 1/6) return p + (q - p) * 6 * t;
+        if (t < 1/2) return q;
+        if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+        return p;
+      };
+      const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+      const p = 2 * l - q;
+      r = hue2rgb(p, q, h + 1/3);
+      g = hue2rgb(p, q, h);
+      b = hue2rgb(p, q, h - 1/3);
+    }
+
+    const toHex = (x: number) => {
+      const hex = Math.round(x * 255).toString(16);
+      return hex.length === 1 ? '0' + hex : hex;
+    };
+
+    return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+  };
+
   const applyCustomColors = () => {
     setIsCustomMode(true);
     setSelectedPreset('');
     
-    const root = document.documentElement;
     const primaryHSL = hexToHSL(customPrimary);
     const sidebarHSL = hexToHSL(customSidebar);
     const accentHSL = hexToHSL(customAccent);
     
-    root.style.setProperty('--primary', primaryHSL);
-    root.style.setProperty('--sidebar-background', sidebarHSL);
-    root.style.setProperty('--accent', accentHSL);
-    root.style.setProperty('--ring', primaryHSL);
-    root.style.setProperty('--sidebar-primary', primaryHSL);
+    applyColorsToCSS(primaryHSL, sidebarHSL, accentHSL);
+  };
+
+  const saveColors = async () => {
+    setIsSaving(true);
+    try {
+      const primaryHSL = isCustomMode ? hexToHSL(customPrimary) : colorPresets.find(p => p.id === selectedPreset)?.primary || hexToHSL(customPrimary);
+      const sidebarHSL = isCustomMode ? hexToHSL(customSidebar) : colorPresets.find(p => p.id === selectedPreset)?.sidebar || hexToHSL(customSidebar);
+      const accentHSL = isCustomMode ? hexToHSL(customAccent) : colorPresets.find(p => p.id === selectedPreset)?.accent || hexToHSL(customAccent);
+      
+      await updateSetting.mutateAsync({
+        key: 'colors',
+        value: {
+          primary: primaryHSL,
+          secondary: sidebarHSL,
+          accent: accentHSL,
+        }
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const resetToDefault = () => {
     const defaultPreset = colorPresets[0];
     applyPreset(defaultPreset);
-    setCustomPrimary('#FFD700');
-    setCustomSidebar('#0D0D0D');
-    setCustomAccent('#FFF8E7');
   };
 
   return (
@@ -287,12 +371,28 @@ export function ThemeCustomizer({ isSuperAdmin = false }: ThemeCustomizerProps) 
           </div>
 
           <div className="flex gap-2">
-            <Button onClick={applyCustomColors} className="flex-1">
-              Aplicar Cores Personalizadas
+            <Button onClick={applyCustomColors} variant="outline" className="flex-1">
+              Visualizar
             </Button>
             <Button variant="outline" onClick={resetToDefault}>
               <RotateCcw className="h-4 w-4 mr-2" />
               Restaurar
+            </Button>
+          </div>
+          
+          <div className="pt-4 border-t">
+            <Button onClick={saveColors} disabled={isSaving || isLoading} className="w-full">
+              {isSaving ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  Salvar Cores no Sistema
+                </>
+              )}
             </Button>
           </div>
         </CardContent>
