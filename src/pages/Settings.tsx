@@ -22,6 +22,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PAYMENT_PROVIDER_LABELS } from '@/lib/constants';
 import { ThemeCustomizer } from '@/components/settings/ThemeCustomizer';
+import { AppearanceSettings } from '@/components/settings/AppearanceSettings';
 import { IFoodIntegration } from '@/components/integrations/IFoodIntegration';
 import { BusinessCategorySelector } from '@/components/settings/BusinessCategorySelector';
 import { HardwareTutorial } from '@/components/settings/HardwareTutorial';
@@ -158,7 +159,10 @@ export default function Settings() {
 
         {/* Appearance Settings */}
         <TabsContent value="appearance">
-          <ThemeCustomizer isSuperAdmin={isSuperAdmin} />
+          <div className="space-y-6">
+            <AppearanceSettings />
+            <ThemeCustomizer isSuperAdmin={isSuperAdmin} />
+          </div>
         </TabsContent>
 
         {/* Payment Settings */}

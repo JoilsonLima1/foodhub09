@@ -2,6 +2,7 @@ import { useLocation, Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/hooks/useTheme';
+import { useAppearance } from '@/hooks/useAppearance';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { useBusinessCategoryContext } from '@/contexts/BusinessCategoryContext';
 import {
@@ -22,7 +23,8 @@ import {
   Crown,
   Grid3X3,
   ChevronDown,
-  User,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -76,6 +78,7 @@ export function AppSidebar() {
   const location = useLocation();
   const { profile, roles, signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { sidebarCollapsed, toggleSidebar } = useAppearance();
   const { branding } = useSystemSettings();
   const { t, hasFeature } = useBusinessCategoryContext();
   const [isOpen, setIsOpen] = useState(false);
@@ -179,23 +182,31 @@ export function AppSidebar() {
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed top-0 left-0 z-40 h-full w-56 bg-sidebar text-sidebar-foreground transition-transform duration-300',
+          'fixed top-0 left-0 z-40 h-full bg-sidebar text-sidebar-foreground transition-all duration-300',
           'flex flex-col',
+          sidebarCollapsed ? 'w-16' : 'w-56',
           isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         )}
       >
         {/* Logo - Compact */}
-        <div className="flex items-center gap-2.5 px-4 py-3 border-b border-sidebar-border">
-          <img src={logoUrl} alt={`${companyName} Logo`} className="h-8 w-8 rounded-md object-contain" />
-          <div className="flex-1 min-w-0">
-            <h1 className="font-semibold text-sm truncate">{companyName}</h1>
-          </div>
+        <div className={cn(
+          "flex items-center border-b border-sidebar-border",
+          sidebarCollapsed ? "justify-center px-2 py-3" : "gap-2.5 px-4 py-3"
+        )}>
+          <img src={logoUrl} alt={`${companyName} Logo`} className="h-8 w-8 rounded-md object-contain shrink-0" />
+          {!sidebarCollapsed && (
+            <div className="flex-1 min-w-0">
+              <h1 className="font-semibold text-sm truncate">{companyName}</h1>
+            </div>
+          )}
         </div>
 
         {/* Trial Status Badge - Compact */}
-        <div className="px-3 py-2 border-b border-sidebar-border">
-          <TrialStatusBadge />
-        </div>
+        {!sidebarCollapsed && (
+          <div className="px-3 py-2 border-b border-sidebar-border">
+            <TrialStatusBadge />
+          </div>
+        )}
 
         {/* Navigation - Compact */}
         <nav className="flex-1 overflow-y-auto py-2 px-2">
@@ -210,15 +221,17 @@ export function AppSidebar() {
                   <Link
                     to={item.path}
                     onClick={() => setIsOpen(false)}
+                    title={sidebarCollapsed ? label : undefined}
                     className={cn(
-                      'flex items-center gap-2.5 px-2.5 py-2 rounded-md text-xs font-medium transition-colors',
+                      'flex items-center rounded-md text-xs font-medium transition-colors',
+                      sidebarCollapsed ? 'justify-center p-2.5' : 'gap-2.5 px-2.5 py-2',
                       isActive
                         ? 'bg-sidebar-primary text-sidebar-primary-foreground'
                         : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
                     )}
                   >
                     {Icon && <Icon className="h-4 w-4 shrink-0" />}
-                    <span className="truncate">{label}</span>
+                    {!sidebarCollapsed && <span className="truncate">{label}</span>}
                   </Link>
                 </li>
               );
@@ -226,30 +239,49 @@ export function AppSidebar() {
           </ul>
         </nav>
 
+        {/* Collapse Toggle Button - Desktop Only */}
+        <button
+          onClick={toggleSidebar}
+          className="hidden md:flex absolute -right-3 top-20 h-6 w-6 items-center justify-center rounded-full border bg-sidebar text-sidebar-foreground shadow-md hover:bg-sidebar-accent transition-colors"
+          title={sidebarCollapsed ? 'Expandir menu' : 'Recolher menu'}
+        >
+          {sidebarCollapsed ? (
+            <ChevronRight className="h-3.5 w-3.5" />
+          ) : (
+            <ChevronLeft className="h-3.5 w-3.5" />
+          )}
+        </button>
+
         {/* User Profile Dropdown - Footer */}
         <div className="border-t border-sidebar-border p-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
                 className={cn(
-                  'w-full flex items-center gap-2.5 px-2 py-2 rounded-md transition-colors',
-                  'hover:bg-sidebar-accent text-left'
+                  'w-full flex items-center rounded-md transition-colors',
+                  'hover:bg-sidebar-accent text-left',
+                  sidebarCollapsed ? 'justify-center p-2' : 'gap-2.5 px-2 py-2'
                 )}
+                title={sidebarCollapsed ? profile?.full_name || 'Usuário' : undefined}
               >
                 <div className="h-7 w-7 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
                   <span className="text-[10px] font-semibold text-primary">
                     {getUserInitials()}
                   </span>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium truncate text-sidebar-foreground">
-                    {profile?.full_name || 'Usuário'}
-                  </p>
-                  <p className="text-[10px] text-sidebar-foreground/50 truncate">
-                    {getRoleLabel()}
-                  </p>
-                </div>
-                <ChevronDown className="h-3.5 w-3.5 text-sidebar-foreground/50 shrink-0" />
+                {!sidebarCollapsed && (
+                  <>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium truncate text-sidebar-foreground">
+                        {profile?.full_name || 'Usuário'}
+                      </p>
+                      <p className="text-[10px] text-sidebar-foreground/50 truncate">
+                        {getRoleLabel()}
+                      </p>
+                    </div>
+                    <ChevronDown className="h-3.5 w-3.5 text-sidebar-foreground/50 shrink-0" />
+                  </>
+                )}
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
