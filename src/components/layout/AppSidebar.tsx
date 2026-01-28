@@ -253,33 +253,33 @@ export function AppSidebar() {
         </button>
 
         {/* User Profile Dropdown - Footer */}
-        <div className="border-t border-sidebar-border p-2">
+        <div className="border-t border-sidebar-border px-2 py-1">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
                 className={cn(
                   'w-full flex items-center rounded-md transition-colors',
                   'hover:bg-sidebar-accent text-left',
-                  sidebarCollapsed ? 'justify-center p-2' : 'gap-2.5 px-2 py-2'
+                  sidebarCollapsed ? 'justify-center p-1.5' : 'gap-2 px-2 py-1'
                 )}
                 title={sidebarCollapsed ? profile?.full_name || 'Usuário' : undefined}
               >
-                <div className="h-7 w-7 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
-                  <span className="text-[10px] font-semibold text-primary">
+                <div className="h-6 w-6 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+                  <span className="text-[9px] font-semibold text-primary">
                     {getUserInitials()}
                   </span>
                 </div>
                 {!sidebarCollapsed && (
                   <>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium truncate text-sidebar-foreground">
+                      <p className="text-[11px] font-medium truncate text-sidebar-foreground leading-tight">
                         {profile?.full_name || 'Usuário'}
                       </p>
-                      <p className="text-[10px] text-sidebar-foreground/50 truncate">
+                      <p className="text-[9px] text-sidebar-foreground/50 truncate leading-tight">
                         {getRoleLabel()}
                       </p>
                     </div>
-                    <ChevronDown className="h-3.5 w-3.5 text-sidebar-foreground/50 shrink-0" />
+                    <ChevronDown className="h-3 w-3 text-sidebar-foreground/50 shrink-0" />
                   </>
                 )}
               </button>
