@@ -105,12 +105,6 @@ REGRAS:
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
-  };
 
   if (!isOpen) {
     if (!showFloatingButton) return null;
@@ -204,10 +198,15 @@ REGRAS:
               <Input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                onKeyPress={handleKeyPress}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                  }
+                }}
                 placeholder="Digite sua mensagem..."
                 disabled={isLoading}
-                className="flex-1"
+                className="flex-1 bg-background border-input text-foreground placeholder:text-muted-foreground"
               />
               <Button 
                 onClick={sendMessage} 
