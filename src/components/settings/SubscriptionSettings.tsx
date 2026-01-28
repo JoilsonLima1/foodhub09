@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Crown, Calendar, CreditCard, ExternalLink, Loader2, AlertTriangle } from 'lucide-react';
+import { Crown, Calendar, CreditCard, ExternalLink, Loader2, AlertTriangle, Check } from 'lucide-react';
 import { useTrialStatus } from '@/hooks/useTrialStatus';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,20 +10,75 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
+interface SubscriptionPlan {
+  id: string;
+  name: string;
+  slug: string;
+  monthly_price: number;
+  description: string | null;
+  max_users: number | null;
+  max_products: number | null;
+  feature_pos: boolean | null;
+  feature_stock_control: boolean | null;
+  feature_ai_forecast: boolean | null;
+  feature_reports_basic: boolean | null;
+  feature_reports_advanced: boolean | null;
+  feature_delivery_management: boolean | null;
+}
+
 export function SubscriptionSettings() {
   const { session } = useAuth();
   const { subscriptionStatus, isLoading, getDaysRemaining } = useTrialStatus();
   const { toast } = useToast();
-  const [isUpgrading, setIsUpgrading] = useState(false);
+  const [isUpgrading, setIsUpgrading] = useState<string | null>(null);
   const [isOpeningPortal, setIsOpeningPortal] = useState(false);
+  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
+  const [loadingPlans, setLoadingPlans] = useState(true);
 
-  const handleUpgrade = async () => {
-    if (!session?.access_token) return;
+  useEffect(() => {
+    const fetchPlans = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('subscription_plans')
+          .select('id, name, slug, monthly_price, description, max_users, max_products, feature_pos, feature_stock_control, feature_ai_forecast, feature_reports_basic, feature_reports_advanced, feature_delivery_management')
+          .eq('is_active', true)
+          .order('display_order');
+        
+        if (error) throw error;
+        setPlans(data || []);
+      } catch (error) {
+        console.error('Error fetching plans:', error);
+      } finally {
+        setLoadingPlans(false);
+      }
+    };
 
-    setIsUpgrading(true);
+    fetchPlans();
+  }, []);
+
+  const handleSelectPlan = async (plan: SubscriptionPlan) => {
+    if (!session?.access_token) {
+      toast({
+        title: 'Erro de autenticação',
+        description: 'Faça login novamente para continuar',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Free plan - just show confirmation
+    if (plan.monthly_price === 0) {
+      toast({
+        title: 'Plano Grátis',
+        description: 'Você já está utilizando o plano gratuito. Para mais recursos, escolha um plano pago.',
+      });
+      return;
+    }
+
+    setIsUpgrading(plan.id);
     try {
       const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { planId: 'starter' },
+        body: { planId: plan.id },
         headers: {
           Authorization: `Bearer ${session.access_token}`,
         },
@@ -31,22 +86,40 @@ export function SubscriptionSettings() {
 
       if (error) throw error;
 
+      if (data?.free) {
+        toast({
+          title: 'Plano ativado',
+          description: data.message || 'Plano gratuito ativado com sucesso',
+        });
+        return;
+      }
+
       if (data?.url) {
         window.open(data.url, '_blank');
+      } else {
+        throw new Error('URL de checkout não retornada');
       }
     } catch (error: any) {
+      console.error('Checkout error:', error);
       toast({
         title: 'Erro ao iniciar checkout',
         description: error.message || 'Tente novamente mais tarde',
         variant: 'destructive',
       });
     } finally {
-      setIsUpgrading(false);
+      setIsUpgrading(null);
     }
   };
 
   const handleManageSubscription = async () => {
-    if (!session?.access_token) return;
+    if (!session?.access_token) {
+      toast({
+        title: 'Erro de autenticação',
+        description: 'Faça login novamente para continuar',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     setIsOpeningPortal(true);
     try {
@@ -60,8 +133,11 @@ export function SubscriptionSettings() {
 
       if (data?.url) {
         window.open(data.url, '_blank');
+      } else {
+        throw new Error('URL do portal não retornada');
       }
     } catch (error: any) {
+      console.error('Portal error:', error);
       toast({
         title: 'Erro ao abrir portal',
         description: error.message || 'Tente novamente mais tarde',
@@ -96,7 +172,30 @@ export function SubscriptionSettings() {
     return format(new Date(dateString), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
   };
 
-  if (isLoading) {
+  const isCurrentPlan = (planSlug: string) => {
+    return subscriptionStatus?.planId?.includes(planSlug);
+  };
+
+  const getPlanFeatures = (plan: SubscriptionPlan): string[] => {
+    const features: string[] = [];
+    
+    if (plan.max_users) {
+      features.push(plan.max_users === -1 ? 'Usuários ilimitados' : `Até ${plan.max_users} usuários`);
+    }
+    if (plan.max_products) {
+      features.push(plan.max_products === -1 ? 'Produtos ilimitados' : `${plan.max_products} produtos`);
+    }
+    if (plan.feature_pos) features.push('PDV e Pedidos');
+    if (plan.feature_reports_basic) features.push('Relatórios básicos');
+    if (plan.feature_reports_advanced) features.push('Relatórios avançados');
+    if (plan.feature_stock_control) features.push('Controle de estoque');
+    if (plan.feature_ai_forecast) features.push('Previsões de IA');
+    if (plan.feature_delivery_management) features.push('Gestão de entregas');
+    
+    return features;
+  };
+
+  if (isLoading || loadingPlans) {
     return (
       <Card>
         <CardContent className="flex items-center justify-center py-12">
@@ -142,7 +241,8 @@ export function SubscriptionSettings() {
               <div className="text-right">
                 <p className="text-sm text-muted-foreground">Plano</p>
                 <p className="font-medium">
-                  {subscriptionStatus.planId.includes('starter') ? 'Starter' : 
+                  {subscriptionStatus.planId.includes('free') ? 'Grátis' :
+                   subscriptionStatus.planId.includes('starter') ? 'Starter' : 
                    subscriptionStatus.planId.includes('professional') ? 'Professional' : 
                    subscriptionStatus.planId.includes('enterprise') ? 'Enterprise' : 'Básico'}
                 </p>
@@ -192,45 +292,27 @@ export function SubscriptionSettings() {
             </div>
           )}
 
-          {/* Actions */}
-          <div className="flex flex-wrap gap-3">
-            {(isTrialing || isExpired) && (
-              <Button onClick={handleUpgrade} disabled={isUpgrading}>
-                {isUpgrading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Carregando...
-                  </>
-                ) : (
-                  <>
-                    <Crown className="h-4 w-4 mr-2" />
-                    Fazer Upgrade
-                  </>
-                )}
-              </Button>
-            )}
-            
-            {(isActive || isTrialing) && subscriptionStatus?.isSubscribed && (
-              <Button variant="outline" onClick={handleManageSubscription} disabled={isOpeningPortal}>
-                {isOpeningPortal ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Abrindo...
-                  </>
-                ) : (
-                  <>
-                    <CreditCard className="h-4 w-4 mr-2" />
-                    Gerenciar Assinatura
-                    <ExternalLink className="h-3 w-3 ml-2" />
-                  </>
-                )}
-              </Button>
-            )}
-          </div>
+          {/* Manage Subscription Button */}
+          {(isActive || isTrialing) && subscriptionStatus?.isSubscribed && (
+            <Button variant="outline" onClick={handleManageSubscription} disabled={isOpeningPortal}>
+              {isOpeningPortal ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Abrindo...
+                </>
+              ) : (
+                <>
+                  <CreditCard className="h-4 w-4 mr-2" />
+                  Gerenciar Assinatura
+                  <ExternalLink className="h-3 w-3 ml-2" />
+                </>
+              )}
+            </Button>
+          )}
         </CardContent>
       </Card>
 
-      {/* Plans Overview */}
+      {/* Plans Overview - Dynamic from database */}
       <Card>
         <CardHeader>
           <CardTitle>Planos Disponíveis</CardTitle>
@@ -239,58 +321,81 @@ export function SubscriptionSettings() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-3">
-            {/* Starter */}
-            <div className="p-4 border rounded-lg space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="font-semibold">Starter</h3>
-                {subscriptionStatus?.planId?.includes('starter') && (
-                  <Badge variant="secondary">Atual</Badge>
-                )}
-              </div>
-              <p className="text-2xl font-bold">R$ 99<span className="text-sm font-normal text-muted-foreground">/mês</span></p>
-              <ul className="text-sm space-y-1 text-muted-foreground">
-                <li>• Até 3 usuários</li>
-                <li>• 100 produtos</li>
-                <li>• PDV e Pedidos</li>
-                <li>• Relatórios básicos</li>
-              </ul>
-            </div>
-
-            {/* Professional */}
-            <div className="p-4 border-2 border-primary rounded-lg space-y-3 relative">
-              <Badge className="absolute -top-2 right-4">Mais Popular</Badge>
-              <div className="flex items-center justify-between">
-                <h3 className="font-semibold">Professional</h3>
-                {subscriptionStatus?.planId?.includes('professional') && (
-                  <Badge variant="secondary">Atual</Badge>
-                )}
-              </div>
-              <p className="text-2xl font-bold">R$ 199<span className="text-sm font-normal text-muted-foreground">/mês</span></p>
-              <ul className="text-sm space-y-1 text-muted-foreground">
-                <li>• Até 10 usuários</li>
-                <li>• Produtos ilimitados</li>
-                <li>• Controle de estoque</li>
-                <li>• Previsões de IA</li>
-              </ul>
-            </div>
-
-            {/* Enterprise */}
-            <div className="p-4 border rounded-lg space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="font-semibold">Enterprise</h3>
-                {subscriptionStatus?.planId?.includes('enterprise') && (
-                  <Badge variant="secondary">Atual</Badge>
-                )}
-              </div>
-              <p className="text-2xl font-bold">R$ 399<span className="text-sm font-normal text-muted-foreground">/mês</span></p>
-              <ul className="text-sm space-y-1 text-muted-foreground">
-                <li>• Usuários ilimitados</li>
-                <li>• Multi-lojas</li>
-                <li>• API customizada</li>
-                <li>• Suporte prioritário</li>
-              </ul>
-            </div>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {plans.map((plan, index) => {
+              const isCurrent = isCurrentPlan(plan.slug);
+              const isProfessional = plan.slug === 'professional';
+              const features = getPlanFeatures(plan);
+              
+              return (
+                <div 
+                  key={plan.id}
+                  className={`p-4 border rounded-lg space-y-4 relative ${
+                    isProfessional ? 'border-2 border-primary' : ''
+                  } ${isCurrent ? 'bg-primary/5' : ''}`}
+                >
+                  {isProfessional && (
+                    <Badge className="absolute -top-2 right-4 bg-primary text-primary-foreground">
+                      Mais Popular
+                    </Badge>
+                  )}
+                  
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-semibold">{plan.name}</h3>
+                    {isCurrent && (
+                      <Badge variant="secondary">Atual</Badge>
+                    )}
+                  </div>
+                  
+                  <p className="text-2xl font-bold">
+                    {plan.monthly_price === 0 ? (
+                      'Grátis'
+                    ) : (
+                      <>
+                        R$ {plan.monthly_price}
+                        <span className="text-sm font-normal text-muted-foreground">/mês</span>
+                      </>
+                    )}
+                  </p>
+                  
+                  {plan.description && (
+                    <p className="text-sm text-muted-foreground">{plan.description}</p>
+                  )}
+                  
+                  <ul className="text-sm space-y-2">
+                    {features.map((feature, i) => (
+                      <li key={i} className="flex items-center gap-2">
+                        <Check className="h-4 w-4 text-green-500 shrink-0" />
+                        <span className="text-muted-foreground">{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  
+                  <Button 
+                    className="w-full"
+                    variant={isCurrent ? 'secondary' : isProfessional ? 'default' : 'outline'}
+                    disabled={isCurrent || isUpgrading === plan.id}
+                    onClick={() => handleSelectPlan(plan)}
+                  >
+                    {isUpgrading === plan.id ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Carregando...
+                      </>
+                    ) : isCurrent ? (
+                      'Plano Atual'
+                    ) : plan.monthly_price === 0 ? (
+                      'Selecionar Grátis'
+                    ) : (
+                      <>
+                        <Crown className="h-4 w-4 mr-2" />
+                        Fazer Upgrade
+                      </>
+                    )}
+                  </Button>
+                </div>
+              );
+            })}
           </div>
         </CardContent>
       </Card>
