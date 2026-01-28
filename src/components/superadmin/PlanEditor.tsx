@@ -436,6 +436,7 @@ export function PlanEditor() {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [planToDelete, setPlanToDelete] = useState<SubscriptionPlan | null>(null);
   const [showInactive, setShowInactive] = useState(true);
+  const [activeTab, setActiveTab] = useState('plans');
 
   const handleEdit = (plan: SubscriptionPlan) => {
     setEditingPlan(plan);
@@ -488,7 +489,6 @@ export function PlanEditor() {
     );
   }
 
-  const [activeTab, setActiveTab] = useState('plans');
 
   return (
     <div className="space-y-6">
