@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,17 +15,19 @@ import {
 } from '@/components/ui/select';
 import {
   Package,
-  Check,
   Gift,
   Plug2,
   Settings2,
   Megaphone,
   HardDrive,
   Truck,
+  Save,
+  Loader2,
 } from 'lucide-react';
 import { useSubscriptionPlans } from '@/hooks/useSubscriptionPlans';
 import { useAddonModules, ADDON_CATEGORY_LABELS, type AddonModuleCategory } from '@/hooks/useAddonModules';
 import { usePlanAddonModules } from '@/hooks/usePlanAddonModules';
+import { useToast } from '@/hooks/use-toast';
 import type { SubscriptionPlan } from '@/types/database';
 
 // Icon mapping for module categories
@@ -38,28 +40,103 @@ const CATEGORY_ICONS: Record<AddonModuleCategory, React.ComponentType<{ classNam
 };
 
 export function PlanAddonModulesTab() {
+  const { toast } = useToast();
   const { plans, isLoading: plansLoading } = useSubscriptionPlans();
   const { modules, isLoading: modulesLoading } = useAddonModules();
-  const { allPlanAddons, isLoadingAll, toggleModuleInPlan, isPlanAddonIncluded } = usePlanAddonModules();
+  const { allPlanAddons, isLoadingAll, addModuleToPlan, removeModuleFromPlan, isPlanAddonIncluded } = usePlanAddonModules();
   const [selectedPlanId, setSelectedPlanId] = useState<string>('');
-  const [isUpdating, setIsUpdating] = useState<string | null>(null);
+  const [localSelections, setLocalSelections] = useState<Set<string>>(new Set());
+  const [isSaving, setIsSaving] = useState(false);
 
   const isLoading = plansLoading || modulesLoading || isLoadingAll;
   const selectedPlan = plans?.find(p => p.id === selectedPlanId);
 
-  const handleToggle = async (addonModuleId: string, isIncluded: boolean) => {
-    if (!selectedPlanId) return;
-    setIsUpdating(addonModuleId);
+  // Initialize local selections when plan is selected or data changes
+  useEffect(() => {
+    if (selectedPlanId && allPlanAddons) {
+      const currentModules = allPlanAddons
+        .filter(pa => pa.plan_id === selectedPlanId)
+        .map(pa => pa.addon_module_id);
+      setLocalSelections(new Set(currentModules));
+    }
+  }, [selectedPlanId, allPlanAddons]);
+
+  // Calculate if there are pending changes
+  const hasChanges = useMemo(() => {
+    if (!selectedPlanId || !allPlanAddons) return false;
+    
+    const currentModules = new Set(
+      allPlanAddons
+        .filter(pa => pa.plan_id === selectedPlanId)
+        .map(pa => pa.addon_module_id)
+    );
+    
+    if (localSelections.size !== currentModules.size) return true;
+    
+    for (const id of localSelections) {
+      if (!currentModules.has(id)) return true;
+    }
+    
+    return false;
+  }, [selectedPlanId, allPlanAddons, localSelections]);
+
+  const handleToggle = (addonModuleId: string) => {
+    setLocalSelections(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(addonModuleId)) {
+        newSet.delete(addonModuleId);
+      } else {
+        newSet.add(addonModuleId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSave = async () => {
+    if (!selectedPlanId || !allPlanAddons) return;
+    
+    setIsSaving(true);
     try {
-      await toggleModuleInPlan(selectedPlanId, addonModuleId, isIncluded);
+      const currentModules = new Set(
+        allPlanAddons
+          .filter(pa => pa.plan_id === selectedPlanId)
+          .map(pa => pa.addon_module_id)
+      );
+
+      // Modules to add
+      const toAdd = [...localSelections].filter(id => !currentModules.has(id));
+      // Modules to remove
+      const toRemove = [...currentModules].filter(id => !localSelections.has(id));
+
+      // Execute all changes
+      await Promise.all([
+        ...toAdd.map(id => addModuleToPlan.mutateAsync({ plan_id: selectedPlanId, addon_module_id: id })),
+        ...toRemove.map(id => removeModuleFromPlan.mutateAsync({ plan_id: selectedPlanId, addon_module_id: id })),
+      ]);
+
+      toast({
+        title: 'Alterações salvas',
+        description: `${toAdd.length} módulo(s) adicionado(s), ${toRemove.length} removido(s).`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Erro ao salvar',
+        description: 'Não foi possível salvar as alterações.',
+        variant: 'destructive',
+      });
     } finally {
-      setIsUpdating(null);
+      setIsSaving(false);
     }
   };
 
   const getModulesIncludedCount = (planId: string) => {
     if (!allPlanAddons) return 0;
     return allPlanAddons.filter(pa => pa.plan_id === planId).length;
+  };
+
+  const handleBack = () => {
+    setSelectedPlanId('');
+    setLocalSelections(new Set());
   };
 
   if (isLoading) {
@@ -146,10 +223,29 @@ export function PlanAddonModulesTab() {
                     Selecione os módulos que serão gratuitos para este plano
                   </p>
                 </div>
-                <Button variant="outline" onClick={() => setSelectedPlanId('')}>
-                  Voltar
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" onClick={handleBack}>
+                    Voltar
+                  </Button>
+                  <Button 
+                    onClick={handleSave} 
+                    disabled={!hasChanges || isSaving}
+                  >
+                    {isSaving ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Save className="h-4 w-4 mr-2" />
+                    )}
+                    Salvar Alterações
+                  </Button>
+                </div>
               </div>
+
+              {hasChanges && (
+                <div className="p-3 bg-warning/10 border border-warning/30 rounded-lg text-sm text-warning">
+                  Você tem alterações não salvas. Clique em "Salvar Alterações" para confirmar.
+                </div>
+              )}
 
               <Separator />
 
@@ -168,21 +264,19 @@ export function PlanAddonModulesTab() {
                     </h4>
                     <div className="grid gap-2 md:grid-cols-2">
                       {categoryModules.map((module) => {
-                        const isIncluded = isPlanAddonIncluded(selectedPlanId, module.id);
-                        const isLoading = isUpdating === module.id;
+                        const isSelected = localSelections.has(module.id);
 
                         return (
                           <div
                             key={module.id}
                             className={`flex items-center gap-3 p-3 border rounded-lg transition-colors ${
-                              isIncluded ? 'bg-primary/5 border-primary/30' : 'hover:bg-accent/50'
+                              isSelected ? 'bg-primary/5 border-primary/30' : 'hover:bg-accent/50'
                             }`}
                           >
                             <Checkbox
                               id={`module-${module.id}`}
-                              checked={isIncluded}
-                              disabled={isLoading}
-                              onCheckedChange={() => handleToggle(module.id, isIncluded)}
+                              checked={isSelected}
+                              onCheckedChange={() => handleToggle(module.id)}
                             />
                             <div className="flex-1 min-w-0">
                               <Label
@@ -195,7 +289,7 @@ export function PlanAddonModulesTab() {
                                 Normalmente R$ {module.monthly_price}/mês
                               </p>
                             </div>
-                            {isIncluded && (
+                            {isSelected && (
                               <Badge variant="default" className="gap-1 shrink-0">
                                 <Gift className="h-3 w-3" />
                                 Grátis
