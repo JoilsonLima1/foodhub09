@@ -124,6 +124,7 @@ export const PLAN_FEATURES = [
   { key: 'feature_delivery_management', label: 'Gestão de Entregas', description: 'Gerenciamento de entregadores e rotas', type: 'boolean', category: 'core' },
   { key: 'feature_stock_control', label: 'Controle de Estoque', description: 'Gestão de insumos e receitas', type: 'boolean', category: 'core' },
   { key: 'feature_courier_app', label: 'App do Entregador', description: 'Dashboard mobile para entregadores', type: 'boolean', category: 'core' },
+  { key: 'feature_public_menu', label: 'Cardápio na Internet', description: 'Link exclusivo para visualização do cardápio online', type: 'boolean', category: 'core' },
   
   // Reports
   { key: 'feature_reports_basic', label: 'Relatórios Básicos', description: 'Vendas diárias e produtos mais vendidos', type: 'boolean', category: 'reports' },

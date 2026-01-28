@@ -85,6 +85,7 @@ export function PricingSection({ plans, isLoading, trialDays, trialText }: Prici
     }
     
     // Core features
+    if (plan.feature_public_menu) features.push('Cardápio na Internet');
     if (plan.feature_pos) features.push('PDV completo');
     if (plan.feature_kitchen_display) features.push('Painel da cozinha');
     if (plan.feature_delivery_management) features.push('Gestão de entregas');
@@ -99,7 +100,8 @@ export function PricingSection({ plans, isLoading, trialDays, trialText }: Prici
     if (plan.feature_goal_notifications) features.push('Metas e notificações');
     
     // Advanced
-    if (plan.feature_multi_branch) features.push('Multi-unidades');
+    if (plan.feature_multi_branch) features.push('Multi-lojas (base inclusa)');
+    if (plan.feature_api_access) features.push('Acesso à API');
     if (plan.feature_api_access) features.push('Acesso à API');
     if (plan.feature_white_label) features.push('White Label');
     if (plan.feature_custom_integrations) features.push('Integrações personalizadas');

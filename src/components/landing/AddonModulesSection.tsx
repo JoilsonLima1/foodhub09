@@ -13,6 +13,7 @@ import {
   MessageSquare,
   Sparkles,
   ArrowRight,
+  Store,
 } from 'lucide-react';
 import { useAddonModules, ADDON_CATEGORY_LABELS, type AddonModuleCategory } from '@/hooks/useAddonModules';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -37,6 +38,7 @@ const getModuleIcon = (iconName: string) => {
     Truck,
     ShoppingCart,
     MessageSquare,
+    Store,
   };
   return icons[iconName] || Package;
 };

@@ -28,6 +28,7 @@ export interface PublicSubscriptionPlan {
   feature_cmv_reports: boolean;
   feature_goal_notifications: boolean;
   feature_courier_app: boolean;
+  feature_public_menu: boolean;
 }
 
 /**
