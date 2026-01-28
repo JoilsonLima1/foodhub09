@@ -11,7 +11,7 @@ interface AuthContextType {
   tenantId: string | null;
   isLoading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signUp: (email: string, password: string, fullName: string, tenantName: string) => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string, fullName: string, tenantName: string, businessCategory?: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   hasRole: (role: AppRole) => boolean;
   hasAnyRole: (roles: AppRole[]) => boolean;
@@ -224,10 +224,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error };
   };
 
-  const signUp = async (email: string, password: string, fullName: string, tenantName: string) => {
+  const signUp = async (email: string, password: string, fullName: string, tenantName: string, businessCategory?: string) => {
     const redirectUrl = `${window.location.origin}/`;
     
-    console.log('[signUp] Starting signup for:', email);
+    console.log('[signUp] Starting signup for:', email, 'with category:', businessCategory);
     
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -237,6 +237,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         data: {
           full_name: fullName,
           tenant_name: tenantName,
+          business_category: businessCategory || 'restaurant',
         },
       },
     });
@@ -272,6 +273,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           },
           body: {
             tenantName,
+            businessCategory,
           },
         });
 

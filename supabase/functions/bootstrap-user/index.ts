@@ -54,17 +54,22 @@ Deno.serve(async (req) => {
     const userEmail = user.email || ''
     const userMetadata = user.user_metadata ?? {}
 
-    // Optional: tenant/org name sent by the client during signup
-    let requestedTenantName: string | undefined
+    // Optional: tenant/org name and category sent by the client during signup
+    let requestedTenantName: string | undefined;
+    let requestedBusinessCategory: string | undefined;
     try {
       // Not all requests will contain JSON (e.g., legacy callers)
-      const body = await req.json().catch(() => null)
-      requestedTenantName = body?.tenantName
+      const body = await req.json().catch(() => null);
+      requestedTenantName = body?.tenantName;
+      requestedBusinessCategory = body?.businessCategory;
     } catch {
       // ignore
     }
+
+    // Also check user metadata for category (from signUp options.data)
+    const businessCategory = requestedBusinessCategory || userMetadata?.business_category || 'restaurant';
     
-    console.log(`Bootstrapping user: ${userId} (${userEmail})`)
+    console.log(`Bootstrapping user: ${userId} (${userEmail}) with category: ${businessCategory}`);
 
     // Check if profile already has tenant
     const { data: existingProfile } = await supabaseAdmin
@@ -109,7 +114,7 @@ Deno.serve(async (req) => {
       const slug = makeSlug()
       const { data: tenant, error: tenantError } = await supabaseAdmin
         .from('tenants')
-        .insert({ name: baseName, slug })
+        .insert({ name: baseName, slug, business_category: businessCategory })
         .select('id')
         .single()
 
