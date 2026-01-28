@@ -65,7 +65,7 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const { action, organizationId, organizationData, password } = body;
+    const { action, organizationId, organizationData, password, userId, profileId } = body;
 
     console.log(`[manage-organizations] Action: ${action}, OrgId: ${organizationId || 'N/A'}`);
 
@@ -104,6 +104,326 @@ serve(async (req) => {
 
         return new Response(
           JSON.stringify({ organizations }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'list-orphans': {
+        console.log('[manage-organizations] Fetching orphan data...');
+        
+        // Get all auth users
+        const { data: authData, error: authError } = await supabaseAdmin.auth.admin.listUsers();
+        if (authError) {
+          console.error('[manage-organizations] authError:', authError);
+          return new Response(
+            JSON.stringify({ error: 'Failed to fetch auth users' }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const authUsers = authData?.users || [];
+        const orphanUsers: any[] = [];
+
+        // Check each auth user for orphan status
+        for (const authUser of authUsers) {
+          // Skip the current super admin
+          if (authUser.id === user.id) continue;
+
+          const { data: profile } = await supabaseAdmin
+            .from('profiles')
+            .select('id, tenant_id')
+            .eq('user_id', authUser.id)
+            .maybeSingle();
+
+          const { data: userRoles } = await supabaseAdmin
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', authUser.id);
+
+          const hasProfile = !!profile;
+          const hasRoles = (userRoles?.length || 0) > 0;
+          const hasTenant = !!profile?.tenant_id;
+
+          // User is orphan if: no profile OR (no roles AND no tenant)
+          if (!hasProfile || (!hasRoles && !hasTenant)) {
+            orphanUsers.push({
+              id: authUser.id,
+              email: authUser.email,
+              created_at: authUser.created_at,
+              has_profile: hasProfile,
+              has_roles: hasRoles,
+              tenant_name: null,
+            });
+          }
+        }
+
+        // Get profiles without tenant (orphan profiles)
+        const { data: orphanProfilesData } = await supabaseAdmin
+          .from('profiles')
+          .select('id, user_id, full_name, created_at')
+          .is('tenant_id', null);
+
+        const orphanProfiles: any[] = [];
+        for (const profile of orphanProfilesData || []) {
+          // Skip profiles for super admins
+          const { data: profileRoles } = await supabaseAdmin
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', profile.user_id);
+
+          const isSuperAdminProfile = (profileRoles ?? []).some((r: any) => r.role === 'super_admin');
+          if (isSuperAdminProfile) continue;
+
+          // Get email from auth
+          const { data: authUserData } = await supabaseAdmin.auth.admin.getUserById(profile.user_id);
+          
+          orphanProfiles.push({
+            id: profile.id,
+            user_id: profile.user_id,
+            full_name: profile.full_name,
+            email: authUserData?.user?.email || 'unknown',
+            created_at: profile.created_at,
+          });
+        }
+
+        console.log(`[manage-organizations] Found ${orphanUsers.length} orphan users, ${orphanProfiles.length} orphan profiles`);
+
+        return new Response(
+          JSON.stringify({ orphanUsers, orphanProfiles }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'delete-orphan-user': {
+        if (!userId) {
+          return new Response(
+            JSON.stringify({ error: 'userId required' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        if (!password) {
+          return new Response(
+            JSON.stringify({ error: 'Password confirmation required' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Verify password
+        const userEmail = user.email;
+        if (!userEmail) {
+          return new Response(
+            JSON.stringify({ error: 'User email not found' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const { error: signInError } = await supabaseAdmin.auth.signInWithPassword({
+          email: userEmail,
+          password: password,
+        });
+
+        if (signInError) {
+          return new Response(
+            JSON.stringify({ error: 'Senha incorreta. Operação cancelada.' }),
+            { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Check if target is super_admin
+        const { data: targetRoles } = await supabaseAdmin
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', userId);
+
+        const isTargetSuperAdmin = (targetRoles ?? []).some((r: any) => r.role === 'super_admin');
+        if (isTargetSuperAdmin) {
+          return new Response(
+            JSON.stringify({ error: 'Não é possível excluir um super admin' }),
+            { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Delete user_roles
+        await supabaseAdmin.from('user_roles').delete().eq('user_id', userId);
+        
+        // Delete profiles
+        await supabaseAdmin.from('profiles').delete().eq('user_id', userId);
+        
+        // Delete auth user
+        try {
+          await supabaseAdmin.auth.admin.deleteUser(userId);
+          console.log(`[manage-organizations] Deleted orphan auth user: ${userId}`);
+        } catch (e) {
+          console.log(`[manage-organizations] Could not delete auth user ${userId}:`, e);
+        }
+
+        return new Response(
+          JSON.stringify({ success: true }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'delete-orphan-profile': {
+        if (!profileId) {
+          return new Response(
+            JSON.stringify({ error: 'profileId required' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        if (!password) {
+          return new Response(
+            JSON.stringify({ error: 'Password confirmation required' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Verify password
+        const userEmail = user.email;
+        if (!userEmail) {
+          return new Response(
+            JSON.stringify({ error: 'User email not found' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const { error: signInError } = await supabaseAdmin.auth.signInWithPassword({
+          email: userEmail,
+          password: password,
+        });
+
+        if (signInError) {
+          return new Response(
+            JSON.stringify({ error: 'Senha incorreta. Operação cancelada.' }),
+            { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Get profile to find user_id
+        const { data: profile } = await supabaseAdmin
+          .from('profiles')
+          .select('user_id')
+          .eq('id', profileId)
+          .single();
+
+        if (!profile) {
+          return new Response(
+            JSON.stringify({ error: 'Profile not found' }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Check if target is super_admin
+        const { data: targetRoles } = await supabaseAdmin
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', profile.user_id);
+
+        const isTargetSuperAdmin = (targetRoles ?? []).some((r: any) => r.role === 'super_admin');
+        if (isTargetSuperAdmin) {
+          return new Response(
+            JSON.stringify({ error: 'Não é possível excluir perfil de um super admin' }),
+            { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Delete user_roles
+        await supabaseAdmin.from('user_roles').delete().eq('user_id', profile.user_id);
+        
+        // Delete profile
+        await supabaseAdmin.from('profiles').delete().eq('id', profileId);
+        
+        // Delete auth user
+        try {
+          await supabaseAdmin.auth.admin.deleteUser(profile.user_id);
+          console.log(`[manage-organizations] Deleted orphan profile and user: ${profileId}`);
+        } catch (e) {
+          console.log(`[manage-organizations] Could not delete auth user:`, e);
+        }
+
+        return new Response(
+          JSON.stringify({ success: true }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'delete-all-orphan-users': {
+        if (!password) {
+          return new Response(
+            JSON.stringify({ error: 'Password confirmation required' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Verify password
+        const userEmail = user.email;
+        if (!userEmail) {
+          return new Response(
+            JSON.stringify({ error: 'User email not found' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const { error: signInError } = await supabaseAdmin.auth.signInWithPassword({
+          email: userEmail,
+          password: password,
+        });
+
+        if (signInError) {
+          return new Response(
+            JSON.stringify({ error: 'Senha incorreta. Operação cancelada.' }),
+            { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Get all auth users
+        const { data: authData } = await supabaseAdmin.auth.admin.listUsers();
+        const authUsers = authData?.users || [];
+        let deletedCount = 0;
+
+        for (const authUser of authUsers) {
+          // Skip the current super admin
+          if (authUser.id === user.id) continue;
+
+          // Check if super_admin
+          const { data: targetRoles } = await supabaseAdmin
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', authUser.id);
+
+          const isTargetSuperAdmin = (targetRoles ?? []).some((r: any) => r.role === 'super_admin');
+          if (isTargetSuperAdmin) continue;
+
+          const { data: profile } = await supabaseAdmin
+            .from('profiles')
+            .select('id, tenant_id')
+            .eq('user_id', authUser.id)
+            .maybeSingle();
+
+          const hasProfile = !!profile;
+          const hasRoles = (targetRoles?.length || 0) > 0;
+          const hasTenant = !!profile?.tenant_id;
+
+          // User is orphan if: no profile OR (no roles AND no tenant)
+          if (!hasProfile || (!hasRoles && !hasTenant)) {
+            await supabaseAdmin.from('user_roles').delete().eq('user_id', authUser.id);
+            await supabaseAdmin.from('profiles').delete().eq('user_id', authUser.id);
+            
+            try {
+              await supabaseAdmin.auth.admin.deleteUser(authUser.id);
+              deletedCount++;
+              console.log(`[manage-organizations] Deleted orphan user: ${authUser.email}`);
+            } catch (e) {
+              console.log(`[manage-organizations] Could not delete auth user ${authUser.id}:`, e);
+            }
+          }
+        }
+
+        console.log(`[manage-organizations] Deleted ${deletedCount} orphan users`);
+
+        return new Response(
+          JSON.stringify({ success: true, deletedCount }),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
