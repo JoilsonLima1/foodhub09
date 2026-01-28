@@ -2005,6 +2005,7 @@ export type Database = {
           feature_multi_branch: boolean | null
           feature_pos: boolean | null
           feature_priority_support: boolean | null
+          feature_public_menu: boolean | null
           feature_reports_advanced: boolean | null
           feature_reports_basic: boolean | null
           feature_stock_control: boolean | null
@@ -2037,6 +2038,7 @@ export type Database = {
           feature_multi_branch?: boolean | null
           feature_pos?: boolean | null
           feature_priority_support?: boolean | null
+          feature_public_menu?: boolean | null
           feature_reports_advanced?: boolean | null
           feature_reports_basic?: boolean | null
           feature_stock_control?: boolean | null
@@ -2069,6 +2071,7 @@ export type Database = {
           feature_multi_branch?: boolean | null
           feature_pos?: boolean | null
           feature_priority_support?: boolean | null
+          feature_public_menu?: boolean | null
           feature_reports_advanced?: boolean | null
           feature_reports_basic?: boolean | null
           feature_stock_control?: boolean | null
@@ -3157,6 +3160,7 @@ export type Database = {
           feature_multi_branch: boolean
           feature_pos: boolean
           feature_priority_support: boolean
+          feature_public_menu: boolean
           feature_reports_advanced: boolean
           feature_reports_basic: boolean
           feature_stock_control: boolean
