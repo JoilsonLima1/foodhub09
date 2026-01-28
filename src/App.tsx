@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { BusinessCategoryProvider } from "@/contexts/BusinessCategoryContext";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 
@@ -34,31 +35,33 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <Routes>
-            <Route path="/" element={<Landing />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/checkout/success" element={<CheckoutSuccess />} />
-            
-            {/* Public Menu - accessible without auth */}
-            <Route path="/menu/:tenantId" element={<PublicMenu />} />
-            
-            <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/orders" element={<Orders />} />
-              <Route path="/pos" element={<POS />} />
-              <Route path="/tables" element={<Tables />} />
-              <Route path="/kitchen" element={<Kitchen />} />
-              <Route path="/deliveries" element={<Deliveries />} />
-              <Route path="/products" element={<Products />} />
-              <Route path="/stock" element={<Stock />} />
-              <Route path="/reports" element={<Reports />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/courier-dashboard" element={<CourierDashboard />} />
-              <Route path="/super-admin" element={<SuperAdmin />} />
-            </Route>
-            
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <BusinessCategoryProvider>
+            <Routes>
+              <Route path="/" element={<Landing />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/checkout/success" element={<CheckoutSuccess />} />
+              
+              {/* Public Menu - accessible without auth */}
+              <Route path="/menu/:tenantId" element={<PublicMenu />} />
+              
+              <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/orders" element={<Orders />} />
+                <Route path="/pos" element={<POS />} />
+                <Route path="/tables" element={<Tables />} />
+                <Route path="/kitchen" element={<Kitchen />} />
+                <Route path="/deliveries" element={<Deliveries />} />
+                <Route path="/products" element={<Products />} />
+                <Route path="/stock" element={<Stock />} />
+                <Route path="/reports" element={<Reports />} />
+                <Route path="/settings" element={<Settings />} />
+                <Route path="/courier-dashboard" element={<CourierDashboard />} />
+                <Route path="/super-admin" element={<SuperAdmin />} />
+              </Route>
+              
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BusinessCategoryProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

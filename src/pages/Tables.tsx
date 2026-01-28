@@ -45,9 +45,11 @@ import { TableSessionPanel } from '@/components/tables/TableSessionPanel';
 import { TableHistoryPanel } from '@/components/tables/TableHistoryPanel';
 import { QRCodeDialog } from '@/components/tables/QRCodeDialog';
 import { useAuth } from '@/contexts/AuthContext';
+import { useBusinessCategoryContext } from '@/contexts/BusinessCategoryContext';
 
 export default function Tables() {
   const { tenantId } = useAuth();
+  const { t } = useBusinessCategoryContext();
   const { tables, isLoading, createTable, deleteTable } = useTables();
   const { openSession } = useTableSessionMutations();
   
@@ -61,6 +63,10 @@ export default function Tables() {
   const [qrCodeTable, setQrCodeTable] = useState<Table | null>(null);
   const [historyTable, setHistoryTable] = useState<Table | null>(null);
   const [deleteConfirmTable, setDeleteConfirmTable] = useState<Table | null>(null);
+
+  // Get table terminology (singular and plural)
+  const tableLabel = t('table');
+  const tablesLabel = tableLabel + 's';
 
   const handleCreateTable = async () => {
     const number = parseInt(newTableNumber);
@@ -106,11 +112,11 @@ export default function Tables() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Grid3X3 className="h-6 w-6" />
-          <h1 className="text-2xl font-bold">Mesas & Comandas</h1>
+          <h1 className="text-2xl font-bold">{tablesLabel} & Comandas</h1>
         </div>
         <Button onClick={() => setIsCreateOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
-          Nova Mesa
+          Nova {tableLabel}
         </Button>
       </div>
 
@@ -119,7 +125,7 @@ export default function Tables() {
         <Card>
           <CardContent className="pt-4">
             <div className="text-2xl font-bold">{tables.length}</div>
-            <p className="text-sm text-muted-foreground">Total de Mesas</p>
+            <p className="text-sm text-muted-foreground">Total de {tablesLabel}</p>
           </CardContent>
         </Card>
         <Card>
@@ -127,7 +133,7 @@ export default function Tables() {
             <div className="text-2xl font-bold text-green-600">
               {tables.filter(t => t.activeSession).length}
             </div>
-            <p className="text-sm text-muted-foreground">Mesas Ocupadas</p>
+            <p className="text-sm text-muted-foreground">{tablesLabel} Ocupadas</p>
           </CardContent>
         </Card>
         <Card>
@@ -135,7 +141,7 @@ export default function Tables() {
             <div className="text-2xl font-bold text-muted-foreground">
               {tables.filter(t => !t.activeSession).length}
             </div>
-            <p className="text-sm text-muted-foreground">Mesas Livres</p>
+            <p className="text-sm text-muted-foreground">{tablesLabel} Livres</p>
           </CardContent>
         </Card>
         <Card>
@@ -159,13 +165,13 @@ export default function Tables() {
         <Card>
           <CardContent className="py-12 text-center">
             <Grid3X3 className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-            <h3 className="text-lg font-medium mb-2">Nenhuma mesa cadastrada</h3>
+            <h3 className="text-lg font-medium mb-2">Nenhuma {tableLabel.toLowerCase()} cadastrada</h3>
             <p className="text-muted-foreground mb-4">
-              Crie mesas para começar a usar o sistema de comandas
+              Crie {tablesLabel.toLowerCase()} para começar a usar o sistema de comandas
             </p>
             <Button onClick={() => setIsCreateOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
-              Criar Primeira Mesa
+              Criar Primeira {tableLabel}
             </Button>
           </CardContent>
         </Card>
@@ -258,11 +264,11 @@ export default function Tables() {
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Nova Mesa</DialogTitle>
+            <DialogTitle>Nova {tableLabel}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="tableNumber">Número da Mesa *</Label>
+              <Label htmlFor="tableNumber">Número da {tableLabel} *</Label>
               <Input
                 id="tableNumber"
                 type="number"
@@ -290,7 +296,7 @@ export default function Tables() {
               onClick={handleCreateTable}
               disabled={!newTableNumber || createTable.isPending}
             >
-              {createTable.isPending ? 'Criando...' : 'Criar Mesa'}
+              {createTable.isPending ? 'Criando...' : `Criar ${tableLabel}`}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -329,9 +335,9 @@ export default function Tables() {
       <AlertDialog open={!!deleteConfirmTable} onOpenChange={(open) => !open && setDeleteConfirmTable(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir Mesa {deleteConfirmTable?.number}?</AlertDialogTitle>
+            <AlertDialogTitle>Excluir {tableLabel} {deleteConfirmTable?.number}?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta ação não pode ser desfeita. A mesa será removida permanentemente.
+              Esta ação não pode ser desfeita. A {tableLabel.toLowerCase()} será removida permanentemente.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

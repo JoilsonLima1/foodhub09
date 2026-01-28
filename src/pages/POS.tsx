@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useBusinessCategoryContext } from '@/contexts/BusinessCategoryContext';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,6 +32,7 @@ interface CompletedOrder {
 
 export default function POS() {
   const { tenantId, profile } = useAuth();
+  const { t } = useBusinessCategoryContext();
   const { data: products = [], isLoading: isLoadingProducts } = useProducts();
   const { data: categories = [], isLoading: isLoadingCategories } = useCategories();
   const createOrder = useCreateOrder();
@@ -289,7 +291,7 @@ export default function POS() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar produto ou usar leitor de código..."
+                placeholder={`Buscar ${t('product').toLowerCase()} ou usar leitor de código...`}
                 className="pl-10"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}

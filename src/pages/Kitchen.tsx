@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useBusinessCategoryContext } from '@/contexts/BusinessCategoryContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -34,6 +35,7 @@ const KITCHEN_STATUSES: OrderStatus[] = ['confirmed', 'preparing', 'ready'];
 
 export default function Kitchen() {
   const { tenantId } = useAuth();
+  const { t } = useBusinessCategoryContext();
   const [orders, setOrders] = useState<KitchenOrder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -171,7 +173,7 @@ export default function Kitchen() {
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <ChefHat className="h-6 w-6" />
-            Cozinha
+            {t('kitchen')}
           </h1>
           <p className="text-muted-foreground">
             Painel de produção em tempo real
@@ -179,7 +181,7 @@ export default function Kitchen() {
         </div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Bell className="h-4 w-4" />
-          {orders.length} pedido(s) ativos
+          {orders.length} {t('order').toLowerCase()}(s) ativos
         </div>
       </div>
 
