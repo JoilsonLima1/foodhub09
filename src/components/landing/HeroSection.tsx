@@ -9,6 +9,7 @@ interface HeroSectionProps {
   trialText: string;
   heroBadge?: string;
   heroTitle?: string;
+  heroTitleHighlight?: string;
   heroSubtitle?: string;
   trustBadge1?: string;
   trustBadge2?: string;
@@ -21,7 +22,8 @@ export function HeroSection({
   trialDays, 
   trialText,
   heroBadge = 'Plataforma #1 para Gestão de Restaurantes',
-  heroTitle = 'Transforme seu restaurante em uma máquina de vendas',
+  heroTitle = 'Transforme seu restaurante em uma',
+  heroTitleHighlight = 'máquina de vendas',
   heroSubtitle = 'Unifique pedidos de múltiplas origens, gerencie entregas, controle estoque e tome decisões inteligentes com relatórios em tempo real e previsões com IA.',
   trustBadge1 = 'Sem cartão de crédito',
   trustBadge2 = 'Cancele quando quiser',
@@ -66,20 +68,15 @@ export function HeroSection({
             </Badge>
             
             <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-8 leading-tight tracking-tight">
-              {heroTitle.split(' ').map((word, index) => {
-                // Highlight words like "restaurante" and "máquina de vendas"
-                if (word.toLowerCase() === 'restaurante') {
-                  return (
-                    <span key={index} className="text-primary relative">
-                      {word}
-                      <svg className="absolute -bottom-2 left-0 w-full" viewBox="0 0 200 10" fill="none">
-                        <path d="M0 8 Q50 0, 100 8 T200 8" stroke="currentColor" strokeWidth="3" className="text-primary/30"/>
-                      </svg>
-                    </span>
-                  );
-                }
-                return <span key={index}>{word} </span>;
-              })}
+              {heroTitle}{' '}
+              {heroTitleHighlight && (
+                <span className="text-primary relative">
+                  {heroTitleHighlight}
+                  <svg className="absolute -bottom-2 left-0 w-full" viewBox="0 0 200 10" fill="none">
+                    <path d="M0 8 Q50 0, 100 8 T200 8" stroke="currentColor" strokeWidth="3" className="text-primary/30"/>
+                  </svg>
+                </span>
+              )}
             </h1>
             
             <p className="text-xl md:text-2xl text-muted-foreground max-w-4xl mx-auto mb-10 leading-relaxed">
