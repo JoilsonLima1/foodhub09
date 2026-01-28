@@ -6,10 +6,10 @@ import { Badge } from '@/components/ui/badge';
 import { Check, Zap, TrendingUp, Crown, Gift, Sparkles } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import type { SubscriptionPlan } from '@/types/database';
+import type { PublicSubscriptionPlan } from '@/hooks/usePublicSubscriptionPlans';
 
 interface PricingSectionProps {
-  plans: SubscriptionPlan[] | undefined;
+  plans: PublicSubscriptionPlan[] | undefined;
   isLoading: boolean;
   trialDays: number;
   trialText: string;
@@ -70,7 +70,7 @@ export function PricingSection({ plans, isLoading, trialDays, trialText }: Prici
   /**
    * Generate features dynamically from plan data configured in Super Admin
    */
-  const getPlanFeatures = (plan: SubscriptionPlan): string[] => {
+  const getPlanFeatures = (plan: PublicSubscriptionPlan): string[] => {
     const features: string[] = [];
     
     // Limits
@@ -118,8 +118,8 @@ export function PricingSection({ plans, isLoading, trialDays, trialText }: Prici
     }
   };
 
-  // Get active plans sorted by display order
-  const activePlans = plans?.filter(p => p.is_active).sort((a, b) => a.display_order - b.display_order) || [];
+  // Get plans sorted by display order (all plans from public function are already active)
+  const activePlans = plans?.sort((a, b) => a.display_order - b.display_order) || [];
 
   return (
     <section id="pricing" className="py-20 px-4 bg-gradient-to-b from-background via-card/30 to-background">

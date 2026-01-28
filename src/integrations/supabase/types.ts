@@ -2646,6 +2646,17 @@ export type Database = {
           updated_at: string
         }[]
       }
+      get_public_business_categories: {
+        Args: never
+        Returns: {
+          category_key: string
+          description: string
+          display_order: number
+          icon: string
+          id: string
+          name: string
+        }[]
+      }
       get_public_categories: {
         Args: { p_tenant_id: string }
         Returns: {
@@ -2711,6 +2722,36 @@ export type Database = {
         Returns: {
           setting_key: string
           setting_value: Json
+        }[]
+      }
+      get_public_subscription_plans: {
+        Args: never
+        Returns: {
+          currency: string
+          description: string
+          display_order: number
+          feature_ai_forecast: boolean
+          feature_api_access: boolean
+          feature_cmv_reports: boolean
+          feature_courier_app: boolean
+          feature_custom_integrations: boolean
+          feature_delivery_management: boolean
+          feature_goal_notifications: boolean
+          feature_kitchen_display: boolean
+          feature_multi_branch: boolean
+          feature_pos: boolean
+          feature_priority_support: boolean
+          feature_reports_advanced: boolean
+          feature_reports_basic: boolean
+          feature_stock_control: boolean
+          feature_white_label: boolean
+          id: string
+          max_orders_per_month: number
+          max_products: number
+          max_users: number
+          monthly_price: number
+          name: string
+          slug: string
         }[]
       }
       get_user_tenant_id: { Args: { _user_id: string }; Returns: string }
