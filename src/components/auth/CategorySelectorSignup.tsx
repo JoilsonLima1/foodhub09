@@ -1,4 +1,4 @@
-import { useBusinessCategories, BusinessCategoryConfig } from '@/hooks/useBusinessCategory';
+import { usePublicBusinessCategories, PublicBusinessCategory } from '@/hooks/usePublicBusinessCategories';
 import { 
   UtensilsCrossed, 
   IceCream, 
@@ -31,7 +31,7 @@ export function CategorySelectorSignup({
   onCategoryChange,
   disabled = false,
 }: CategorySelectorSignupProps) {
-  const { data: categories, isLoading } = useBusinessCategories();
+  const { data: categories, isLoading } = usePublicBusinessCategories();
 
   if (isLoading) {
     return (

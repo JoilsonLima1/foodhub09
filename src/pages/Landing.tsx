@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useSubscriptionPlans } from '@/hooks/useSubscriptionPlans';
+import { usePublicSubscriptionPlans } from '@/hooks/usePublicSubscriptionPlans';
 import { usePublicSettings } from '@/hooks/usePublicSettings';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { resetThemeToDefault } from '@/hooks/useBusinessCategory';
@@ -24,7 +24,7 @@ export default function Landing() {
     resetThemeToDefault();
   }, []);
   const [isChatOpen, setIsChatOpen] = useState(false);
-  const { plans, isLoading } = useSubscriptionPlans();
+  const { plans, isLoading } = usePublicSubscriptionPlans();
   const { branding, trialPeriod } = usePublicSettings();
   const { whatsapp } = useSystemSettings();
 
