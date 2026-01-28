@@ -36,88 +36,83 @@ export function usePublicMenu(tenantSlug: string) {
   return useQuery({
     queryKey: ['public-menu', tenantSlug],
     queryFn: async () => {
-      // For now, we'll use the tenant ID directly
-      // In production, you'd resolve the slug to tenant ID
       const tenantId = tenantSlug;
 
-      // Fetch tenant info (name, whatsapp, logo)
-      const { data: tenant, error: tenantError } = await supabase
-        .from('tenants')
-        .select('id, name, whatsapp_number, logo_url')
-        .eq('id', tenantId)
-        .single();
+      // Use security definer functions for public access (no auth required)
+      const { data: menuData, error: menuError } = await supabase
+        .rpc('get_public_menu', { p_tenant_id: tenantId });
 
-      if (tenantError) throw tenantError;
+      if (menuError) throw menuError;
 
-      // Fetch categories
-      const { data: categories, error: categoriesError } = await supabase
-        .from('categories')
-        .select('id, name, display_order')
-        .eq('tenant_id', tenantId)
-        .eq('is_active', true)
-        .order('display_order');
+      // Get categories using public function
+      const { data: categoriesData, error: categoriesError } = await supabase
+        .rpc('get_public_categories', { p_tenant_id: tenantId });
 
       if (categoriesError) throw categoriesError;
 
-      // Fetch products
-      const { data: products, error: productsError } = await supabase
-        .from('products')
-        .select(`
-          id,
-          name,
-          description,
-          base_price,
-          image_url,
-          category_id,
-          has_variations,
-          categories (name)
-        `)
-        .eq('tenant_id', tenantId)
-        .eq('is_active', true)
-        .eq('is_available', true)
-        .order('display_order');
+      // Extract tenant info from first row
+      const firstRow = menuData?.[0];
+      const tenant: TenantInfo = {
+        id: tenantId,
+        name: firstRow?.tenant_name || '',
+        whatsapp_number: firstRow?.tenant_whatsapp || null,
+        logo_url: firstRow?.tenant_logo_url || null,
+      };
 
-      if (productsError) throw productsError;
+      // Map categories
+      const categories: PublicCategory[] = (categoriesData || []).map((c: any) => ({
+        id: c.category_id,
+        name: c.category_name,
+        display_order: c.category_display_order,
+      }));
 
-      // Fetch variations for products that have them
-      const productIds = products?.filter(p => p.has_variations).map(p => p.id) || [];
-      let variationsMap: Record<string, PublicProductVariation[]> = {};
+      // Extract unique products
+      const productsMap = new Map<string, PublicProduct>();
+      const productIdsWithVariations: string[] = [];
 
-      if (productIds.length > 0) {
-        const { data: variations, error: variationsError } = await supabase
-          .from('product_variations')
-          .select('id, name, price_modifier, product_id')
-          .in('product_id', productIds)
-          .eq('is_active', true);
-
-        if (variationsError) throw variationsError;
-
-        variationsMap = (variations || []).reduce((acc, v) => {
-          const productId = (v as any).product_id;
-          if (!acc[productId]) acc[productId] = [];
-          acc[productId].push({
-            id: v.id,
-            name: v.name,
-            price_modifier: v.price_modifier || 0,
+      (menuData || []).forEach((row: any) => {
+        if (row.product_id && !productsMap.has(row.product_id)) {
+          productsMap.set(row.product_id, {
+            id: row.product_id,
+            name: row.product_name,
+            description: row.product_description,
+            base_price: row.product_base_price,
+            image_url: row.product_image_url,
+            category_id: row.product_category_id,
+            category_name: row.product_category_name,
+            has_variations: row.product_has_variations || false,
+            variations: [],
           });
-          return acc;
-        }, {} as Record<string, PublicProductVariation[]>);
+          
+          if (row.product_has_variations) {
+            productIdsWithVariations.push(row.product_id);
+          }
+        }
+      });
+
+      // Fetch variations if any products have them
+      if (productIdsWithVariations.length > 0) {
+        const { data: variationsData, error: variationsError } = await supabase
+          .rpc('get_public_product_variations', { p_product_ids: productIdsWithVariations });
+
+        if (!variationsError && variationsData) {
+          variationsData.forEach((v: any) => {
+            const product = productsMap.get(v.product_id);
+            if (product) {
+              product.variations.push({
+                id: v.variation_id,
+                name: v.variation_name,
+                price_modifier: v.price_modifier || 0,
+              });
+            }
+          });
+        }
       }
 
       return {
-        tenant: tenant as TenantInfo,
-        categories: categories as PublicCategory[],
-        products: (products || []).map(p => ({
-          id: p.id,
-          name: p.name,
-          description: p.description,
-          base_price: p.base_price,
-          image_url: p.image_url,
-          category_id: p.category_id,
-          category_name: (p.categories as { name: string } | null)?.name || null,
-          has_variations: p.has_variations || false,
-          variations: variationsMap[p.id] || [],
-        })) as PublicProduct[],
+        tenant,
+        categories,
+        products: Array.from(productsMap.values()),
       };
     },
     enabled: !!tenantSlug,
