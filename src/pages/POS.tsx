@@ -301,7 +301,7 @@ export default function POS() {
         </div>
 
         {/* Keyboard Shortcuts Bar */}
-        <KeyboardShortcutsBar shortcuts={shortcutsDisplay} className="mb-3" />
+        <KeyboardShortcutsBar shortcuts={shortcutsDisplay} className="mb-2" />
 
         {/* Search and Hardware Controls */}
         <div className="space-y-3 mb-4">
