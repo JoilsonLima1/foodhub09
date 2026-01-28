@@ -3,11 +3,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Save, Image, Palette, MessageSquare, Calendar, Layout } from 'lucide-react';
-import { useSystemSettings, BrandingSettings as BrandingType, ColorSettings, WhatsAppSettings, TrialSettings, LandingLayoutSettings } from '@/hooks/useSystemSettings';
+import { Save, Image, Palette, MessageSquare, Calendar, Layout, Megaphone } from 'lucide-react';
+import { useSystemSettings, BrandingSettings as BrandingType, ColorSettings, WhatsAppSettings, TrialSettings, LandingLayoutSettings, AnnouncementBannerSettings, AnnouncementBannerStyle } from '@/hooks/useSystemSettings';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { ImageUploader } from './ImageUploader';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { AnnouncementBanner } from '@/components/landing/AnnouncementBanner';
 
 export function BrandingSettings() {
   const { settings, isLoading, updateSetting, branding, colors, whatsapp, trialPeriod, landingLayout } = useSystemSettings();
@@ -47,7 +49,22 @@ export function BrandingSettings() {
     social_proof_text: 'Mais de 500+ restaurantes já confiam no',
     show_testimonials: true,
     show_features: true,
+    announcement_banner: {
+      is_visible: true,
+      text: 'Use TODAS as funcionalidades por',
+      highlight_text: '14 DIAS GRÁTIS',
+      style: 'gradient',
+    },
   });
+
+  const bannerStyles: { value: AnnouncementBannerStyle; label: string; description: string }[] = [
+    { value: 'gradient', label: 'Gradiente', description: 'Banner colorido com padrão grid' },
+    { value: 'minimal', label: 'Minimalista', description: 'Fundo neutro, borda inferior' },
+    { value: 'glass', label: 'Vidro', description: 'Transparência com blur' },
+    { value: 'ribbon', label: 'Fita', description: 'Linhas decorativas laterais' },
+    { value: 'badge', label: 'Badge', description: 'Centralizado em forma de pílula' },
+    { value: 'glow', label: 'Brilho', description: 'Efeito luminoso nas laterais' },
+  ];
 
   useEffect(() => {
     if (branding) setBrandingData(branding);
@@ -280,6 +297,125 @@ export function BrandingSettings() {
           <Button onClick={handleSaveTrial} disabled={updateSetting.isPending}>
             <Save className="h-4 w-4 mr-2" />
             Salvar Período
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Announcement Banner Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Megaphone className="h-5 w-5" />
+            Banner de Destaque
+          </CardTitle>
+          <CardDescription>
+            Configure o banner de anúncio no topo da página
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Toggle visibility */}
+          <div className="flex items-center justify-between p-4 border rounded-lg">
+            <div>
+              <Label>Exibir Banner</Label>
+              <p className="text-xs text-muted-foreground">Mostrar o banner de destaque na landing page</p>
+            </div>
+            <Switch
+              checked={landingData.announcement_banner?.is_visible ?? true}
+              onCheckedChange={(checked) => setLandingData({ 
+                ...landingData, 
+                announcement_banner: { 
+                  ...landingData.announcement_banner!, 
+                  is_visible: checked 
+                } 
+              })}
+            />
+          </div>
+
+          {/* Banner Text */}
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label>Texto Principal</Label>
+              <Input
+                value={landingData.announcement_banner?.text || ''}
+                onChange={(e) => setLandingData({ 
+                  ...landingData, 
+                  announcement_banner: { 
+                    ...landingData.announcement_banner!, 
+                    text: e.target.value 
+                  } 
+                })}
+                placeholder="Use TODAS as funcionalidades por"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Texto de Destaque</Label>
+              <Input
+                value={landingData.announcement_banner?.highlight_text || ''}
+                onChange={(e) => setLandingData({ 
+                  ...landingData, 
+                  announcement_banner: { 
+                    ...landingData.announcement_banner!, 
+                    highlight_text: e.target.value 
+                  } 
+                })}
+                placeholder="14 DIAS GRÁTIS"
+              />
+              <p className="text-xs text-muted-foreground">
+                Texto com destaque especial (sublinhado ou badge)
+              </p>
+            </div>
+          </div>
+
+          {/* Banner Style Selection */}
+          <div className="space-y-3">
+            <Label className="text-base font-semibold">Estilo do Banner</Label>
+            <RadioGroup
+              value={landingData.announcement_banner?.style || 'gradient'}
+              onValueChange={(value: AnnouncementBannerStyle) => setLandingData({ 
+                ...landingData, 
+                announcement_banner: { 
+                  ...landingData.announcement_banner!, 
+                  style: value 
+                } 
+              })}
+              className="grid gap-3 md:grid-cols-2 lg:grid-cols-3"
+            >
+              {bannerStyles.map((style) => (
+                <div key={style.value} className="relative">
+                  <RadioGroupItem
+                    value={style.value}
+                    id={`banner-style-${style.value}`}
+                    className="peer sr-only"
+                  />
+                  <Label
+                    htmlFor={`banner-style-${style.value}`}
+                    className="flex flex-col gap-1 p-4 rounded-lg border-2 cursor-pointer transition-all hover:bg-muted peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5"
+                  >
+                    <span className="font-medium">{style.label}</span>
+                    <span className="text-xs text-muted-foreground">{style.description}</span>
+                  </Label>
+                </div>
+              ))}
+            </RadioGroup>
+          </div>
+
+          {/* Live Preview */}
+          <div className="space-y-2">
+            <Label className="text-base font-semibold">Prévia ao Vivo</Label>
+            <div className="border rounded-lg overflow-hidden bg-background">
+              <AnnouncementBanner
+                text={landingData.announcement_banner?.text || 'Use TODAS as funcionalidades por'}
+                highlightText={landingData.announcement_banner?.highlight_text || '14 DIAS GRÁTIS'}
+                style={landingData.announcement_banner?.style || 'gradient'}
+                isVisible={true}
+                isPreview={true}
+              />
+            </div>
+          </div>
+
+          <Button onClick={handleSaveLanding} disabled={updateSetting.isPending}>
+            <Save className="h-4 w-4 mr-2" />
+            Salvar Banner
           </Button>
         </CardContent>
       </Card>

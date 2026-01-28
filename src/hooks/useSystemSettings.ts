@@ -26,6 +26,15 @@ export interface TrialSettings {
   end_date: string | null;
 }
 
+export type AnnouncementBannerStyle = 'gradient' | 'minimal' | 'glass' | 'ribbon' | 'badge' | 'glow';
+
+export interface AnnouncementBannerSettings {
+  is_visible: boolean;
+  text: string;
+  highlight_text: string;
+  style: AnnouncementBannerStyle;
+}
+
 export interface LandingLayoutSettings {
   hero_badge: string;
   hero_title: string;
@@ -38,6 +47,7 @@ export interface LandingLayoutSettings {
   social_proof_text: string;
   show_testimonials: boolean;
   show_features: boolean;
+  announcement_banner?: AnnouncementBannerSettings;
 }
 
 export interface AnalyticsSettings {

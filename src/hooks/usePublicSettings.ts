@@ -19,6 +19,15 @@ export interface PublicTrialPeriod {
   end_date: string | null;
 }
 
+export type PublicAnnouncementBannerStyle = 'gradient' | 'minimal' | 'glass' | 'ribbon' | 'badge' | 'glow';
+
+export interface PublicAnnouncementBanner {
+  is_visible: boolean;
+  text: string;
+  highlight_text: string;
+  style: PublicAnnouncementBannerStyle;
+}
+
 export interface PublicLandingLayout {
   hero_badge: string;
   hero_title: string;
@@ -31,6 +40,7 @@ export interface PublicLandingLayout {
   social_proof_text: string;
   show_testimonials: boolean;
   show_features: boolean;
+  announcement_banner?: PublicAnnouncementBanner;
 }
 
 interface PublicSettings {
@@ -65,6 +75,12 @@ const DEFAULT_LANDING: PublicLandingLayout = {
   social_proof_text: 'Mais de 500+ restaurantes já confiam no',
   show_testimonials: true,
   show_features: true,
+  announcement_banner: {
+    is_visible: true,
+    text: 'Use TODAS as funcionalidades por',
+    highlight_text: '14 DIAS GRÁTIS',
+    style: 'gradient',
+  },
 };
 
 export function usePublicSettings() {
