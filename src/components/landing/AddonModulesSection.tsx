@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { useAddonModules, ADDON_CATEGORY_LABELS, type AddonModuleCategory } from '@/hooks/useAddonModules';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+
 
 // Icon mapping for module categories
 const CATEGORY_ICONS: Record<AddonModuleCategory, React.ComponentType<{ className?: string }>> = {
@@ -201,25 +201,27 @@ export function AddonModulesSection() {
 
         {/* More modules - collapsible */}
         {activeModules.length > 6 && (
-          <Collapsible open={showAllModules} onOpenChange={setShowAllModules}>
+          <>
             <div className="text-center mt-8">
               <p className="text-muted-foreground mb-4">
                 E mais {activeModules.length - 6} módulos disponíveis!
               </p>
-              <CollapsibleTrigger asChild>
-                <Button variant="outline" size="lg" className="rounded-full">
-                  {showAllModules ? 'Mostrar menos' : 'Ver todos os módulos'}
-                  {showAllModules ? (
-                    <ChevronUp className="h-4 w-4 ml-2" />
-                  ) : (
-                    <ChevronDown className="h-4 w-4 ml-2" />
-                  )}
-                </Button>
-              </CollapsibleTrigger>
+              <button
+                type="button"
+                onClick={() => setShowAllModules(!showAllModules)}
+                className="inline-flex items-center justify-center rounded-full border border-input bg-background px-8 py-3 text-sm font-medium ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              >
+                {showAllModules ? 'Mostrar menos' : 'Ver todos os módulos'}
+                {showAllModules ? (
+                  <ChevronUp className="h-4 w-4 ml-2" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 ml-2" />
+                )}
+              </button>
             </div>
             
-            <CollapsibleContent className="mt-6">
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {showAllModules && (
+              <div className="mt-6 grid md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in-0 slide-in-from-top-4 duration-300">
                 {activeModules.slice(6).map(module => {
                   const ModuleIcon = getModuleIcon(module.icon);
                   const gradient = CATEGORY_GRADIENTS[module.category];
@@ -288,8 +290,8 @@ export function AddonModulesSection() {
                   );
                 })}
               </div>
-            </CollapsibleContent>
-          </Collapsible>
+            )}
+          </>
         )}
 
         {/* Contact CTA */}
