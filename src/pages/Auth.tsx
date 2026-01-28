@@ -5,10 +5,11 @@ import { usePublicSettings } from '@/hooks/usePublicSettings';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { CategorySelectorSignup } from '@/components/auth/CategorySelectorSignup';
 import { z } from 'zod';
 import fallbackLogo from '@/assets/logo.png';
 
@@ -23,6 +24,7 @@ const signupSchema = z.object({
   email: z.string().email('Email inválido'),
   password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres'),
   confirmPassword: z.string(),
+  businessCategory: z.string().min(1, 'Selecione uma categoria'),
 }).refine(data => data.password === data.confirmPassword, {
   message: 'Senhas não conferem',
   path: ['confirmPassword'],
@@ -47,6 +49,7 @@ export default function AuthPage() {
   const [signupEmail, setSignupEmail] = useState('');
   const [signupPassword, setSignupPassword] = useState('');
   const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
+  const [signupBusinessCategory, setSignupBusinessCategory] = useState('restaurant');
 
   // Use dynamic branding or fallback
   const logoUrl = branding.logo_url || fallbackLogo;
@@ -129,6 +132,7 @@ export default function AuthPage() {
         email: signupEmail,
         password: signupPassword,
         confirmPassword: signupConfirmPassword,
+        businessCategory: signupBusinessCategory,
       });
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -139,7 +143,14 @@ export default function AuthPage() {
 
     setIsLoading(true);
     
-    const { error } = await signUp(signupEmail, signupPassword, signupName, signupTenantName);
+    // Pass category along with tenant name
+    const { error } = await signUp(
+      signupEmail, 
+      signupPassword, 
+      signupName, 
+      signupTenantName,
+      signupBusinessCategory
+    );
     
     if (error) {
       if (error.message.includes('already registered')) {
@@ -247,6 +258,19 @@ export default function AuthPage() {
                     value={signupTenantName}
                     onChange={(e) => setSignupTenantName(e.target.value)}
                     required
+                  />
+                </div>
+
+                {/* Business Category Selection */}
+                <div className="space-y-2">
+                  <Label>Tipo de Negócio</Label>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Escolha a categoria que melhor representa seu negócio
+                  </p>
+                  <CategorySelectorSignup
+                    selectedCategory={signupBusinessCategory}
+                    onCategoryChange={setSignupBusinessCategory}
+                    disabled={isLoading}
                   />
                 </div>
 

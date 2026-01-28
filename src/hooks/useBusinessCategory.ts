@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 
 export interface CategoryTheme {
   primary: string;
@@ -65,6 +65,13 @@ const DEFAULT_FEATURES: CategoryFeatures = {
   reservations: false,
 };
 
+// Default theme (fallback for public/logged-out pages)
+const DEFAULT_THEME: CategoryTheme = {
+  primary: '45 100% 50%',
+  accent: '45 80% 95%',
+  sidebar: '0 0% 5%',
+};
+
 export function useBusinessCategories() {
   return useQuery({
     queryKey: ['business-categories'],
@@ -94,8 +101,38 @@ export function useBusinessCategories() {
   });
 }
 
+// Storage key for tenant-specific theme
+const THEME_STORAGE_KEY = 'tenant-theme';
+
+// Apply theme to CSS variables (only when authenticated)
+function applyThemeToDOM(theme: CategoryTheme) {
+  const root = document.documentElement;
+  if (theme.primary) {
+    root.style.setProperty('--primary', theme.primary);
+    root.style.setProperty('--ring', theme.primary);
+    root.style.setProperty('--sidebar-primary', theme.primary);
+  }
+  if (theme.accent) {
+    root.style.setProperty('--accent', theme.accent);
+  }
+  if (theme.sidebar) {
+    root.style.setProperty('--sidebar-background', theme.sidebar);
+  }
+}
+
+// Reset theme to defaults (for public pages)
+export function resetThemeToDefault() {
+  const root = document.documentElement;
+  root.style.removeProperty('--primary');
+  root.style.removeProperty('--ring');
+  root.style.removeProperty('--sidebar-primary');
+  root.style.removeProperty('--accent');
+  root.style.removeProperty('--sidebar-background');
+  localStorage.removeItem(THEME_STORAGE_KEY);
+}
+
 export function useTenantCategory() {
-  const { tenantId } = useAuth();
+  const { tenantId, user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -123,7 +160,16 @@ export function useTenantCategory() {
   // Get current category config
   const currentConfig = categories?.find(c => c.category_key === tenantCategory) || null;
 
-  // Update tenant category
+  // Memoized theme application
+  const applyTheme = useCallback((theme: CategoryTheme, saveTenantId?: string) => {
+    applyThemeToDOM(theme);
+    // Save to localStorage for this tenant only
+    if (saveTenantId) {
+      localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify({ tenantId: saveTenantId, theme }));
+    }
+  }, []);
+
+  // Update tenant category - NO password confirmation here (handled by component)
   const updateCategory = useMutation({
     mutationFn: async (categoryKey: string) => {
       if (!tenantId) throw new Error('Tenant não encontrado');
@@ -150,10 +196,10 @@ export function useTenantCategory() {
         description: 'A categoria do seu negócio foi alterada com sucesso.',
       });
 
-      // Apply theme changes
+      // Apply theme changes for this tenant only
       const newConfig = categories?.find(c => c.category_key === newCategory);
-      if (newConfig?.theme) {
-        applyTheme(newConfig.theme);
+      if (newConfig?.theme && tenantId) {
+        applyTheme(newConfig.theme, tenantId);
       }
     },
     onError: (error) => {
@@ -166,26 +212,34 @@ export function useTenantCategory() {
     },
   });
 
-  // Apply theme to CSS variables
-  const applyTheme = (theme: CategoryTheme) => {
-    const root = document.documentElement;
-    if (theme.primary) {
-      root.style.setProperty('--primary', theme.primary);
-    }
-    if (theme.accent) {
-      root.style.setProperty('--accent', theme.accent);
-    }
-    if (theme.sidebar) {
-      root.style.setProperty('--sidebar-background', theme.sidebar);
-    }
-  };
-
-  // Apply theme on load
+  // Apply theme on load - only if authenticated and has tenant
   useEffect(() => {
-    if (currentConfig?.theme) {
-      applyTheme(currentConfig.theme);
+    if (!user || !tenantId) {
+      // Not authenticated - reset to default theme
+      resetThemeToDefault();
+      return;
     }
-  }, [currentConfig]);
+
+    // Check if we have a cached theme for this specific tenant
+    const storedTheme = localStorage.getItem(THEME_STORAGE_KEY);
+    if (storedTheme) {
+      try {
+        const parsed = JSON.parse(storedTheme);
+        // Only apply if it's for this tenant
+        if (parsed.tenantId === tenantId && parsed.theme) {
+          applyThemeToDOM(parsed.theme);
+          return;
+        }
+      } catch (e) {
+        // Invalid stored theme, continue to apply from config
+      }
+    }
+
+    // Apply theme from current config
+    if (currentConfig?.theme) {
+      applyTheme(currentConfig.theme, tenantId);
+    }
+  }, [currentConfig, user, tenantId, applyTheme]);
 
   return {
     tenantCategory,
