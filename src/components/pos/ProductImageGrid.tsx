@@ -2,6 +2,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Image as ImageIcon } from 'lucide-react';
 import type { Product, ProductVariation } from '@/hooks/useProducts';
 import { cn } from '@/lib/utils';
+import { resolveProductImageUrl } from '@/lib/productImages';
 
 interface ProductImageGridProps {
   products: Product[];
@@ -45,6 +46,8 @@ export function ProductImageGrid({
   }> = [];
 
   products.forEach((product) => {
+    const resolvedImageUrl = resolveProductImageUrl(product.image_url);
+    
     if (product.has_variations && product.variations.length > 0) {
       product.variations.forEach((variation) => {
         displayItems.push({
@@ -53,7 +56,7 @@ export function ProductImageGrid({
           variation,
           name: `${product.name} ${variation.name}`,
           price: product.base_price + variation.price_modifier,
-          imageUrl: product.image_url,
+          imageUrl: resolvedImageUrl,
         });
       });
     } else {
@@ -62,7 +65,7 @@ export function ProductImageGrid({
         product,
         name: product.name,
         price: product.base_price,
-        imageUrl: product.image_url,
+        imageUrl: resolvedImageUrl,
       });
     }
   });
