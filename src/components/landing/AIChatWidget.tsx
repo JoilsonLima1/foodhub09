@@ -120,7 +120,7 @@ REGRAS:
   }
 
   return (
-    <Card className={`fixed z-50 shadow-2xl border-primary/20 overflow-hidden transition-all duration-300 ${
+    <Card className={`fixed z-50 shadow-2xl border-primary/20 transition-all duration-300 flex flex-col ${
       isMinimized 
         ? 'bottom-6 right-6 w-72 h-14' 
         : 'bottom-6 right-6 w-96 max-w-[calc(100vw-2rem)] h-[500px] max-h-[calc(100vh-6rem)]'
@@ -159,7 +159,7 @@ REGRAS:
       {!isMinimized && (
         <>
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-background h-[calc(500px-140px)]">
+          <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-background min-h-0">
             {messages.map((message, index) => (
               <div
                 key={index}
