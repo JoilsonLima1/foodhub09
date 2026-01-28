@@ -1,11 +1,12 @@
 import { useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { ShoppingCart, Plus, Minus, Trash2, MessageCircle, Send } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, Trash2, MessageCircle, Send, Package } from 'lucide-react';
 
 export interface CartItem {
   id: string;
@@ -28,6 +29,7 @@ interface PublicMenuCartProps {
   whatsappNumber?: string;
   tableNumber?: number;
   tenantName?: string;
+  tenantId?: string;
 }
 
 export function PublicMenuCart({
@@ -39,6 +41,7 @@ export function PublicMenuCart({
   whatsappNumber,
   tableNumber,
   tenantName = 'Restaurante',
+  tenantId,
 }: PublicMenuCartProps) {
   const [customerName, setCustomerName] = useState('');
   const [orderNotes, setOrderNotes] = useState('');
@@ -137,7 +140,15 @@ export function PublicMenuCart({
             <div className="text-center">
               <ShoppingCart className="h-16 w-16 mx-auto mb-4 opacity-30" />
               <p className="text-lg">Seu carrinho está vazio</p>
-              <p className="text-sm">Adicione produtos do cardápio</p>
+              <p className="text-sm mb-4">Adicione produtos do cardápio</p>
+              
+              {/* Link to track order */}
+              <Link to={tenantId ? `/rastrear/${tenantId}` : '/rastrear'}>
+                <Button variant="outline" size="sm" className="gap-2">
+                  <Package className="h-4 w-4" />
+                  Acompanhar Pedido
+                </Button>
+              </Link>
             </div>
           </div>
         ) : (

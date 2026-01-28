@@ -292,6 +292,7 @@ export default function PublicMenu() {
         whatsappNumber={whatsappNumber}
         tableNumber={tableNumber}
         tenantName={tenantName}
+        tenantId={tenantId}
       />
     </div>
   );
