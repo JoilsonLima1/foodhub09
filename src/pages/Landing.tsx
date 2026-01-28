@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useSubscriptionPlans } from '@/hooks/useSubscriptionPlans';
 import { usePublicSettings } from '@/hooks/usePublicSettings';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
@@ -16,6 +17,7 @@ import { AIChatWidget } from '@/components/landing/AIChatWidget';
 import { WhatsAppButton } from '@/components/landing/WhatsAppButton';
 
 export default function Landing() {
+  const [isChatOpen, setIsChatOpen] = useState(false);
   const { plans, isLoading } = useSubscriptionPlans();
   const { branding, trialPeriod } = usePublicSettings();
   const { whatsapp } = useSystemSettings();
@@ -36,6 +38,7 @@ export default function Landing() {
         logoUrl={logoUrl} 
         companyName={companyName} 
         whatsappNumber={whatsappNumber}
+        onOpenChat={() => setIsChatOpen(true)}
       />
 
       {/* Hero Section */}
@@ -91,8 +94,12 @@ export default function Landing() {
         />
       )}
 
-      {/* AI Chat Widget */}
-      <AIChatWidget companyName={companyName} />
+      {/* AI Chat Widget - floating button on right */}
+      <AIChatWidget 
+        companyName={companyName} 
+        isOpen={isChatOpen}
+        onOpenChange={setIsChatOpen}
+      />
     </div>
   );
 }
