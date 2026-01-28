@@ -36,6 +36,9 @@ export interface TenantAddonSubscription {
   created_by: string | null;
   created_at: string;
   updated_at: string;
+  price_paid: number;
+  is_free: boolean;
+  source: 'manual' | 'plan_included' | 'purchase';
   addon_module?: AddonModule;
   tenant?: {
     id: string;
@@ -192,6 +195,9 @@ export function useTenantAddonSubscriptions(tenantId?: string) {
       trial_ends_at?: string;
       expires_at?: string;
       notes?: string;
+      is_free?: boolean;
+      price_paid?: number;
+      source?: 'manual' | 'plan_included' | 'purchase';
     }) => {
       const { data, error } = await supabase
         .from('tenant_addon_subscriptions')
@@ -202,6 +208,9 @@ export function useTenantAddonSubscriptions(tenantId?: string) {
           trial_ends_at: params.trial_ends_at,
           expires_at: params.expires_at,
           notes: params.notes,
+          is_free: params.is_free || false,
+          price_paid: params.price_paid || 0,
+          source: params.source || 'manual',
         })
         .select()
         .single();
