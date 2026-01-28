@@ -128,16 +128,23 @@ export function useTenantCategory() {
     mutationFn: async (categoryKey: string) => {
       if (!tenantId) throw new Error('Tenant não encontrado');
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('tenants')
         .update({ business_category: categoryKey })
-        .eq('id', tenantId);
+        .eq('id', tenantId)
+        .select('business_category')
+        .single();
 
       if (error) throw error;
-      return categoryKey;
+      return data.business_category as string;
     },
     onSuccess: (newCategory) => {
+      // Immediately update the cache with new value
+      queryClient.setQueryData(['tenant-category', tenantId], newCategory);
+      
+      // Also invalidate to ensure fresh data
       queryClient.invalidateQueries({ queryKey: ['tenant-category', tenantId] });
+      
       toast({
         title: 'Categoria atualizada',
         description: 'A categoria do seu negócio foi alterada com sucesso.',
@@ -150,6 +157,7 @@ export function useTenantCategory() {
       }
     },
     onError: (error) => {
+      console.error('Erro ao atualizar categoria:', error);
       toast({
         title: 'Erro ao atualizar',
         description: error.message,
