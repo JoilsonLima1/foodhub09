@@ -31,14 +31,7 @@ interface UpdateUserData {
   roles?: AppRole[];
 }
 
-async function getAuthHeaders() {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  const token = session?.access_token;
-  if (!token) return null;
-  return { Authorization: `Bearer ${token}` };
-}
+// Removed getAuthHeaders - supabase.functions.invoke auto-includes auth
 
 export function useTenantUserManagement() {
   const { tenantId, hasRole } = useAuth();
@@ -65,12 +58,13 @@ export function useTenantUserManagement() {
 
     try {
       setIsLoading(true);
-      const headers = await getAuthHeaders();
-      if (!headers) throw new Error("Sessão não encontrada. Faça login novamente.");
+      
+      // Wait for auth state to settle before attempting fetch
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Sessão não encontrada. Faça login novamente.");
 
       const res = await supabase.functions.invoke("manage-users", {
         body: { action: "list-users", tenantId },
-        headers,
       });
 
       if (res.error) throw res.error;
@@ -123,12 +117,12 @@ export function useTenantUserManagement() {
 
     try {
       setIsCreating(true);
-      const headers = await getAuthHeaders();
-      if (!headers) throw new Error("Sessão não encontrada. Faça login novamente.");
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Sessão não encontrada. Faça login novamente.");
 
       const res = await supabase.functions.invoke("manage-users", {
         body: { action: "create", tenantId, userData: data },
-        headers,
       });
 
       if (res.error) throw res.error;
@@ -170,8 +164,9 @@ export function useTenantUserManagement() {
 
     try {
       setIsUpdating(true);
-      const headers = await getAuthHeaders();
-      if (!headers) throw new Error("Sessão não encontrada. Faça login novamente.");
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Sessão não encontrada. Faça login novamente.");
 
       // Update profile fields through backend to avoid RLS limitations
       if (data.full_name !== undefined || data.phone !== undefined || data.is_active !== undefined) {
@@ -182,7 +177,6 @@ export function useTenantUserManagement() {
 
         const resProfile = await supabase.functions.invoke("manage-users", {
           body: { action: "update-profile", tenantId, userId, profileData: profileUpdate },
-          headers,
         });
 
         if (resProfile.error) throw resProfile.error;
@@ -193,7 +187,6 @@ export function useTenantUserManagement() {
       if (data.roles) {
         const resRoles = await supabase.functions.invoke("manage-users", {
           body: { action: "update-roles", tenantId, userId, roles: data.roles },
-          headers,
         });
 
         if (resRoles.error) throw resRoles.error;
@@ -235,12 +228,11 @@ export function useTenantUserManagement() {
     }
 
     try {
-      const headers = await getAuthHeaders();
-      if (!headers) throw new Error("Sessão não encontrada. Faça login novamente.");
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Sessão não encontrada. Faça login novamente.");
 
       const res = await supabase.functions.invoke("manage-users", {
         body: { action: "delete", tenantId, userId },
-        headers,
       });
 
       if (res.error) throw res.error;
