@@ -7,6 +7,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { BusinessCategoryProvider } from "@/contexts/BusinessCategoryContext";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { useDynamicFavicon } from "@/hooks/useDynamicFavicon";
 
 import Auth from "./pages/Auth";
 import Landing from "./pages/Landing";
@@ -28,9 +29,16 @@ import PublicMenu from "./pages/PublicMenu";
 
 const queryClient = new QueryClient();
 
+// Component that applies the dynamic favicon
+function DynamicFaviconHandler() {
+  useDynamicFavicon();
+  return null;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
+      <DynamicFaviconHandler />
       <Toaster />
       <Sonner />
       <BrowserRouter>
