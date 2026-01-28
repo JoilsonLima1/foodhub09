@@ -807,6 +807,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "ifood_menu_mapping_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products_pricing_safe"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "ifood_menu_mapping_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
@@ -1055,6 +1062,13 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products_pricing_safe"
             referencedColumns: ["id"]
           },
           {
@@ -1439,6 +1453,13 @@ export type Database = {
             referencedRelation: "products"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "product_addon_mapping_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products_pricing_safe"
+            referencedColumns: ["id"]
+          },
         ]
       }
       product_addons: {
@@ -1507,6 +1528,13 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_variations_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products_pricing_safe"
             referencedColumns: ["id"]
           },
         ]
@@ -1691,6 +1719,13 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: true
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipes_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: true
+            referencedRelation: "products_pricing_safe"
             referencedColumns: ["id"]
           },
           {
@@ -2267,6 +2302,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "table_session_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products_pricing_safe"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "table_session_items_session_id_fkey"
             columns: ["session_id"]
             isOneToOne: false
@@ -2644,6 +2686,94 @@ export type Database = {
           },
         ]
       }
+      ifood_orders_safe: {
+        Row: {
+          created_at: string | null
+          customer_name: string | null
+          customer_phone: string | null
+          delivery_address: Json | null
+          delivery_fee: number | null
+          discount: number | null
+          id: string | null
+          ifood_order_id: string | null
+          ifood_short_id: string | null
+          items: Json | null
+          order_id: string | null
+          payment_method: string | null
+          raw_data: Json | null
+          scheduled_to: string | null
+          status: Database["public"]["Enums"]["ifood_order_status"] | null
+          subtotal: number | null
+          tenant_id: string | null
+          total: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          customer_name?: never
+          customer_phone?: never
+          delivery_address?: never
+          delivery_fee?: number | null
+          discount?: number | null
+          id?: string | null
+          ifood_order_id?: string | null
+          ifood_short_id?: string | null
+          items?: Json | null
+          order_id?: string | null
+          payment_method?: string | null
+          raw_data?: Json | null
+          scheduled_to?: string | null
+          status?: Database["public"]["Enums"]["ifood_order_status"] | null
+          subtotal?: number | null
+          tenant_id?: string | null
+          total?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          customer_name?: never
+          customer_phone?: never
+          delivery_address?: never
+          delivery_fee?: number | null
+          discount?: number | null
+          id?: string | null
+          ifood_order_id?: string | null
+          ifood_short_id?: string | null
+          items?: Json | null
+          order_id?: string | null
+          payment_method?: string | null
+          raw_data?: Json | null
+          scheduled_to?: string | null
+          status?: Database["public"]["Enums"]["ifood_order_status"] | null
+          subtotal?: number | null
+          tenant_id?: string | null
+          total?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ifood_orders_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ifood_orders_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ifood_orders_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orders_safe: {
         Row: {
           coupon_id: string | null
@@ -2736,6 +2866,122 @@ export type Database = {
           },
           {
             foreignKeyName: "orders_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      products_pricing_safe: {
+        Row: {
+          base_price: number | null
+          category_id: string | null
+          created_at: string | null
+          description: string | null
+          display_order: number | null
+          has_addons: boolean | null
+          has_variations: boolean | null
+          id: string | null
+          image_url: string | null
+          is_active: boolean | null
+          is_available: boolean | null
+          is_combo: boolean | null
+          name: string | null
+          sku: string | null
+          tenant_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          base_price?: never
+          category_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          display_order?: number | null
+          has_addons?: boolean | null
+          has_variations?: boolean | null
+          id?: string | null
+          image_url?: string | null
+          is_active?: boolean | null
+          is_available?: boolean | null
+          is_combo?: boolean | null
+          name?: string | null
+          sku?: string | null
+          tenant_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          base_price?: never
+          category_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          display_order?: number | null
+          has_addons?: boolean | null
+          has_variations?: boolean | null
+          id?: string | null
+          image_url?: string | null
+          is_active?: boolean | null
+          is_available?: boolean | null
+          is_combo?: boolean | null
+          name?: string | null
+          sku?: string | null
+          tenant_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles_safe: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          full_name: string | null
+          id: string | null
+          is_active: boolean | null
+          phone: string | null
+          tenant_id: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          full_name?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          phone?: never
+          tenant_id?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          full_name?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          phone?: never
+          tenant_id?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -2875,6 +3121,20 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      is_assigned_courier: {
+        Args: { _order_id: string; _user_id: string }
+        Returns: boolean
+      }
+      manage_push_subscription: {
+        Args: {
+          p_action: string
+          p_auth?: string
+          p_endpoint: string
+          p_order_id?: string
+          p_p256dh?: string
+        }
+        Returns: Json
       }
       tenant_has_addon: {
         Args: { _addon_slug: string; _tenant_id: string }
