@@ -13,6 +13,11 @@ interface AnnouncementBannerProps {
   style: BannerStyle;
   isVisible: boolean;
   isPreview?: boolean;
+  /**
+   * "chips" evita o visual de barra cheia e exibe o texto em bolhas/destaques.
+   * "bar" mantém o layout antigo (faixa/strip).
+   */
+  layout?: 'chips' | 'bar';
 }
 
 const bannerIcons: Record<BannerStyle, React.ReactNode> = {
@@ -43,7 +48,14 @@ const bannerIcons: Record<BannerStyle, React.ReactNode> = {
   holographic: <Diamond className="h-5 w-5 animate-pulse" />,
 };
 
-export function AnnouncementBanner({ text, highlightText, style, isVisible, isPreview = false }: AnnouncementBannerProps) {
+export function AnnouncementBanner({
+  text,
+  highlightText,
+  style,
+  isVisible,
+  isPreview = false,
+  layout = 'chips',
+}: AnnouncementBannerProps) {
   if (!isVisible || !text) return null;
 
   const sectionClass = cn(isPreview ? '' : 'pt-24');
@@ -58,6 +70,36 @@ export function AnnouncementBanner({ text, highlightText, style, isVisible, isPr
       )}
     </div>
   );
+
+  const chipsBase =
+    'inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium leading-none';
+
+  const chipsClasses = {
+    icon: cn(chipsBase, 'bg-card border-primary/25 text-primary'),
+    text: cn(chipsBase, 'bg-card border-border/60 text-foreground'),
+    highlight: cn(chipsBase, 'bg-primary text-primary-foreground border-primary/40'),
+  };
+
+  // New default layout: “bolhas/chips” centralizadas (sem barra full-width)
+  if (layout === 'chips') {
+    return (
+      <section className={sectionClass}>
+        <div className="container mx-auto max-w-6xl px-4">
+          <div className="flex justify-center">
+            <div className="flex flex-wrap items-center justify-center gap-2 text-center">
+              <span className={chipsClasses.icon} aria-hidden>
+                {bannerIcons[style]}
+              </span>
+              <span className={chipsClasses.text}>{text}</span>
+              {highlightText ? (
+                <span className={chipsClasses.highlight}>{highlightText}</span>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   switch (style) {
     case 'gradient':

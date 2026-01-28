@@ -50,13 +50,22 @@ export function HeroSection({
     document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  // Default banner config if not provided
-  const bannerConfig: AnnouncementBannerConfig = announcementBanner || {
+  // Default banner config if not provided (or if provided with empty text)
+  const defaultBannerConfig: AnnouncementBannerConfig = {
     is_visible: true,
     text: `Use TODAS as funcionalidades por ${trialDays} DIAS GRÁTIS — Teste, venda, conheça o sistema sem compromisso!`,
     highlight_text: '',
     style: 'gradient',
   };
+
+  const bannerConfig: AnnouncementBannerConfig = announcementBanner
+    ? {
+        is_visible: announcementBanner.is_visible ?? defaultBannerConfig.is_visible,
+        text: announcementBanner.text?.trim() ? announcementBanner.text : defaultBannerConfig.text,
+        highlight_text: announcementBanner.highlight_text ?? defaultBannerConfig.highlight_text,
+        style: announcementBanner.style ?? defaultBannerConfig.style,
+      }
+    : defaultBannerConfig;
 
   return (
     <>
