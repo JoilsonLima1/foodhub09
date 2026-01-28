@@ -27,10 +27,10 @@ export function KeyboardShortcutsBar({ shortcuts, className }: KeyboardShortcuts
   return (
     <TooltipProvider delayDuration={300}>
       <div className={cn(
-        "flex items-center gap-1 px-2 py-0.5 bg-muted/50 border rounded text-[10px]",
+        "flex items-center gap-0.5 px-1.5 py-px bg-muted/30 border rounded text-[9px]",
         className
       )}>
-        <Keyboard className="h-3 w-3 text-muted-foreground" />
+        <Keyboard className="h-2.5 w-2.5 text-muted-foreground" />
         
         {shortcuts.map((shortcut) => (
           <Tooltip key={shortcut.key}>
@@ -38,7 +38,7 @@ export function KeyboardShortcutsBar({ shortcuts, className }: KeyboardShortcuts
               <Badge 
                 variant={shortcut.isActive ? "default" : "secondary"}
                 className={cn(
-                  "gap-0.5 cursor-default transition-colors px-1.5 py-0 h-5 text-[10px]",
+                  "gap-0.5 cursor-default transition-colors px-1 py-0 h-4 text-[9px]",
                   shortcut.isActive && "ring-1 ring-primary/50"
                 )}
               >
