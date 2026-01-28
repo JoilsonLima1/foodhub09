@@ -12,10 +12,23 @@ interface Message {
 
 interface AIChatWidgetProps {
   companyName: string;
+  isOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  showFloatingButton?: boolean;
 }
 
-export function AIChatWidget({ companyName }: AIChatWidgetProps) {
-  const [isOpen, setIsOpen] = useState(false);
+export function AIChatWidget({ companyName, isOpen: controlledIsOpen, onOpenChange, showFloatingButton = true }: AIChatWidgetProps) {
+  const [internalIsOpen, setInternalIsOpen] = useState(false);
+  
+  // Support both controlled and uncontrolled modes
+  const isOpen = controlledIsOpen !== undefined ? controlledIsOpen : internalIsOpen;
+  const setIsOpen = (value: boolean) => {
+    if (onOpenChange) {
+      onOpenChange(value);
+    } else {
+      setInternalIsOpen(value);
+    }
+  };
   const [isMinimized, setIsMinimized] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -100,6 +113,7 @@ REGRAS:
   };
 
   if (!isOpen) {
+    if (!showFloatingButton) return null;
     return (
       <Button
         onClick={() => setIsOpen(true)}

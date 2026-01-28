@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Menu, X, MessageCircle } from 'lucide-react';
+import { Menu, X, MessageCircle, Bot } from 'lucide-react';
 
 interface LandingHeaderProps {
   logoUrl: string;
   companyName: string;
   whatsappNumber?: string;
+  onOpenChat?: () => void;
 }
 
-export function LandingHeader({ logoUrl, companyName, whatsappNumber }: LandingHeaderProps) {
+export function LandingHeader({ logoUrl, companyName, whatsappNumber, onOpenChat }: LandingHeaderProps) {
   const navigate = useNavigate();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -65,6 +66,16 @@ export function LandingHeader({ logoUrl, companyName, whatsappNumber }: LandingH
         </nav>
 
         <div className="flex items-center gap-3">
+          {/* AI Chat Button - Header */}
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="hidden md:flex border-primary text-primary hover:bg-primary hover:text-primary-foreground"
+            onClick={onOpenChat}
+          >
+            <Bot className="h-4 w-4 mr-2" />
+            Chat IA
+          </Button>
           {whatsappNumber && (
             <Button 
               variant="outline" 
@@ -115,6 +126,11 @@ export function LandingHeader({ logoUrl, companyName, whatsappNumber }: LandingH
               FAQ
             </button>
             <div className="flex flex-col gap-2 pt-4 border-t border-border">
+              {/* AI Chat Button - Mobile */}
+              <Button variant="outline" className="w-full border-primary text-primary" onClick={() => { onOpenChat?.(); setIsMobileMenuOpen(false); }}>
+                <Bot className="h-4 w-4 mr-2" />
+                Chat com IA
+              </Button>
               {whatsappNumber && (
                 <Button variant="outline" className="w-full border-success text-success" onClick={handleWhatsApp}>
                   <MessageCircle className="h-4 w-4 mr-2" />
