@@ -116,27 +116,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setProfile(null);
       }
 
-      // Fetch roles - only if we have a tenant_id
-      // NOTE: roles are tenant-scoped; never load roles from other tenants.
+      // Fetch roles in two passes:
+      // 1. Always fetch super_admin role (global, not tenant-scoped)
+      // 2. If tenant_id exists, fetch tenant-specific roles
+      const allRoles: AppRole[] = [];
+
+      // First: Check for global super_admin role (bypasses tenant filtering)
+      const { data: superAdminData, error: superAdminError } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId)
+        .eq('role', 'super_admin');
+
+      if (superAdminError) {
+        console.error('[AuthContext] Error fetching super_admin role:', superAdminError);
+      } else if (superAdminData && superAdminData.length > 0) {
+        allRoles.push('super_admin');
+        console.log('[AuthContext] Super admin role found');
+      }
+
+      // Second: Fetch tenant-scoped roles if tenant_id exists
       if (profileData?.tenant_id) {
         const { data: rolesData, error: rolesError } = await supabase
           .from('user_roles')
           .select('role')
           .eq('user_id', userId)
-          .eq('tenant_id', profileData.tenant_id);
+          .eq('tenant_id', profileData.tenant_id)
+          .neq('role', 'super_admin'); // Avoid duplicating super_admin
 
         if (rolesError) {
-          console.error('[AuthContext] Error fetching roles:', rolesError);
-          setRoles([]);
+          console.error('[AuthContext] Error fetching tenant roles:', rolesError);
         } else {
-          const fetchedRoles = (rolesData ?? []).map((r) => r.role as AppRole);
-          console.log('[AuthContext] Roles fetched:', fetchedRoles);
-          setRoles(fetchedRoles);
+          const tenantRoles = (rolesData ?? []).map((r) => r.role as AppRole);
+          allRoles.push(...tenantRoles);
+          console.log('[AuthContext] Tenant roles fetched:', tenantRoles);
         }
       } else {
-        console.log('[AuthContext] No tenant_id - skipping role fetch');
-        setRoles([]);
+        console.log('[AuthContext] No tenant_id - skipping tenant role fetch');
       }
+
+      console.log('[AuthContext] All roles:', allRoles);
+      setRoles(allRoles);
     } catch (error) {
       console.error('[AuthContext] Error fetching user data:', error);
       setProfile(null);
