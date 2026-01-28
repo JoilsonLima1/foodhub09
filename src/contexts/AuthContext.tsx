@@ -27,24 +27,81 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [tenantId, setTenantId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchUserData = async (userId: string) => {
+  // Helper function to bootstrap user if needed (creates profile + tenant + role)
+  const bootstrapUserIfNeeded = async (userId: string, sessionToken: string, userMetadata?: any): Promise<boolean> => {
+    try {
+      console.log('[AuthContext] Checking if user needs bootstrap...');
+      
+      const res = await supabase.functions.invoke('bootstrap-user', {
+        headers: {
+          Authorization: `Bearer ${sessionToken}`,
+        },
+        body: {
+          tenantName: userMetadata?.tenant_name || userMetadata?.full_name,
+        },
+      });
+
+      if (res.error) {
+        console.error('[AuthContext] Bootstrap error:', res.error);
+        return false;
+      }
+
+      if (res.data?.error) {
+        console.error('[AuthContext] Bootstrap response error:', res.data.error);
+        return false;
+      }
+
+      console.log('[AuthContext] Bootstrap completed:', res.data);
+      return true;
+    } catch (error) {
+      console.error('[AuthContext] Bootstrap exception:', error);
+      return false;
+    }
+  };
+
+  const fetchUserData = async (userId: string, sessionToken?: string, userMetadata?: any) => {
     try {
       // Prevent role leakage between sessions/users while we refetch
       setRoles([]);
       setTenantId(null);
 
-      // Fetch profile
-      const { data: profileData, error: profileError } = await supabase
+      console.log('[AuthContext] Fetching user data for:', userId);
+
+      // Fetch profile - use maybeSingle since profile might not exist yet
+      let { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
 
       if (profileError) {
-        console.error('Error fetching profile:', profileError);
+        console.error('[AuthContext] Error fetching profile:', profileError);
+      }
+
+      // If no profile or no tenant, try to bootstrap
+      if ((!profileData || !profileData.tenant_id) && sessionToken) {
+        console.log('[AuthContext] No profile/tenant found - triggering bootstrap...');
+        const bootstrapped = await bootstrapUserIfNeeded(userId, sessionToken, userMetadata);
+        
+        if (bootstrapped) {
+          // Refetch profile after bootstrap
+          const { data: newProfileData } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('user_id', userId)
+            .maybeSingle();
+          
+          profileData = newProfileData;
+        }
       }
 
       if (profileData) {
+        console.log('[AuthContext] Profile found:', { 
+          id: profileData.id, 
+          tenant_id: profileData.tenant_id,
+          full_name: profileData.full_name 
+        });
+        
         setProfile({
           id: profileData.id,
           full_name: profileData.full_name,
@@ -55,10 +112,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
         setTenantId(profileData.tenant_id);
       } else {
+        console.log('[AuthContext] No profile found for user');
         setProfile(null);
       }
 
-      // Fetch roles
+      // Fetch roles - only if we have a tenant_id
       // NOTE: roles are tenant-scoped; never load roles from other tenants.
       if (profileData?.tenant_id) {
         const { data: rolesData, error: rolesError } = await supabase
@@ -68,16 +126,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .eq('tenant_id', profileData.tenant_id);
 
         if (rolesError) {
-          console.error('Error fetching roles:', rolesError);
+          console.error('[AuthContext] Error fetching roles:', rolesError);
           setRoles([]);
         } else {
-          setRoles((rolesData ?? []).map((r) => r.role as AppRole));
+          const fetchedRoles = (rolesData ?? []).map((r) => r.role as AppRole);
+          console.log('[AuthContext] Roles fetched:', fetchedRoles);
+          setRoles(fetchedRoles);
         }
       } else {
+        console.log('[AuthContext] No tenant_id - skipping role fetch');
         setRoles([]);
       }
     } catch (error) {
-      console.error('Error fetching user data:', error);
+      console.error('[AuthContext] Error fetching user data:', error);
       setProfile(null);
       setRoles([]);
       setTenantId(null);
@@ -94,7 +155,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Defer data fetching with setTimeout to avoid deadlock
         if (session?.user) {
           setTimeout(() => {
-            fetchUserData(session.user.id);
+            fetchUserData(
+              session.user.id, 
+              session.access_token, 
+              session.user.user_metadata
+            );
           }, 0);
         } else {
           setProfile(null);
@@ -116,7 +181,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        fetchUserData(session.user.id).finally(() => {
+        fetchUserData(
+          session.user.id, 
+          session.access_token, 
+          session.user.user_metadata
+        ).finally(() => {
           setIsLoading(false);
         });
       } else {
@@ -138,6 +207,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signUp = async (email: string, password: string, fullName: string, tenantName: string) => {
     const redirectUrl = `${window.location.origin}/`;
     
+    console.log('[signUp] Starting signup for:', email);
+    
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -151,6 +222,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     if (!error && data.user) {
+      console.log('[signUp] User created successfully:', data.user.id);
+      
       // Bootstrap user: create tenant (organization) + profile + admin role
       try {
         // Use session from signup response directly (more reliable than getSession)
@@ -158,18 +231,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         // Fallback: try getSession if signup didn't return session immediately
         if (!token) {
+          console.log('[signUp] No session in response, waiting for session...');
           // Wait briefly for session to be established
-          await new Promise(resolve => setTimeout(resolve, 500));
+          await new Promise(resolve => setTimeout(resolve, 1000));
           const { data: sessionData } = await supabase.auth.getSession();
           token = sessionData.session?.access_token;
         }
         
         if (!token) {
           console.error('[signUp] No session token available after signup');
-          return { error: new Error('Conta criada. Faça login para continuar.') };
+          // Don't fail - the user was created, they just need to log in
+          return { error: new Error('Conta criada com sucesso! Faça login para continuar.') };
         }
 
-        console.log('[signUp] Calling bootstrap-user function...');
+        console.log('[signUp] Token obtained, calling bootstrap-user...');
+        
         const res = await supabase.functions.invoke('bootstrap-user', {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -179,22 +255,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           },
         });
 
+        console.log('[signUp] Bootstrap response:', res);
+
         if (res.error) {
           console.error('[signUp] Bootstrap function error:', res.error);
-          throw res.error;
+          // Don't throw - user was created, just bootstrap failed
+          // They can retry by logging in
+          return { error: new Error('Conta criada, mas houve um erro ao configurar. Faça login para continuar.') };
         }
+        
         if (res.data?.error) {
           console.error('[signUp] Bootstrap response error:', res.data.error);
-          throw new Error(res.data.error);
+          return { error: new Error('Conta criada, mas houve um erro ao configurar. Faça login para continuar.') };
         }
         
         console.log('[signUp] Bootstrap successful:', res.data);
         
         // Refresh user data after bootstrap
         await fetchUserData(data.user.id);
+        
       } catch (bootstrapError: any) {
         console.error('[signUp] Bootstrap error:', bootstrapError);
-        return { error: new Error(bootstrapError?.message || 'Falha ao criar sua organização') };
+        // Don't fail completely - user was created
+        return { error: new Error('Conta criada! Faça login para finalizar a configuração.') };
       }
     }
 
