@@ -47,6 +47,9 @@ export interface PublicLandingLayout {
   show_testimonials: boolean;
   show_features: boolean;
   announcement_banner?: PublicAnnouncementBanner;
+  // Legacy fields for backwards compatibility
+  hero_title?: string;
+  hero_title_highlight?: string;
 }
 
 interface PublicSettings {
@@ -116,7 +119,25 @@ export function usePublicSettings() {
         } else if (key === 'trial_period') {
           settingsMap.trial_period = value as PublicTrialPeriod;
         } else if (key === 'landing_layout') {
-          settingsMap.landing_layout = value as PublicLandingLayout;
+          const rawLayout = value as Record<string, unknown>;
+          // Map legacy fields to new 4-part title structure
+          const layout: PublicLandingLayout = {
+            hero_badge: rawLayout.hero_badge as string || DEFAULT_LANDING.hero_badge,
+            hero_title_part1: rawLayout.hero_title_part1 as string || rawLayout.hero_title as string || DEFAULT_LANDING.hero_title_part1,
+            hero_title_part2: rawLayout.hero_title_part2 as string || rawLayout.hero_title_highlight as string || DEFAULT_LANDING.hero_title_part2,
+            hero_title_part3: rawLayout.hero_title_part3 as string || DEFAULT_LANDING.hero_title_part3,
+            hero_title_part4: rawLayout.hero_title_part4 as string || DEFAULT_LANDING.hero_title_part4,
+            hero_subtitle: rawLayout.hero_subtitle as string || DEFAULT_LANDING.hero_subtitle,
+            hero_description: rawLayout.hero_description as string || DEFAULT_LANDING.hero_description,
+            trust_badge_1: rawLayout.trust_badge_1 as string || DEFAULT_LANDING.trust_badge_1,
+            trust_badge_2: rawLayout.trust_badge_2 as string || DEFAULT_LANDING.trust_badge_2,
+            trust_badge_3: rawLayout.trust_badge_3 as string || DEFAULT_LANDING.trust_badge_3,
+            social_proof_text: rawLayout.social_proof_text as string || DEFAULT_LANDING.social_proof_text,
+            show_testimonials: rawLayout.show_testimonials as boolean ?? DEFAULT_LANDING.show_testimonials,
+            show_features: rawLayout.show_features as boolean ?? DEFAULT_LANDING.show_features,
+            announcement_banner: rawLayout.announcement_banner as PublicAnnouncementBanner || DEFAULT_LANDING.announcement_banner,
+          };
+          settingsMap.landing_layout = layout;
         }
       });
 

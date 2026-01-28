@@ -39,8 +39,10 @@ export function BrandingSettings() {
 
   const [landingData, setLandingData] = useState<LandingLayoutSettings>({
     hero_badge: 'Plataforma #1 para Gestão de Restaurantes',
-    hero_title: 'Transforme seu restaurante em uma',
-    hero_title_highlight: 'máquina de vendas',
+    hero_title: 'Transforme seu',
+    hero_title_highlight: 'restaurante',
+    hero_title_part3: 'em uma',
+    hero_title_part4: 'máquina de vendas',
     hero_subtitle: 'Unifique pedidos de múltiplas origens, gerencie entregas, controle estoque e tome decisões inteligentes com relatórios em tempo real e previsões com IA.',
     hero_description: '',
     trust_badge_1: 'Sem cartão de crédito',
@@ -58,12 +60,35 @@ export function BrandingSettings() {
   });
 
   const bannerStyles: { value: AnnouncementBannerStyle; label: string; description: string }[] = [
+    // Básicos
     { value: 'gradient', label: 'Gradiente', description: 'Banner colorido com padrão grid' },
     { value: 'minimal', label: 'Minimalista', description: 'Fundo neutro, borda inferior' },
     { value: 'glass', label: 'Vidro', description: 'Transparência com blur' },
     { value: 'ribbon', label: 'Fita', description: 'Linhas decorativas laterais' },
     { value: 'badge', label: 'Badge', description: 'Centralizado em forma de pílula' },
     { value: 'glow', label: 'Brilho', description: 'Efeito luminoso nas laterais' },
+    // Animados
+    { value: 'bubbles', label: 'Bolhas', description: 'Bolhas flutuantes animadas' },
+    { value: 'neon', label: 'Neon', description: 'Efeito neon brilhante' },
+    { value: 'stripes', label: 'Listras', description: 'Padrão de listras diagonais' },
+    { value: 'confetti', label: 'Confete', description: 'Partículas coloridas festivas' },
+    { value: 'wave', label: 'Onda', description: 'Ondas suaves decorativas' },
+    { value: 'sparkle', label: 'Brilhos', description: 'Estrelas cintilantes' },
+    // Geométricos
+    { value: 'geometric', label: 'Geométrico', description: 'Formas geométricas abstratas' },
+    { value: 'aurora', label: 'Aurora', description: 'Gradiente aurora boreal' },
+    { value: 'pulse', label: 'Pulso', description: 'Efeito de pulsação' },
+    // Temáticos
+    { value: 'retro', label: 'Retrô', description: 'Estilo vintage anos 70' },
+    { value: 'cyber', label: 'Cyber', description: 'Futurista cyberpunk' },
+    { value: 'elegant', label: 'Elegante', description: 'Sofisticado e refinado' },
+    { value: 'festive', label: 'Festivo', description: 'Celebração e festa' },
+    // Natureza
+    { value: 'sunset', label: 'Pôr do Sol', description: 'Tons quentes de sunset' },
+    { value: 'ocean', label: 'Oceano', description: 'Azuis profundos do mar' },
+    { value: 'forest', label: 'Floresta', description: 'Verdes naturais' },
+    { value: 'fire', label: 'Fogo', description: 'Laranjas e vermelhos vibrantes' },
+    { value: 'holographic', label: 'Holográfico', description: 'Efeito iridescente futurista' },
   ];
 
   useEffect(() => {
@@ -445,30 +470,46 @@ export function BrandingSettings() {
             </p>
           </div>
 
-          {/* Hero Title */}
-          <div className="space-y-2">
-            <Label>Título Principal (Parte 1 - Cor normal)</Label>
-            <Input
-              value={landingData.hero_title}
-              onChange={(e) => setLandingData({ ...landingData, hero_title: e.target.value })}
-              placeholder="Transforme seu restaurante em uma"
-            />
+          {/* Hero Title - 4 Parts */}
+          <div className="space-y-4">
+            <Label className="text-base font-semibold">Título Principal (4 partes alternadas)</Label>
             <p className="text-xs text-muted-foreground">
-              Primeira parte do título em cor normal
+              Parte 1 (cor normal) → Parte 2 (cor primária) → Parte 3 (cor normal) → Parte 4 (cor primária com sublinhado)
             </p>
-          </div>
-
-          {/* Hero Title Highlight */}
-          <div className="space-y-2">
-            <Label>Título Principal (Parte 2 - Cor destaque)</Label>
-            <Input
-              value={landingData.hero_title_highlight}
-              onChange={(e) => setLandingData({ ...landingData, hero_title_highlight: e.target.value })}
-              placeholder="máquina de vendas"
-            />
-            <p className="text-xs text-muted-foreground">
-              Segunda parte do título em cor primária (destaque)
-            </p>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Parte 1 - Cor Normal</Label>
+                <Input
+                  value={landingData.hero_title}
+                  onChange={(e) => setLandingData({ ...landingData, hero_title: e.target.value })}
+                  placeholder="Transforme seu"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Parte 2 - Cor Primária (Dourada)</Label>
+                <Input
+                  value={landingData.hero_title_highlight}
+                  onChange={(e) => setLandingData({ ...landingData, hero_title_highlight: e.target.value })}
+                  placeholder="restaurante"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Parte 3 - Cor Normal</Label>
+                <Input
+                  value={landingData.hero_title_part3 || ''}
+                  onChange={(e) => setLandingData({ ...landingData, hero_title_part3: e.target.value })}
+                  placeholder="em uma"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Parte 4 - Cor Primária + Sublinhado</Label>
+                <Input
+                  value={landingData.hero_title_part4 || ''}
+                  onChange={(e) => setLandingData({ ...landingData, hero_title_part4: e.target.value })}
+                  placeholder="máquina de vendas"
+                />
+              </div>
+            </div>
           </div>
 
           {/* Preview */}
@@ -476,7 +517,9 @@ export function BrandingSettings() {
             <Label className="text-xs text-muted-foreground mb-2 block">Prévia do título:</Label>
             <p className="text-xl font-bold">
               {landingData.hero_title}{' '}
-              <span className="text-primary">{landingData.hero_title_highlight}</span>
+              <span className="text-primary">{landingData.hero_title_highlight}</span>{' '}
+              {landingData.hero_title_part3}{' '}
+              <span className="text-primary underline decoration-2">{landingData.hero_title_part4}</span>
             </p>
           </div>
 
