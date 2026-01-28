@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePublicSettings } from '@/hooks/usePublicSettings';
+import { resetThemeToDefault } from '@/hooks/useBusinessCategory';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -59,6 +60,12 @@ export default function AuthPage() {
   const searchParams = new URLSearchParams(location.search);
   const hasIntent = searchParams.has('intent') || searchParams.has('plan');
   const hasFromState = !!location.state?.from;
+
+  // IMPORTANT: Reset theme to default on auth page mount
+  // Auth page colors must be controlled ONLY by system defaults, not by any tenant theme
+  useEffect(() => {
+    resetThemeToDefault();
+  }, []);
 
   // Handle redirects in useEffect to avoid loops
   useEffect(() => {
