@@ -281,10 +281,10 @@ export default function POS() {
       {/* Products Section */}
       <div className="flex-1 flex flex-col min-h-0">
         {/* Header */}
-        <div className="flex items-center gap-4 mb-4">
+        <div className="flex items-center gap-2 mb-3 flex-wrap">
           <div className="flex items-center gap-2">
-            <Calculator className="h-6 w-6" />
-            <h1 className="text-2xl font-bold">PDV</h1>
+            <Calculator className="h-5 w-5" />
+            <h1 className="text-xl font-bold">PDV</h1>
           </div>
           
           {/* Display Mode Toggle */}
@@ -295,13 +295,13 @@ export default function POS() {
             compact
           />
           
-          <Badge variant="outline" className="ml-auto">
-            Caixa: {profile?.full_name}
+          {/* Keyboard Shortcuts Bar - inline */}
+          <KeyboardShortcutsBar shortcuts={shortcutsDisplay} />
+          
+          <Badge variant="outline" className="ml-auto text-xs">
+            {profile?.full_name}
           </Badge>
         </div>
-
-        {/* Keyboard Shortcuts Bar */}
-        <KeyboardShortcutsBar shortcuts={shortcutsDisplay} className="mb-1" />
 
         {/* Search and Hardware Controls */}
         <div className="space-y-3 mb-4">
