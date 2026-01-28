@@ -2521,6 +2521,41 @@ export type Database = {
       }
     }
     Functions: {
+      get_public_categories: {
+        Args: { p_tenant_id: string }
+        Returns: {
+          category_display_order: number
+          category_id: string
+          category_name: string
+        }[]
+      }
+      get_public_menu: {
+        Args: { p_tenant_id: string }
+        Returns: {
+          product_base_price: number
+          product_category_id: string
+          product_category_name: string
+          product_description: string
+          product_display_order: number
+          product_has_variations: boolean
+          product_id: string
+          product_image_url: string
+          product_name: string
+          tenant_id: string
+          tenant_logo_url: string
+          tenant_name: string
+          tenant_whatsapp: string
+        }[]
+      }
+      get_public_product_variations: {
+        Args: { p_product_ids: string[] }
+        Returns: {
+          price_modifier: number
+          product_id: string
+          variation_id: string
+          variation_name: string
+        }[]
+      }
       get_public_settings: {
         Args: never
         Returns: {
