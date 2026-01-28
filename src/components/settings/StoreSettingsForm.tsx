@@ -120,16 +120,18 @@ export function StoreSettingsForm() {
               />
             </div>
           </div>
-          <Button type="submit" disabled={isSaving}>
-            {isSaving ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Salvando...
-              </>
-            ) : (
-              'Salvar Alterações'
-            )}
-          </Button>
+          <div className="pt-4 border-t mt-6">
+            <Button type="submit" disabled={isSaving} className="w-full sm:w-auto">
+              {isSaving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                'Salvar Alterações'
+              )}
+            </Button>
+          </div>
         </form>
       </CardContent>
     </Card>

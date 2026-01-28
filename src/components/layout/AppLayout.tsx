@@ -73,10 +73,10 @@ export function AppLayout() {
     <div className="min-h-screen flex w-full">
       <AppSidebar />
       <main className={cn(
-        "flex-1 transition-all duration-300",
+        "flex-1 transition-all duration-300 overflow-y-auto max-h-screen",
         sidebarCollapsed ? "md:ml-16" : "md:ml-56"
       )}>
-        <div className="p-3 md:p-4 lg:p-6">
+        <div className="p-3 md:p-4 lg:p-6 pb-8">
           <TrialExpirationBanner />
           {showTrialExpiredOverlay && (
             <TrialExpiredOverlay featureName={getFeatureNameFromPath(currentPath)} />
