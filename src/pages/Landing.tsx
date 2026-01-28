@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSubscriptionPlans } from '@/hooks/useSubscriptionPlans';
 import { usePublicSettings } from '@/hooks/usePublicSettings';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
+import { resetThemeToDefault } from '@/hooks/useBusinessCategory';
 import fallbackLogo from '@/assets/logo.png';
 import PartnersCarousel from '@/components/landing/PartnersCarousel';
 import { LandingHeader } from '@/components/landing/LandingHeader';
@@ -17,6 +18,11 @@ import { AIChatWidget } from '@/components/landing/AIChatWidget';
 import { WhatsAppButton } from '@/components/landing/WhatsAppButton';
 
 export default function Landing() {
+  // IMPORTANT: Reset theme to default on landing page mount
+  // Landing page colors must be controlled ONLY by super admin settings, not by any tenant theme
+  useEffect(() => {
+    resetThemeToDefault();
+  }, []);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const { plans, isLoading } = useSubscriptionPlans();
   const { branding, trialPeriod } = usePublicSettings();

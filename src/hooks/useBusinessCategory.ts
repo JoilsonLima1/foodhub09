@@ -213,7 +213,20 @@ export function useTenantCategory() {
   });
 
   // Apply theme on load - only if authenticated and has tenant
+  // IMPORTANT: This should NOT affect public pages like landing page
   useEffect(() => {
+    // Check if we're on a public page (landing, auth, etc.)
+    const isPublicPage = window.location.pathname === '/' || 
+                         window.location.pathname === '/auth' ||
+                         window.location.pathname.startsWith('/menu/') ||
+                         window.location.pathname.startsWith('/rastrear');
+    
+    if (isPublicPage) {
+      // Always reset theme on public pages - they should use CSS defaults
+      resetThemeToDefault();
+      return;
+    }
+
     if (!user || !tenantId) {
       // Not authenticated - reset to default theme
       resetThemeToDefault();
