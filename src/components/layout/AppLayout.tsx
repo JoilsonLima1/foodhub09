@@ -6,6 +6,8 @@ import { TrialExpirationBanner } from '@/components/trial/TrialExpirationBanner'
 import { TrialExpiredOverlay } from '@/components/trial/TrialExpiredOverlay';
 import { useFeatureAccess } from '@/hooks/useFeatureAccess';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAppearance } from '@/hooks/useAppearance';
+import { cn } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
 
 // Pages that don't require feature access check (always accessible)
@@ -14,6 +16,7 @@ const ALWAYS_ACCESSIBLE_PAGES = ['/dashboard', '/settings', '/super-admin'];
 export function AppLayout() {
   const location = useLocation();
   const { roles } = useAuth();
+  const { sidebarCollapsed } = useAppearance();
   const { hasAccess, isTrialExpired, reason, isLoading } = useFeatureAccess();
   
   // Enable low stock alerts globally
@@ -51,7 +54,10 @@ export function AppLayout() {
     return (
       <div className="min-h-screen flex w-full">
         <AppSidebar />
-        <main className="flex-1 md:ml-56">
+        <main className={cn(
+          "flex-1 transition-all duration-300",
+          sidebarCollapsed ? "md:ml-16" : "md:ml-56"
+        )}>
           <div className="p-3 md:p-4 lg:p-6 flex items-center justify-center min-h-screen">
             <div className="flex flex-col items-center gap-3">
               <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -66,7 +72,10 @@ export function AppLayout() {
   return (
     <div className="min-h-screen flex w-full">
       <AppSidebar />
-      <main className="flex-1 md:ml-56">
+      <main className={cn(
+        "flex-1 transition-all duration-300",
+        sidebarCollapsed ? "md:ml-16" : "md:ml-56"
+      )}>
         <div className="p-3 md:p-4 lg:p-6">
           <TrialExpirationBanner />
           {showTrialExpiredOverlay && (
