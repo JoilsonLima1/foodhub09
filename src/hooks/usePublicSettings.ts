@@ -19,7 +19,11 @@ export interface PublicTrialPeriod {
   end_date: string | null;
 }
 
-export type PublicAnnouncementBannerStyle = 'gradient' | 'minimal' | 'glass' | 'ribbon' | 'badge' | 'glow';
+export type PublicAnnouncementBannerStyle = 
+  | 'gradient' | 'minimal' | 'glass' | 'ribbon' | 'badge' | 'glow'
+  | 'bubbles' | 'neon' | 'stripes' | 'confetti' | 'wave' | 'sparkle'
+  | 'geometric' | 'aurora' | 'pulse' | 'retro' | 'cyber' | 'elegant'
+  | 'festive' | 'sunset' | 'ocean' | 'forest' | 'fire' | 'holographic';
 
 export interface PublicAnnouncementBanner {
   is_visible: boolean;
