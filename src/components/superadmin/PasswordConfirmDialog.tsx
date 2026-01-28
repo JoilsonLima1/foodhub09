@@ -17,11 +17,13 @@ import { useToast } from '@/hooks/use-toast';
 interface PasswordConfirmDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onConfirm: () => void;
+  onConfirm: (() => void) | ((password: string) => void | Promise<void>);
   title: string;
   description: string;
   confirmLabel?: string;
   isLoading?: boolean;
+  /** If true, password is passed to onConfirm and verification is done by the caller */
+  externalVerification?: boolean;
 }
 
 export function PasswordConfirmDialog({
@@ -32,6 +34,7 @@ export function PasswordConfirmDialog({
   description,
   confirmLabel = 'Confirmar',
   isLoading = false,
+  externalVerification = false,
 }: PasswordConfirmDialogProps) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -48,31 +51,36 @@ export function PasswordConfirmDialog({
     setError('');
 
     try {
-      // Get current user email
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user?.email) {
-        setError('Usuário não encontrado');
-        setVerifying(false);
-        return;
+      if (externalVerification) {
+        // Password verification done by the caller (edge function)
+        setPassword('');
+        await (onConfirm as (password: string) => void | Promise<void>)(password);
+        onOpenChange(false);
+      } else {
+        // Internal verification via Supabase Auth
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (!user?.email) {
+          setError('Usuário não encontrado');
+          setVerifying(false);
+          return;
+        }
+
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: user.email,
+          password: password,
+        });
+
+        if (signInError) {
+          setError('Senha incorreta');
+          setVerifying(false);
+          return;
+        }
+
+        setPassword('');
+        (onConfirm as () => void)();
+        onOpenChange(false);
       }
-
-      // Re-authenticate with password
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: user.email,
-        password: password,
-      });
-
-      if (signInError) {
-        setError('Senha incorreta');
-        setVerifying(false);
-        return;
-      }
-
-      // Password verified, proceed with action
-      setPassword('');
-      onConfirm();
-      onOpenChange(false);
     } catch (err) {
       console.error('Password verification error:', err);
       setError('Erro ao verificar senha');
