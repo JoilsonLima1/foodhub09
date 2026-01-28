@@ -14,6 +14,7 @@ import {
   Palette,
   Bell,
   Store,
+  Building,
 } from 'lucide-react';
 import { PlanEditor } from '@/components/superadmin/PlanEditor';
 import { FeatureComparison } from '@/components/superadmin/FeatureComparison';
@@ -22,11 +23,14 @@ import { PaymentGatewaysManager } from '@/components/superadmin/PaymentGatewaysM
 import { BrandingSettings } from '@/components/superadmin/BrandingSettings';
 import { TrialNotificationSettings } from '@/components/superadmin/TrialNotificationSettings';
 import { BusinessCategoryManager } from '@/components/superadmin/BusinessCategoryManager';
+import { OrganizationsManager } from '@/components/superadmin/OrganizationsManager';
 import { useSubscribers } from '@/hooks/useSubscribers';
+import { useOrganizations } from '@/hooks/useOrganizations';
 
 export default function SuperAdmin() {
   const { roles } = useAuth();
   const { stats } = useSubscribers();
+  const { stats: orgStats } = useOrganizations();
   
   // SECURITY NOTE: This is a UI-level check for user experience.
   // All actual permissions are enforced server-side via RLS policies.
@@ -78,15 +82,26 @@ export default function SuperAdmin() {
       </Alert>
 
       {/* Stats Overview */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-5">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Planos Ativos</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Organizações</CardTitle>
+            <Building className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">3</div>
-            <p className="text-xs text-muted-foreground">Starter, Professional, Enterprise</p>
+            <div className="text-2xl font-bold">{orgStats.total}</div>
+            <p className="text-xs text-muted-foreground">{orgStats.active} ativas</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Total Usuários</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{orgStats.totalUsers}</div>
+            <p className="text-xs text-muted-foreground">Em todas as orgs</p>
           </CardContent>
         </Card>
         
@@ -117,7 +132,7 @@ export default function SuperAdmin() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Em Teste</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+            <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.trialing}</div>
@@ -127,8 +142,12 @@ export default function SuperAdmin() {
       </div>
 
       {/* Main Content */}
-      <Tabs defaultValue="subscribers" className="space-y-6">
+      <Tabs defaultValue="organizations" className="space-y-6">
         <TabsList className="flex flex-wrap h-auto gap-2">
+          <TabsTrigger value="organizations" className="flex items-center gap-2">
+            <Building className="h-4 w-4" />
+            Organizações
+          </TabsTrigger>
           <TabsTrigger value="subscribers" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
             Assinantes
@@ -158,6 +177,10 @@ export default function SuperAdmin() {
             Comparativo
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="organizations">
+          <OrganizationsManager />
+        </TabsContent>
 
         <TabsContent value="subscribers">
           <SubscribersManager />
