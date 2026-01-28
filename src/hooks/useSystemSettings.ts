@@ -138,6 +138,9 @@ export function useSystemSettings() {
           hero_title_part1: layout.hero_title,
           // Map hero_title_highlight to hero_title_part2 for consistency
           hero_title_part2: layout.hero_title_highlight,
+          // Ensure part3 and part4 are also saved
+          hero_title_part3: layout.hero_title_part3,
+          hero_title_part4: layout.hero_title_part4,
         };
       }
       
