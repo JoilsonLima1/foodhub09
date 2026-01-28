@@ -33,12 +33,7 @@ interface UpdateOrganizationData {
   subscription_status?: string;
 }
 
-async function getAuthHeaders() {
-  const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token;
-  if (!token) return null;
-  return { Authorization: `Bearer ${token}` };
-}
+// Removed getAuthHeaders - supabase.functions.invoke auto-includes auth
 
 export function useOrganizations() {
   const { hasRole } = useAuth();
@@ -58,16 +53,20 @@ export function useOrganizations() {
 
     try {
       setIsLoading(true);
-      const headers = await getAuthHeaders();
-      if (!headers) {
-        console.warn("[useOrganizations] No auth headers - user may not be logged in");
-        throw new Error("Sessão não encontrada. Faça login novamente.");
+      
+      // Wait for auth state to settle before attempting fetch
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        console.warn("[useOrganizations] No session - waiting for auth...");
+        setIsLoading(false);
+        return;
       }
 
-      console.log("[useOrganizations] Fetching organizations...");
+      console.log("[useOrganizations] Fetching organizations with session...");
+      
+      // Use supabase.functions.invoke - it automatically includes auth headers
       const res = await supabase.functions.invoke("manage-organizations", {
         body: { action: "list" },
-        headers,
       });
 
       console.log("[useOrganizations] Response:", res);
@@ -113,12 +112,12 @@ export function useOrganizations() {
 
     try {
       setIsUpdating(true);
-      const headers = await getAuthHeaders();
-      if (!headers) throw new Error("Sessão não encontrada. Faça login novamente.");
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Sessão não encontrada. Faça login novamente.");
 
       const res = await supabase.functions.invoke("manage-organizations", {
         body: { action: "update", organizationId, organizationData: data },
-        headers,
       });
 
       if (res.error) throw res.error;
@@ -152,12 +151,12 @@ export function useOrganizations() {
 
     try {
       setIsUpdating(true);
-      const headers = await getAuthHeaders();
-      if (!headers) throw new Error("Sessão não encontrada. Faça login novamente.");
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Sessão não encontrada. Faça login novamente.");
 
       const res = await supabase.functions.invoke("manage-organizations", {
         body: { action: "toggle-status", organizationId },
-        headers,
       });
 
       if (res.error) throw res.error;
@@ -192,12 +191,12 @@ export function useOrganizations() {
 
     try {
       setIsDeleting(true);
-      const headers = await getAuthHeaders();
-      if (!headers) throw new Error("Sessão não encontrada. Faça login novamente.");
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Sessão não encontrada. Faça login novamente.");
 
       const res = await supabase.functions.invoke("manage-organizations", {
         body: { action: "delete-permanent", organizationId, password },
-        headers,
       });
 
       if (res.error) throw res.error;
