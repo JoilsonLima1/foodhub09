@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -14,9 +15,13 @@ import {
   Sparkles,
   ArrowRight,
   Store,
+  ChevronDown,
+  ChevronUp,
+  Building2,
 } from 'lucide-react';
 import { useAddonModules, ADDON_CATEGORY_LABELS, type AddonModuleCategory } from '@/hooks/useAddonModules';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 // Icon mapping for module categories
 const CATEGORY_ICONS: Record<AddonModuleCategory, React.ComponentType<{ className?: string }>> = {
@@ -54,6 +59,7 @@ const CATEGORY_GRADIENTS: Record<AddonModuleCategory, string> = {
 
 export function AddonModulesSection() {
   const { modules, isLoading } = useAddonModules();
+  const [showAllModules, setShowAllModules] = useState(false);
 
   const formatPrice = (price: number, currency: string = 'BRL') => {
     return new Intl.NumberFormat('pt-BR', {
@@ -159,6 +165,16 @@ export function AddonModulesSection() {
                       ))}
                     </ul>
                   )}
+                  
+                  {/* Special note for Multiloja module */}
+                  {module.slug === 'multiloja' && (
+                    <div className="mt-4 p-3 rounded-lg bg-primary/10 border border-primary/20">
+                      <p className="text-xs text-primary font-medium flex items-start gap-2">
+                        <Building2 className="h-4 w-4 shrink-0 mt-0.5" />
+                        Todas as funcionalidades contratadas na primeira loja ficam disponíveis nas demais lojas automaticamente.
+                      </p>
+                    </div>
+                  )}
                 </CardContent>
                 
                 <CardFooter className="flex items-center justify-between pt-4 border-t border-border/50">
@@ -183,17 +199,97 @@ export function AddonModulesSection() {
           })}
         </div>
 
-        {/* More modules info */}
+        {/* More modules - collapsible */}
         {activeModules.length > 6 && (
-          <div className="text-center mt-12">
-            <p className="text-muted-foreground mb-4">
-              E mais {activeModules.length - 6} módulos disponíveis!
-            </p>
-            <Button variant="outline" size="lg" className="rounded-full">
-              Ver todos os módulos
-              <ArrowRight className="h-4 w-4 ml-2" />
-            </Button>
-          </div>
+          <Collapsible open={showAllModules} onOpenChange={setShowAllModules}>
+            <div className="text-center mt-8">
+              <p className="text-muted-foreground mb-4">
+                E mais {activeModules.length - 6} módulos disponíveis!
+              </p>
+              <CollapsibleTrigger asChild>
+                <Button variant="outline" size="lg" className="rounded-full">
+                  {showAllModules ? 'Mostrar menos' : 'Ver todos os módulos'}
+                  {showAllModules ? (
+                    <ChevronUp className="h-4 w-4 ml-2" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 ml-2" />
+                  )}
+                </Button>
+              </CollapsibleTrigger>
+            </div>
+            
+            <CollapsibleContent className="mt-6">
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {activeModules.slice(6).map(module => {
+                  const ModuleIcon = getModuleIcon(module.icon);
+                  const gradient = CATEGORY_GRADIENTS[module.category];
+                  
+                  return (
+                    <Card 
+                      key={module.id}
+                      className={`relative flex flex-col bg-gradient-to-b ${gradient} border-border transition-all duration-300 hover:scale-[1.02] hover:shadow-xl`}
+                    >
+                      <CardHeader className="pb-3">
+                        <div className="flex items-start justify-between">
+                          <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                            <ModuleIcon className="h-6 w-6 text-primary" />
+                          </div>
+                          <Badge variant="secondary" className="text-xs">
+                            {ADDON_CATEGORY_LABELS[module.category]}
+                          </Badge>
+                        </div>
+                        <CardTitle className="text-xl mt-4">{module.name}</CardTitle>
+                        <CardDescription className="line-clamp-2">
+                          {module.description}
+                        </CardDescription>
+                      </CardHeader>
+                      
+                      <CardContent className="flex-1">
+                        {module.features && (module.features as string[]).length > 0 && (
+                          <ul className="space-y-2">
+                            {(module.features as string[]).slice(0, 3).map((feature, idx) => (
+                              <li key={idx} className="flex items-start gap-2 text-sm">
+                                <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                                <span>{feature}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                        
+                        {/* Special note for Multiloja module */}
+                        {module.slug === 'multiloja' && (
+                          <div className="mt-4 p-3 rounded-lg bg-primary/10 border border-primary/20">
+                            <p className="text-xs text-primary font-medium flex items-start gap-2">
+                              <Building2 className="h-4 w-4 shrink-0 mt-0.5" />
+                              Todas as funcionalidades contratadas na primeira loja ficam disponíveis nas demais lojas automaticamente.
+                            </p>
+                          </div>
+                        )}
+                      </CardContent>
+                      
+                      <CardFooter className="flex items-center justify-between pt-4 border-t border-border/50">
+                        <div>
+                          <span className="text-2xl font-bold">
+                            {formatPrice(module.monthly_price)}
+                          </span>
+                          <span className="text-sm text-muted-foreground">/mês</span>
+                        </div>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => handleContactForModule(module.name)}
+                          className="gap-1"
+                        >
+                          Saiba mais
+                          <ArrowRight className="h-4 w-4" />
+                        </Button>
+                      </CardFooter>
+                    </Card>
+                  );
+                })}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
         )}
 
         {/* Contact CTA */}
