@@ -1,7 +1,8 @@
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Gift, MessageCircle } from 'lucide-react';
+import { ArrowRight, Gift } from 'lucide-react';
 import { WhatsAppButton } from './WhatsAppButton';
+import { SuggestionForm } from '@/components/suggestions/SuggestionForm';
 
 interface CTASectionProps {
   companyName: string;
@@ -64,6 +65,18 @@ export function CTASection({ companyName, trialDays, whatsappNumber }: CTASectio
           <p className="text-sm text-muted-foreground">
             Sem cartão de crédito • Cancele quando quiser • Suporte incluído
           </p>
+
+          {/* Suggestion Form */}
+          <div className="mt-8 pt-6 border-t border-primary/20">
+            <p className="text-sm text-muted-foreground mb-3">
+              Tem alguma sugestão ou feedback? Adoraríamos ouvir você!
+            </p>
+            <SuggestionForm
+              source="landing"
+              triggerVariant="ghost"
+              triggerClassName="text-primary hover:text-primary/80"
+            />
+          </div>
         </div>
       </div>
     </section>
