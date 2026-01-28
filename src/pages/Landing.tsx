@@ -11,6 +11,7 @@ import { CategoriesSection } from '@/components/landing/CategoriesSection';
 import { FeaturesSection } from '@/components/landing/FeaturesSection';
 import { AdvantagesSection } from '@/components/landing/AdvantagesSection';
 import { PricingSection } from '@/components/landing/PricingSection';
+import { AddonModulesSection } from '@/components/landing/AddonModulesSection';
 import { FAQSection } from '@/components/landing/FAQSection';
 import { CTASection } from '@/components/landing/CTASection';
 import { LandingFooter } from '@/components/landing/LandingFooter';
@@ -73,6 +74,9 @@ export default function Landing() {
         trialDays={trialDays}
         trialText={trialText}
       />
+
+      {/* Addon Modules Section */}
+      <AddonModulesSection />
 
       {/* FAQ Section */}
       <FAQSection />
