@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils';
 
 export type BannerStyle = 
   | 'gradient' | 'minimal' | 'glass' | 'ribbon' | 'badge' | 'glow'
-  | 'bubbles' | 'neon' | 'stripes' | 'confetti' | 'wave' | 'sparkle'
+  | 'bubbles' | 'circles' | 'neon' | 'stripes' | 'confetti' | 'wave' | 'sparkle'
   | 'geometric' | 'aurora' | 'pulse' | 'retro' | 'cyber' | 'elegant'
   | 'festive' | 'sunset' | 'ocean' | 'forest' | 'fire' | 'holographic';
 
@@ -23,6 +23,7 @@ const bannerIcons: Record<BannerStyle, React.ReactNode> = {
   badge: <Rocket className="h-5 w-5" />,
   glow: <Crown className="h-5 w-5 fill-current" />,
   bubbles: <Cloud className="h-5 w-5 animate-pulse" />,
+  circles: <Target className="h-5 w-5 animate-pulse" />,
   neon: <Zap className="h-5 w-5 animate-pulse" />,
   stripes: <Target className="h-5 w-5" />,
   confetti: <PartyPopper className="h-5 w-5 animate-bounce" />,
@@ -156,6 +157,43 @@ export function AnnouncementBanner({ text, highlightText, style, isVisible, isPr
             </div>
             <div className="container mx-auto max-w-6xl text-primary-foreground relative z-10">
               {renderContent()}
+            </div>
+          </div>
+        </section>
+      );
+
+    case 'circles':
+      return (
+        <section className={sectionClass}>
+          <div className="bg-gradient-to-r from-primary via-primary/95 to-primary py-4 px-4 relative overflow-hidden">
+            {/* Circle highlights - static positioned circles */}
+            <div className="absolute inset-0 overflow-hidden">
+              {/* Large circles at edges */}
+              <div className="absolute w-20 h-20 border-4 border-primary-foreground/20 rounded-full -left-10 top-1/2 -translate-y-1/2" />
+              <div className="absolute w-16 h-16 border-4 border-primary-foreground/15 rounded-full left-[15%] top-1/2 -translate-y-1/2" />
+              <div className="absolute w-12 h-12 bg-primary-foreground/10 rounded-full left-[30%] top-1/2 -translate-y-1/2" />
+              <div className="absolute w-8 h-8 bg-primary-foreground/15 rounded-full left-[45%] top-1/2 -translate-y-1/2" />
+              <div className="absolute w-10 h-10 border-2 border-primary-foreground/20 rounded-full right-[35%] top-1/2 -translate-y-1/2" />
+              <div className="absolute w-14 h-14 bg-primary-foreground/10 rounded-full right-[20%] top-1/2 -translate-y-1/2" />
+              <div className="absolute w-18 h-18 border-4 border-primary-foreground/15 rounded-full -right-8 top-1/2 -translate-y-1/2" />
+            </div>
+            <div className="container mx-auto max-w-6xl text-primary-foreground relative z-10">
+              <div className="flex items-center justify-center gap-3 flex-wrap text-center">
+                {/* Left highlight circle */}
+                <div className="hidden md:flex items-center justify-center w-10 h-10 bg-primary-foreground/20 rounded-full">
+                  {bannerIcons[style]}
+                </div>
+                <span className="font-medium">{text}</span>
+                {highlightText && (
+                  <span className="bg-primary-foreground text-primary px-4 py-1 rounded-full font-bold text-lg">
+                    {highlightText}
+                  </span>
+                )}
+                {/* Right highlight circle */}
+                <div className="hidden md:flex items-center justify-center w-10 h-10 bg-primary-foreground/20 rounded-full">
+                  <Sparkles className="h-5 w-5" />
+                </div>
+              </div>
             </div>
           </div>
         </section>

@@ -28,7 +28,7 @@ export interface TrialSettings {
 
 export type AnnouncementBannerStyle = 
   | 'gradient' | 'minimal' | 'glass' | 'ribbon' | 'badge' | 'glow'
-  | 'bubbles' | 'neon' | 'stripes' | 'confetti' | 'wave' | 'sparkle'
+  | 'bubbles' | 'circles' | 'neon' | 'stripes' | 'confetti' | 'wave' | 'sparkle'
   | 'geometric' | 'aurora' | 'pulse' | 'retro' | 'cyber' | 'elegant'
   | 'festive' | 'sunset' | 'ocean' | 'forest' | 'fire' | 'holographic';
 

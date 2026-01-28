@@ -69,6 +69,7 @@ export function BrandingSettings() {
     { value: 'glow', label: 'Brilho', description: 'Efeito luminoso nas laterais' },
     // Animados
     { value: 'bubbles', label: 'Bolhas', description: 'Bolhas flutuantes animadas' },
+    { value: 'circles', label: 'Círculos', description: 'Círculos de destaque fixos' },
     { value: 'neon', label: 'Neon', description: 'Efeito neon brilhante' },
     { value: 'stripes', label: 'Listras', description: 'Padrão de listras diagonais' },
     { value: 'confetti', label: 'Confete', description: 'Partículas coloridas festivas' },
