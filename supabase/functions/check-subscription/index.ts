@@ -4,7 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 const logStep = (step: string, details?: Record<string, unknown>) => {
@@ -46,15 +46,43 @@ serve(async (req) => {
     const stripe = new Stripe(stripeKey, { apiVersion: "2024-06-20" });
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
     
+    // If no Stripe customer exists, check for automatic trial based on user creation date
     if (customers.data.length === 0) {
-      logStep("No customer found, returning unsubscribed state");
+      logStep("No Stripe customer found, checking automatic trial");
+      
+      // Get trial period from system settings
+      const { data: trialSettings, error: settingsError } = await supabaseClient.rpc('get_public_settings');
+      
+      let trialDays = 14; // Default trial period
+      if (!settingsError && trialSettings) {
+        const trialPeriodSetting = trialSettings.find((s: { setting_key: string; setting_value: unknown }) => s.setting_key === 'trial_period');
+        if (trialPeriodSetting?.setting_value) {
+          const trialValue = trialPeriodSetting.setting_value as { days?: number };
+          trialDays = trialValue.days ?? 14;
+        }
+      }
+      logStep("Trial period from settings", { trialDays });
+
+      // Calculate trial end date based on user creation
+      const userCreatedAt = new Date(user.created_at);
+      const trialEndDate = new Date(userCreatedAt.getTime() + (trialDays * 24 * 60 * 60 * 1000));
+      const now = new Date();
+      
+      const isTrialActive = trialEndDate > now;
+      
+      logStep("Automatic trial status", { 
+        userCreatedAt: userCreatedAt.toISOString(),
+        trialEndDate: trialEndDate.toISOString(),
+        isTrialActive 
+      });
+
       return new Response(JSON.stringify({ 
-        subscribed: false,
-        is_trialing: false,
-        trial_end: null,
+        subscribed: isTrialActive, // User has access during trial
+        is_trialing: isTrialActive,
+        trial_end: trialEndDate.toISOString(),
         subscription_end: null,
         product_id: null,
-        status: 'none'
+        status: isTrialActive ? 'trialing' : 'expired'
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
@@ -77,14 +105,41 @@ serve(async (req) => {
     );
 
     if (!activeSubscription) {
-      logStep("No active subscription found");
+      // Customer exists in Stripe but no active subscription - check if they had a trial
+      logStep("No active subscription found for Stripe customer");
+      
+      // Get trial period from system settings for fallback trial check
+      const { data: trialSettings } = await supabaseClient.rpc('get_public_settings');
+      
+      let trialDays = 14;
+      if (trialSettings) {
+        const trialPeriodSetting = trialSettings.find((s: { setting_key: string; setting_value: unknown }) => s.setting_key === 'trial_period');
+        if (trialPeriodSetting?.setting_value) {
+          const trialValue = trialPeriodSetting.setting_value as { days?: number };
+          trialDays = trialValue.days ?? 14;
+        }
+      }
+
+      // Calculate trial end date based on user creation
+      const userCreatedAt = new Date(user.created_at);
+      const trialEndDate = new Date(userCreatedAt.getTime() + (trialDays * 24 * 60 * 60 * 1000));
+      const now = new Date();
+      
+      const isTrialActive = trialEndDate > now;
+      
+      logStep("Fallback trial check", { 
+        userCreatedAt: userCreatedAt.toISOString(),
+        trialEndDate: trialEndDate.toISOString(),
+        isTrialActive 
+      });
+
       return new Response(JSON.stringify({ 
-        subscribed: false,
-        is_trialing: false,
-        trial_end: null,
+        subscribed: isTrialActive,
+        is_trialing: isTrialActive,
+        trial_end: trialEndDate.toISOString(),
         subscription_end: null,
         product_id: null,
-        status: 'none'
+        status: isTrialActive ? 'trialing' : 'expired'
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
