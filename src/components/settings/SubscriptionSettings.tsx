@@ -209,6 +209,10 @@ export function SubscriptionSettings() {
   const isActive = subscriptionStatus?.status === 'active';
   const isExpired = subscriptionStatus?.status === 'expired' || subscriptionStatus?.status === 'none';
   const daysRemaining = getDaysRemaining();
+  
+  // User has a real Stripe subscription if they have active status (not just trialing without payment)
+  // or if they completed checkout (have a product_id from Stripe)
+  const hasStripeSubscription = isActive || (isTrialing && subscriptionStatus?.planId);
 
   return (
     <div className="space-y-6">
@@ -292,8 +296,8 @@ export function SubscriptionSettings() {
             </div>
           )}
 
-          {/* Manage Subscription Button */}
-          {(isActive || isTrialing) && subscriptionStatus?.isSubscribed && (
+          {/* Manage Subscription Button - Only show when user has a real Stripe subscription */}
+          {hasStripeSubscription && subscriptionStatus?.isSubscribed && (
             <Button variant="outline" onClick={handleManageSubscription} disabled={isOpeningPortal}>
               {isOpeningPortal ? (
                 <>
@@ -308,6 +312,19 @@ export function SubscriptionSettings() {
                 </>
               )}
             </Button>
+          )}
+          
+          {/* Info message for users in automatic trial (no Stripe customer yet) */}
+          {isTrialing && !hasStripeSubscription && (
+            <div className="flex items-start gap-3 p-4 bg-muted/50 border rounded-lg">
+              <CreditCard className="h-5 w-5 text-muted-foreground mt-0.5" />
+              <div>
+                <p className="font-medium text-sm">Período de Teste Gratuito</p>
+                <p className="text-sm text-muted-foreground">
+                  Você está aproveitando o período de teste. Faça upgrade para um plano pago para ter acesso ao gerenciamento de assinatura.
+                </p>
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>
