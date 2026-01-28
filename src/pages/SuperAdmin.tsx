@@ -17,6 +17,7 @@ import {
   Building,
   UserCog,
   Trash2,
+  MessageSquarePlus,
 } from 'lucide-react';
 import { PlanEditor } from '@/components/superadmin/PlanEditor';
 import { FeatureComparison } from '@/components/superadmin/FeatureComparison';
@@ -28,6 +29,7 @@ import { BusinessCategoryManager } from '@/components/superadmin/BusinessCategor
 import { OrganizationsManager } from '@/components/superadmin/OrganizationsManager';
 import { UsersManager } from '@/components/superadmin/UsersManager';
 import { OrphanDataManager } from '@/components/superadmin/OrphanDataManager';
+import { SuggestionsManager } from '@/components/superadmin/SuggestionsManager';
 import { useSubscribers } from '@/hooks/useSubscribers';
 import { useOrganizations } from '@/hooks/useOrganizations';
 
@@ -184,6 +186,10 @@ export default function SuperAdmin() {
             <BarChart3 className="h-4 w-4" />
             Comparativo
           </TabsTrigger>
+          <TabsTrigger value="suggestions" className="flex items-center gap-2">
+            <MessageSquarePlus className="h-4 w-4" />
+            Sugestões
+          </TabsTrigger>
           <TabsTrigger value="cleanup" className="flex items-center gap-2">
             <Trash2 className="h-4 w-4" />
             Limpeza
@@ -224,6 +230,10 @@ export default function SuperAdmin() {
 
         <TabsContent value="comparison">
           <FeatureComparison />
+        </TabsContent>
+
+        <TabsContent value="suggestions">
+          <SuggestionsManager />
         </TabsContent>
 
         <TabsContent value="cleanup">

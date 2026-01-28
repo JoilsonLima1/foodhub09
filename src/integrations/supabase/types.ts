@@ -1977,6 +1977,74 @@ export type Database = {
           },
         ]
       }
+      suggestions: {
+        Row: {
+          admin_response: string | null
+          created_at: string | null
+          email: string
+          id: string
+          message: string
+          name: string
+          organization_name: string | null
+          responded_at: string | null
+          responded_by: string | null
+          source: string
+          status: Database["public"]["Enums"]["suggestion_status"]
+          subject: string
+          suggestion_type: string
+          tenant_id: string | null
+          updated_at: string | null
+          user_id: string | null
+          whatsapp: string | null
+        }
+        Insert: {
+          admin_response?: string | null
+          created_at?: string | null
+          email: string
+          id?: string
+          message: string
+          name: string
+          organization_name?: string | null
+          responded_at?: string | null
+          responded_by?: string | null
+          source?: string
+          status?: Database["public"]["Enums"]["suggestion_status"]
+          subject: string
+          suggestion_type?: string
+          tenant_id?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+          whatsapp?: string | null
+        }
+        Update: {
+          admin_response?: string | null
+          created_at?: string | null
+          email?: string
+          id?: string
+          message?: string
+          name?: string
+          organization_name?: string | null
+          responded_at?: string | null
+          responded_by?: string | null
+          source?: string
+          status?: Database["public"]["Enums"]["suggestion_status"]
+          subject?: string
+          suggestion_type?: string
+          tenant_id?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+          whatsapp?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "suggestions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       suppliers: {
         Row: {
           address: string | null
@@ -2649,6 +2717,7 @@ export type Database = {
         | "refunded"
         | "cancelled"
       stock_movement_type: "entry" | "exit" | "adjustment" | "reversal" | "loss"
+      suggestion_status: "pending" | "read" | "responded" | "archived"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2840,6 +2909,7 @@ export const Constants = {
         "cancelled",
       ],
       stock_movement_type: ["entry", "exit", "adjustment", "reversal", "loss"],
+      suggestion_status: ["pending", "read", "responded", "archived"],
     },
   },
 } as const

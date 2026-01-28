@@ -17,6 +17,7 @@ import {
   HardDrive,
   Crown,
   Monitor,
+  MessageSquarePlus,
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PAYMENT_PROVIDER_LABELS } from '@/lib/constants';
@@ -27,9 +28,10 @@ import { HardwareTutorial } from '@/components/settings/HardwareTutorial';
 import { UserManagement } from '@/components/settings/UserManagement';
 import { SubscriptionSettings } from '@/components/settings/SubscriptionSettings';
 import { POSSettings } from '@/components/settings/POSSettings';
+import { SuggestionForm } from '@/components/suggestions/SuggestionForm';
 
 export default function Settings() {
-  const { profile, roles } = useAuth();
+  const { user, profile, roles } = useAuth();
   const isSuperAdmin = roles.includes('admin'); // In production, add proper super admin check
 
   return (
@@ -90,6 +92,10 @@ export default function Settings() {
           <TabsTrigger value="security" className="shrink-0 flex items-center gap-2 whitespace-nowrap">
             <Shield className="h-4 w-4" />
             Segurança
+          </TabsTrigger>
+          <TabsTrigger value="feedback" className="shrink-0 flex items-center gap-2 whitespace-nowrap">
+            <MessageSquarePlus className="h-4 w-4" />
+            Sugestões
           </TabsTrigger>
         </TabsList>
 
@@ -330,6 +336,39 @@ export default function Settings() {
                 <Switch defaultChecked />
               </div>
               <Button>Salvar Configurações</Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Feedback / Suggestions */}
+        <TabsContent value="feedback">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MessageSquarePlus className="h-5 w-5" />
+                Enviar Sugestão
+              </CardTitle>
+              <CardDescription>
+                Ajude-nos a melhorar o sistema! Envie sugestões de melhorias, relate problemas ou sugira novas funcionalidades.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col items-center justify-center py-8 space-y-4">
+                <div className="text-center max-w-md">
+                  <p className="text-muted-foreground mb-4">
+                    Sua opinião é muito importante para nós. Clique no botão abaixo para enviar sua sugestão diretamente para nossa equipe.
+                  </p>
+                </div>
+                <SuggestionForm
+                  source="organization"
+                  tenantId={profile?.tenant_id || undefined}
+                  userId={user?.id}
+                  userName={profile?.full_name}
+                  userEmail={user?.email || ''} 
+                  userPhone={profile?.phone || undefined}
+                  triggerSize="lg"
+                />
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
