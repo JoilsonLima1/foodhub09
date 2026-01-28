@@ -36,8 +36,14 @@ export function BrandingSettings() {
   });
 
   const [landingData, setLandingData] = useState<LandingLayoutSettings>({
-    hero_title: 'Gerencie seu restaurante com inteligência',
-    hero_subtitle: 'Sistema completo de gestão para restaurantes, pizzarias e lanchonetes',
+    hero_badge: 'Plataforma #1 para Gestão de Restaurantes',
+    hero_title: 'Transforme seu restaurante em uma máquina de vendas',
+    hero_subtitle: 'Unifique pedidos de múltiplas origens, gerencie entregas, controle estoque e tome decisões inteligentes com relatórios em tempo real e previsões com IA.',
+    hero_description: '',
+    trust_badge_1: 'Sem cartão de crédito',
+    trust_badge_2: 'Cancele quando quiser',
+    trust_badge_3: 'Suporte em português',
+    social_proof_text: 'Mais de 500+ restaurantes já confiam no',
     show_testimonials: true,
     show_features: true,
   });
@@ -288,38 +294,110 @@ export function BrandingSettings() {
             Personalize os textos e seções da página de vendas
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Título Principal (Hero)</Label>
-              <Input
-                value={landingData.hero_title}
-                onChange={(e) => setLandingData({ ...landingData, hero_title: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Subtítulo (Hero)</Label>
-              <Textarea
-                value={landingData.hero_subtitle}
-                onChange={(e) => setLandingData({ ...landingData, hero_subtitle: e.target.value })}
-                rows={2}
-              />
-            </div>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="flex items-center justify-between p-4 border rounded-lg">
-                <Label>Exibir Depoimentos</Label>
-                <Switch
-                  checked={landingData.show_testimonials}
-                  onCheckedChange={(checked) => setLandingData({ ...landingData, show_testimonials: checked })}
+        <CardContent className="space-y-6">
+          {/* Hero Badge */}
+          <div className="space-y-2">
+            <Label>Badge do Hero (Selo superior)</Label>
+            <Input
+              value={landingData.hero_badge}
+              onChange={(e) => setLandingData({ ...landingData, hero_badge: e.target.value })}
+              placeholder="Plataforma #1 para Gestão de Restaurantes"
+            />
+            <p className="text-xs text-muted-foreground">
+              Aparece no selo acima do título principal
+            </p>
+          </div>
+
+          {/* Hero Title */}
+          <div className="space-y-2">
+            <Label>Título Principal (Hero)</Label>
+            <Textarea
+              value={landingData.hero_title}
+              onChange={(e) => setLandingData({ ...landingData, hero_title: e.target.value })}
+              rows={2}
+              placeholder="Transforme seu restaurante em uma máquina de vendas"
+            />
+            <p className="text-xs text-muted-foreground">
+              Título grande principal da landing page
+            </p>
+          </div>
+
+          {/* Hero Subtitle/Description */}
+          <div className="space-y-2">
+            <Label>Descrição do Hero (Subtítulo)</Label>
+            <Textarea
+              value={landingData.hero_subtitle}
+              onChange={(e) => setLandingData({ ...landingData, hero_subtitle: e.target.value })}
+              rows={3}
+              placeholder="Unifique pedidos de múltiplas origens, gerencie entregas..."
+            />
+            <p className="text-xs text-muted-foreground">
+              Texto descritivo abaixo do título principal
+            </p>
+          </div>
+
+          {/* Trust Badges */}
+          <div className="space-y-2">
+            <Label className="text-base font-semibold">Selos de Confiança</Label>
+            <p className="text-xs text-muted-foreground mb-3">
+              Os três textos com ícones de "check" abaixo da descrição
+            </p>
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="space-y-2">
+                <Label>Selo 1</Label>
+                <Input
+                  value={landingData.trust_badge_1}
+                  onChange={(e) => setLandingData({ ...landingData, trust_badge_1: e.target.value })}
+                  placeholder="Sem cartão de crédito"
                 />
               </div>
-              <div className="flex items-center justify-between p-4 border rounded-lg">
-                <Label>Exibir Recursos</Label>
-                <Switch
-                  checked={landingData.show_features}
-                  onCheckedChange={(checked) => setLandingData({ ...landingData, show_features: checked })}
+              <div className="space-y-2">
+                <Label>Selo 2</Label>
+                <Input
+                  value={landingData.trust_badge_2}
+                  onChange={(e) => setLandingData({ ...landingData, trust_badge_2: e.target.value })}
+                  placeholder="Cancele quando quiser"
                 />
               </div>
+              <div className="space-y-2">
+                <Label>Selo 3</Label>
+                <Input
+                  value={landingData.trust_badge_3}
+                  onChange={(e) => setLandingData({ ...landingData, trust_badge_3: e.target.value })}
+                  placeholder="Suporte em português"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Social Proof */}
+          <div className="space-y-2">
+            <Label>Texto de Prova Social</Label>
+            <Input
+              value={landingData.social_proof_text}
+              onChange={(e) => setLandingData({ ...landingData, social_proof_text: e.target.value })}
+              placeholder="Mais de 500+ restaurantes já confiam no"
+            />
+            <p className="text-xs text-muted-foreground">
+              Texto exibido abaixo dos botões (o nome da empresa é adicionado automaticamente)
+            </p>
+          </div>
+
+          {/* Toggles */}
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="flex items-center justify-between p-4 border rounded-lg">
+              <Label>Exibir Depoimentos</Label>
+              <Switch
+                checked={landingData.show_testimonials}
+                onCheckedChange={(checked) => setLandingData({ ...landingData, show_testimonials: checked })}
+              />
+            </div>
+            <div className="flex items-center justify-between p-4 border rounded-lg">
+              <Label>Exibir Recursos</Label>
+              <Switch
+                checked={landingData.show_features}
+                onCheckedChange={(checked) => setLandingData({ ...landingData, show_features: checked })}
+              />
             </div>
           </div>
           <Button onClick={handleSaveLanding} disabled={updateSetting.isPending}>

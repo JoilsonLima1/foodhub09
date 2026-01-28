@@ -7,9 +7,27 @@ interface HeroSectionProps {
   companyName: string;
   trialDays: number;
   trialText: string;
+  heroBadge?: string;
+  heroTitle?: string;
+  heroSubtitle?: string;
+  trustBadge1?: string;
+  trustBadge2?: string;
+  trustBadge3?: string;
+  socialProofText?: string;
 }
 
-export function HeroSection({ companyName, trialDays, trialText }: HeroSectionProps) {
+export function HeroSection({ 
+  companyName, 
+  trialDays, 
+  trialText,
+  heroBadge = 'Plataforma #1 para Gestão de Restaurantes',
+  heroTitle = 'Transforme seu restaurante em uma máquina de vendas',
+  heroSubtitle = 'Unifique pedidos de múltiplas origens, gerencie entregas, controle estoque e tome decisões inteligentes com relatórios em tempo real e previsões com IA.',
+  trustBadge1 = 'Sem cartão de crédito',
+  trustBadge2 = 'Cancele quando quiser',
+  trustBadge3 = 'Suporte em português',
+  socialProofText = 'Mais de 500+ restaurantes já confiam no',
+}: HeroSectionProps) {
   const navigate = useNavigate();
 
   const scrollToPricing = () => {
@@ -44,41 +62,43 @@ export function HeroSection({ companyName, trialDays, trialText }: HeroSectionPr
           <div className="text-center">
             <Badge variant="outline" className="mb-8 border-primary/50 text-primary px-6 py-2 text-sm">
               <Star className="h-4 w-4 mr-2 fill-primary" />
-              Plataforma #1 para Gestão de Restaurantes
+              {heroBadge}
             </Badge>
             
             <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-8 leading-tight tracking-tight">
-              Transforme seu{' '}
-              <span className="text-primary relative">
-                restaurante
-                <svg className="absolute -bottom-2 left-0 w-full" viewBox="0 0 200 10" fill="none">
-                  <path d="M0 8 Q50 0, 100 8 T200 8" stroke="currentColor" strokeWidth="3" className="text-primary/30"/>
-                </svg>
-              </span>
-              {' '}em uma{' '}
-              <span className="bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
-                máquina de vendas
-              </span>
+              {heroTitle.split(' ').map((word, index) => {
+                // Highlight words like "restaurante" and "máquina de vendas"
+                if (word.toLowerCase() === 'restaurante') {
+                  return (
+                    <span key={index} className="text-primary relative">
+                      {word}
+                      <svg className="absolute -bottom-2 left-0 w-full" viewBox="0 0 200 10" fill="none">
+                        <path d="M0 8 Q50 0, 100 8 T200 8" stroke="currentColor" strokeWidth="3" className="text-primary/30"/>
+                      </svg>
+                    </span>
+                  );
+                }
+                return <span key={index}>{word} </span>;
+              })}
             </h1>
             
             <p className="text-xl md:text-2xl text-muted-foreground max-w-4xl mx-auto mb-10 leading-relaxed">
-              Unifique pedidos de múltiplas origens, gerencie entregas, controle estoque e 
-              tome decisões inteligentes com relatórios em tempo real e previsões com IA.
+              {heroSubtitle}
             </p>
 
             {/* Trust Badges */}
             <div className="flex flex-wrap items-center justify-center gap-6 mb-10 text-sm text-muted-foreground">
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="h-5 w-5 text-success" />
-                <span>Sem cartão de crédito</span>
+                <span>{trustBadge1}</span>
               </div>
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="h-5 w-5 text-success" />
-                <span>Cancele quando quiser</span>
+                <span>{trustBadge2}</span>
               </div>
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="h-5 w-5 text-success" />
-                <span>Suporte em português</span>
+                <span>{trustBadge3}</span>
               </div>
             </div>
 
@@ -103,7 +123,7 @@ export function HeroSection({ companyName, trialDays, trialText }: HeroSectionPr
             </div>
             
             <p className="text-sm text-muted-foreground mt-6">
-              Mais de <span className="text-primary font-semibold">500+ restaurantes</span> já confiam no {companyName}
+              {socialProofText} <span className="text-primary font-semibold">{companyName}</span>
             </p>
           </div>
         </div>

@@ -26,7 +26,7 @@ export default function Landing() {
   }, []);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const { plans, isLoading } = usePublicSubscriptionPlans();
-  const { branding, trialPeriod } = usePublicSettings();
+  const { branding, trialPeriod, landingLayout } = usePublicSettings();
   const { whatsapp } = useSystemSettings();
 
   // Use dynamic branding or fallback
@@ -53,6 +53,13 @@ export default function Landing() {
         companyName={companyName}
         trialDays={trialDays}
         trialText={trialText}
+        heroBadge={landingLayout.hero_badge}
+        heroTitle={landingLayout.hero_title}
+        heroSubtitle={landingLayout.hero_subtitle}
+        trustBadge1={landingLayout.trust_badge_1}
+        trustBadge2={landingLayout.trust_badge_2}
+        trustBadge3={landingLayout.trust_badge_3}
+        socialProofText={landingLayout.social_proof_text}
       />
 
       {/* Partners Carousel */}

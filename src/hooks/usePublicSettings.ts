@@ -20,8 +20,14 @@ export interface PublicTrialPeriod {
 }
 
 export interface PublicLandingLayout {
+  hero_badge: string;
   hero_title: string;
   hero_subtitle: string;
+  hero_description: string;
+  trust_badge_1: string;
+  trust_badge_2: string;
+  trust_badge_3: string;
+  social_proof_text: string;
   show_testimonials: boolean;
   show_features: boolean;
 }
@@ -47,8 +53,14 @@ const DEFAULT_TRIAL: PublicTrialPeriod = {
 };
 
 const DEFAULT_LANDING: PublicLandingLayout = {
-  hero_title: 'Gerencie seu restaurante com inteligência',
-  hero_subtitle: 'Sistema completo de gestão para restaurantes, pizzarias e lanchonetes',
+  hero_badge: 'Plataforma #1 para Gestão de Restaurantes',
+  hero_title: 'Transforme seu restaurante em uma máquina de vendas',
+  hero_subtitle: 'Unifique pedidos de múltiplas origens, gerencie entregas, controle estoque e tome decisões inteligentes com relatórios em tempo real e previsões com IA.',
+  hero_description: '',
+  trust_badge_1: 'Sem cartão de crédito',
+  trust_badge_2: 'Cancele quando quiser',
+  trust_badge_3: 'Suporte em português',
+  social_proof_text: 'Mais de 500+ restaurantes já confiam no',
   show_testimonials: true,
   show_features: true,
 };
