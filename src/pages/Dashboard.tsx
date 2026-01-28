@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBusinessCategoryContext } from '@/contexts/BusinessCategoryContext';
+import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -139,23 +140,25 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-          <LayoutDashboard className="h-6 w-6" />
-          Dashboard
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          Olá, {profile?.full_name || 'Usuário'}! Aqui está o resumo do seu negócio em tempo real.
-        </p>
+    <div className="space-y-4">
+      {/* Header - Compact */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-lg font-semibold text-foreground flex items-center gap-2">
+            <LayoutDashboard className="h-5 w-5" />
+            Dashboard
+          </h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Olá, {profile?.full_name?.split(' ')[0] || 'Usuário'}! Resumo em tempo real.
+          </p>
+        </div>
       </div>
 
       {/* KPI Dashboard */}
       <KPIDashboard />
 
       {/* Quick Insights Row */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-3 md:grid-cols-3">
         <YesterdayComparisonCard />
         <TopProductsTodayCard />
         <LowStockAlertCard />
@@ -165,47 +168,47 @@ export default function Dashboard() {
       <SalesGoalsCard />
 
       {/* Sales Forecast and Accuracy */}
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2">
         <SalesForecastCard />
         <ForecastAccuracyCard />
       </div>
 
-      {/* Recent Orders */}
+      {/* Recent Orders - Compact */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">{t('order')}s Recentes</CardTitle>
+        <CardHeader className="pb-2 pt-3 px-4">
+          <CardTitle className="text-sm font-medium">{t('order')}s Recentes</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-4 pb-3">
           {recentOrders.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <ShoppingCart className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p>Nenhum {t('order').toLowerCase()} ainda</p>
+            <div className="text-center py-6 text-muted-foreground">
+              <ShoppingCart className="h-6 w-6 mx-auto mb-1.5 opacity-50" />
+              <p className="text-xs">Nenhum {t('order').toLowerCase()} ainda</p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-1.5">
               {recentOrders.map((order) => (
                 <div
                   key={order.id}
-                  className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
+                  className="flex items-center justify-between p-2 rounded-md bg-muted/30 hover:bg-muted/50 transition-colors"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                      <span className="text-sm font-bold text-primary">
+                  <div className="flex items-center gap-2">
+                    <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center">
+                      <span className="text-[10px] font-bold text-primary">
                         #{order.order_number}
                       </span>
                     </div>
                     <div>
-                      <p className="font-medium">
+                      <p className="text-xs font-medium">
                         {order.customer_name || 'Cliente anônimo'}
                       </p>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-[10px] text-muted-foreground">
                         {ORDER_ORIGIN_LABELS[order.origin]} • {formatTime(order.created_at)}
                       </p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="font-semibold">{formatCurrency(order.total)}</p>
-                    <Badge variant="outline" className={getStatusColor(order.status)}>
+                    <p className="text-xs font-semibold">{formatCurrency(order.total)}</p>
+                    <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0", getStatusColor(order.status))}>
                       {ORDER_STATUS_LABELS[order.status]}
                     </Badge>
                   </div>

@@ -51,11 +51,11 @@ export function AppLayout() {
     return (
       <div className="min-h-screen flex w-full">
         <AppSidebar />
-        <main className="flex-1 md:ml-64">
-          <div className="p-4 md:p-6 lg:p-8 flex items-center justify-center min-h-screen">
-            <div className="flex flex-col items-center gap-4">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <p className="text-muted-foreground">Verificando assinatura...</p>
+        <main className="flex-1 md:ml-56">
+          <div className="p-3 md:p-4 lg:p-6 flex items-center justify-center min-h-screen">
+            <div className="flex flex-col items-center gap-3">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">Verificando assinatura...</p>
             </div>
           </div>
         </main>
@@ -66,8 +66,8 @@ export function AppLayout() {
   return (
     <div className="min-h-screen flex w-full">
       <AppSidebar />
-      <main className="flex-1 md:ml-64">
-        <div className="p-4 md:p-6 lg:p-8">
+      <main className="flex-1 md:ml-56">
+        <div className="p-3 md:p-4 lg:p-6">
           <TrialExpirationBanner />
           {showTrialExpiredOverlay && (
             <TrialExpiredOverlay featureName={getFeatureNameFromPath(currentPath)} />
