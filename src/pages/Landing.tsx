@@ -54,8 +54,10 @@ export default function Landing() {
         trialDays={trialDays}
         trialText={trialText}
         heroBadge={landingLayout.hero_badge}
-        heroTitle={landingLayout.hero_title}
-        heroTitleHighlight={landingLayout.hero_title_highlight}
+        heroTitlePart1={landingLayout.hero_title_part1}
+        heroTitlePart2={landingLayout.hero_title_part2}
+        heroTitlePart3={landingLayout.hero_title_part3}
+        heroTitlePart4={landingLayout.hero_title_part4}
         heroSubtitle={landingLayout.hero_subtitle}
         trustBadge1={landingLayout.trust_badge_1}
         trustBadge2={landingLayout.trust_badge_2}

@@ -16,8 +16,10 @@ interface HeroSectionProps {
   trialDays: number;
   trialText: string;
   heroBadge?: string;
-  heroTitle?: string;
-  heroTitleHighlight?: string;
+  heroTitlePart1?: string;
+  heroTitlePart2?: string;
+  heroTitlePart3?: string;
+  heroTitlePart4?: string;
   heroSubtitle?: string;
   trustBadge1?: string;
   trustBadge2?: string;
@@ -31,8 +33,10 @@ export function HeroSection({
   trialDays, 
   trialText,
   heroBadge = 'Plataforma #1 para Gestão de Restaurantes',
-  heroTitle = 'Transforme seu restaurante em uma',
-  heroTitleHighlight = 'máquina de vendas',
+  heroTitlePart1 = 'Transforme seu',
+  heroTitlePart2 = 'restaurante',
+  heroTitlePart3 = 'em uma',
+  heroTitlePart4 = 'máquina de vendas',
   heroSubtitle = 'Unifique pedidos de múltiplas origens, gerencie entregas, controle estoque e tome decisões inteligentes com relatórios em tempo real e previsões com IA.',
   trustBadge1 = 'Sem cartão de crédito',
   trustBadge2 = 'Cancele quando quiser',
@@ -79,10 +83,12 @@ export function HeroSection({
             </Badge>
             
             <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-8 leading-tight tracking-tight">
-              {heroTitle}{' '}
-              {heroTitleHighlight && (
+              {heroTitlePart1 && <span className="text-foreground">{heroTitlePart1} </span>}
+              {heroTitlePart2 && <span className="text-primary">{heroTitlePart2} </span>}
+              {heroTitlePart3 && <span className="text-foreground">{heroTitlePart3} </span>}
+              {heroTitlePart4 && (
                 <span className="text-primary relative">
-                  {heroTitleHighlight}
+                  {heroTitlePart4}
                   <svg className="absolute -bottom-2 left-0 w-full" viewBox="0 0 200 10" fill="none">
                     <path d="M0 8 Q50 0, 100 8 T200 8" stroke="currentColor" strokeWidth="3" className="text-primary/30"/>
                   </svg>
