@@ -80,8 +80,8 @@ export function useFeatureAccess(feature?: FeatureKey): FeatureAccessResult {
     };
   }
 
-  // User has active paid subscription (not trialing)
-  if (subscriptionStatus?.isSubscribed && !subscriptionStatus?.isTrialing) {
+  // User has active paid subscription (not trialing) - status will be 'active'
+  if (subscriptionStatus.status === 'active' && !subscriptionStatus.isTrialing) {
     return {
       hasAccess: true,
       isTrialActive: false,
@@ -93,8 +93,8 @@ export function useFeatureAccess(feature?: FeatureKey): FeatureAccessResult {
     };
   }
 
-  // User is in trial period
-  if (subscriptionStatus?.isTrialing && daysRemaining > 0) {
+  // User is in trial period - check isTrialing flag from edge function
+  if (subscriptionStatus.isTrialing && subscriptionStatus.isSubscribed) {
     return {
       hasAccess: true,
       isTrialActive: true,
@@ -106,8 +106,8 @@ export function useFeatureAccess(feature?: FeatureKey): FeatureAccessResult {
     };
   }
 
-  // Trial expired or no subscription
-  const isTrialExpired = subscriptionStatus?.trialEndDate 
+  // Trial expired or no subscription - isSubscribed will be false
+  const isTrialExpired = subscriptionStatus.trialEndDate 
     ? new Date(subscriptionStatus.trialEndDate) < new Date()
     : false;
 
