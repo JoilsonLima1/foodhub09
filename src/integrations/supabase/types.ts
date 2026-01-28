@@ -14,6 +14,60 @@ export type Database = {
   }
   public: {
     Tables: {
+      addon_modules: {
+        Row: {
+          category: Database["public"]["Enums"]["addon_module_category"]
+          created_at: string
+          currency: string
+          description: string | null
+          display_order: number
+          features: Json
+          icon: string
+          id: string
+          is_active: boolean
+          monthly_price: number
+          name: string
+          requirements: string | null
+          setup_fee: number
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          category?: Database["public"]["Enums"]["addon_module_category"]
+          created_at?: string
+          currency?: string
+          description?: string | null
+          display_order?: number
+          features?: Json
+          icon?: string
+          id?: string
+          is_active?: boolean
+          monthly_price?: number
+          name: string
+          requirements?: string | null
+          setup_fee?: number
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["addon_module_category"]
+          created_at?: string
+          currency?: string
+          description?: string | null
+          display_order?: number
+          features?: Json
+          icon?: string
+          id?: string
+          is_active?: boolean
+          monthly_price?: number
+          name?: string
+          requirements?: string | null
+          setup_fee?: number
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           action: string
@@ -2338,6 +2392,66 @@ export type Database = {
           },
         ]
       }
+      tenant_addon_subscriptions: {
+        Row: {
+          addon_module_id: string
+          cancelled_at: string | null
+          created_at: string
+          created_by: string | null
+          expires_at: string | null
+          id: string
+          notes: string | null
+          started_at: string
+          status: Database["public"]["Enums"]["addon_subscription_status"]
+          tenant_id: string
+          trial_ends_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          addon_module_id: string
+          cancelled_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          notes?: string | null
+          started_at?: string
+          status?: Database["public"]["Enums"]["addon_subscription_status"]
+          tenant_id: string
+          trial_ends_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          addon_module_id?: string
+          cancelled_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          notes?: string | null
+          started_at?: string
+          status?: Database["public"]["Enums"]["addon_subscription_status"]
+          tenant_id?: string
+          trial_ends_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_addon_subscriptions_addon_module_id_fkey"
+            columns: ["addon_module_id"]
+            isOneToOne: false
+            referencedRelation: "addon_modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_addon_subscriptions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenants: {
         Row: {
           address: string | null
@@ -2762,12 +2876,23 @@ export type Database = {
         }
         Returns: boolean
       }
+      tenant_has_addon: {
+        Args: { _addon_slug: string; _tenant_id: string }
+        Returns: boolean
+      }
       user_belongs_to_tenant: {
         Args: { _tenant_id: string; _user_id: string }
         Returns: boolean
       }
     }
     Enums: {
+      addon_module_category:
+        | "integrations"
+        | "operations"
+        | "marketing"
+        | "hardware"
+        | "logistics"
+      addon_subscription_status: "active" | "trial" | "suspended" | "cancelled"
       app_role:
         | "admin"
         | "manager"
@@ -2953,6 +3078,14 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      addon_module_category: [
+        "integrations",
+        "operations",
+        "marketing",
+        "hardware",
+        "logistics",
+      ],
+      addon_subscription_status: ["active", "trial", "suspended", "cancelled"],
       app_role: [
         "admin",
         "manager",

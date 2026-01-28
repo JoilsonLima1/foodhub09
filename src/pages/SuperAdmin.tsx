@@ -18,6 +18,7 @@ import {
   UserCog,
   Trash2,
   MessageSquarePlus,
+  Puzzle,
 } from 'lucide-react';
 import { PlanEditor } from '@/components/superadmin/PlanEditor';
 import { FeatureComparison } from '@/components/superadmin/FeatureComparison';
@@ -30,6 +31,8 @@ import { OrganizationsManager } from '@/components/superadmin/OrganizationsManag
 import { UsersManager } from '@/components/superadmin/UsersManager';
 import { OrphanDataManager } from '@/components/superadmin/OrphanDataManager';
 import { SuggestionsManager } from '@/components/superadmin/SuggestionsManager';
+import { AddonModulesManager } from '@/components/superadmin/AddonModulesManager';
+import { TenantAddonsManager } from '@/components/superadmin/TenantAddonsManager';
 import { useSubscribers } from '@/hooks/useSubscribers';
 import { useOrganizations } from '@/hooks/useOrganizations';
 
@@ -190,6 +193,10 @@ export default function SuperAdmin() {
             <MessageSquarePlus className="h-4 w-4" />
             Sugestões
           </TabsTrigger>
+          <TabsTrigger value="addons" className="flex items-center gap-2">
+            <Puzzle className="h-4 w-4" />
+            Módulos
+          </TabsTrigger>
           <TabsTrigger value="cleanup" className="flex items-center gap-2">
             <Trash2 className="h-4 w-4" />
             Limpeza
@@ -234,6 +241,21 @@ export default function SuperAdmin() {
 
         <TabsContent value="suggestions">
           <SuggestionsManager />
+        </TabsContent>
+
+        <TabsContent value="addons">
+          <Tabs defaultValue="catalog" className="space-y-4">
+            <TabsList>
+              <TabsTrigger value="catalog">Catálogo de Módulos</TabsTrigger>
+              <TabsTrigger value="assignments">Módulos por Tenant</TabsTrigger>
+            </TabsList>
+            <TabsContent value="catalog">
+              <AddonModulesManager />
+            </TabsContent>
+            <TabsContent value="assignments">
+              <TenantAddonsManager />
+            </TabsContent>
+          </Tabs>
         </TabsContent>
 
         <TabsContent value="cleanup">
