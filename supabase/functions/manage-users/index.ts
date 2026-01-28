@@ -121,6 +121,96 @@ serve(async (req) => {
     }
 
     switch (action) {
+      case 'list-all-users': {
+        // Only super_admin can list all users across all tenants
+        if (!isSuperAdmin) {
+          return new Response(
+            JSON.stringify({ error: 'Apenas Super Admins podem listar todos os usuários' }),
+            { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Fetch all profiles with tenant info
+        const { data: profiles, error: profilesError } = await supabaseAdmin
+          .from('profiles')
+          .select('id, user_id, full_name, phone, avatar_url, is_active, created_at, tenant_id')
+          .order('created_at', { ascending: false });
+
+        if (profilesError) {
+          console.error('[manage-users] list-all-users profilesError:', profilesError);
+          return new Response(
+            JSON.stringify({ error: 'Falha ao carregar perfis' }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        if (!profiles || profiles.length === 0) {
+          return new Response(
+            JSON.stringify({ users: [] }),
+            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const ids = profiles.map(p => p.user_id);
+        const tenantIds = [...new Set(profiles.map(p => p.tenant_id).filter(Boolean))];
+
+        // Fetch tenant names
+        const { data: tenants } = await supabaseAdmin
+          .from('tenants')
+          .select('id, name')
+          .in('id', tenantIds);
+
+        const tenantMap: Record<string, string> = {};
+        (tenants || []).forEach((t: any) => {
+          tenantMap[t.id] = t.name;
+        });
+
+        // Fetch all roles for these users
+        const { data: allRolesData, error: rolesError } = await supabaseAdmin
+          .from('user_roles')
+          .select('user_id, role, tenant_id')
+          .in('user_id', ids);
+
+        if (rolesError) {
+          console.error('[manage-users] list-all-users rolesError:', rolesError);
+        }
+
+        const rolesByUser: Record<string, string[]> = {};
+        (allRolesData || []).forEach((r: any) => {
+          if (!rolesByUser[r.user_id]) rolesByUser[r.user_id] = [];
+          if (!rolesByUser[r.user_id].includes(r.role)) {
+            rolesByUser[r.user_id].push(r.role);
+          }
+        });
+
+        // Fetch emails
+        const emailsByUser: Record<string, string> = {};
+        for (const uid of ids) {
+          const { data: u } = await supabaseAdmin.auth.admin.getUserById(uid);
+          if (u?.user?.email) emailsByUser[uid] = u.user.email;
+        }
+
+        const users = profiles.map(p => ({
+          id: p.id,
+          user_id: p.user_id,
+          email: emailsByUser[p.user_id] || 'Email não disponível',
+          full_name: p.full_name,
+          phone: p.phone,
+          avatar_url: p.avatar_url,
+          is_active: p.is_active ?? true,
+          roles: rolesByUser[p.user_id] || [],
+          created_at: p.created_at,
+          tenant_id: p.tenant_id,
+          tenant_name: p.tenant_id ? tenantMap[p.tenant_id] || null : null,
+          organization_name: p.tenant_id ? tenantMap[p.tenant_id] || null : null,
+        }));
+
+        return new Response(
+          JSON.stringify({ users }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       case 'list-users': {
         const { data: profiles, error: profilesError } = await supabaseAdmin
           .from('profiles')
@@ -419,6 +509,52 @@ serve(async (req) => {
         }
 
         console.log(`[manage-users] User deleted: ${userId}`);
+
+        return new Response(
+          JSON.stringify({ success: true }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'reset-password': {
+        // Only super_admin can reset passwords
+        if (!isSuperAdmin) {
+          return new Response(
+            JSON.stringify({ error: 'Apenas Super Admins podem resetar senhas' }),
+            { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const { newPassword } = body;
+
+        if (!userId || !newPassword) {
+          return new Response(
+            JSON.stringify({ error: 'userId and newPassword required' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        if (newPassword.length < 6) {
+          return new Response(
+            JSON.stringify({ error: 'A senha deve ter pelo menos 6 caracteres' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+          userId,
+          { password: newPassword }
+        );
+
+        if (updateError) {
+          console.error('[manage-users] Reset password error:', updateError);
+          return new Response(
+            JSON.stringify({ error: 'Falha ao resetar senha' }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        console.log(`[manage-users] Password reset for user: ${userId}`);
 
         return new Response(
           JSON.stringify({ success: true }),
