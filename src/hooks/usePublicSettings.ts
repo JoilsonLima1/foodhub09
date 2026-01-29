@@ -104,11 +104,7 @@ const DEFAULT_LANDING: PublicLandingLayout = {
     highlight_text: '14 DIAS GRÁTIS',
     style: 'gradient',
   },
-  hero_title_parts: {
-    top: { text: 'Transforme seu', color: 'inherit', highlight_style: 'none' },
-    middle: { text: 'restaurante', color: '47 97% 60%', highlight_style: 'rounded' },
-    bottom: { text: 'em uma máquina de vendas', color: '47 97% 60%', highlight_style: 'underline' },
-  },
+  // hero_title_parts is intentionally undefined by default to use the legacy 4-part system
 };
 
 export function usePublicSettings() {
@@ -153,7 +149,8 @@ export function usePublicSettings() {
             show_testimonials: rawLayout.show_testimonials as boolean ?? DEFAULT_LANDING.show_testimonials,
             show_features: rawLayout.show_features as boolean ?? DEFAULT_LANDING.show_features,
             announcement_banner: rawLayout.announcement_banner as PublicAnnouncementBanner || DEFAULT_LANDING.announcement_banner,
-            hero_title_parts: rawLayout.hero_title_parts as PublicLandingLayout['hero_title_parts'] || DEFAULT_LANDING.hero_title_parts,
+            // Only set hero_title_parts if explicitly defined in the database
+            hero_title_parts: rawLayout.hero_title_parts as PublicLandingLayout['hero_title_parts'] || undefined,
           };
           settingsMap.landing_layout = layout;
         }
