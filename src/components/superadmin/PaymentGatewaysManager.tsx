@@ -226,6 +226,25 @@ export function PaymentGatewaysManager() {
                     API Key: {gateway.api_key_masked}
                   </p>
                 )}
+                {/* Show config info for PIX and Asaas */}
+                {gateway.provider === 'pix' && (
+                  <div className="text-xs space-y-1">
+                    {(gateway.config as any)?.pix_key ? (
+                      <p className="text-green-600">✓ Chave PIX configurada</p>
+                    ) : (
+                      <p className="text-destructive">⚠ Chave PIX não configurada</p>
+                    )}
+                  </div>
+                )}
+                {gateway.provider === 'asaas' && (
+                  <div className="text-xs space-y-1">
+                    {(gateway.config as any)?.checkout_url ? (
+                      <p className="text-green-600">✓ URL de checkout configurada</p>
+                    ) : (
+                      <p className="text-destructive">⚠ URL de checkout não configurada</p>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))
