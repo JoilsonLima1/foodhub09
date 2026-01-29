@@ -167,7 +167,9 @@ export function useSystemSettings() {
       return data;
     },
     onSuccess: () => {
+      // Invalidate both system-settings (admin) and public-settings (landing page)
       queryClient.invalidateQueries({ queryKey: ['system-settings'] });
+      queryClient.invalidateQueries({ queryKey: ['public-settings'] });
       toast({
         title: 'Configuração salva',
         description: 'As alterações foram aplicadas com sucesso.',
