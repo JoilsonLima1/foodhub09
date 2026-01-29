@@ -1,151 +1,170 @@
 
-# Plano de Verificação e Correção: Módulos, Fluxo de Compra e Categoria do Negócio
+# Plano de Correção: Tela Preta Após Cadastro no Edge
 
-## 📋 Resumo dos Problemas Identificados
+## Problema Identificado
 
-Após análise detalhada do código e banco de dados, identifiquei os seguintes problemas:
+A tela preta após o cadastro é causada por uma **race condition** (condição de corrida) no processo de bootstrap do usuário, que resulta em:
 
-### 1. **Categoria de Negócio Não Refletindo na Organização**
-- **Problema**: Quando o usuário seleciona uma categoria diferente de "restaurant" no cadastro, o sistema está salvando a categoria corretamente no banco (tabela `tenants.business_category`), MAS:
-  - O nome default do tenant usa "Novo restaurante" como fallback (linha 95 do `bootstrap-user`)
-  - O label no form de cadastro ainda diz "Restaurante / Organização" 
-  - O placeholder diz "Nome do seu restaurante"
-  - A terminologia no dashboard não muda baseado na categoria selecionada
+1. **Bootstrap chamado duas vezes simultaneamente** - criando 2 tenants para o mesmo usuário
+2. **Erro de constraint de chave única** - tentativa de inserir perfil duplicado
+3. **Estado inconsistente** - o AuthContext fica em loop tentando carregar dados corrompidos
 
-### 2. **Módulos Adicionais Funcionando**
-- ✅ Módulos estão cadastrados e ativos (9 módulos no catálogo)
-- ✅ Hook `useAddonModules` funciona corretamente
-- ⚠️ Nenhuma assinatura de módulo adicional ativa ainda (`tenant_addon_subscriptions` vazia)
-- ✅ Super Admin pode atribuir módulos via `TenantAddonsManager`
-
-### 3. **Fluxo de Compra (Checkout)**
-- ✅ Planos cadastrados com IDs Stripe corretos
-- ✅ Edge function `create-checkout` funciona
-- ✅ Trial de 14 dias configurado
-- ⚠️ PIX API: Gateway Asaas está ativo, mas não está integrado no fluxo de checkout (apenas Stripe está implementado)
-
-### 4. **API do PIX na Página de Vendas**
-- ❌ O checkout atual usa apenas Stripe
-- O gateway PIX/Asaas está cadastrado mas não conectado ao fluxo de compra de planos
-
----
-
-## 🔧 Plano de Correção
-
-### Fase 1: Corrigir Categoria de Negócio no Cadastro
-
-**1.1 Atualizar label e placeholder dinâmicos no Auth.tsx**
-- Mudar "Restaurante / Organização" para "Nome do seu Negócio"
-- Mudar placeholder de "Nome do seu restaurante" para "Nome do estabelecimento"
-
-**1.2 Atualizar fallback no bootstrap-user**
-- Trocar "Novo restaurante" por "Novo estabelecimento" como fallback genérico
-- Garantir que a categoria selecionada seja passada e salva corretamente
-
-**1.3 Verificar uso da categoria no Dashboard**
-- O `BusinessCategoryContext` já carrega a terminologia correta
-- O problema é que a categoria está sendo salva como "restaurant" por padrão
-- Verificar se o `signupBusinessCategory` está sendo enviado corretamente
-
----
-
-### Fase 2: Garantir Template por Categoria
-
-**2.1 Verificar exibição do nome correto da categoria**
-- A tabela `business_category_configs` tem as configurações de terminologia
-- Cada categoria (pizzaria, sorveteria, lanchonete, etc.) tem sua própria terminologia
-- O sistema já busca e aplica via `useTenantCategory`
-
-**2.2 Recursos do Dashboard por Categoria**
-- O `hasFeature` no `BusinessCategoryContext` controla quais features aparecem
-- Cada categoria tem `features` definidas (tables, kitchen_display, delivery, pos, etc.)
-- O sidebar já filtra baseado em `hasFeature`
-
----
-
-### Fase 3: PIX na Landing Page (Opcional)
-
-**3.1 Situação Atual**
-- O checkout só suporta Stripe (cartão de crédito)
-- PIX via Asaas está cadastrado mas não implementado
-
-**3.2 Opções**
-- **Opção A**: Manter apenas Stripe (recomendado para simplicidade)
-- **Opção B**: Implementar checkout alternativo com PIX/Asaas (requer nova edge function)
-
----
-
-## 📝 Alterações Técnicas Necessárias
-
-### Arquivo: `src/pages/Auth.tsx`
-```tsx
-// Linha 260 - Mudar label
-<Label htmlFor="signup-tenant">Nome do seu Negócio</Label>
-
-// Linha 264 - Mudar placeholder  
-placeholder="Nome do estabelecimento"
+Os logs confirmam:
+```text
+Created tenant: 07a1bc0a-dff3-4baf-8db7-ff21ab1eefe3
+Created tenant: c8e09c45-a063-4d6d-8c3b-aab5003a7532  (DUPLICADO!)
+Error: duplicate key value violates unique constraint "profiles_user_id_key"
 ```
 
-### Arquivo: `supabase/functions/bootstrap-user/index.ts`
+## Causa Raiz
+
+O `AuthContext.tsx` tem uma lógica onde:
+1. O `signUp()` chama `bootstrap-user` diretamente
+2. O `onAuthStateChange` também dispara `fetchUserData()` 
+3. `fetchUserData()` chama `bootstrapUserIfNeeded()`
+4. Ambos executam simultaneamente criando duplicatas
+
+## Solução Proposta
+
+### Fase 1: Corrigir Race Condition no AuthContext
+
+Modificar o `AuthContext.tsx` para usar um **flag de mutex** que previne múltiplas chamadas simultâneas ao bootstrap:
+
 ```typescript
-// Linha 95 - Mudar fallback
-const baseName = (baseNameRaw || 'Novo estabelecimento').trim().slice(0, 80)
+// Adicionar ref para tracking de bootstrap em andamento
+const bootstrapInProgressRef = useRef<Set<string>>(new Set());
 
-// Linha 104 - Mudar slugify fallback
-return normalized || 'estabelecimento'
+const bootstrapUserIfNeeded = async (userId: string, sessionToken: string, userMetadata?: any): Promise<boolean> => {
+  // Prevenir chamadas duplicadas
+  if (bootstrapInProgressRef.current.has(userId)) {
+    console.log('[AuthContext] Bootstrap já em andamento para:', userId);
+    return false;
+  }
+  
+  bootstrapInProgressRef.current.add(userId);
+  
+  try {
+    // ... código existente do bootstrap ...
+    return true;
+  } finally {
+    bootstrapInProgressRef.current.delete(userId);
+  }
+};
 ```
 
-### Verificação de Fluxo
+### Fase 2: Adicionar Verificação de Lock no Edge Function
+
+Modificar `bootstrap-user/index.ts` para usar uma verificação atômica:
+
+```typescript
+// Verificar SE JÁ EXISTE tenant ANTES de criar
+const { data: existingProfile } = await supabaseAdmin
+  .from('profiles')
+  .select('id, tenant_id')
+  .eq('user_id', userId)
+  .maybeSingle()
+
+// Se já tem tenant, retornar imediatamente
+if (existingProfile?.tenant_id) {
+  return new Response(JSON.stringify({ 
+    success: true, 
+    message: 'User already bootstrapped',
+    tenant_id: existingProfile.tenant_id
+  }), ...)
+}
+
+// Usar SELECT FOR UPDATE para lock row-level (se disponível)
+// Ou usar advisory lock do PostgreSQL
+```
+
+### Fase 3: Remover Bootstrap Duplicado do SignUp
+
+No `signUp()`, após criar o usuário, NÃO chamar bootstrap diretamente. Deixar apenas o `onAuthStateChange` fazer isso:
+
+**Antes:**
+```typescript
+const signUp = async (...) => {
+  const { data, error } = await supabase.auth.signUp({...});
+  if (!error && data.user) {
+    // PROBLEMA: Bootstrap chamado aqui
+    await supabase.functions.invoke('bootstrap-user', {...});
+  }
+}
+```
+
+**Depois:**
+```typescript
+const signUp = async (...) => {
+  const { data, error } = await supabase.auth.signUp({...});
+  // REMOVIDO: Não chamar bootstrap aqui
+  // O onAuthStateChange vai tratar isso automaticamente
+  return { error };
+}
+```
+
+### Fase 4: Limpar Dados Duplicados do Usuário Afetado
+
+Executar SQL para remover o tenant órfão:
+
+```sql
+-- Remover tenant duplicado que não está vinculado ao perfil
+DELETE FROM tenants 
+WHERE id = 'c8e09c45-a063-4d6d-8c3b-aab5003a7532'
+AND id NOT IN (SELECT tenant_id FROM profiles WHERE tenant_id IS NOT NULL);
+```
+
+## Arquivos a Modificar
+
+| Arquivo | Modificação |
+|---------|-------------|
+| `src/contexts/AuthContext.tsx` | Adicionar mutex para prevenir chamadas duplicadas ao bootstrap |
+| `supabase/functions/bootstrap-user/index.ts` | Adicionar verificação atômica no início |
+
+## Detalhes Técnicos
+
+### Fluxo Corrigido
 
 ```text
-Signup Flow:
-┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
-│  Auth.tsx       │────►│ signUp()         │────►│ bootstrap-user  │
-│  Category: X    │     │ businessCategory │     │ Cria tenant     │
-│  Name: "Loja Y" │     │ = X              │     │ category = X    │
-└─────────────────┘     └──────────────────┘     └─────────────────┘
-                                                          │
-                                                          ▼
-                                                 ┌─────────────────┐
-                                                 │ Dashboard       │
-                                                 │ Carrega config  │
-                                                 │ da categoria X  │
-                                                 │ Terminologia OK │
-                                                 └─────────────────┘
+SignUp Flow (CORRIGIDO):
+┌─────────────────┐     ┌──────────────────┐
+│  Auth.tsx       │────►│ signUp()         │
+│  Click Cadastrar│     │ Criar usuário    │
+└─────────────────┘     └────────┬─────────┘
+                                 │
+                                 ▼
+                        ┌──────────────────┐
+                        │ onAuthStateChange│
+                        │ SIGNED_IN event  │
+                        └────────┬─────────┘
+                                 │
+                                 ▼
+                        ┌──────────────────┐
+                        │ fetchUserData()  │
+                        │ COM MUTEX LOCK   │
+                        └────────┬─────────┘
+                                 │
+                                 ▼
+                        ┌──────────────────┐
+                        │ bootstrapUser()  │
+                        │ (1x apenas)      │
+                        └────────┬─────────┘
+                                 │
+                                 ▼
+                        ┌──────────────────┐
+                        │ Dashboard OK     │
+                        └──────────────────┘
 ```
 
----
+### Compatibilidade com Edge Browser
 
-## ✅ Módulos Adicionais - Verificação Completa
+O problema **NÃO é específico do Edge**. Aconteceria em qualquer navegador. O Edge pode simplesmente ter timing diferente que evidenciou a race condition.
 
-| Item | Status | Observação |
-|------|--------|------------|
-| Catálogo de módulos | ✅ OK | 9 módulos ativos |
-| Hook useAddonModules | ✅ OK | CRUD funcionando |
-| Super Admin Manager | ✅ OK | TenantAddonsManager.tsx |
-| Atribuição manual | ✅ OK | assignModule mutation |
-| Verificação hasAddon | ✅ OK | tenant_has_addon() function |
-| Compra self-service | ❌ Não implementado | Apenas atribuição manual |
+## Impacto
 
----
+- **Novos cadastros**: Funcionarão corretamente sem duplicação
+- **Usuário afetado**: Precisa de limpeza manual dos dados duplicados
+- **Usuários existentes**: Nenhum impacto
 
-## ✅ Fluxo de Checkout - Verificação
+## Prioridade: ALTA
 
-| Item | Status | Observação |
-|------|--------|------------|
-| Planos cadastrados | ✅ OK | 4 planos (Free, Starter, Pro, Enterprise) |
-| Stripe IDs | ✅ OK | price_1Stz... configurados |
-| create-checkout | ✅ OK | Edge function funcional |
-| Trial 14 dias | ✅ OK | Configurado em system_settings |
-| Webhook Stripe | ⚠️ Verificar | Precisa confirmar se está recebendo eventos |
-| PIX/Asaas | ❌ Não integrado | Cadastrado mas não no checkout |
-
----
-
-## 🎯 Próximos Passos (Em Ordem de Prioridade)
-
-1. **Corrigir labels genéricos no cadastro** (Auth.tsx)
-2. **Atualizar fallback no bootstrap-user** (edge function)
-3. **Testar fluxo completo de cadastro** com diferentes categorias
-4. **Verificar se webhook Stripe está funcionando** (para ativar planos automaticamente)
-5. **(Opcional) Implementar PIX no checkout** se necessário
+Esta correção é crítica para o funcionamento do fluxo de cadastro.
