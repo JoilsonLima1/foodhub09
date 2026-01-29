@@ -161,8 +161,9 @@ export function usePublicSettings() {
                     : 'gradient',
                 }
               : DEFAULT_LANDING.announcement_banner,
-            // Only set hero_title_parts if explicitly defined in the database
-            hero_title_parts: rawLayout.hero_title_parts as PublicLandingLayout['hero_title_parts'] || undefined,
+            // Force legacy 4-part hero title on the public Landing page.
+            // Even if older data stored hero_title_parts, we ignore it to keep the 4-field + 2-color alternating layout.
+            hero_title_parts: undefined,
           };
           settingsMap.landing_layout = layout;
         }
