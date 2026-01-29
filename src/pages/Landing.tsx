@@ -63,7 +63,6 @@ export default function Landing() {
         trustBadge2={landingLayout.trust_badge_2}
         trustBadge3={landingLayout.trust_badge_3}
         socialProofText={landingLayout.social_proof_text}
-        announcementBanner={landingLayout.announcement_banner}
       />
 
       {/* Partners Carousel */}
