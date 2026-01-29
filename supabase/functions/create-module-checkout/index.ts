@@ -87,7 +87,8 @@ async function processStripeModuleCheckout(
 async function findOrCreateAsaasCustomer(
   baseUrl: string,
   apiKey: string,
-  user: any
+  user: any,
+  cpfCnpj?: string
 ): Promise<string> {
   // Search existing customer by email
   const searchResponse = await fetch(
@@ -104,8 +105,29 @@ async function findOrCreateAsaasCustomer(
   const searchResult = await searchResponse.json();
 
   if (searchResult.data?.length > 0) {
-    logStep("Existing Asaas customer found", { customerId: searchResult.data[0].id });
-    return searchResult.data[0].id;
+    const customerId = searchResult.data[0].id;
+    logStep("Existing Asaas customer found", { customerId });
+
+    if (cpfCnpj) {
+      try {
+        const updateResponse = await fetch(`${baseUrl}/customers/${customerId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'access_token': apiKey
+          },
+          body: JSON.stringify({ cpfCnpj })
+        });
+        if (!updateResponse.ok) {
+          const err = await updateResponse.json();
+          logStep("Asaas customer update failed (cpfCnpj)", err);
+        }
+      } catch (e) {
+        logStep("Asaas customer update exception (cpfCnpj)");
+      }
+    }
+
+    return customerId;
   }
 
   // Create new customer
@@ -118,7 +140,8 @@ async function findOrCreateAsaasCustomer(
     body: JSON.stringify({
       name: user.user_metadata?.name || user.email.split('@')[0],
       email: user.email,
-      externalReference: user.id
+      externalReference: user.id,
+      ...(cpfCnpj ? { cpfCnpj } : {})
     })
   });
 
@@ -139,7 +162,8 @@ async function processAsaasModuleCheckout(
   user: any,
   tenantId: string,
   origin: string,
-  gatewayConfig: any
+  gatewayConfig: any,
+  customerCpfCnpj?: string
 ) {
   const asaasApiKey = gatewayConfig.api_key_masked;
   
@@ -157,7 +181,8 @@ async function processAsaasModuleCheckout(
   logStep("Asaas environment detected", { isProduction, baseUrl: baseUrl.replace(/https?:\/\//, '') });
 
   // 1. Find or create customer
-  const customerId = await findOrCreateAsaasCustomer(baseUrl, asaasApiKey, user);
+  const cpfCnpj = customerCpfCnpj?.replace(/\D/g, '');
+  const customerId = await findOrCreateAsaasCustomer(baseUrl, asaasApiKey, user, cpfCnpj);
 
   // 2. Create payment with UNDEFINED billing type
   const dueDate = new Date();
@@ -169,13 +194,9 @@ async function processAsaasModuleCheckout(
     value: module.monthly_price,
     dueDate: dueDate.toISOString().split('T')[0],
     description: `Módulo: ${module.name}`,
-    externalReference: JSON.stringify({
-      type: 'module',
-      module_id: module.id,
-      tenant_id: tenantId,
-      user_id: user.id,
-      origin: origin
-    })
+    // Asaas limita externalReference a 100 chars
+    // Formato compacto: m:<moduleId>|t:<tenantId>|u:<userId>
+    externalReference: `m:${module.id}|t:${tenantId}|u:${user.id}`
   };
 
   logStep("Creating Asaas module payment", { customerId, value: module.monthly_price });
@@ -263,7 +284,7 @@ serve(async (req) => {
     logStep("Tenant found", { tenantId });
 
     // Get request body
-    const { moduleId, gateway = 'stripe' } = await req.json();
+    const { moduleId, gateway = 'stripe', customerCpfCnpj } = await req.json();
     if (!moduleId) {
       throw new Error("Invalid request");
     }
@@ -320,7 +341,7 @@ serve(async (req) => {
         throw new Error("Gateway de pagamento não disponível");
       }
 
-      return await processAsaasModuleCheckout(module, user, tenantId, origin, gatewayConfig);
+      return await processAsaasModuleCheckout(module, user, tenantId, origin, gatewayConfig, customerCpfCnpj);
     }
 
     throw new Error("Gateway não suportado");

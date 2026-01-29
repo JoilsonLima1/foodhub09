@@ -6,6 +6,8 @@ import { PaymentMethodSelector } from './PaymentMethodSelector';
 import { useActivePaymentGateways } from '@/hooks/useActivePaymentGateways';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 interface CheckoutDialogProps {
   open: boolean;
@@ -30,6 +32,7 @@ export function CheckoutDialog({
   const { data: gateways, isLoading: loadingGateways } = useActivePaymentGateways();
   const [selectedGatewayId, setSelectedGatewayId] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [asaasCpfCnpj, setAsaasCpfCnpj] = useState('');
 
   // Filter out PIX manual gateways - only show stripe and asaas
   const filteredGateways = gateways?.filter(g => g.provider !== 'pix') || [];
@@ -47,11 +50,28 @@ export function CheckoutDialog({
   useEffect(() => {
     if (!open) {
       setIsProcessing(false);
+      setAsaasCpfCnpj('');
     }
   }, [open]);
 
+  const sanitizeCpfCnpj = (value: string) => value.replace(/\D/g, '');
+  const isValidCpfCnpj = (value: string) => {
+    const digits = sanitizeCpfCnpj(value);
+    return digits.length === 11 || digits.length === 14;
+  };
+
   const handleConfirmPayment = async () => {
     if (!selectedGateway) return;
+
+    // Asaas exige CPF/CNPJ do cliente para criar a cobrança
+    if (selectedGateway.provider === 'asaas' && !isValidCpfCnpj(asaasCpfCnpj)) {
+      toast({
+        title: 'CPF/CNPJ obrigatório',
+        description: 'Informe um CPF (11 dígitos) ou CNPJ (14 dígitos) válido para continuar.',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.access_token) {
@@ -66,9 +86,18 @@ export function CheckoutDialog({
     setIsProcessing(true);
     try {
       const functionName = itemType === 'plan' ? 'create-checkout' : 'create-module-checkout';
-      const body = itemType === 'plan' 
-        ? { planId: itemId, gateway: selectedGateway.provider }
-        : { moduleId: itemId, gateway: selectedGateway.provider };
+      const cpfCnpj = sanitizeCpfCnpj(asaasCpfCnpj);
+      const body = itemType === 'plan'
+        ? {
+            planId: itemId,
+            gateway: selectedGateway.provider,
+            ...(selectedGateway.provider === 'asaas' ? { customerCpfCnpj: cpfCnpj } : {}),
+          }
+        : {
+            moduleId: itemId,
+            gateway: selectedGateway.provider,
+            ...(selectedGateway.provider === 'asaas' ? { customerCpfCnpj: cpfCnpj } : {}),
+          };
 
       const { data, error } = await supabase.functions.invoke(functionName, {
         body,
@@ -76,13 +105,13 @@ export function CheckoutDialog({
 
       if (error) throw error;
 
-      // Handle response - both Stripe and Asaas return a URL
+      // Both gateways return the hosted checkout URL
       if (data?.url) {
         window.open(data.url, '_blank');
         onOpenChange(false);
         onSuccess?.();
       } else {
-        throw new Error('URL de pagamento não retornada');
+        throw new Error('Resposta inválida do provedor de pagamento');
       }
     } catch (error: any) {
       console.error('[CheckoutDialog] Error:', error);
@@ -119,12 +148,31 @@ export function CheckoutDialog({
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         ) : filteredGateways.length > 0 ? (
-          <PaymentMethodSelector
-            gateways={filteredGateways}
-            selectedGateway={selectedGatewayId}
-            onSelect={setSelectedGatewayId}
-            isLoading={isProcessing}
-          />
+          <div className="space-y-4">
+            <PaymentMethodSelector
+              gateways={filteredGateways}
+              selectedGateway={selectedGatewayId}
+              onSelect={setSelectedGatewayId}
+              isLoading={isProcessing}
+            />
+
+            {selectedGateway?.provider === 'asaas' && (
+              <div className="space-y-2">
+                <Label htmlFor="asaas-cpf-cnpj">CPF/CNPJ</Label>
+                <Input
+                  id="asaas-cpf-cnpj"
+                  value={asaasCpfCnpj}
+                  onChange={(e) => setAsaasCpfCnpj(e.target.value)}
+                  placeholder="Digite seu CPF ou CNPJ"
+                  inputMode="numeric"
+                  autoComplete="off"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Necessário para emissão e confirmação do pagamento no Asaas.
+                </p>
+              </div>
+            )}
+          </div>
         ) : (
           <p className="text-center text-muted-foreground py-4">
             Nenhuma forma de pagamento disponível.
@@ -137,7 +185,12 @@ export function CheckoutDialog({
           </Button>
           <Button
             onClick={handleConfirmPayment}
-            disabled={!selectedGatewayId || isProcessing || !filteredGateways.length}
+            disabled={
+              !selectedGatewayId ||
+              isProcessing ||
+              !filteredGateways.length ||
+              (selectedGateway?.provider === 'asaas' && !isValidCpfCnpj(asaasCpfCnpj))
+            }
           >
             {isProcessing ? (
               <>

@@ -11,6 +11,33 @@ const logStep = (step: string, details?: any) => {
   console.log(`[ASAAS-WEBHOOK] ${step}${detailsStr}`);
 };
 
+type ParsedRef =
+  | { type: 'plan'; plan_id: string; user_id: string }
+  | { type: 'module'; module_id: string; tenant_id: string; user_id: string };
+
+function parseExternalReference(ref: string): ParsedRef | null {
+  // Expected formats (<=100 chars):
+  // Plan:   p:<planId>|u:<userId>
+  // Module: m:<moduleId>|t:<tenantId>|u:<userId>
+  const parts = ref.split('|').map((p) => p.trim()).filter(Boolean);
+  const map: Record<string, string> = {};
+  for (const part of parts) {
+    const idx = part.indexOf(':');
+    if (idx === -1) continue;
+    const k = part.slice(0, idx);
+    const v = part.slice(idx + 1);
+    if (k && v) map[k] = v;
+  }
+
+  if (map.p && map.u) {
+    return { type: 'plan', plan_id: map.p, user_id: map.u };
+  }
+  if (map.m && map.t && map.u) {
+    return { type: 'module', module_id: map.m, tenant_id: map.t, user_id: map.u };
+  }
+  return null;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -44,12 +71,9 @@ serve(async (req) => {
       );
     }
 
-    // Parse metadata from externalReference
-    let metadata;
-    try {
-      metadata = JSON.parse(payment.externalReference);
-    } catch (e) {
-      logStep("Failed to parse externalReference", { externalReference: payment.externalReference });
+    const metadata = parseExternalReference(String(payment.externalReference));
+    if (!metadata) {
+      logStep("Invalid externalReference", { externalReference: payment.externalReference });
       return new Response(
         JSON.stringify({ received: true, processed: false, reason: "invalid_external_reference" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -61,11 +85,11 @@ serve(async (req) => {
     if (metadata.type === 'plan') {
       // Activate subscription plan
       await activatePlanSubscription(supabase, metadata, payment);
-    } else if (metadata.type === 'module') {
+    }
+
+    if (metadata.type === 'module') {
       // Activate addon module
       await activateModuleSubscription(supabase, metadata, payment);
-    } else {
-      logStep("Unknown metadata type", { type: metadata.type });
     }
 
     return new Response(
@@ -130,9 +154,7 @@ async function activatePlanSubscription(
       subscription_status: 'active',
       subscription_plan_id: metadata.plan_id,
       subscription_current_period_start: now.toISOString(),
-      subscription_current_period_end: periodEnd.toISOString(),
-      asaas_payment_id: payment.id,
-      asaas_customer_id: payment.customer
+      subscription_current_period_end: periodEnd.toISOString()
     })
     .eq('id', profile.tenant_id);
 
@@ -167,8 +189,7 @@ async function activateModuleSubscription(
       addon_module_id: metadata.module_id,
       status: 'active',
       started_at: now.toISOString(),
-      expires_at: expiresAt.toISOString(),
-      asaas_payment_id: payment.id
+      expires_at: expiresAt.toISOString()
     }, {
       onConflict: 'tenant_id,addon_module_id'
     });
