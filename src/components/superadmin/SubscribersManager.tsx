@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -85,6 +85,14 @@ function EditSubscriberDialog({ subscriber, open, onOpenChange, onSave, isLoadin
   const { plans } = useSubscriptionPlans();
   const [status, setStatus] = useState(subscriber?.status || 'active');
   const [planId, setPlanId] = useState(subscriber?.plan_id || '');
+
+  // Reset form when subscriber changes
+  useEffect(() => {
+    if (subscriber) {
+      setStatus(subscriber.status || 'active');
+      setPlanId(subscriber.plan_id || subscriber.subscription_plans?.id || '');
+    }
+  }, [subscriber]);
 
   const handleSave = () => {
     if (subscriber) {
