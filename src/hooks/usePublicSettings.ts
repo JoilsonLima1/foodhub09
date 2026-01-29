@@ -148,7 +148,19 @@ export function usePublicSettings() {
             social_proof_text: rawLayout.social_proof_text as string || DEFAULT_LANDING.social_proof_text,
             show_testimonials: rawLayout.show_testimonials as boolean ?? DEFAULT_LANDING.show_testimonials,
             show_features: rawLayout.show_features as boolean ?? DEFAULT_LANDING.show_features,
-            announcement_banner: rawLayout.announcement_banner as PublicAnnouncementBanner || DEFAULT_LANDING.announcement_banner,
+            // Use database banner settings if available, otherwise use defaults
+            // Ensure is_visible from database is respected (don't override with default)
+            announcement_banner: rawLayout.announcement_banner 
+              ? {
+                  is_visible: (rawLayout.announcement_banner as PublicAnnouncementBanner).is_visible,
+                  text: (rawLayout.announcement_banner as PublicAnnouncementBanner).text || DEFAULT_LANDING.announcement_banner!.text,
+                  highlight_text: (rawLayout.announcement_banner as PublicAnnouncementBanner).highlight_text || DEFAULT_LANDING.announcement_banner!.highlight_text,
+                  // Validate style - only use valid styles, fallback to gradient
+                  style: ['gradient', 'elegant', 'minimal'].includes((rawLayout.announcement_banner as PublicAnnouncementBanner).style) 
+                    ? (rawLayout.announcement_banner as PublicAnnouncementBanner).style 
+                    : 'gradient',
+                }
+              : DEFAULT_LANDING.announcement_banner,
             // Only set hero_title_parts if explicitly defined in the database
             hero_title_parts: rawLayout.hero_title_parts as PublicLandingLayout['hero_title_parts'] || undefined,
           };
