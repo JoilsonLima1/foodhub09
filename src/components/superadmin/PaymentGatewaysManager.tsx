@@ -319,9 +319,15 @@ export function PaymentGatewaysManager() {
                     <li><code>$aact_prod_</code> = Produção</li>
                     <li>Outros prefixos = Sandbox</li>
                   </ul>
-                  <p className="text-xs mt-2 font-medium">
-                    ⚠️ Configure o webhook no Asaas para automação completa
-                  </p>
+                  <div className="mt-3 p-2 bg-background rounded border">
+                    <p className="text-xs font-medium mb-1">⚠️ Configure o Webhook no Asaas:</p>
+                    <code className="text-xs break-all select-all">
+                      https://baxitzkbbqqbbbtojswm.supabase.co/functions/v1/asaas-webhook
+                    </code>
+                    <p className="text-xs mt-1 text-muted-foreground">
+                      Eventos: PAYMENT_RECEIVED, PAYMENT_CONFIRMED
+                    </p>
+                  </div>
                 </AlertDescription>
               </Alert>
             )}
