@@ -137,7 +137,16 @@ export function SubscriptionSettings() {
           </div>
         );
       case 'trialing':
-        return <Badge className="bg-blue-500/10 text-blue-600 border-blue-500/20">Período de Teste</Badge>;
+        return (
+          <div className="flex items-center gap-2">
+            <Badge className="bg-blue-500/10 text-blue-600 border-blue-500/20">Período de Teste</Badge>
+            {!subscriptionStatus.planId && (
+              <Badge variant="outline" className="text-muted-foreground">
+                Nenhum plano contratado
+              </Badge>
+            )}
+          </div>
+        );
       case 'canceled':
         return <Badge variant="destructive">Cancelado</Badge>;
       case 'past_due':
@@ -154,9 +163,24 @@ export function SubscriptionSettings() {
     return format(new Date(dateString), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
   };
 
-  const isCurrentPlan = (planSlug: string) => {
-    return subscriptionStatus?.planId?.includes(planSlug);
+  const isCurrentPlan = (planId: string) => {
+    // Check by tenant's actual plan ID from database first
+    if (subscriptionStatus?.tenantPlanId === planId) {
+      return true;
+    }
+    // Fallback to Stripe product ID matching
+    return subscriptionStatus?.planId?.includes(planId.replace(/-/g, '_')) || false;
   };
+
+  // Filter out plans that are already contracted (for upgrade list)
+  const availablePlansForUpgrade = plans.filter(plan => {
+    const isCurrent = isCurrentPlan(plan.id);
+    // If user has an active subscription, hide their current plan from upgrade options
+    if (subscriptionStatus?.status === 'active' && isCurrent) {
+      return false;
+    }
+    return true;
+  });
 
   const getPlanFeatures = (plan: SubscriptionPlan): string[] => {
     const features: string[] = [];
@@ -214,26 +238,36 @@ export function SubscriptionSettings() {
           <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Status Atual</p>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 {getStatusBadge()}
-                {isTrialing && daysRemaining > 0 && (
-                  <span className="text-sm text-muted-foreground">
-                    ({daysRemaining} dias restantes)
-                  </span>
-                )}
               </div>
             </div>
-            {subscriptionStatus?.planId && (
-              <div className="text-right">
-                <p className="text-sm text-muted-foreground">Plano</p>
-                <p className="font-medium">
-                  {subscriptionStatus.planId.includes('free') ? 'Grátis' :
-                   subscriptionStatus.planId.includes('starter') ? 'Starter' : 
-                   subscriptionStatus.planId.includes('professional') ? 'Professional' : 
-                   subscriptionStatus.planId.includes('enterprise') ? 'Enterprise' : 'Básico'}
-                </p>
-              </div>
-            )}
+            <div className="text-right space-y-1">
+              {isTrialing && daysRemaining > 0 && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Trial restante</p>
+                  <p className="font-medium text-blue-600">
+                    {daysRemaining} {daysRemaining === 1 ? 'dia' : 'dias'}
+                  </p>
+                </div>
+              )}
+              {subscriptionStatus?.planId ? (
+                <div>
+                  <p className="text-sm text-muted-foreground">Plano</p>
+                  <p className="font-medium">
+                    {subscriptionStatus.planId.includes('free') ? 'Grátis' :
+                     subscriptionStatus.planId.includes('starter') ? 'Starter' : 
+                     subscriptionStatus.planId.includes('professional') ? 'Professional' : 
+                     subscriptionStatus.planId.includes('enterprise') ? 'Enterprise' : 'Básico'}
+                  </p>
+                </div>
+              ) : isTrialing ? (
+                <div>
+                  <p className="text-sm text-muted-foreground">Plano</p>
+                  <p className="font-medium text-muted-foreground">Nenhum contratado</p>
+                </div>
+              ) : null}
+            </div>
           </div>
 
           {/* Trial Warning */}
@@ -311,20 +345,77 @@ export function SubscriptionSettings() {
         </CardContent>
       </Card>
 
+      {/* Current Plan Card (if user has one) */}
+      {subscriptionStatus?.tenantPlanId && (
+        <Card className="border-primary">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Check className="h-5 w-5 text-green-500" />
+              Seu Plano Atual
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {plans.filter(p => p.id === subscriptionStatus.tenantPlanId).map(plan => {
+              const features = getPlanFeatures(plan);
+              return (
+                <div key={plan.id} className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-3">
+                      <h3 className="text-xl font-semibold">{plan.name}</h3>
+                      <Badge className="bg-green-500/10 text-green-600 border-green-500/20">
+                        Ativo
+                      </Badge>
+                    </div>
+                    <p className="text-2xl font-bold">
+                      R$ {plan.monthly_price}
+                      <span className="text-sm font-normal text-muted-foreground">/mês</span>
+                    </p>
+                    {plan.description && (
+                      <p className="text-sm text-muted-foreground">{plan.description}</p>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {features.slice(0, 4).map((feature, i) => (
+                      <Badge key={i} variant="secondary" className="text-xs">
+                        {feature}
+                      </Badge>
+                    ))}
+                    {features.length > 4 && (
+                      <Badge variant="outline" className="text-xs">
+                        +{features.length - 4} mais
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Plans Overview - Dynamic from database */}
       <Card>
         <CardHeader>
-          <CardTitle>Planos Disponíveis</CardTitle>
+          <CardTitle>
+            {subscriptionStatus?.tenantPlanId ? 'Fazer Upgrade' : 'Planos Disponíveis'}
+          </CardTitle>
           <CardDescription>
-            Compare os planos e escolha o melhor para seu negócio
+            {subscriptionStatus?.tenantPlanId 
+              ? 'Escolha um plano superior para mais recursos'
+              : 'Compare os planos e escolha o melhor para seu negócio'}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {plans.map((plan, index) => {
-              const isCurrent = isCurrentPlan(plan.slug);
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {availablePlansForUpgrade.map((plan, index) => {
+              const isCurrent = isCurrentPlan(plan.id);
               const isProfessional = plan.slug === 'professional';
               const features = getPlanFeatures(plan);
+              
+              // Skip current plan in upgrade list
+              if (isCurrent && subscriptionStatus?.status === 'active') {
+                return null;
+              }
               
               return (
                 <div 

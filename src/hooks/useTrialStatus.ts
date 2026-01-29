@@ -17,6 +17,7 @@ export interface SubscriptionStatus {
   currentPeriodEnd: string | null;
   planId: string | null;
   status: 'active' | 'trialing' | 'canceled' | 'past_due' | 'none' | 'expired';
+  tenantPlanId: string | null; // The actual plan ID from the database
 }
 
 export function useTrialStatus() {
@@ -35,6 +36,7 @@ export function useTrialStatus() {
           currentPeriodEnd: null,
           planId: null,
           status: 'none',
+          tenantPlanId: null,
         };
       }
 
@@ -49,6 +51,24 @@ export function useTrialStatus() {
         throw error; // Let React Query handle retry
       }
 
+      // Also fetch tenant's subscription_plan_id from database for accurate plan display
+      let tenantPlanId: string | null = null;
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('tenant_id')
+        .eq('user_id', user!.id)
+        .single();
+
+      if (profile?.tenant_id) {
+        const { data: tenant } = await supabase
+          .from('tenants')
+          .select('subscription_plan_id')
+          .eq('id', profile.tenant_id)
+          .single();
+        
+        tenantPlanId = tenant?.subscription_plan_id || null;
+      }
+
       return {
         isSubscribed: data.subscribed || false,
         isTrialing: data.is_trialing || false,
@@ -56,6 +76,7 @@ export function useTrialStatus() {
         currentPeriodEnd: data.subscription_end || null,
         planId: data.product_id || null,
         status: data.status || 'none',
+        tenantPlanId, // Add the actual plan ID from database
       };
     },
     enabled: !!user && !!session,
