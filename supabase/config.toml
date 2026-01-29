@@ -50,3 +50,6 @@ verify_jwt = false
 
 [functions.activate-module-manual]
 verify_jwt = false
+
+[functions.reconcile-module-payment]
+verify_jwt = false
