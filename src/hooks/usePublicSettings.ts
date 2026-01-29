@@ -25,6 +25,16 @@ export type PublicAnnouncementBannerStyle =
   | 'geometric' | 'aurora' | 'pulse' | 'retro' | 'cyber' | 'elegant'
   | 'festive' | 'sunset' | 'ocean' | 'forest' | 'fire' | 'holographic';
 
+export type PublicHeroTitleHighlightStyle = 
+  | 'none' | 'underline' | 'rounded' | 'pill' | 'thought' | 'bubble' 
+  | 'marker' | 'glow' | 'gradient' | 'box' | 'circle' | 'scratch';
+
+export interface PublicHeroTitlePart {
+  text: string;
+  color: string;
+  highlight_style: PublicHeroTitleHighlightStyle;
+}
+
 export interface PublicAnnouncementBanner {
   is_visible: boolean;
   text: string;
@@ -50,6 +60,12 @@ export interface PublicLandingLayout {
   // Legacy fields for backwards compatibility
   hero_title?: string;
   hero_title_highlight?: string;
+  // New 3-part title system with individual colors
+  hero_title_parts?: {
+    top: PublicHeroTitlePart;
+    middle: PublicHeroTitlePart;
+    bottom: PublicHeroTitlePart;
+  };
 }
 
 interface PublicSettings {
@@ -91,6 +107,11 @@ const DEFAULT_LANDING: PublicLandingLayout = {
     text: 'Use TODAS as funcionalidades por',
     highlight_text: '14 DIAS GRÁTIS',
     style: 'gradient',
+  },
+  hero_title_parts: {
+    top: { text: 'Transforme seu', color: 'inherit', highlight_style: 'none' },
+    middle: { text: 'restaurante', color: '47 97% 60%', highlight_style: 'rounded' },
+    bottom: { text: 'em uma máquina de vendas', color: '47 97% 60%', highlight_style: 'underline' },
   },
 };
 
@@ -136,6 +157,7 @@ export function usePublicSettings() {
             show_testimonials: rawLayout.show_testimonials as boolean ?? DEFAULT_LANDING.show_testimonials,
             show_features: rawLayout.show_features as boolean ?? DEFAULT_LANDING.show_features,
             announcement_banner: rawLayout.announcement_banner as PublicAnnouncementBanner || DEFAULT_LANDING.announcement_banner,
+            hero_title_parts: rawLayout.hero_title_parts as PublicLandingLayout['hero_title_parts'] || DEFAULT_LANDING.hero_title_parts,
           };
           settingsMap.landing_layout = layout;
         }

@@ -2,6 +2,13 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Play, CheckCircle2 } from 'lucide-react';
 import { HeroBadges } from './HeroBadges';
+import { PublicHeroTitlePart, PublicHeroTitleHighlightStyle } from '@/hooks/usePublicSettings';
+
+interface HeroTitleParts {
+  top: PublicHeroTitlePart;
+  middle: PublicHeroTitlePart;
+  bottom: PublicHeroTitlePart;
+}
 
 interface HeroSectionProps {
   companyName: string;
@@ -17,6 +24,69 @@ interface HeroSectionProps {
   trustBadge2?: string;
   trustBadge3?: string;
   socialProofText?: string;
+  heroTitleParts?: HeroTitleParts;
+}
+
+const defaultTitleParts: HeroTitleParts = {
+  top: { text: 'Transforme seu', color: 'inherit', highlight_style: 'none' },
+  middle: { text: 'restaurante', color: '47 97% 60%', highlight_style: 'rounded' },
+  bottom: { text: 'em uma máquina de vendas', color: '47 97% 60%', highlight_style: 'underline' },
+};
+
+function getHighlightClasses(style: PublicHeroTitleHighlightStyle): string {
+  switch (style) {
+    case 'underline':
+      return 'border-b-4 border-current pb-1';
+    case 'rounded':
+      return 'bg-current/15 px-4 py-1 rounded-2xl';
+    case 'pill':
+      return 'bg-current/15 px-6 py-1 rounded-full';
+    case 'thought':
+      return 'relative bg-current/10 px-4 py-2 rounded-3xl before:content-[""] before:absolute before:-bottom-2 before:left-4 before:w-4 before:h-4 before:bg-current/10 before:rounded-full after:content-[""] after:absolute after:-bottom-4 after:left-2 after:w-2 after:h-2 after:bg-current/10 after:rounded-full';
+    case 'bubble':
+      return 'relative bg-current/15 px-4 py-2 rounded-2xl before:content-[""] before:absolute before:-bottom-2 before:left-6 before:border-8 before:border-transparent before:border-t-current/15';
+    case 'marker':
+      return 'bg-gradient-to-r from-yellow-400/40 to-yellow-200/20 px-3 py-0.5 -skew-x-2 rounded';
+    case 'glow':
+      return 'drop-shadow-[0_0_25px_currentColor] drop-shadow-[0_0_50px_currentColor]';
+    case 'gradient':
+      return 'bg-gradient-to-r from-primary via-primary/80 to-accent bg-clip-text text-transparent';
+    case 'box':
+      return 'border-2 border-current px-4 py-1 rounded-lg';
+    case 'circle':
+      return 'bg-current/15 px-8 py-3 rounded-full inline-flex items-center justify-center';
+    case 'scratch':
+      return 'relative before:content-[""] before:absolute before:inset-0 before:bg-current/10 before:-skew-y-1 before:rounded-lg before:-z-10';
+    default:
+      return '';
+  }
+}
+
+function HeroTitlePartRender({ 
+  part, 
+  size 
+}: { 
+  part: PublicHeroTitlePart; 
+  size: 'sm' | 'md' | 'lg';
+}) {
+  const textColor = part.color === 'inherit' ? 'inherit' : `hsl(${part.color})`;
+  
+  const sizeClasses = {
+    sm: 'text-2xl md:text-3xl lg:text-4xl',
+    md: 'text-3xl md:text-4xl lg:text-5xl',
+    lg: 'text-4xl md:text-5xl lg:text-6xl',
+  };
+
+  const highlightClasses = getHighlightClasses(part.highlight_style);
+
+  return (
+    <span 
+      className={`${sizeClasses[size]} font-bold ${highlightClasses} inline-block leading-tight`}
+      style={{ color: textColor }}
+    >
+      {part.text}
+    </span>
+  );
 }
 
 export function HeroSection({ 
@@ -33,12 +103,17 @@ export function HeroSection({
   trustBadge2 = 'Cancele quando quiser',
   trustBadge3 = 'Suporte em português',
   socialProofText = 'Mais de 500+ restaurantes já confiam no',
+  heroTitleParts,
 }: HeroSectionProps) {
   const navigate = useNavigate();
 
   const scrollToPricing = () => {
     document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' });
   };
+
+  // Use new 3-part system if available, otherwise fallback to legacy 4-part
+  const useLegacyTitle = !heroTitleParts;
+  const titleParts = heroTitleParts || defaultTitleParts;
 
   return (
     <section className="pt-24 pb-16 md:pb-24 px-4 relative overflow-hidden">
@@ -52,19 +127,35 @@ export function HeroSection({
           {/* New Hero Badges Component */}
           <HeroBadges heroBadge={heroBadge} />
           
-          <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-8 leading-tight tracking-tight">
-            {heroTitlePart1 && <span className="text-foreground">{heroTitlePart1} </span>}
-            {heroTitlePart2 && <span className="text-primary">{heroTitlePart2} </span>}
-            {heroTitlePart3 && <span className="text-foreground">{heroTitlePart3} </span>}
-            {heroTitlePart4 && (
-              <span className="text-primary relative">
-                {heroTitlePart4}
-                <svg className="absolute -bottom-2 left-0 w-full" viewBox="0 0 200 10" fill="none">
-                  <path d="M0 8 Q50 0, 100 8 T200 8" stroke="currentColor" strokeWidth="3" className="text-primary/30"/>
-                </svg>
-              </span>
-            )}
-          </h1>
+          {useLegacyTitle ? (
+            /* Legacy 4-Part Title */
+            <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-8 leading-tight tracking-tight">
+              {heroTitlePart1 && <span className="text-foreground">{heroTitlePart1} </span>}
+              {heroTitlePart2 && <span className="text-primary">{heroTitlePart2} </span>}
+              {heroTitlePart3 && <span className="text-foreground">{heroTitlePart3} </span>}
+              {heroTitlePart4 && (
+                <span className="text-primary relative">
+                  {heroTitlePart4}
+                  <svg className="absolute -bottom-2 left-0 w-full" viewBox="0 0 200 10" fill="none">
+                    <path d="M0 8 Q50 0, 100 8 T200 8" stroke="currentColor" strokeWidth="3" className="text-primary/30"/>
+                  </svg>
+                </span>
+              )}
+            </h1>
+          ) : (
+            /* New 3-Part Title with Styles */
+            <h1 className="mb-8 leading-tight tracking-tight space-y-2">
+              <div className="block">
+                <HeroTitlePartRender part={titleParts.top} size="md" />
+              </div>
+              <div className="block">
+                <HeroTitlePartRender part={titleParts.middle} size="lg" />
+              </div>
+              <div className="block">
+                <HeroTitlePartRender part={titleParts.bottom} size="md" />
+              </div>
+            </h1>
+          )}
           
           <p className="text-xl md:text-2xl text-muted-foreground max-w-4xl mx-auto mb-10 leading-relaxed">
             {heroSubtitle}
