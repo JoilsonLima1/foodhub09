@@ -207,13 +207,15 @@ async function processAsaasCheckout(
     throw new Error("Asaas API Key não configurada");
   }
 
-  // Determine environment (default to sandbox for safety)
-  const environment = gatewayConfig?.config?.environment || 'sandbox';
-  const baseUrl = environment === 'production'
+  // Auto-detect environment from API key prefix
+  // Production keys start with $aact_prod_, sandbox keys start with $aact_
+  const isProductionKey = asaasApiKey.startsWith('$aact_prod_');
+  const environment = isProductionKey ? 'production' : 'sandbox';
+  const baseUrl = isProductionKey
     ? 'https://api.asaas.com/v3'
     : 'https://sandbox.asaas.com/api/v3';
 
-  logStep("Asaas environment", { environment, baseUrl });
+  logStep("Asaas environment (auto-detected from API key)", { environment, baseUrl, isProductionKey });
 
   // Find or create customer
   const customerId = await findOrCreateAsaasCustomer(baseUrl, asaasApiKey, user);
