@@ -1,113 +1,213 @@
 
+# Plano: Sincronização Automática do Status de Pagamento
 
-# Plano: Corrigir Erro de Valor Mínimo no Checkout Asaas
+## Diagnóstico Confirmado
 
-## Diagnóstico do Problema
+O banco de dados está **100% correto**:
+- Tenant `96aa1efa-6afb-46c9-912f-9e7321408931` (jcorrealima@hotmail.com)
+- `subscription_plan_id`: Starter (1817f32b...)
+- `subscription_status`: active
+- `last_payment_at`: 29/01/2026 12:29
+- `last_payment_method`: pix
+- `last_payment_provider`: asaas
+- `last_payment_status`: confirmed
 
-O erro atual é:
-```
-O valor da cobrança (R$ 2,97) menos o valor do desconto (R$ 0,00) não pode ser menor que R$ 5,00.
-```
-
-### Causa Raiz
-Os preços dos planos foram alterados às 15:15 UTC (12:15 BRT) para valores abaixo do mínimo permitido pelo Asaas:
-- Starter: R$ 2,97 (alterado às 15:15:55)
-- Professional: R$ 2,98 (alterado às 15:15:36)
-- Enterprise: R$ 2,99 (alterado às 15:15:46)
-
-O Asaas exige um valor **mínimo de R$ 5,00** para qualquer cobrança (PIX, Cartão ou Boleto).
-
-### Por que funcionou às 9:35?
-O pagamento de R$ 29,99 (Joilson Correa Lima) foi processado com sucesso porque o valor estava acima do mínimo de R$ 5,00.
+**O problema é que a UI não recarrega os dados após o pagamento.**
 
 ---
 
-## Solução
+## Causa Raiz
 
-Há duas opções:
-
-### Opção 1: Corrigir os preços dos planos (Recomendado)
-Restaurar os preços dos planos para valores acima de R$ 5,00 diretamente no banco de dados ou pelo painel Super Admin.
-
-**Exemplo de valores válidos:**
-| Plano | Preço Mínimo Válido |
-|-------|---------------------|
-| Starter | R$ 9,97 ou R$ 29,97 |
-| Professional | R$ 49,97 |
-| Enterprise | R$ 99,97 |
-
-### Opção 2: Adicionar validação no código
-Impedir que o checkout seja iniciado se o valor estiver abaixo de R$ 5,00 quando o gateway for Asaas, mostrando mensagem clara ao usuário.
+1. **Cache de 5 minutos** no React Query (`staleTime: 5 min`)
+2. **Usuário paga no Asaas** em nova aba
+3. **Volta ao app** mas dados estão em cache antigo
+4. **Webhook configurado** mas precisa de tempo para processar
+5. **UI mostra dados desatualizados**
 
 ---
 
-## Implementação (Opção 2 - Proteção no Código)
+## Solução em 4 Partes
 
-Para evitar que isso aconteça novamente, vou adicionar validações:
+### Parte 1: Marcar Checkout Pendente (CheckoutDialog)
 
-### 1. Validação no Frontend (`CheckoutDialog.tsx`)
-Verificar se o valor é menor que R$ 5,00 quando Asaas estiver selecionado e exibir aviso:
+Antes de abrir a URL do Asaas, salvar no localStorage para detectar retorno:
 
 ```typescript
-// Antes de chamar a API:
-if (selectedGateway.provider === 'asaas' && itemPrice < 5) {
-  toast({
-    title: 'Valor mínimo não atingido',
-    description: 'O Asaas exige um valor mínimo de R$ 5,00 para cobranças. Use o Stripe ou ajuste o valor do plano.',
-    variant: 'destructive',
-  });
-  return;
-}
+// src/components/checkout/CheckoutDialog.tsx
+// Antes de window.open(data.url)
+localStorage.setItem('checkout_pending', JSON.stringify({
+  planId: itemId,
+  planName: itemName,
+  gateway: selectedGateway.provider,
+  timestamp: Date.now()
+}));
 ```
 
-### 2. Validação no Backend (`create-checkout/index.ts`)
-Adicionar verificação antes de criar a cobrança:
+---
+
+### Parte 2: Detectar Retorno e Forçar Refresh (SubscriptionSettings)
+
+Ao carregar a página, verificar se há checkout pendente e mostrar feedback:
 
 ```typescript
-if (plan.monthly_price < 5) {
-  logStep("Plan price below Asaas minimum", { price: plan.monthly_price });
-  throw new Error("Valor mínimo para Asaas é R$ 5,00");
-}
+// src/components/settings/SubscriptionSettings.tsx
+const [checkoutPending, setCheckoutPending] = useState<any>(null);
+const [isPolling, setIsPolling] = useState(false);
+
+useEffect(() => {
+  const pending = localStorage.getItem('checkout_pending');
+  if (pending) {
+    const data = JSON.parse(pending);
+    // Só considera se foi nos últimos 10 minutos
+    if (Date.now() - data.timestamp < 10 * 60 * 1000) {
+      setCheckoutPending(data);
+      setIsPolling(true);
+      // Forçar refetch imediato
+      refetchSubscription();
+    } else {
+      localStorage.removeItem('checkout_pending');
+    }
+  }
+}, []);
+
+// Polling enquanto aguarda confirmação
+useEffect(() => {
+  if (!isPolling) return;
+  
+  const interval = setInterval(() => {
+    refetchSubscription();
+    // Se já tem plano ativo, parar polling
+    if (subscriptionStatus?.hasContractedPlan) {
+      setIsPolling(false);
+      localStorage.removeItem('checkout_pending');
+      toast({ title: 'Pagamento confirmado!', description: 'Seu plano foi ativado.' });
+    }
+  }, 5000); // A cada 5 segundos
+  
+  // Timeout após 3 minutos
+  const timeout = setTimeout(() => setIsPolling(false), 180000);
+  
+  return () => { clearInterval(interval); clearTimeout(timeout); };
+}, [isPolling, subscriptionStatus]);
 ```
 
-### 3. Validação no Super Admin (`subscription_plans`)
-Ao salvar planos no painel, alertar se o valor for menor que R$ 5,00 quando Asaas estiver ativo.
+---
+
+### Parte 3: Reduzir Cache e Expor forceRefresh (useTrialStatus)
+
+```typescript
+// src/hooks/useTrialStatus.ts
+
+// Reduzir staleTime de 5 minutos para 30 segundos
+staleTime: 1000 * 30,
+
+// Adicionar função para forçar refresh
+const forceRefresh = useCallback(async () => {
+  queryClient.invalidateQueries({ queryKey: ['subscription-status'] });
+  await refetchSubscription();
+}, [queryClient, refetchSubscription]);
+
+return {
+  ...existing,
+  forceRefresh,
+};
+```
 
 ---
 
-## Ação Imediata Requerida
+### Parte 4: UI de Feedback Durante Processamento
 
-Para resolver **agora**, você precisa corrigir os preços dos planos no banco de dados.
+Adicionar card de "Aguardando Confirmação" visível enquanto polling:
 
-No painel Super Admin (Planos de Assinatura), altere:
-- Starter: de R$ 2,97 para **R$ 29,97** (ou outro valor >= R$ 5,00)
-- Professional: de R$ 2,98 para **R$ 49,97**
-- Enterprise: de R$ 2,99 para **R$ 99,97**
+```tsx
+{/* Checkout Pending Banner */}
+{checkoutPending && isPolling && (
+  <Card className="border-yellow-500/30 bg-yellow-500/5">
+    <CardContent className="flex items-center gap-4 py-4">
+      <Loader2 className="h-6 w-6 animate-spin text-yellow-600" />
+      <div className="flex-1">
+        <p className="font-medium text-yellow-700">
+          Aguardando confirmação do pagamento
+        </p>
+        <p className="text-sm text-muted-foreground">
+          Você contratou o plano {checkoutPending.planName}. 
+          A ativação será automática assim que o pagamento for processado.
+        </p>
+      </div>
+      <Button variant="outline" size="sm" onClick={() => refetchSubscription()}>
+        <RefreshCw className="h-4 w-4 mr-2" />
+        Verificar
+      </Button>
+    </CardContent>
+  </Card>
+)}
+```
 
 ---
 
-## Resumo das Alterações de Código
+### Parte 5: Botão "Atualizar Status" Manual
+
+Adicionar botão visível para o usuário forçar atualização:
+
+```tsx
+{/* Refresh Button - Always visible */}
+<div className="flex justify-end">
+  <Button 
+    variant="ghost" 
+    size="sm" 
+    onClick={() => {
+      refetchSubscription();
+      toast({ title: 'Atualizando...', description: 'Verificando status da assinatura.' });
+    }}
+    disabled={isLoading}
+  >
+    <RefreshCw className={cn("h-4 w-4 mr-2", isLoading && "animate-spin")} />
+    Atualizar Status
+  </Button>
+</div>
+```
+
+---
+
+## Arquivos a Modificar
 
 | Arquivo | Alteração |
 |---------|-----------|
-| `CheckoutDialog.tsx` | Adicionar validação de valor mínimo R$ 5,00 para Asaas |
-| `create-checkout/index.ts` | Adicionar validação de valor mínimo no backend |
-| `create-module-checkout/index.ts` | Mesma validação para módulos |
-| Super Admin (planos) | Adicionar alerta visual se valor < R$ 5,00 |
+| `src/hooks/useTrialStatus.ts` | Reduzir staleTime para 30s, expor forceRefresh |
+| `src/components/settings/SubscriptionSettings.tsx` | Detectar checkout pendente, polling, UI feedback, botão refresh |
+| `src/components/checkout/CheckoutDialog.tsx` | Salvar checkout_pending no localStorage |
 
 ---
 
-## Detalhes Técnicos
+## Fluxo Após Implementação
 
-### Constante para Valor Mínimo
-Definir constante para facilitar manutenção:
-```typescript
-const ASAAS_MIN_VALUE = 5.00; // Valor mínimo do Asaas em reais
+```text
+1. Usuário clica "Contratar Plano"
+2. CheckoutDialog abre → Usuário confirma
+3. localStorage.setItem('checkout_pending', {...})
+4. window.open(asaas_url) → Usuário paga
+5. Usuário volta ao /settings
+6. useEffect detecta checkout_pending
+7. Mostra banner "Aguardando confirmação"
+8. Inicia polling a cada 5s
+9. Webhook processa → Tenant atualizado
+10. Próximo polling detecta plano ativo
+11. Mostra toast "Pagamento confirmado!"
+12. UI atualiza com plano contratado em destaque verde
 ```
 
-### Mensagem de Erro Amigável
-```
-"O valor mínimo para pagamentos via Asaas é R$ 5,00. 
-Por favor, use outro método de pagamento ou entre em contato com o suporte."
-```
+---
 
+## Resultado Esperado
+
+Após implementação:
+
+- Plano contratado: **Starter** (destaque verde)
+- Botão do Starter: **✓ Plano Atual** (desabilitado)
+- Informações de Pagamento:
+  - Data/hora: 29/01/2026 às 12:29
+  - Forma: PIX
+  - Gateway: Asaas
+  - Status: Confirmado
+- Atualização automática após pagamento
+- Botão "Atualizar Status" sempre visível
