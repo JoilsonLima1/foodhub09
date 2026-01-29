@@ -1,52 +1,13 @@
 import type { ReactNode } from 'react';
 import {
-  Camera,
-  Cloud,
   Crown,
-  Diamond,
-  Flame,
   Gift,
-  Heart,
-  Leaf,
-  Moon,
-  PartyPopper,
-  Rocket,
-  Sparkles,
-  Star,
-  Sun,
-  Target,
-  Waves,
   Zap,
 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 
-export type BannerStyle =
-  | 'gradient'
-  | 'minimal'
-  | 'glass'
-  | 'ribbon'
-  | 'badge'
-  | 'glow'
-  | 'bubbles'
-  | 'circles'
-  | 'neon'
-  | 'stripes'
-  | 'confetti'
-  | 'wave'
-  | 'sparkle'
-  | 'geometric'
-  | 'aurora'
-  | 'pulse'
-  | 'retro'
-  | 'cyber'
-  | 'elegant'
-  | 'festive'
-  | 'sunset'
-  | 'ocean'
-  | 'forest'
-  | 'fire'
-  | 'holographic';
+export type BannerStyle = 'gradient' | 'elegant' | 'minimal';
 
 interface AnnouncementBannerProps {
   text: string;
@@ -58,42 +19,16 @@ interface AnnouncementBannerProps {
 
 const bannerIcons: Record<BannerStyle, ReactNode> = {
   gradient: <Gift className="h-5 w-5 md:h-6 md:w-6" />,
-  minimal: <Zap className="h-5 w-5" />,
-  glass: <Sparkles className="h-5 w-5" />,
-  ribbon: <Star className="h-5 w-5" />,
-  badge: <Rocket className="h-5 w-5" />,
-  glow: <Crown className="h-5 w-5" />,
-  bubbles: <Cloud className="h-5 w-5" />,
-  circles: <Target className="h-5 w-5" />,
-  neon: <Zap className="h-5 w-5" />,
-  stripes: <Target className="h-5 w-5" />,
-  confetti: <PartyPopper className="h-5 w-5" />,
-  wave: <Waves className="h-5 w-5" />,
-  sparkle: <Sparkles className="h-5 w-5" />,
-  geometric: <Diamond className="h-5 w-5" />,
-  aurora: <Moon className="h-5 w-5" />,
-  pulse: <Heart className="h-5 w-5" />,
-  retro: <Camera className="h-5 w-5" />,
-  cyber: <Zap className="h-5 w-5" />,
   elegant: <Crown className="h-5 w-5" />,
-  festive: <PartyPopper className="h-5 w-5" />,
-  sunset: <Sun className="h-5 w-5" />,
-  ocean: <Waves className="h-5 w-5" />,
-  forest: <Leaf className="h-5 w-5" />,
-  fire: <Flame className="h-5 w-5" />,
-  holographic: <Diamond className="h-5 w-5" />,
+  minimal: <Zap className="h-5 w-5" />,
 };
 
-function isBubbly(style: BannerStyle) {
-  return style === 'bubbles' || style === 'circles' || style === 'ocean' || style === 'wave';
-}
-
-function isStripes(style: BannerStyle) {
-  return style === 'stripes' || style === 'retro' || style === 'cyber';
+function isElegant(style: BannerStyle) {
+  return style === 'elegant';
 }
 
 function isGlow(style: BannerStyle) {
-  return style === 'neon' || style === 'glow' || style === 'holographic';
+  return style === 'gradient';
 }
 
 /**
@@ -132,23 +67,15 @@ export function AnnouncementBanner({
         <div className="flex justify-center">
           <div className={wrapperClass}>
             {/* Decorações locais (sem faixa/strip) */}
-            {isStripes(style) ? (
+            {isElegant(style) ? (
               <div
                 aria-hidden
-                className="pointer-events-none absolute inset-0 rounded-2xl opacity-25"
+                className="pointer-events-none absolute inset-0 rounded-2xl opacity-20"
                 style={{
                   backgroundImage:
-                    'repeating-linear-gradient(45deg, transparent, transparent 10px, hsl(var(--primary) / 0.10) 10px, hsl(var(--primary) / 0.10) 20px)',
+                    'linear-gradient(135deg, hsl(var(--primary) / 0.15) 0%, transparent 50%, hsl(var(--primary) / 0.15) 100%)',
                 }}
               />
-            ) : null}
-
-            {isBubbly(style) ? (
-              <>
-                <div aria-hidden className="pointer-events-none absolute -left-6 -top-5 h-16 w-16 rounded-full bg-primary/10 blur-xl" />
-                <div aria-hidden className="pointer-events-none absolute -right-8 -bottom-6 h-20 w-20 rounded-full bg-primary/10 blur-xl" />
-                <div aria-hidden className="pointer-events-none absolute right-6 -top-6 h-10 w-10 rounded-full bg-primary/10 blur-lg" />
-              </>
             ) : null}
 
             <span className={iconChipClass} aria-hidden>
