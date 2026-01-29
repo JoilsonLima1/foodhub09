@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Crown, Calendar, CreditCard, ExternalLink, Loader2, AlertTriangle, Check, Clock, Gift, Receipt, Wallet } from 'lucide-react';
+import { Crown, Calendar, CreditCard, ExternalLink, Loader2, AlertTriangle, Check, Clock, Gift, Receipt, Wallet, RefreshCw } from 'lucide-react';
 import { useTrialStatus } from '@/hooks/useTrialStatus';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,6 +10,15 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { CheckoutDialog } from '@/components/checkout/CheckoutDialog';
+import { cn } from '@/lib/utils';
+
+interface CheckoutPendingData {
+  planId: string;
+  planName: string;
+  itemType: string;
+  gateway: string;
+  timestamp: number;
+}
 
 interface SubscriptionPlan {
   id: string;
@@ -29,7 +38,7 @@ interface SubscriptionPlan {
 
 export function SubscriptionSettings() {
   const { session } = useAuth();
-  const { subscriptionStatus, isLoading, getDaysRemaining, getTrialStartDisplay, getExpirationDisplay } = useTrialStatus();
+  const { subscriptionStatus, isLoading, getDaysRemaining, getTrialStartDisplay, getExpirationDisplay, refetchSubscription, forceRefresh } = useTrialStatus();
   const { toast } = useToast();
   const [isUpgrading, setIsUpgrading] = useState<string | null>(null);
   const [isOpeningPortal, setIsOpeningPortal] = useState(false);
@@ -37,6 +46,77 @@ export function SubscriptionSettings() {
   const [loadingPlans, setLoadingPlans] = useState(true);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
+  const [checkoutPending, setCheckoutPending] = useState<CheckoutPendingData | null>(null);
+  const [isPolling, setIsPolling] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Detect checkout pending on page load (user returning from payment)
+  useEffect(() => {
+    const pending = localStorage.getItem('checkout_pending');
+    if (pending) {
+      try {
+        const data: CheckoutPendingData = JSON.parse(pending);
+        // Only consider if within last 10 minutes
+        if (Date.now() - data.timestamp < 10 * 60 * 1000) {
+          setCheckoutPending(data);
+          setIsPolling(true);
+          // Force immediate refetch
+          refetchSubscription();
+        } else {
+          localStorage.removeItem('checkout_pending');
+        }
+      } catch (e) {
+        localStorage.removeItem('checkout_pending');
+      }
+    }
+  }, []);
+
+  // Polling while waiting for payment confirmation
+  useEffect(() => {
+    if (!isPolling) return;
+    
+    const interval = setInterval(() => {
+      refetchSubscription();
+    }, 5000); // Every 5 seconds
+    
+    // Timeout after 3 minutes
+    const timeout = setTimeout(() => {
+      setIsPolling(false);
+      setCheckoutPending(null);
+      localStorage.removeItem('checkout_pending');
+    }, 180000);
+    
+    return () => {
+      clearInterval(interval);
+      clearTimeout(timeout);
+    };
+  }, [isPolling, refetchSubscription]);
+
+  // Stop polling when plan is detected
+  useEffect(() => {
+    if (isPolling && subscriptionStatus?.hasContractedPlan) {
+      setIsPolling(false);
+      setCheckoutPending(null);
+      localStorage.removeItem('checkout_pending');
+      toast({
+        title: 'Pagamento confirmado! 🎉',
+        description: `Seu plano ${subscriptionStatus.tenantPlanName || ''} foi ativado com sucesso.`,
+      });
+    }
+  }, [isPolling, subscriptionStatus?.hasContractedPlan, subscriptionStatus?.tenantPlanName, toast]);
+
+  const handleManualRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await forceRefresh();
+      toast({
+        title: 'Status atualizado',
+        description: 'Verificação de assinatura concluída.',
+      });
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [forceRefresh, toast]);
 
   useEffect(() => {
     const fetchPlans = async () => {
@@ -252,16 +332,55 @@ export function SubscriptionSettings() {
 
   return (
     <div className="space-y-6">
+      {/* Checkout Pending Banner */}
+      {checkoutPending && isPolling && (
+        <Card className="border-yellow-500/30 bg-yellow-500/5">
+          <CardContent className="flex items-center gap-4 py-4">
+            <Loader2 className="h-6 w-6 animate-spin text-yellow-600" />
+            <div className="flex-1">
+              <p className="font-medium text-yellow-700 dark:text-yellow-400">
+                Aguardando confirmação do pagamento
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Você contratou o plano {checkoutPending.planName}. 
+                A ativação será automática assim que o pagamento for processado.
+              </p>
+            </div>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleManualRefresh}
+              disabled={isRefreshing}
+            >
+              <RefreshCw className={cn("h-4 w-4 mr-2", isRefreshing && "animate-spin")} />
+              Verificar
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Status Card */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Crown className="h-5 w-5 text-primary" />
-            Status da Assinatura
-          </CardTitle>
-          <CardDescription>
-            Gerencie sua assinatura e plano atual
-          </CardDescription>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <div className="space-y-1">
+            <CardTitle className="flex items-center gap-2">
+              <Crown className="h-5 w-5 text-primary" />
+              Status da Assinatura
+            </CardTitle>
+            <CardDescription>
+              Gerencie sua assinatura e plano atual
+            </CardDescription>
+          </div>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={handleManualRefresh}
+            disabled={isLoading || isRefreshing}
+            title="Atualizar status da assinatura"
+          >
+            <RefreshCw className={cn("h-4 w-4 mr-2", (isLoading || isRefreshing) && "animate-spin")} />
+            Atualizar
+          </Button>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Current Status */}

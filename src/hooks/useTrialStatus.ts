@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCallback } from 'react';
 
 export interface TrialNotificationSettings {
   days_before_expiration: number;
@@ -167,9 +168,15 @@ export function useTrialStatus() {
     enabled: !!user && !!session,
     retry: 2,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000),
-    staleTime: 1000 * 60 * 5,
+    staleTime: 1000 * 30, // Reduced to 30 seconds for faster updates after payment
     refetchOnWindowFocus: true,
   });
+
+  // Force refresh function to invalidate cache and refetch
+  const forceRefresh = useCallback(async () => {
+    queryClient.invalidateQueries({ queryKey: ['subscription-status', user?.id] });
+    await refetchSubscription();
+  }, [queryClient, user?.id, refetchSubscription]);
 
   // Fetch trial notification settings (super admin configurable)
   const { data: notificationSettings } = useQuery({
@@ -324,5 +331,6 @@ export function useTrialStatus() {
     getDaysRemaining,
     getTrialStartDisplay,
     refetchSubscription,
+    forceRefresh,
   };
 }
