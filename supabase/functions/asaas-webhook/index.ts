@@ -13,10 +13,25 @@ const logStep = (step: string, details?: any) => {
 
 type ParsedRef =
   | { type: 'plan'; plan_id: string; user_id: string }
-  | { type: 'module'; module_id: string; tenant_id: string; user_id: string };
+  | { type: 'module'; module_id_prefix: string; tenant_id_prefix: string };
 
 function parseExternalReference(ref: string): ParsedRef | null {
-  // Expected formats (<=100 chars):
+  // Try JSON format first (new compact format)
+  try {
+    const json = JSON.parse(ref);
+    // New compact format: { t: 'mod', m: 'first8chars', tn: 'first8chars' }
+    if (json.t === 'mod' && json.m && json.tn) {
+      return { type: 'module', module_id_prefix: json.m, tenant_id_prefix: json.tn };
+    }
+    // Plan format: { t: 'plan', p: 'first8chars', u: 'first8chars' }
+    if (json.t === 'plan' && json.p && json.u) {
+      return { type: 'plan', plan_id: json.p, user_id: json.u };
+    }
+  } catch {
+    // Not JSON, try legacy pipe format
+  }
+
+  // Legacy formats:
   // Plan:   p:<planId>|u:<userId>
   // Module: m:<moduleId>|t:<tenantId>|u:<userId>
   const parts = ref.split('|').map((p) => p.trim()).filter(Boolean);
@@ -32,8 +47,8 @@ function parseExternalReference(ref: string): ParsedRef | null {
   if (map.p && map.u) {
     return { type: 'plan', plan_id: map.p, user_id: map.u };
   }
-  if (map.m && map.t && map.u) {
-    return { type: 'module', module_id: map.m, tenant_id: map.t, user_id: map.u };
+  if (map.m && map.t) {
+    return { type: 'module', module_id_prefix: map.m, tenant_id_prefix: map.t };
   }
   return null;
 }
@@ -88,7 +103,7 @@ serve(async (req) => {
     }
 
     if (metadata.type === 'module') {
-      // Activate addon module
+      // Activate addon module - need to find full IDs from prefixes
       await activateModuleSubscription(supabase, metadata, payment);
     }
 
@@ -202,10 +217,39 @@ function getPaymentMethodFromAsaas(billingType: string | undefined): string {
 
 async function activateModuleSubscription(
   supabase: any,
-  metadata: { module_id: string; tenant_id: string; user_id: string },
+  metadata: { module_id_prefix: string; tenant_id_prefix: string },
   payment: any
 ) {
-  logStep("Activating module subscription", { moduleId: metadata.module_id, tenantId: metadata.tenant_id });
+  logStep("Activating module subscription", { modulePrefix: metadata.module_id_prefix, tenantPrefix: metadata.tenant_id_prefix });
+
+  // Find full module ID from prefix
+  const { data: moduleData, error: moduleError } = await supabase
+    .from('addon_modules')
+    .select('id, name')
+    .like('id', `${metadata.module_id_prefix}%`)
+    .single();
+
+  if (moduleError || !moduleData) {
+    logStep("Module not found by prefix", { prefix: metadata.module_id_prefix, error: moduleError?.message });
+    throw new Error("Module not found");
+  }
+
+  // Find full tenant ID from prefix
+  const { data: tenantData, error: tenantError } = await supabase
+    .from('tenants')
+    .select('id')
+    .like('id', `${metadata.tenant_id_prefix}%`)
+    .single();
+
+  if (tenantError || !tenantData) {
+    logStep("Tenant not found by prefix", { prefix: metadata.tenant_id_prefix, error: tenantError?.message });
+    throw new Error("Tenant not found");
+  }
+
+  const moduleId = moduleData.id;
+  const tenantId = tenantData.id;
+
+  logStep("Found full IDs", { moduleId, tenantId, moduleName: moduleData.name });
 
   const now = new Date();
   const expiresAt = new Date(now);
@@ -218,8 +262,8 @@ async function activateModuleSubscription(
   const { error: upsertError } = await supabase
     .from('tenant_addon_subscriptions')
     .upsert({
-      tenant_id: metadata.tenant_id,
-      addon_module_id: metadata.module_id,
+      tenant_id: tenantId,
+      addon_module_id: moduleId,
       status: 'active',
       source: 'purchase',
       is_free: false,
@@ -229,7 +273,7 @@ async function activateModuleSubscription(
       purchased_at: now.toISOString(),
       next_billing_date: nextBillingDate.toISOString(),
       asaas_payment_id: payment.id,
-      billing_mode: 'bundle' // Default, can be changed via settings
+      billing_mode: 'separate'
     }, {
       onConflict: 'tenant_id,addon_module_id'
     });
@@ -240,8 +284,9 @@ async function activateModuleSubscription(
   }
 
   logStep("Module activated successfully", { 
-    tenantId: metadata.tenant_id, 
-    moduleId: metadata.module_id,
+    tenantId, 
+    moduleId,
+    moduleName: moduleData.name,
     pricePaid: payment.value,
     nextBilling: nextBillingDate.toISOString()
   });

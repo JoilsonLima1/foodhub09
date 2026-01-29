@@ -191,18 +191,21 @@ async function processAsaasModuleCheckout(
   const dueDate = new Date();
   dueDate.setDate(dueDate.getDate() + 3);
 
+  // Asaas externalReference limited to 100 chars
+  // Use a compact JSON format with abbreviated keys
+  const refData = { t: 'mod', m: module.id.slice(0, 8), tn: tenantId.slice(0, 8) };
+  const externalReference = JSON.stringify(refData);
+
   const paymentBody = {
     customer: customerId,
     billingType,
     value: module.monthly_price,
     dueDate: dueDate.toISOString().split('T')[0],
     description: `Módulo: ${module.name}`,
-    // Asaas limita externalReference a 100 chars
-    // Formato compacto: m:<moduleId>|t:<tenantId>|u:<userId>
-    externalReference: `m:${module.id}|t:${tenantId}|u:${user.id}`
+    externalReference
   };
 
-  logStep("Creating Asaas module payment", { customerId, value: module.monthly_price, billingType });
+  logStep("Creating Asaas module payment", { customerId, value: module.monthly_price, billingType, refLength: externalReference.length });
 
   const paymentResponse = await fetch(`${baseUrl}/payments`, {
     method: 'POST',
@@ -335,6 +338,30 @@ serve(async (req) => {
         JSON.stringify({ error: "Módulo já está ativo", code: "ALREADY_SUBSCRIBED" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
       );
+    }
+
+    // Check if module is included in user's current plan (brinde)
+    const { data: tenant } = await supabase
+      .from("tenants")
+      .select("subscription_plan_id")
+      .eq("id", tenantId)
+      .single();
+
+    if (tenant?.subscription_plan_id) {
+      const { data: planIncluded } = await supabase
+        .from("plan_addon_modules")
+        .select("id")
+        .eq("plan_id", tenant.subscription_plan_id)
+        .eq("addon_module_id", moduleId)
+        .maybeSingle();
+
+      if (planIncluded) {
+        logStep("Module already included in plan (brinde)", { planId: tenant.subscription_plan_id });
+        return new Response(
+          JSON.stringify({ error: "Este módulo já está incluído no seu plano como brinde", code: "INCLUDED_IN_PLAN" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+        );
+      }
     }
 
     const origin = req.headers.get("origin") || "https://start-a-new-quest.lovable.app";
