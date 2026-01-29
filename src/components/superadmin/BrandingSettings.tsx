@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Save, Image, Palette, MessageSquare, Calendar, Layout, Megaphone } from 'lucide-react';
-import { useSystemSettings, BrandingSettings as BrandingType, ColorSettings, WhatsAppSettings, TrialSettings, LandingLayoutSettings, AnnouncementBannerSettings, AnnouncementBannerStyle, HeroTitlePart } from '@/hooks/useSystemSettings';
+import { useSystemSettings, BrandingSettings as BrandingType, ColorSettings, WhatsAppSettings, TrialSettings, LandingLayoutSettings, AnnouncementBannerSettings, AnnouncementBannerStyle } from '@/hooks/useSystemSettings';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { ImageUploader } from './ImageUploader';
@@ -12,11 +12,9 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { AnnouncementBanner } from '@/components/landing/AnnouncementBanner';
 import { HeroTitleEditor } from './HeroTitleEditor';
 
-const defaultTitleParts = {
-  top: { text: 'Transforme seu', color: 'inherit', highlight_style: 'none' as const },
-  middle: { text: 'restaurante', color: '47 97% 60%', highlight_style: 'rounded' as const },
-  bottom: { text: 'em uma máquina de vendas', color: '47 97% 60%', highlight_style: 'underline' as const },
-};
+// Default colors for 4-part title (alternating)
+const defaultHeroColor1 = 'foreground';
+const defaultHeroColor2 = 'primary';
 
 export function BrandingSettings() {
   const { settings, isLoading, updateSetting, branding, colors, whatsapp, trialPeriod, landingLayout } = useSystemSettings();
@@ -64,8 +62,10 @@ export function BrandingSettings() {
       highlight_text: '14 DIAS GRÁTIS',
       style: 'gradient',
     },
-    hero_title_parts: defaultTitleParts,
   });
+
+  const [heroColor1, setHeroColor1] = useState(defaultHeroColor1);
+  const [heroColor2, setHeroColor2] = useState(defaultHeroColor2);
 
   const bannerStyles: { value: AnnouncementBannerStyle; label: string; description: string }[] = [
     // Básicos
@@ -106,10 +106,7 @@ export function BrandingSettings() {
     if (whatsapp) setWhatsappData(whatsapp);
     if (trialPeriod) setTrialData(trialPeriod);
     if (landingLayout) {
-      setLandingData({
-        ...landingLayout,
-        hero_title_parts: landingLayout.hero_title_parts || defaultTitleParts,
-      });
+      setLandingData(landingLayout);
     }
   }, [branding, colors, whatsapp, trialPeriod, landingLayout]);
 
@@ -484,10 +481,25 @@ export function BrandingSettings() {
             </p>
           </div>
 
-          {/* New Hero Title Editor - 3 Parts with Colors */}
+          {/* Hero Title Editor - 4 Parts with 2 Alternating Colors */}
           <HeroTitleEditor
-            titleParts={landingData.hero_title_parts || defaultTitleParts}
-            onChange={(parts) => setLandingData({ ...landingData, hero_title_parts: parts })}
+            heroTitle={landingData.hero_title}
+            heroTitleHighlight={landingData.hero_title_highlight}
+            heroTitlePart3={landingData.hero_title_part3 || ''}
+            heroTitlePart4={landingData.hero_title_part4 || ''}
+            color1={heroColor1}
+            color2={heroColor2}
+            onChange={(values) => {
+              setLandingData({ 
+                ...landingData, 
+                hero_title: values.heroTitle,
+                hero_title_highlight: values.heroTitleHighlight,
+                hero_title_part3: values.heroTitlePart3,
+                hero_title_part4: values.heroTitlePart4,
+              });
+              setHeroColor1(values.color1);
+              setHeroColor2(values.color2);
+            }}
           />
 
           {/* Hero Subtitle/Description */}

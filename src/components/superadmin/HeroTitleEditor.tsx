@@ -1,211 +1,184 @@
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { HeroTitlePart, HeroTitleHighlightStyle } from '@/hooks/useSystemSettings';
 import { Badge } from '@/components/ui/badge';
 
 interface HeroTitleEditorProps {
-  titleParts: {
-    top: HeroTitlePart;
-    middle: HeroTitlePart;
-    bottom: HeroTitlePart;
-  };
-  onChange: (parts: { top: HeroTitlePart; middle: HeroTitlePart; bottom: HeroTitlePart }) => void;
+  heroTitle: string;
+  heroTitleHighlight: string;
+  heroTitlePart3: string;
+  heroTitlePart4: string;
+  color1: string;
+  color2: string;
+  onChange: (values: {
+    heroTitle: string;
+    heroTitleHighlight: string;
+    heroTitlePart3: string;
+    heroTitlePart4: string;
+    color1: string;
+    color2: string;
+  }) => void;
 }
-
-const highlightStyles: { value: HeroTitleHighlightStyle; label: string; description: string; icon: string }[] = [
-  { value: 'none', label: 'Nenhum', description: 'Texto simples', icon: '—' },
-  { value: 'underline', label: 'Sublinhado', description: 'Linha decorativa', icon: '⎯' },
-  { value: 'rounded', label: 'Arredondado', description: 'Fundo arredondado', icon: '◯' },
-  { value: 'pill', label: 'Pílula', description: 'Fundo em cápsula', icon: '💊' },
-  { value: 'thought', label: 'Pensamento', description: 'Balão de pensamento', icon: '💭' },
-  { value: 'bubble', label: 'Bolha', description: 'Bolha de diálogo', icon: '💬' },
-  { value: 'marker', label: 'Marcador', description: 'Efeito marca-texto', icon: '🖍️' },
-  { value: 'glow', label: 'Brilho', description: 'Efeito luminoso', icon: '✨' },
-  { value: 'gradient', label: 'Gradiente', description: 'Texto gradiente', icon: '🌈' },
-  { value: 'box', label: 'Caixa', description: 'Borda quadrada', icon: '▢' },
-  { value: 'circle', label: 'Círculo', description: 'Fundo circular', icon: '●' },
-  { value: 'scratch', label: 'Riscado', description: 'Efeito rabisco', icon: '〰️' },
-];
 
 // Preset color suggestions
 const colorPresets = [
+  { label: 'Foreground', value: 'foreground' },
+  { label: 'Primário', value: 'primary' },
   { label: 'Dourado', value: '47 97% 60%' },
-  { label: 'Primário', value: 'inherit' },
   { label: 'Branco', value: '0 0% 100%' },
   { label: 'Preto', value: '0 0% 0%' },
   { label: 'Vermelho', value: '0 84% 60%' },
   { label: 'Azul', value: '217 91% 60%' },
   { label: 'Verde', value: '142 76% 36%' },
-  { label: 'Rosa', value: '330 81% 60%' },
 ];
+
+function ColorPicker({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div className="space-y-3">
+      <Label className="text-sm font-medium">{label}</Label>
+      
+      {/* Color Presets */}
+      <div className="flex flex-wrap gap-2">
+        {colorPresets.map((preset) => (
+          <button
+            key={preset.value}
+            type="button"
+            onClick={() => onChange(preset.value)}
+            className={`px-3 py-1.5 text-xs rounded-full border-2 transition-all ${
+              value === preset.value 
+                ? 'border-primary bg-primary/10 font-medium' 
+                : 'border-muted hover:border-muted-foreground/30'
+            }`}
+          >
+            <span 
+              className="inline-block w-3 h-3 rounded-full mr-1.5 align-middle"
+              style={{ 
+                backgroundColor: preset.value === 'foreground' 
+                  ? 'hsl(var(--foreground))' 
+                  : preset.value === 'primary'
+                  ? 'hsl(var(--primary))'
+                  : `hsl(${preset.value})` 
+              }}
+            />
+            {preset.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Custom Color Input */}
+      <div className="flex gap-2 items-center">
+        <Input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="47 97% 60%"
+          className="flex-1 rounded-xl font-mono text-sm"
+        />
+        <div 
+          className="w-12 h-10 rounded-xl border-2 flex-shrink-0 shadow-inner" 
+          style={{ 
+            backgroundColor: value === 'foreground' 
+              ? 'hsl(var(--foreground))' 
+              : value === 'primary'
+              ? 'hsl(var(--primary))'
+              : `hsl(${value})` 
+          }}
+        />
+      </div>
+    </div>
+  );
+}
 
 function TitlePartEditor({
   label,
   description,
   partNumber,
-  part,
+  value,
+  color,
+  colorLabel,
   onChange,
-  isMiddle = false,
 }: {
   label: string;
   description: string;
   partNumber: number;
-  part: HeroTitlePart;
-  onChange: (part: HeroTitlePart) => void;
-  isMiddle?: boolean;
+  value: string;
+  color: string;
+  colorLabel: string;
+  onChange: (value: string) => void;
 }) {
+  const isHighlight = partNumber === 2 || partNumber === 4;
+  
   return (
     <div className={`space-y-4 p-5 border-2 rounded-2xl transition-all ${
-      isMiddle 
+      isHighlight 
         ? 'bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border-primary/40 shadow-lg shadow-primary/10' 
         : 'bg-muted/30 border-muted-foreground/10 hover:border-muted-foreground/20'
     }`}>
       {/* Header with badge */}
       <div className="flex items-center gap-3">
         <Badge 
-          variant={isMiddle ? "default" : "secondary"} 
-          className={`rounded-full px-3 py-1 ${isMiddle ? 'bg-primary text-primary-foreground' : ''}`}
+          variant={isHighlight ? "default" : "secondary"} 
+          className={`rounded-full px-3 py-1 ${isHighlight ? 'bg-primary text-primary-foreground' : ''}`}
         >
           {partNumber}
         </Badge>
-        <div>
-          <Label className={`font-semibold ${isMiddle ? 'text-lg text-primary' : ''}`}>{label}</Label>
+        <div className="flex-1">
+          <Label className={`font-semibold ${isHighlight ? 'text-lg text-primary' : ''}`}>{label}</Label>
           <p className="text-xs text-muted-foreground">{description}</p>
         </div>
+        <Badge variant="outline" className="text-xs">
+          {colorLabel}
+        </Badge>
       </div>
 
       {/* Text Input */}
       <div className="space-y-2">
         <Label className="text-sm font-medium">Texto</Label>
         <Input
-          value={part.text}
-          onChange={(e) => onChange({ ...part, text: e.target.value })}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
           placeholder="Digite o texto..."
-          className={`rounded-xl ${isMiddle ? 'text-lg font-semibold border-primary/30 focus:border-primary' : ''}`}
+          className={`rounded-xl ${isHighlight ? 'text-lg font-semibold border-primary/30 focus:border-primary' : ''}`}
         />
       </div>
 
-      {/* Color Input with Presets */}
-      <div className="space-y-3">
-        <Label className="text-sm font-medium">Cor</Label>
-        
-        {/* Color Presets */}
-        <div className="flex flex-wrap gap-2">
-          {colorPresets.map((preset) => (
-            <button
-              key={preset.value}
-              type="button"
-              onClick={() => onChange({ ...part, color: preset.value })}
-              className={`px-3 py-1.5 text-xs rounded-full border-2 transition-all ${
-                part.color === preset.value 
-                  ? 'border-primary bg-primary/10 font-medium' 
-                  : 'border-muted hover:border-muted-foreground/30'
-              }`}
-            >
-              <span 
-                className="inline-block w-3 h-3 rounded-full mr-1.5 align-middle"
-                style={{ backgroundColor: preset.value === 'inherit' ? 'hsl(var(--primary))' : `hsl(${preset.value})` }}
-              />
-              {preset.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Custom Color Input */}
-        <div className="flex gap-2 items-center">
-          <Input
-            value={part.color}
-            onChange={(e) => onChange({ ...part, color: e.target.value })}
-            placeholder="47 97% 60%"
-            className="flex-1 rounded-xl font-mono text-sm"
-          />
-          <div 
-            className="w-12 h-10 rounded-xl border-2 flex-shrink-0 shadow-inner" 
-            style={{ 
-              backgroundColor: part.color === 'inherit' 
-                ? 'hsl(var(--primary))' 
-                : `hsl(${part.color})` 
-            }}
-          />
-        </div>
-        <p className="text-xs text-muted-foreground">
-          Use "inherit" para usar a cor padrão do tema ou insira HSL personalizado
-        </p>
-      </div>
-
-      {/* Highlight Style */}
-      <div className="space-y-3">
-        <Label className="text-sm font-medium">Estilo de Destaque</Label>
-        <RadioGroup
-          value={part.highlight_style}
-          onValueChange={(value: HeroTitleHighlightStyle) => onChange({ ...part, highlight_style: value })}
-          className="grid gap-2 grid-cols-3 sm:grid-cols-4 lg:grid-cols-6"
-        >
-          {highlightStyles.map((style) => (
-            <div key={style.value} className="relative">
-              <RadioGroupItem
-                value={style.value}
-                id={`style-${label}-${style.value}`}
-                className="peer sr-only"
-              />
-              <Label
-                htmlFor={`style-${label}-${style.value}`}
-                className="flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 cursor-pointer transition-all text-center hover:bg-muted hover:border-muted-foreground/30 peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/10 peer-data-[state=checked]:shadow-md"
-              >
-                <span className="text-lg">{style.icon}</span>
-                <span className="text-xs font-medium leading-tight">{style.label}</span>
-              </Label>
-            </div>
-          ))}
-        </RadioGroup>
+      {/* Color Preview */}
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <div 
+          className="w-4 h-4 rounded-full border"
+          style={{ 
+            backgroundColor: color === 'foreground' 
+              ? 'hsl(var(--foreground))' 
+              : color === 'primary'
+              ? 'hsl(var(--primary))'
+              : `hsl(${color})` 
+          }}
+        />
+        <span>Usa {colorLabel}</span>
       </div>
     </div>
   );
 }
 
-function HeroTitlePreview({ parts }: { parts: { top: HeroTitlePart; middle: HeroTitlePart; bottom: HeroTitlePart } }) {
-  const renderPart = (part: HeroTitlePart, size: 'sm' | 'lg' | 'md' = 'md') => {
-    const textColor = part.color === 'inherit' ? 'hsl(var(--primary))' : `hsl(${part.color})`;
-    const sizeClass = size === 'lg' ? 'text-3xl md:text-4xl' : size === 'sm' ? 'text-xl md:text-2xl' : 'text-2xl md:text-3xl';
-    
-    const getHighlightClasses = () => {
-      switch (part.highlight_style) {
-        case 'underline':
-          return 'border-b-4 border-current pb-1';
-        case 'rounded':
-          return 'bg-current/15 px-5 py-2 rounded-2xl';
-        case 'pill':
-          return 'bg-current/15 px-7 py-2 rounded-full';
-        case 'thought':
-          return 'relative bg-current/10 px-5 py-3 rounded-[2rem] before:content-[""] before:absolute before:-bottom-2 before:left-6 before:w-5 before:h-5 before:bg-current/10 before:rounded-full after:content-[""] after:absolute after:-bottom-5 after:left-3 after:w-3 after:h-3 after:bg-current/10 after:rounded-full';
-        case 'bubble':
-          return 'relative bg-current/15 px-5 py-3 rounded-[1.5rem] before:content-[""] before:absolute before:-bottom-3 before:left-8 before:border-[12px] before:border-transparent before:border-t-current/15';
-        case 'marker':
-          return 'bg-gradient-to-r from-yellow-300/50 to-yellow-200/30 px-3 py-1 -skew-x-2 rounded-lg';
-        case 'glow':
-          return 'drop-shadow-[0_0_25px_currentColor] drop-shadow-[0_0_50px_currentColor]';
-        case 'gradient':
-          return 'bg-gradient-to-r from-current via-accent to-primary bg-clip-text text-transparent';
-        case 'box':
-          return 'border-3 border-current px-5 py-2 rounded-xl';
-        case 'circle':
-          return 'bg-current/15 px-8 py-3 rounded-full inline-flex items-center justify-center';
-        case 'scratch':
-          return 'relative before:content-[""] before:absolute before:inset-0 before:bg-current/10 before:-skew-y-2 before:rounded-xl before:-z-10';
-        default:
-          return '';
-      }
-    };
-
-    return (
-      <span 
-        className={`${sizeClass} font-bold ${getHighlightClasses()} inline-block leading-relaxed`}
-        style={{ color: textColor }}
-      >
-        {part.text || '...'}
-      </span>
-    );
+function HeroTitlePreview({ 
+  parts, 
+  color1, 
+  color2 
+}: { 
+  parts: { part1: string; part2: string; part3: string; part4: string };
+  color1: string;
+  color2: string;
+}) {
+  const getColorStyle = (color: string) => {
+    if (color === 'foreground') return 'hsl(var(--foreground))';
+    if (color === 'primary') return 'hsl(var(--primary))';
+    return `hsl(${color})`;
   };
 
   return (
@@ -217,59 +190,125 @@ function HeroTitlePreview({ parts }: { parts: { top: HeroTitlePart; middle: Hero
         <span className="text-xs text-muted-foreground ml-2">Prévia ao Vivo</span>
       </div>
       
-      <div className="text-center space-y-3 py-4">
-        {/* Top - Smaller */}
-        <div className="animate-fade-in">{renderPart(parts.top, 'sm')}</div>
-        {/* Middle - Larger (Main Highlight) */}
-        <div className="animate-fade-in" style={{ animationDelay: '100ms' }}>{renderPart(parts.middle, 'lg')}</div>
-        {/* Bottom - Medium */}
-        <div className="animate-fade-in" style={{ animationDelay: '200ms' }}>{renderPart(parts.bottom, 'md')}</div>
+      <div className="text-center py-4">
+        <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold leading-tight">
+          <span style={{ color: getColorStyle(color1) }}>{parts.part1 || '...'} </span>
+          <span style={{ color: getColorStyle(color2) }}>{parts.part2 || '...'} </span>
+          <span style={{ color: getColorStyle(color1) }}>{parts.part3 || '...'} </span>
+          <span className="relative" style={{ color: getColorStyle(color2) }}>
+            {parts.part4 || '...'}
+            <svg className="absolute -bottom-1 left-0 w-full" viewBox="0 0 200 10" fill="none">
+              <path d="M0 8 Q50 0, 100 8 T200 8" stroke="currentColor" strokeWidth="3" className="opacity-30"/>
+            </svg>
+          </span>
+        </h1>
       </div>
     </div>
   );
 }
 
-export function HeroTitleEditor({ titleParts, onChange }: HeroTitleEditorProps) {
+export function HeroTitleEditor({ 
+  heroTitle, 
+  heroTitleHighlight, 
+  heroTitlePart3,
+  heroTitlePart4,
+  color1,
+  color2,
+  onChange 
+}: HeroTitleEditorProps) {
+  const handleChange = (field: string, value: string) => {
+    onChange({
+      heroTitle: field === 'heroTitle' ? value : heroTitle,
+      heroTitleHighlight: field === 'heroTitleHighlight' ? value : heroTitleHighlight,
+      heroTitlePart3: field === 'heroTitlePart3' ? value : heroTitlePart3,
+      heroTitlePart4: field === 'heroTitlePart4' ? value : heroTitlePart4,
+      color1: field === 'color1' ? value : color1,
+      color2: field === 'color2' ? value : color2,
+    });
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <Label className="text-lg font-bold">Editor de Título Hero</Label>
           <p className="text-sm text-muted-foreground">
-            Configure cada linha com texto, cor e estilo de destaque únicos
+            Configure o título com 4 partes e 2 cores alternadas
           </p>
         </div>
-        <Badge variant="outline" className="rounded-full">3 Partes</Badge>
+        <Badge variant="outline" className="rounded-full">4 Partes</Badge>
       </div>
 
       {/* Preview First */}
-      <HeroTitlePreview parts={titleParts} />
+      <HeroTitlePreview 
+        parts={{
+          part1: heroTitle,
+          part2: heroTitleHighlight,
+          part3: heroTitlePart3,
+          part4: heroTitlePart4,
+        }}
+        color1={color1}
+        color2={color2}
+      />
 
-      {/* Editors */}
+      {/* Color Pickers */}
+      <div className="grid md:grid-cols-2 gap-4">
+        <div className="p-4 border rounded-xl bg-muted/30">
+          <ColorPicker
+            label="Cor 1 (Partes 1 e 3)"
+            value={color1}
+            onChange={(v) => handleChange('color1', v)}
+          />
+        </div>
+        <div className="p-4 border rounded-xl bg-gradient-to-br from-primary/10 to-transparent border-primary/30">
+          <ColorPicker
+            label="Cor 2 (Partes 2 e 4 - Destaque)"
+            value={color2}
+            onChange={(v) => handleChange('color2', v)}
+          />
+        </div>
+      </div>
+
+      {/* Text Editors */}
       <div className="space-y-4">
         <TitlePartEditor
-          label="Linha Superior"
-          description="Primeira linha do título (texto menor)"
+          label="Parte 1"
+          description="Primeira parte do título"
           partNumber={1}
-          part={titleParts.top}
-          onChange={(part) => onChange({ ...titleParts, top: part })}
+          value={heroTitle}
+          color={color1}
+          colorLabel="Cor 1"
+          onChange={(v) => handleChange('heroTitle', v)}
         />
 
         <TitlePartEditor
-          label="Linha Central — Destaque Principal"
-          description="Linha central com maior destaque visual"
+          label="Parte 2 — Destaque"
+          description="Segunda parte com destaque"
           partNumber={2}
-          part={titleParts.middle}
-          onChange={(part) => onChange({ ...titleParts, middle: part })}
-          isMiddle={true}
+          value={heroTitleHighlight}
+          color={color2}
+          colorLabel="Cor 2"
+          onChange={(v) => handleChange('heroTitleHighlight', v)}
         />
 
         <TitlePartEditor
-          label="Linha Inferior"
-          description="Terceira linha do título"
+          label="Parte 3"
+          description="Terceira parte do título"
           partNumber={3}
-          part={titleParts.bottom}
-          onChange={(part) => onChange({ ...titleParts, bottom: part })}
+          value={heroTitlePart3}
+          color={color1}
+          colorLabel="Cor 1"
+          onChange={(v) => handleChange('heroTitlePart3', v)}
+        />
+
+        <TitlePartEditor
+          label="Parte 4 — Destaque Final"
+          description="Quarta parte com sublinhado decorativo"
+          partNumber={4}
+          value={heroTitlePart4}
+          color={color2}
+          colorLabel="Cor 2"
+          onChange={(v) => handleChange('heroTitlePart4', v)}
         />
       </div>
     </div>
