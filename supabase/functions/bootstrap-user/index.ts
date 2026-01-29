@@ -92,7 +92,7 @@ Deno.serve(async (req) => {
 
     // Create a new tenant (organization) for this signup
     const baseNameRaw = (requestedTenantName || userMetadata?.tenant_name || userMetadata?.business_name || userMetadata?.full_name || userEmail)?.toString()
-    const baseName = (baseNameRaw || 'Novo restaurante').trim().slice(0, 80)
+    const baseName = (baseNameRaw || 'Novo estabelecimento').trim().slice(0, 80)
 
     const slugify = (input: string) => {
       const normalized = input
@@ -101,7 +101,7 @@ Deno.serve(async (req) => {
         .replace(/[\u0300-\u036f]/g, '')
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-+|-+$/g, '')
-      return normalized || 'restaurante'
+      return normalized || 'estabelecimento'
     }
 
     const slugBase = slugify(baseName)
