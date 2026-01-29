@@ -161,7 +161,8 @@ export function usePublicSettings() {
 
       return settingsMap;
     },
-    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
+    staleTime: 1000 * 30, // Cache for 30 seconds to ensure fresh data
+    refetchOnWindowFocus: true, // Refetch when user returns to the page
   });
 
   return {

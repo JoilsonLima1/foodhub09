@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Save, Image, Palette, MessageSquare, Calendar, Layout, Megaphone } from 'lucide-react';
-import { useSystemSettings, BrandingSettings as BrandingType, ColorSettings, WhatsAppSettings, TrialSettings, LandingLayoutSettings, AnnouncementBannerSettings, AnnouncementBannerStyle } from '@/hooks/useSystemSettings';
+import { useSystemSettings, BrandingSettings as BrandingType, ColorSettings, WhatsAppSettings, TrialSettings, LandingLayoutSettings, AnnouncementBannerSettings, AnnouncementBannerStyle, HeroTitlePart } from '@/hooks/useSystemSettings';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { ImageUploader } from './ImageUploader';
@@ -80,6 +80,20 @@ export function BrandingSettings() {
     if (trialPeriod) setTrialData(trialPeriod);
     if (landingLayout) {
       setLandingData(landingLayout);
+      // Load hero title colors from landing layout if available
+      if (landingLayout.hero_title_parts) {
+        // Use the middle part color as color2 (highlight) and infer color1
+        const middleColor = landingLayout.hero_title_parts.middle?.color;
+        const topColor = landingLayout.hero_title_parts.top?.color;
+        if (middleColor && middleColor !== 'inherit') {
+          setHeroColor2(middleColor);
+        }
+        if (topColor && topColor !== 'inherit') {
+          setHeroColor1(topColor);
+        } else {
+          setHeroColor1('foreground');
+        }
+      }
     }
   }, [branding, colors, whatsapp, trialPeriod, landingLayout]);
 
@@ -100,7 +114,16 @@ export function BrandingSettings() {
   };
 
   const handleSaveLanding = () => {
-    updateSetting.mutate({ key: 'landing_layout', value: landingData });
+    // Include hero_title_parts with color information for the landing page to use
+    const updatedLandingData: LandingLayoutSettings = {
+      ...landingData,
+      hero_title_parts: {
+        top: { text: landingData.hero_title, color: heroColor1, highlight_style: 'none' },
+        middle: { text: landingData.hero_title_highlight, color: heroColor2, highlight_style: 'rounded' },
+        bottom: { text: `${landingData.hero_title_part3 || ''} ${landingData.hero_title_part4 || ''}`.trim(), color: heroColor2, highlight_style: 'underline' },
+      },
+    };
+    updateSetting.mutate({ key: 'landing_layout', value: updatedLandingData });
   };
 
   if (isLoading) {
