@@ -114,7 +114,43 @@ async function processPixModuleCheckout(
   );
 }
 
-// Process Asaas checkout for module
+// Find or create Asaas customer
+async function findOrCreateAsaasCustomer(
+  baseUrl: string,
+  apiKey: string,
+  user: any
+): Promise<string> {
+  const searchResponse = await fetch(
+    `${baseUrl}/customers?email=${encodeURIComponent(user.email)}`,
+    { headers: { 'access_token': apiKey } }
+  );
+  const searchResult = await searchResponse.json();
+
+  if (searchResult.data?.length > 0) {
+    return searchResult.data[0].id;
+  }
+
+  const createResponse = await fetch(`${baseUrl}/customers`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'access_token': apiKey
+    },
+    body: JSON.stringify({
+      name: user.user_metadata?.full_name || user.email.split('@')[0],
+      email: user.email,
+      externalReference: user.id
+    })
+  });
+
+  const newCustomer = await createResponse.json();
+  if (newCustomer.errors) {
+    throw new Error("Falha ao criar cliente no Asaas");
+  }
+  return newCustomer.id;
+}
+
+// Process Asaas checkout for module - creates dynamic payment
 async function processAsaasModuleCheckout(
   module: any,
   user: any,
@@ -123,16 +159,51 @@ async function processAsaasModuleCheckout(
 ) {
   logStep("Processing Asaas module checkout", { moduleId: module.id });
 
-  const asaasUrl = gatewayConfig?.config?.checkout_url || null;
-
-  if (!asaasUrl) {
-    throw new Error("Asaas não configurado corretamente");
+  const asaasApiKey = Deno.env.get("ASAAS_API_KEY");
+  if (!asaasApiKey) {
+    throw new Error("Asaas API Key não configurada");
   }
+
+  const environment = gatewayConfig?.config?.environment || 'sandbox';
+  const baseUrl = environment === 'production'
+    ? 'https://api.asaas.com/v3'
+    : 'https://sandbox.asaas.com/api/v3';
+
+  const customerId = await findOrCreateAsaasCustomer(baseUrl, asaasApiKey, user);
+
+  const dueDate = new Date();
+  dueDate.setDate(dueDate.getDate() + 3);
+
+  const paymentResponse = await fetch(`${baseUrl}/payments`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'access_token': asaasApiKey
+    },
+    body: JSON.stringify({
+      customer: customerId,
+      billingType: 'UNDEFINED',
+      value: module.monthly_price,
+      dueDate: dueDate.toISOString().split('T')[0],
+      description: `Módulo ${module.name} - FoodHub`,
+      externalReference: `module_${module.id}_tenant_${tenantId}`
+    })
+  });
+
+  const payment = await paymentResponse.json();
+
+  if (payment.errors) {
+    logStep("Asaas payment creation failed", { errors: payment.errors });
+    throw new Error("Falha ao criar cobrança no Asaas");
+  }
+
+  logStep("Asaas module payment created", { paymentId: payment.id });
 
   return new Response(
     JSON.stringify({
       gateway: 'asaas',
-      url: asaasUrl,
+      url: payment.invoiceUrl,
+      payment_id: payment.id,
       module_id: module.id,
       user_id: user.id,
       tenant_id: tenantId
@@ -267,7 +338,9 @@ serve(async (req) => {
       "Gateway de pagamento não disponível",
       "Gateway não suportado",
       "PIX não configurado corretamente",
-      "Asaas não configurado corretamente",
+      "Asaas API Key não configurada",
+      "Falha ao criar cliente no Asaas",
+      "Falha ao criar cobrança no Asaas",
       "Módulo já está ativo"
     ];
     const clientError = safeErrors.includes(errorMessage) ? errorMessage : "Checkout failed";

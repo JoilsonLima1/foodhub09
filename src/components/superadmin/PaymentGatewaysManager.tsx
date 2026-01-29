@@ -57,7 +57,7 @@ export function PaymentGatewaysManager() {
     config: {
       pix_key: '',
       qr_code_url: '',
-      checkout_url: '',
+      environment: 'sandbox' as 'sandbox' | 'production',
     },
   });
 
@@ -74,7 +74,7 @@ export function PaymentGatewaysManager() {
         config: {
           pix_key: config.pix_key || '',
           qr_code_url: config.qr_code_url || '',
-          checkout_url: config.checkout_url || '',
+          environment: config.environment || 'sandbox',
         },
       });
     } else {
@@ -88,7 +88,7 @@ export function PaymentGatewaysManager() {
         config: {
           pix_key: '',
           qr_code_url: '',
-          checkout_url: '',
+          environment: 'sandbox',
         },
       });
     }
@@ -102,7 +102,7 @@ export function PaymentGatewaysManager() {
       if (formData.config.pix_key) config.pix_key = formData.config.pix_key;
       if (formData.config.qr_code_url) config.qr_code_url = formData.config.qr_code_url;
     } else if (formData.provider === 'asaas') {
-      if (formData.config.checkout_url) config.checkout_url = formData.config.checkout_url;
+      config.environment = formData.config.environment;
     }
 
     const payload = {
@@ -238,11 +238,10 @@ export function PaymentGatewaysManager() {
                 )}
                 {gateway.provider === 'asaas' && (
                   <div className="text-xs space-y-1">
-                    {(gateway.config as any)?.checkout_url ? (
-                      <p className="text-green-600">✓ URL de checkout configurada</p>
-                    ) : (
-                      <p className="text-destructive">⚠ URL de checkout não configurada</p>
-                    )}
+                    <p className="text-muted-foreground">
+                      Ambiente: {(gateway.config as any)?.environment === 'production' ? 'Produção' : 'Sandbox'}
+                    </p>
+                    <p className="text-green-600">✓ API dinâmica (PIX, Cartão, Boleto)</p>
                   </div>
                 )}
               </CardContent>
@@ -346,20 +345,35 @@ export function PaymentGatewaysManager() {
 
             {/* Asaas-specific fields */}
             {formData.provider === 'asaas' && (
-              <div className="space-y-2">
-                <Label htmlFor="checkout_url">URL de Checkout do Asaas *</Label>
-                <Input
-                  id="checkout_url"
-                  value={formData.config.checkout_url}
-                  onChange={(e) => setFormData({ 
-                    ...formData, 
-                    config: { ...formData.config, checkout_url: e.target.value } 
-                  })}
-                  placeholder="https://www.asaas.com/c/..."
-                />
-                <p className="text-xs text-muted-foreground">
-                  Link de pagamento do Asaas (crie em: Cobranças → Links de Pagamento)
-                </p>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Ambiente</Label>
+                  <Select
+                    value={formData.config.environment}
+                    onValueChange={(value: 'sandbox' | 'production') => setFormData({ 
+                      ...formData, 
+                      config: { ...formData.config, environment: value } 
+                    })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="sandbox">Sandbox (Testes)</SelectItem>
+                      <SelectItem value="production">Produção</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Use Sandbox para testes. Mude para Produção quando estiver pronto.
+                  </p>
+                </div>
+                <div className="p-3 bg-muted rounded-lg text-sm">
+                  <p className="font-medium mb-1">ℹ️ Integração Dinâmica</p>
+                  <p className="text-muted-foreground">
+                    A API Key do Asaas está configurada nos secrets do sistema. 
+                    As cobranças são criadas automaticamente com PIX, Cartão e Boleto disponíveis.
+                  </p>
+                </div>
               </div>
             )}
 
