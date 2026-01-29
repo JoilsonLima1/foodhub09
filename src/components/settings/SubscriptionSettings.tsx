@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Crown, Calendar, CreditCard, ExternalLink, Loader2, AlertTriangle, Check, Clock, Gift, Receipt, Wallet, RefreshCw } from 'lucide-react';
+import { Crown, Calendar, CreditCard, ExternalLink, Loader2, AlertTriangle, Check, Clock, Gift, Receipt, Wallet, RefreshCw, ArrowUp, ArrowDown } from 'lucide-react';
 import { useTrialStatus } from '@/hooks/useTrialStatus';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { CheckoutDialog } from '@/components/checkout/CheckoutDialog';
+import { PlanChangeDialog } from '@/components/settings/PlanChangeDialog';
 import { cn } from '@/lib/utils';
 
 interface CheckoutPendingData {
@@ -26,14 +27,26 @@ interface SubscriptionPlan {
   slug: string;
   monthly_price: number;
   description: string | null;
+  display_order?: number;
   max_users: number | null;
   max_products: number | null;
+  max_orders_per_month?: number | null;
   feature_pos: boolean | null;
+  feature_kitchen_display?: boolean | null;
   feature_stock_control: boolean | null;
   feature_ai_forecast: boolean | null;
   feature_reports_basic: boolean | null;
   feature_reports_advanced: boolean | null;
   feature_delivery_management: boolean | null;
+  feature_multi_branch?: boolean | null;
+  feature_api_access?: boolean | null;
+  feature_white_label?: boolean | null;
+  feature_priority_support?: boolean | null;
+  feature_custom_integrations?: boolean | null;
+  feature_cmv_reports?: boolean | null;
+  feature_goal_notifications?: boolean | null;
+  feature_courier_app?: boolean | null;
+  feature_public_menu?: boolean | null;
 }
 
 export function SubscriptionSettings() {
@@ -49,6 +62,10 @@ export function SubscriptionSettings() {
   const [checkoutPending, setCheckoutPending] = useState<CheckoutPendingData | null>(null);
   const [isPolling, setIsPolling] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  
+  // Plan change dialog state
+  const [planChangeOpen, setPlanChangeOpen] = useState(false);
+  const [targetPlanForChange, setTargetPlanForChange] = useState<SubscriptionPlan | null>(null);
 
   // Detect checkout pending on page load (user returning from payment)
   useEffect(() => {
@@ -123,7 +140,7 @@ export function SubscriptionSettings() {
       try {
         const { data, error } = await supabase
           .from('subscription_plans')
-          .select('id, name, slug, monthly_price, description, max_users, max_products, feature_pos, feature_stock_control, feature_ai_forecast, feature_reports_basic, feature_reports_advanced, feature_delivery_management')
+          .select('id, name, slug, monthly_price, description, display_order, max_users, max_products, max_orders_per_month, feature_pos, feature_kitchen_display, feature_stock_control, feature_ai_forecast, feature_reports_basic, feature_reports_advanced, feature_delivery_management, feature_multi_branch, feature_api_access, feature_white_label, feature_priority_support, feature_custom_integrations, feature_cmv_reports, feature_goal_notifications, feature_courier_app, feature_public_menu')
           .eq('is_active', true)
           .order('display_order');
         
@@ -139,6 +156,19 @@ export function SubscriptionSettings() {
     fetchPlans();
   }, []);
 
+  // Get the current plan object
+  const currentPlan = plans.find(p => p.id === subscriptionStatus?.tenantPlanId) || null;
+
+  // Determine if target plan is upgrade or downgrade
+  const getChangeType = (targetPlan: SubscriptionPlan): 'upgrade' | 'downgrade' | 'same' => {
+    if (!currentPlan) return 'upgrade';
+    const currentOrder = currentPlan.display_order ?? currentPlan.monthly_price;
+    const targetOrder = targetPlan.display_order ?? targetPlan.monthly_price;
+    if (targetOrder > currentOrder) return 'upgrade';
+    if (targetOrder < currentOrder) return 'downgrade';
+    return 'same';
+  };
+
   const handleSelectPlan = (plan: SubscriptionPlan) => {
     if (!session?.access_token) {
       toast({
@@ -149,6 +179,14 @@ export function SubscriptionSettings() {
       return;
     }
 
+    // If user already has a plan, open the comparison dialog
+    if (subscriptionStatus?.tenantPlanId && plan.id !== subscriptionStatus.tenantPlanId) {
+      setTargetPlanForChange(plan);
+      setPlanChangeOpen(true);
+      return;
+    }
+
+    // If no current plan, proceed with checkout
     if (plan.monthly_price === 0) {
       toast({
         title: 'Plano Grátis',
@@ -159,6 +197,15 @@ export function SubscriptionSettings() {
 
     setSelectedPlan(plan);
     setCheckoutOpen(true);
+  };
+
+  // Handle successful plan change
+  const handlePlanChangeSuccess = () => {
+    forceRefresh();
+    toast({
+      title: 'Plano alterado com sucesso!',
+      description: 'As permissões foram atualizadas conforme o novo plano.',
+    });
   };
 
   const handleManageSubscription = async () => {
@@ -688,11 +735,11 @@ export function SubscriptionSettings() {
       <Card>
         <CardHeader>
           <CardTitle>
-            {hasContractedPlan ? 'Fazer Upgrade' : 'Planos Disponíveis'}
+            {hasContractedPlan ? 'Alterar Plano' : 'Planos Disponíveis'}
           </CardTitle>
           <CardDescription>
             {hasContractedPlan 
-              ? 'Escolha um plano superior para mais recursos'
+              ? 'Compare os planos e escolha a melhor opção para seu negócio'
               : 'Compare os planos e escolha o melhor para seu negócio'}
           </CardDescription>
         </CardHeader>
@@ -767,10 +814,23 @@ export function SubscriptionSettings() {
                       </>
                     ) : plan.monthly_price === 0 ? (
                       'Selecionar Grátis'
+                    ) : hasContractedPlan ? (
+                      // Show upgrade/downgrade based on plan comparison
+                      getChangeType(plan) === 'upgrade' ? (
+                        <>
+                          <ArrowUp className="h-4 w-4 mr-2" />
+                          Fazer Upgrade
+                        </>
+                      ) : (
+                        <>
+                          <ArrowDown className="h-4 w-4 mr-2" />
+                          Alterar Plano
+                        </>
+                      )
                     ) : (
                       <>
                         <Crown className="h-4 w-4 mr-2" />
-                        {hasContractedPlan ? 'Fazer Upgrade' : 'Contratar Plano'}
+                        Contratar Plano
                       </>
                     )}
                   </Button>
@@ -790,6 +850,17 @@ export function SubscriptionSettings() {
           itemId={selectedPlan.id}
           itemName={selectedPlan.name}
           itemPrice={selectedPlan.monthly_price}
+        />
+      )}
+
+      {/* Plan Change Dialog for upgrade/downgrade */}
+      {targetPlanForChange && (
+        <PlanChangeDialog
+          open={planChangeOpen}
+          onOpenChange={setPlanChangeOpen}
+          currentPlan={currentPlan}
+          targetPlan={targetPlanForChange}
+          onSuccess={handlePlanChangeSuccess}
         />
       )}
     </div>
