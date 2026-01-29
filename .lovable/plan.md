@@ -1,199 +1,151 @@
 
-# Plano de Implementação
+# Plano de Verificação e Correção: Módulos, Fluxo de Compra e Categoria do Negócio
 
-Este plano abrange três funcionalidades: **notificações por email quando metas são atingidas**, **dashboard específico para entregadores**, e **previsão de vendas com inteligência artificial**.
+## 📋 Resumo dos Problemas Identificados
 
----
+Após análise detalhada do código e banco de dados, identifiquei os seguintes problemas:
 
-## 1. Notificações por Email para Metas Atingidas
+### 1. **Categoria de Negócio Não Refletindo na Organização**
+- **Problema**: Quando o usuário seleciona uma categoria diferente de "restaurant" no cadastro, o sistema está salvando a categoria corretamente no banco (tabela `tenants.business_category`), MAS:
+  - O nome default do tenant usa "Novo restaurante" como fallback (linha 95 do `bootstrap-user`)
+  - O label no form de cadastro ainda diz "Restaurante / Organização" 
+  - O placeholder diz "Nome do seu restaurante"
+  - A terminologia no dashboard não muda baseado na categoria selecionada
 
-### O que será feito
-Quando uma meta de vendas (diária ou semanal) for atingida, o sistema enviará automaticamente um email de celebração para os gestores do restaurante.
+### 2. **Módulos Adicionais Funcionando**
+- ✅ Módulos estão cadastrados e ativos (9 módulos no catálogo)
+- ✅ Hook `useAddonModules` funciona corretamente
+- ⚠️ Nenhuma assinatura de módulo adicional ativa ainda (`tenant_addon_subscriptions` vazia)
+- ✅ Super Admin pode atribuir módulos via `TenantAddonsManager`
 
-### Componentes técnicos
+### 3. **Fluxo de Compra (Checkout)**
+- ✅ Planos cadastrados com IDs Stripe corretos
+- ✅ Edge function `create-checkout` funciona
+- ✅ Trial de 14 dias configurado
+- ⚠️ PIX API: Gateway Asaas está ativo, mas não está integrado no fluxo de checkout (apenas Stripe está implementado)
 
-**Edge Function: `send-goal-notification`**
-- Recebe dados da meta atingida (tipo, valor, tenant)
-- Busca emails dos usuários com role `admin` ou `manager` do tenant
-- Envia email de parabéns usando Resend
-- Registra o envio para evitar notificações duplicadas
-
-**Nova tabela: `goal_notifications_sent`**
-- Armazena registro de quais metas já tiveram notificação enviada
-- Evita spam quando a meta é atingida múltiplas vezes no mesmo período
-
-**Modificação no hook `useSalesGoals`**
-- Detecta quando a meta passa de < 100% para >= 100%
-- Chama a edge function para enviar notificação
-
----
-
-## 2. Dashboard Específico para Entregadores
-
-### O que será feito
-Uma nova página acessível por entregadores mostrando apenas as entregas do dia atribuídas a eles, com ações simplificadas.
-
-### Componentes
-
-**Nova página: `/courier-dashboard`**
-- Layout otimizado para mobile
-- Mostra apenas entregas do dia do entregador logado
-- Cards grandes com botões de ação rápida
-
-**Componentes visuais**
-- Resumo do dia: total de entregas, completadas, pendentes
-- Lista de entregas com ações: "Coletei", "Em Rota", "Entregue"
-- Mapa simplificado com endereços (usando links para Google Maps)
-
-**Hook: `useCourierDeliveries`**
-- Busca entregas filtradas pelo `courier_id` do usuário logado
-- Atualização em tempo real via Supabase Realtime
+### 4. **API do PIX na Página de Vendas**
+- ❌ O checkout atual usa apenas Stripe
+- O gateway PIX/Asaas está cadastrado mas não conectado ao fluxo de compra de planos
 
 ---
 
-## 3. Previsão de Vendas com IA
+## 🔧 Plano de Correção
 
-### O que será feito
-Usar o histórico de vendas para prever o faturamento dos próximos dias usando Lovable AI.
+### Fase 1: Corrigir Categoria de Negócio no Cadastro
 
-### Componentes
+**1.1 Atualizar label e placeholder dinâmicos no Auth.tsx**
+- Mudar "Restaurante / Organização" para "Nome do seu Negócio"
+- Mudar placeholder de "Nome do seu restaurante" para "Nome do estabelecimento"
 
-**Edge Function: `sales-forecast`**
-- Coleta histórico de vendas dos últimos 30-60 dias
-- Usa Lovable AI (Gemini) para analisar padrões e gerar previsões
-- Retorna previsão para os próximos 7 dias
+**1.2 Atualizar fallback no bootstrap-user**
+- Trocar "Novo restaurante" por "Novo estabelecimento" como fallback genérico
+- Garantir que a categoria selecionada seja passada e salva corretamente
 
-**Componente: `SalesForecastCard`**
-- Exibe gráfico de previsão vs realizado
-- Mostra tendência (crescimento/queda)
-- Indicadores de confiança da previsão
-
-**Hook: `useSalesForecast`**
-- Chama a edge function de previsão
-- Cache dos resultados para não chamar IA repetidamente
+**1.3 Verificar uso da categoria no Dashboard**
+- O `BusinessCategoryContext` já carrega a terminologia correta
+- O problema é que a categoria está sendo salva como "restaurant" por padrão
+- Verificar se o `signupBusinessCategory` está sendo enviado corretamente
 
 ---
 
-## Arquivos a Criar
+### Fase 2: Garantir Template por Categoria
 
-| Arquivo | Propósito |
-|---------|-----------|
-| `supabase/functions/send-goal-notification/index.ts` | Edge function para envio de emails |
-| `supabase/functions/sales-forecast/index.ts` | Edge function para previsão com IA |
-| `src/pages/CourierDashboard.tsx` | Dashboard do entregador |
-| `src/hooks/useCourierDeliveries.ts` | Hook para entregas do entregador |
-| `src/hooks/useSalesForecast.ts` | Hook para previsão de vendas |
-| `src/components/dashboard/SalesForecastCard.tsx` | Card de previsão de vendas |
-| `src/components/courier/CourierDeliveryCard.tsx` | Card de entrega para courier |
-| `src/components/courier/CourierStats.tsx` | Estatísticas do entregador |
+**2.1 Verificar exibição do nome correto da categoria**
+- A tabela `business_category_configs` tem as configurações de terminologia
+- Cada categoria (pizzaria, sorveteria, lanchonete, etc.) tem sua própria terminologia
+- O sistema já busca e aplica via `useTenantCategory`
 
-## Arquivos a Modificar
+**2.2 Recursos do Dashboard por Categoria**
+- O `hasFeature` no `BusinessCategoryContext` controla quais features aparecem
+- Cada categoria tem `features` definidas (tables, kitchen_display, delivery, pos, etc.)
+- O sidebar já filtra baseado em `hasFeature`
 
-| Arquivo | Modificação |
-|---------|-------------|
-| `src/hooks/useSalesGoals.ts` | Adicionar detecção de meta atingida e chamada da edge function |
-| `src/App.tsx` | Adicionar rota `/courier-dashboard` |
-| `src/components/layout/AppSidebar.tsx` | Adicionar link para dashboard do entregador |
-| `src/pages/Dashboard.tsx` | Adicionar card de previsão de vendas |
-| `supabase/config.toml` | Registrar novas edge functions |
+---
 
-## Migração de Banco de Dados
+### Fase 3: PIX na Landing Page (Opcional)
 
-```text
-┌────────────────────────────────────────────┐
-│ Tabela: goal_notifications_sent            │
-├────────────────────────────────────────────┤
-│ id (uuid) PK                               │
-│ tenant_id (uuid) FK → tenants              │
-│ goal_id (uuid) FK → sales_goals            │
-│ notification_type (text) - 'achieved'      │
-│ sent_at (timestamptz)                      │
-│ recipients (jsonb) - lista de emails       │
-└────────────────────────────────────────────┘
+**3.1 Situação Atual**
+- O checkout só suporta Stripe (cartão de crédito)
+- PIX via Asaas está cadastrado mas não implementado
+
+**3.2 Opções**
+- **Opção A**: Manter apenas Stripe (recomendado para simplicidade)
+- **Opção B**: Implementar checkout alternativo com PIX/Asaas (requer nova edge function)
+
+---
+
+## 📝 Alterações Técnicas Necessárias
+
+### Arquivo: `src/pages/Auth.tsx`
+```tsx
+// Linha 260 - Mudar label
+<Label htmlFor="signup-tenant">Nome do seu Negócio</Label>
+
+// Linha 264 - Mudar placeholder  
+placeholder="Nome do estabelecimento"
 ```
 
-## Fluxo de Notificação de Meta
+### Arquivo: `supabase/functions/bootstrap-user/index.ts`
+```typescript
+// Linha 95 - Mudar fallback
+const baseName = (baseNameRaw || 'Novo estabelecimento').trim().slice(0, 80)
 
-```text
-┌──────────────────┐     ┌──────────────────┐     ┌──────────────────┐
-│  useSalesGoals   │────▶│  Edge Function   │────▶│     Resend       │
-│  detecta meta    │     │  send-goal-      │     │     API          │
-│  atingida        │     │  notification    │     │                  │
-└──────────────────┘     └──────────────────┘     └──────────────────┘
-                                │
-                                ▼
-                         ┌──────────────────┐
-                         │ Registra em      │
-                         │ goal_notif_sent  │
-                         └──────────────────┘
+// Linha 104 - Mudar slugify fallback
+return normalized || 'estabelecimento'
 ```
 
-## Fluxo de Previsão de Vendas
+### Verificação de Fluxo
 
 ```text
-┌──────────────────┐     ┌──────────────────┐     ┌──────────────────┐
-│  Dashboard       │────▶│  Edge Function   │────▶│   Lovable AI     │
-│  carrega         │     │  sales-forecast  │     │   (Gemini)       │
-└──────────────────┘     └──────────────────┘     └──────────────────┘
-                                │
-                                ▼
-                         ┌──────────────────┐
-                         │ Retorna previsão │
-                         │ 7 dias + análise │
-                         └──────────────────┘
+Signup Flow:
+┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
+│  Auth.tsx       │────►│ signUp()         │────►│ bootstrap-user  │
+│  Category: X    │     │ businessCategory │     │ Cria tenant     │
+│  Name: "Loja Y" │     │ = X              │     │ category = X    │
+└─────────────────┘     └──────────────────┘     └─────────────────┘
+                                                          │
+                                                          ▼
+                                                 ┌─────────────────┐
+                                                 │ Dashboard       │
+                                                 │ Carrega config  │
+                                                 │ da categoria X  │
+                                                 │ Terminologia OK │
+                                                 └─────────────────┘
 ```
-
-## Ordem de Implementação
-
-1. **Configurar secret do Resend** (RESEND_API_KEY)
-2. **Criar tabela de notificações enviadas**
-3. **Implementar edge function de notificação**
-4. **Modificar useSalesGoals para detectar metas**
-5. **Criar dashboard do entregador**
-6. **Implementar edge function de previsão**
-7. **Criar componentes de previsão de vendas**
-8. **Atualizar rotas e sidebar**
 
 ---
 
-## 4. Integração com Balança e Leitor de Código de Barras
+## ✅ Módulos Adicionais - Verificação Completa
 
-### O que foi implementado
-
-**Sistema de Balança (Web Serial API)**
-- Hook `useScale` para comunicação serial com balanças Toledo, Filizola, Urano e compatíveis
-- Componente `ScaleDisplay` com configuração de baudrate, paridade, bits de dados/parada
-- Leitura contínua de peso com indicador de estabilidade
-- Botão de ativação no PDV para mostrar/ocultar painel da balança
-
-**Sistema de Leitura de Código de Barras**
-- Hook `useBarcodeScanner` com dois modos:
-  - **Keyboard**: captura automática de leitores USB que emulam teclado
-  - **Camera**: leitura via câmera usando Barcode Detection API
-- Componente `BarcodeScanner` com tabs para modo automático/manual
-- `QuickScanButton` para acesso rápido no toolbar
-- Suporte a formatos: EAN-13, EAN-8, UPC-A, Code39, Code128, QR Code
-- Busca automática de produto por SKU, ID ou nome
-
-### Arquivos Criados
-| Arquivo | Propósito |
-|---------|-----------|
-| `src/hooks/useScale.ts` | Hook para comunicação serial com balança |
-| `src/hooks/useBarcodeScanner.ts` | Hook para leitura de código de barras |
-| `src/components/pos/ScaleDisplay.tsx` | Componente de exibição da balança |
-| `src/components/pos/BarcodeScanner.tsx` | Componente de scanner de código de barras |
-
-### Arquivos Modificados
-| Arquivo | Modificação |
-|---------|-------------|
-| `src/pages/POS.tsx` | Integração de balança e código de barras |
-| `src/hooks/useProducts.ts` | Adicionado campo SKU para busca por código de barras |
+| Item | Status | Observação |
+|------|--------|------------|
+| Catálogo de módulos | ✅ OK | 9 módulos ativos |
+| Hook useAddonModules | ✅ OK | CRUD funcionando |
+| Super Admin Manager | ✅ OK | TenantAddonsManager.tsx |
+| Atribuição manual | ✅ OK | assignModule mutation |
+| Verificação hasAddon | ✅ OK | tenant_has_addon() function |
+| Compra self-service | ❌ Não implementado | Apenas atribuição manual |
 
 ---
 
-## Resultado Final
+## ✅ Fluxo de Checkout - Verificação
 
-- Gestores recebem email automático quando metas são batidas
-- Entregadores têm dashboard dedicado no celular
-- Dashboard principal mostra previsão de vendas inteligente para os próximos 7 dias
-- PDV integra com balança serial e leitor de código de barras USB/câmera
+| Item | Status | Observação |
+|------|--------|------------|
+| Planos cadastrados | ✅ OK | 4 planos (Free, Starter, Pro, Enterprise) |
+| Stripe IDs | ✅ OK | price_1Stz... configurados |
+| create-checkout | ✅ OK | Edge function funcional |
+| Trial 14 dias | ✅ OK | Configurado em system_settings |
+| Webhook Stripe | ⚠️ Verificar | Precisa confirmar se está recebendo eventos |
+| PIX/Asaas | ❌ Não integrado | Cadastrado mas não no checkout |
+
+---
+
+## 🎯 Próximos Passos (Em Ordem de Prioridade)
+
+1. **Corrigir labels genéricos no cadastro** (Auth.tsx)
+2. **Atualizar fallback no bootstrap-user** (edge function)
+3. **Testar fluxo completo de cadastro** com diferentes categorias
+4. **Verificar se webhook Stripe está funcionando** (para ativar planos automaticamente)
+5. **(Opcional) Implementar PIX no checkout** se necessário
