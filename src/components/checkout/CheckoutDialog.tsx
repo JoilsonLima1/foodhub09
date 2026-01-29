@@ -60,8 +60,21 @@ export function CheckoutDialog({
     return digits.length === 11 || digits.length === 14;
   };
 
+  // Asaas minimum charge limit
+  const ASAAS_MIN_VALUE = 5.00;
+
   const handleConfirmPayment = async () => {
     if (!selectedGateway) return;
+
+    // Asaas exige valor mínimo de R$ 5,00 para cobranças
+    if (selectedGateway.provider === 'asaas' && itemPrice < ASAAS_MIN_VALUE) {
+      toast({
+        title: 'Valor mínimo não atingido',
+        description: `O Asaas exige um valor mínimo de R$ ${ASAAS_MIN_VALUE.toFixed(2)} para cobranças. Ajuste o valor do item ou use outro gateway.`,
+        variant: 'destructive',
+      });
+      return;
+    }
 
     // Asaas exige CPF/CNPJ do cliente para criar a cobrança
     if (selectedGateway.provider === 'asaas' && !isValidCpfCnpj(asaasCpfCnpj)) {

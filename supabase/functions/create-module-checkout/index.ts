@@ -307,6 +307,19 @@ serve(async (req) => {
     }
     logStep("Module found", { name: module.name, price: module.monthly_price });
 
+    // Asaas requires minimum value of R$ 5,00
+    const ASAAS_MIN_VALUE = 5.00;
+    if (gateway === 'asaas' && Number(module.monthly_price) < ASAAS_MIN_VALUE) {
+      logStep("Module price below Asaas minimum", { price: module.monthly_price, minimum: ASAAS_MIN_VALUE });
+      return new Response(
+        JSON.stringify({ 
+          error: `Valor mínimo para Asaas é R$ ${ASAAS_MIN_VALUE.toFixed(2)}. Ajuste o preço do módulo ou use outro gateway.`,
+          code: "ASAAS_MIN_VALUE_ERROR" 
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+      );
+    }
+
     // Check if already subscribed
     const { data: existingSub } = await supabase
       .from("tenant_addon_subscriptions")

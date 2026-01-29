@@ -41,11 +41,16 @@ import {
   Eye,
   EyeOff,
   Gift,
+  AlertTriangle,
 } from 'lucide-react';
 import { useSubscriptionPlans, PLAN_FEATURES } from '@/hooks/useSubscriptionPlans';
+import { useActivePaymentGateways } from '@/hooks/useActivePaymentGateways';
 import { PasswordConfirmDialog } from './PasswordConfirmDialog';
 import { PlanAddonModulesTab } from './PlanAddonModulesTab';
 import type { SubscriptionPlan } from '@/types/database';
+
+// Asaas minimum charge value constant
+const ASAAS_MIN_VALUE = 5.00;
 
 interface PlanCardProps {
   plan: SubscriptionPlan;
@@ -307,7 +312,14 @@ function EditPlanDialog({ plan, open, onOpenChange, onSave, isLoading }: EditPla
                   type="number"
                   value={formData.monthly_price || 0}
                   onChange={(e) => updateField('monthly_price', parseFloat(e.target.value) || 0)}
+                  className={(formData.monthly_price || 0) > 0 && (formData.monthly_price || 0) < ASAAS_MIN_VALUE ? 'border-yellow-500' : ''}
                 />
+                {(formData.monthly_price || 0) > 0 && (formData.monthly_price || 0) < ASAAS_MIN_VALUE && (
+                  <div className="flex items-center gap-1 text-yellow-600 text-xs">
+                    <AlertTriangle className="h-3 w-3" />
+                    Asaas exige mínimo de R$ {ASAAS_MIN_VALUE.toFixed(2)}
+                  </div>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="order">Ordem de Exibição</Label>
