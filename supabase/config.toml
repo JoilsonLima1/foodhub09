@@ -47,3 +47,6 @@ verify_jwt = false
 
 [functions.change-plan]
 verify_jwt = false
+
+[functions.activate-module-manual]
+verify_jwt = false
