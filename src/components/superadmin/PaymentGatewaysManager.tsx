@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Dialog,
   DialogContent,
@@ -31,7 +32,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { Plus, Pencil, Trash2, CreditCard, Save } from 'lucide-react';
+import { Plus, Pencil, Trash2, CreditCard, Save, CheckCircle2, Info } from 'lucide-react';
 import { usePaymentGateways, PaymentGateway } from '@/hooks/usePaymentGateways';
 
 const gatewayProviders = [
@@ -53,24 +54,17 @@ export function PaymentGatewaysManager() {
     api_key_masked: '',
     is_active: false,
     is_default: false,
-    config: {
-      checkout_url: '',
-    },
   });
 
   const handleOpenDialog = (gateway?: PaymentGateway) => {
     if (gateway) {
       setEditingGateway(gateway);
-      const config = (gateway as any).config || {};
       setFormData({
         name: gateway.name,
         provider: gateway.provider,
         api_key_masked: gateway.api_key_masked || '',
         is_active: gateway.is_active,
         is_default: gateway.is_default,
-        config: {
-          checkout_url: config.checkout_url || '',
-        },
       });
     } else {
       setEditingGateway(null);
@@ -80,28 +74,19 @@ export function PaymentGatewaysManager() {
         api_key_masked: '',
         is_active: false,
         is_default: false,
-        config: {
-          checkout_url: '',
-        },
       });
     }
     setDialogOpen(true);
   };
 
   const handleSave = () => {
-    // Build config based on provider
-    const config: Record<string, string> = {};
-    if (formData.provider === 'asaas') {
-      if (formData.config.checkout_url) config.checkout_url = formData.config.checkout_url;
-    }
-
     const payload = {
       name: formData.name,
       provider: formData.provider,
       api_key_masked: formData.api_key_masked,
       is_active: formData.is_active,
       is_default: formData.is_default,
-      config,
+      config: {},
     };
 
     if (editingGateway) {
@@ -117,6 +102,17 @@ export function PaymentGatewaysManager() {
 
   const toggleActive = (gateway: PaymentGateway) => {
     updateGateway.mutate({ id: gateway.id, is_active: !gateway.is_active });
+  };
+
+  const isApiKeyConfigured = (gateway: PaymentGateway) => {
+    return gateway.api_key_masked && gateway.api_key_masked.length > 10;
+  };
+
+  const detectEnvironment = (apiKey: string | null) => {
+    if (!apiKey) return null;
+    if (apiKey.startsWith('$aact_prod_')) return 'production';
+    if (apiKey.startsWith('sk_live_') || apiKey.startsWith('pk_live_')) return 'production';
+    return 'sandbox';
   };
 
   if (isLoading) {
@@ -158,83 +154,106 @@ export function PaymentGatewaysManager() {
             </CardContent>
           </Card>
         ) : (
-          gateways?.map((gateway) => (
-            <Card key={gateway.id} className={!gateway.is_active ? 'opacity-60' : ''}>
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <CreditCard className="h-5 w-5" />
-                    {gateway.name}
-                  </CardTitle>
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(gateway)}>
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon" className="text-destructive">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Excluir gateway?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Esta ação não pode ser desfeita.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => deleteGateway.mutate(gateway.id)}
-                            className="bg-destructive"
-                          >
-                            Excluir
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+          gateways?.map((gateway) => {
+            const env = detectEnvironment(gateway.api_key_masked);
+            const configured = isApiKeyConfigured(gateway);
+            
+            return (
+              <Card key={gateway.id} className={!gateway.is_active ? 'opacity-60' : ''}>
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <CreditCard className="h-5 w-5" />
+                      {gateway.name}
+                    </CardTitle>
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(gateway)}>
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="icon" className="text-destructive">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Excluir gateway?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Esta ação não pode ser desfeita.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => deleteGateway.mutate(gateway.id)}
+                              className="bg-destructive"
+                            >
+                              Excluir
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
                   </div>
-                </div>
-                <CardDescription>
-                  {gatewayProviders.find(p => p.value === gateway.provider)?.label || gateway.provider}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm">Status</span>
-                  <Switch
-                    checked={gateway.is_active}
-                    onCheckedChange={() => toggleActive(gateway)}
-                  />
-                </div>
-                {gateway.is_default && (
-                  <Badge variant="secondary">Gateway Padrão</Badge>
-                )}
-                {gateway.api_key_masked && (
-                  <p className="text-xs text-muted-foreground font-mono bg-muted p-2 rounded">
-                    API Key: {gateway.api_key_masked}
-                  </p>
-                )}
-                {/* Show config info for Asaas */}
-                {gateway.provider === 'asaas' && (
-                  <div className="text-xs space-y-1">
-                    {(gateway.config as any)?.checkout_url ? (
-                      <p className="text-green-600">✓ URL de checkout configurada</p>
+                  <CardDescription>
+                    {gatewayProviders.find(p => p.value === gateway.provider)?.label || gateway.provider}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">Status</span>
+                    <Switch
+                      checked={gateway.is_active}
+                      onCheckedChange={() => toggleActive(gateway)}
+                    />
+                  </div>
+                  {gateway.is_default && (
+                    <Badge variant="secondary">Gateway Padrão</Badge>
+                  )}
+                  
+                  {/* API Integration Status */}
+                  <div className="space-y-2">
+                    {configured ? (
+                      <div className="flex items-center gap-2 text-sm text-green-600">
+                        <CheckCircle2 className="h-4 w-4" />
+                        <span>API Key configurada</span>
+                      </div>
                     ) : (
-                      <p className="text-destructive">⚠ URL de checkout não configurada</p>
+                      <div className="flex items-center gap-2 text-sm text-destructive">
+                        <Info className="h-4 w-4" />
+                        <span>API Key não configurada</span>
+                      </div>
+                    )}
+                    
+                    {env && (
+                      <Badge variant={env === 'production' ? 'default' : 'outline'} className="text-xs">
+                        {env === 'production' ? 'Produção' : 'Sandbox'}
+                      </Badge>
                     )}
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          ))
+
+                  {/* Provider-specific info */}
+                  {gateway.provider === 'asaas' && configured && (
+                    <div className="text-xs text-muted-foreground space-y-1 p-2 bg-muted rounded">
+                      <p className="font-medium">Métodos suportados:</p>
+                      <ul className="list-disc list-inside">
+                        <li>PIX (QR Code dinâmico)</li>
+                        <li>Cartão de Crédito</li>
+                        <li>Boleto Bancário</li>
+                      </ul>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })
         )}
       </div>
 
       {/* Dialog for Create/Edit */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>
               {editingGateway ? 'Editar Gateway' : 'Novo Gateway'}
@@ -275,45 +294,48 @@ export function PaymentGatewaysManager() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="api_key">API Key (mascarada)</Label>
+              <Label htmlFor="api_key">API Key</Label>
               <Input
                 id="api_key"
                 value={formData.api_key_masked}
                 onChange={(e) => setFormData({ ...formData, api_key_masked: e.target.value })}
-                placeholder="sk_live_xxx..."
+                placeholder={formData.provider === 'asaas' ? '$aact_prod_xxx...' : 'sk_live_xxx...'}
                 type="password"
               />
               <p className="text-xs text-muted-foreground">
-                A chave será armazenada de forma segura e exibida mascarada.
+                A chave será armazenada de forma segura no banco de dados.
               </p>
             </div>
 
-            {/* Asaas-specific fields */}
+            {/* Provider-specific info */}
             {formData.provider === 'asaas' && (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="checkout_url">URL de Checkout *</Label>
-                  <Input
-                    id="checkout_url"
-                    value={formData.config.checkout_url}
-                    onChange={(e) => setFormData({ 
-                      ...formData, 
-                      config: { ...formData.config, checkout_url: e.target.value } 
-                    })}
-                    placeholder="https://www.asaas.com/c/..."
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Cole aqui a URL do link de pagamento do Asaas (obtida no painel do Asaas).
+              <Alert>
+                <Info className="h-4 w-4" />
+                <AlertDescription>
+                  <p className="font-medium mb-2">Integração Automática via API</p>
+                  <ul className="text-xs space-y-1 list-disc list-inside">
+                    <li>Cole a API Key do Asaas (obtida no painel Asaas)</li>
+                    <li>Ambiente detectado automaticamente pelo prefixo da chave</li>
+                    <li><code>$aact_prod_</code> = Produção</li>
+                    <li>Outros prefixos = Sandbox</li>
+                  </ul>
+                  <p className="text-xs mt-2 font-medium">
+                    ⚠️ Configure o webhook no Asaas para automação completa
                   </p>
-                </div>
-                <div className="p-3 bg-muted rounded-lg text-sm">
-                  <p className="font-medium mb-1">ℹ️ Como configurar</p>
-                  <p className="text-muted-foreground">
-                    Acesse o Asaas → Links de Pagamento → Criar novo link. 
-                    Copie a URL gerada e cole acima.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {formData.provider === 'stripe' && (
+              <Alert>
+                <Info className="h-4 w-4" />
+                <AlertDescription>
+                  <p className="font-medium mb-1">Stripe</p>
+                  <p className="text-xs">
+                    A chave secreta do Stripe também deve estar configurada como secret do sistema (STRIPE_SECRET_KEY).
                   </p>
-                </div>
-              </div>
+                </AlertDescription>
+              </Alert>
             )}
 
             <div className="flex items-center justify-between">
@@ -339,7 +361,7 @@ export function PaymentGatewaysManager() {
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
               Cancelar
             </Button>
-            <Button onClick={handleSave}>
+            <Button onClick={handleSave} disabled={!formData.name || !formData.provider}>
               <Save className="h-4 w-4 mr-2" />
               Salvar
             </Button>
