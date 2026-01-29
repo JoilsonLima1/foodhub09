@@ -231,13 +231,16 @@ async function processAsaasCheckout(
   const cpfCnpj = customerCpfCnpj?.replace(/\D/g, '');
   const customerId = await findOrCreateAsaasCustomer(baseUrl, asaasApiKey, user, cpfCnpj);
 
-  // 2. Create payment with UNDEFINED billing type (allows PIX, Card, Boleto)
+  // 2. Create payment
+  // IMPORTANT: Asaas enforces a minimum value of R$ 5,00 for billingType=UNDEFINED ("Pergunte ao Cliente").
+  // For low-priced plans, force PIX to keep the flow working.
+  const billingType = Number(plan.monthly_price) < 5 ? 'PIX' : 'UNDEFINED';
   const dueDate = new Date();
   dueDate.setDate(dueDate.getDate() + 3); // 3 days to pay
 
   const paymentBody = {
     customer: customerId,
-    billingType: 'UNDEFINED',
+    billingType,
     value: plan.monthly_price,
     dueDate: dueDate.toISOString().split('T')[0],
     description: `Assinatura ${plan.name}`,
@@ -246,7 +249,7 @@ async function processAsaasCheckout(
     externalReference: `p:${plan.id}|u:${user.id}`
   };
 
-  logStep("Creating Asaas payment", { customerId, value: plan.monthly_price });
+  logStep("Creating Asaas payment", { customerId, value: plan.monthly_price, billingType });
 
   const paymentResponse = await fetch(`${baseUrl}/payments`, {
     method: 'POST',
