@@ -24,6 +24,7 @@ export type Database = {
           features: Json
           icon: string
           id: string
+          implementation_status: string
           is_active: boolean
           monthly_price: number
           name: string
@@ -41,6 +42,7 @@ export type Database = {
           features?: Json
           icon?: string
           id?: string
+          implementation_status?: string
           is_active?: boolean
           monthly_price?: number
           name: string
@@ -58,6 +60,7 @@ export type Database = {
           features?: Json
           icon?: string
           id?: string
+          implementation_status?: string
           is_active?: boolean
           monthly_price?: number
           name?: string
