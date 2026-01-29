@@ -120,6 +120,14 @@ export function CheckoutDialog({
 
       // Both gateways return the hosted checkout URL
       if (data?.url) {
+        // Save checkout pending to localStorage for auto-refresh on return
+        localStorage.setItem('checkout_pending', JSON.stringify({
+          planId: itemId,
+          planName: itemName,
+          itemType,
+          gateway: selectedGateway.provider,
+          timestamp: Date.now()
+        }));
         window.open(data.url, '_blank');
         onOpenChange(false);
         onSuccess?.();
