@@ -43,10 +43,88 @@ serve(async (req) => {
     if (!user?.email) throw new Error("User not authenticated or email not available");
     logStep("User authenticated", { userId: user.id, email: user.email });
 
+    // FIRST: Check tenant status in database (for Asaas or any local subscription)
+    const { data: profile } = await supabaseClient
+      .from('profiles')
+      .select('tenant_id')
+      .eq('user_id', user.id)
+      .single();
+
+    if (profile?.tenant_id) {
+      const { data: tenant } = await supabaseClient
+        .from('tenants')
+        .select('subscription_status, subscription_plan_id, subscription_current_period_start, subscription_current_period_end, trial_ends_at, asaas_payment_id')
+        .eq('id', profile.tenant_id)
+        .single();
+
+      logStep("Tenant found", { 
+        tenantId: profile.tenant_id, 
+        status: tenant?.subscription_status,
+        planId: tenant?.subscription_plan_id,
+        hasAsaasPayment: !!tenant?.asaas_payment_id
+      });
+
+      // If tenant has an active subscription via Asaas (or any other local method)
+      if (tenant?.subscription_status === 'active' && tenant?.subscription_plan_id) {
+        const periodEnd = tenant.subscription_current_period_end 
+          ? new Date(tenant.subscription_current_period_end)
+          : null;
+        const now = new Date();
+
+        // Check if subscription is still valid
+        if (!periodEnd || periodEnd > now) {
+          logStep("Active Asaas/local subscription found", {
+            planId: tenant.subscription_plan_id,
+            periodEnd: periodEnd?.toISOString()
+          });
+
+          return new Response(JSON.stringify({
+            subscribed: true,
+            is_trialing: false,
+            trial_end: null,
+            subscription_end: periodEnd?.toISOString() || null,
+            product_id: tenant.subscription_plan_id,
+            status: 'active'
+          }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 200,
+          });
+        }
+      }
+
+      // Check for trialing status using tenant's trial_ends_at
+      if (tenant?.trial_ends_at) {
+        const trialEndDate = new Date(tenant.trial_ends_at);
+        const now = new Date();
+        const isTrialActive = trialEndDate > now;
+
+        logStep("Using tenant trial_ends_at", { 
+          trialEndDate: trialEndDate.toISOString(),
+          isTrialActive 
+        });
+
+        // If trial is active and no active paid subscription, return trial status
+        if (isTrialActive && tenant?.subscription_status !== 'active') {
+          return new Response(JSON.stringify({ 
+            subscribed: true, // User has access during trial
+            is_trialing: true,
+            trial_end: trialEndDate.toISOString(),
+            subscription_end: null,
+            product_id: tenant?.subscription_plan_id || null,
+            status: 'trialing'
+          }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 200,
+          });
+        }
+      }
+    }
+
+    // SECOND: Check Stripe for subscription
     const stripe = new Stripe(stripeKey, { apiVersion: "2024-06-20" });
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
     
-    // If no Stripe customer exists, check for automatic trial based on user creation date
+    // If no Stripe customer exists, check for automatic trial based on tenant trial_ends_at or user creation date
     if (customers.data.length === 0) {
       logStep("No Stripe customer found, checking automatic trial");
       

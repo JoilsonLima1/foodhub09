@@ -142,19 +142,21 @@ async function activatePlanSubscription(
     throw new Error("Plan not found");
   }
 
-  // Calculate subscription period
+  // Calculate subscription period (30 days from now)
   const now = new Date();
   const periodEnd = new Date(now);
-  periodEnd.setMonth(periodEnd.getMonth() + 1);
+  periodEnd.setDate(periodEnd.getDate() + 30);
 
-  // Update tenant with new subscription
+  // Update tenant with new subscription - including Asaas tracking fields
   const { error: updateError } = await supabase
     .from('tenants')
     .update({
       subscription_status: 'active',
       subscription_plan_id: metadata.plan_id,
       subscription_current_period_start: now.toISOString(),
-      subscription_current_period_end: periodEnd.toISOString()
+      subscription_current_period_end: periodEnd.toISOString(),
+      asaas_customer_id: payment.customer,
+      asaas_payment_id: payment.id
     })
     .eq('id', profile.tenant_id);
 
@@ -166,7 +168,11 @@ async function activatePlanSubscription(
   logStep("Plan activated successfully", { 
     tenantId: profile.tenant_id, 
     planId: metadata.plan_id,
-    planName: plan.name 
+    planName: plan.name,
+    periodStart: now.toISOString(),
+    periodEnd: periodEnd.toISOString(),
+    asaasCustomerId: payment.customer,
+    asaasPaymentId: payment.id
   });
 }
 
@@ -179,7 +185,7 @@ async function activateModuleSubscription(
 
   const now = new Date();
   const expiresAt = new Date(now);
-  expiresAt.setMonth(expiresAt.getMonth() + 1);
+  expiresAt.setDate(expiresAt.getDate() + 30);
 
   // Create or update module subscription
   const { error: upsertError } = await supabase
