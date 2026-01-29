@@ -3042,6 +3042,16 @@ export type Database = {
       }
     }
     Functions: {
+      get_active_payment_gateways: {
+        Args: never
+        Returns: {
+          config: Json
+          id: string
+          is_default: boolean
+          name: string
+          provider: string
+        }[]
+      }
       get_ifood_integration_safe: {
         Args: { p_tenant_id: string }
         Returns: {

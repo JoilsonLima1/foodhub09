@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { CheckoutDialog } from '@/components/checkout/CheckoutDialog';
 
 interface SubscriptionPlan {
   id: string;
@@ -34,6 +35,8 @@ export function SubscriptionSettings() {
   const [isOpeningPortal, setIsOpeningPortal] = useState(false);
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [loadingPlans, setLoadingPlans] = useState(true);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
 
   useEffect(() => {
     const fetchPlans = async () => {
@@ -56,7 +59,7 @@ export function SubscriptionSettings() {
     fetchPlans();
   }, []);
 
-  const handleSelectPlan = async (plan: SubscriptionPlan) => {
+  const handleSelectPlan = (plan: SubscriptionPlan) => {
     if (!session?.access_token) {
       toast({
         title: 'Erro de autenticação',
@@ -75,40 +78,9 @@ export function SubscriptionSettings() {
       return;
     }
 
-    setIsUpgrading(plan.id);
-    try {
-      const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { planId: plan.id },
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      });
-
-      if (error) throw error;
-
-      if (data?.free) {
-        toast({
-          title: 'Plano ativado',
-          description: data.message || 'Plano gratuito ativado com sucesso',
-        });
-        return;
-      }
-
-      if (data?.url) {
-        window.open(data.url, '_blank');
-      } else {
-        throw new Error('URL de checkout não retornada');
-      }
-    } catch (error: any) {
-      console.error('Checkout error:', error);
-      toast({
-        title: 'Erro ao iniciar checkout',
-        description: error.message || 'Tente novamente mais tarde',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsUpgrading(null);
-    }
+    // Open checkout dialog with payment method selection
+    setSelectedPlan(plan);
+    setCheckoutOpen(true);
   };
 
   const handleManageSubscription = async () => {
@@ -416,6 +388,18 @@ export function SubscriptionSettings() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Checkout Dialog for plan upgrade */}
+      {selectedPlan && (
+        <CheckoutDialog
+          open={checkoutOpen}
+          onOpenChange={setCheckoutOpen}
+          itemType="plan"
+          itemId={selectedPlan.id}
+          itemName={selectedPlan.name}
+          itemPrice={selectedPlan.monthly_price}
+        />
+      )}
     </div>
   );
 }

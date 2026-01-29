@@ -7,6 +7,7 @@ import { Check, Zap, TrendingUp, Crown, Gift, Sparkles } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { PublicSubscriptionPlan } from '@/hooks/usePublicSubscriptionPlans';
+import { CheckoutDialog } from '@/components/checkout/CheckoutDialog';
 
 interface PricingSectionProps {
   plans: PublicSubscriptionPlan[] | undefined;
@@ -19,32 +20,30 @@ export function PricingSection({ plans, isLoading, trialDays, trialText }: Prici
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<PublicSubscriptionPlan | null>(null);
 
-  const handleSubscribe = async (planId: string, planSlug: string, isFree: boolean) => {
-    setLoadingPlan(planId);
+  const handleSubscribe = async (plan: PublicSubscriptionPlan) => {
+    setLoadingPlan(plan.id);
     
     try {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
-        navigate(`/auth?plan=${planSlug}&intent=signup`);
+        // Not logged in - redirect to signup with plan param
+        navigate(`/auth?plan=${plan.slug}&intent=signup`);
         return;
       }
       
-      if (isFree) {
+      if (plan.monthly_price === 0) {
+        // Free plan - just go to dashboard
         navigate('/dashboard');
         return;
       }
       
-      const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { planId }
-      });
-      
-      if (error) throw error;
-      
-      if (data?.url) {
-        window.open(data.url, '_blank');
-      }
+      // Open checkout dialog with payment method selection
+      setSelectedPlan(plan);
+      setCheckoutOpen(true);
     } catch (error: any) {
       console.error('Checkout error:', error);
       toast({
@@ -217,7 +216,7 @@ export function PricingSection({ plans, isLoading, trialDays, trialText }: Prici
                       className={`w-full rounded-full h-12 ${isPopular ? 'shadow-lg shadow-primary/30' : ''}`}
                       size="lg"
                       variant={isFree ? 'outline' : isPopular ? 'default' : 'outline'}
-                      onClick={() => handleSubscribe(plan.id, plan.slug, isFree)}
+                      onClick={() => handleSubscribe(plan)}
                       disabled={loadingPlan === plan.id}
                     >
                       {loadingPlan === plan.id ? (
@@ -237,6 +236,18 @@ export function PricingSection({ plans, isLoading, trialDays, trialText }: Prici
           Sem cartão de crédito. Cancele a qualquer momento.
         </p>
       </div>
+
+      {/* Checkout Dialog */}
+      {selectedPlan && (
+        <CheckoutDialog
+          open={checkoutOpen}
+          onOpenChange={setCheckoutOpen}
+          itemType="plan"
+          itemId={selectedPlan.id}
+          itemName={selectedPlan.name}
+          itemPrice={selectedPlan.monthly_price}
+        />
+      )}
     </section>
   );
 }
