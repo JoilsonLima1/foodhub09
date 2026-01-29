@@ -114,16 +114,10 @@ export function BrandingSettings() {
   };
 
   const handleSaveLanding = () => {
-    // Include hero_title_parts with color information for the landing page to use
-    const updatedLandingData: LandingLayoutSettings = {
-      ...landingData,
-      hero_title_parts: {
-        top: { text: landingData.hero_title, color: heroColor1, highlight_style: 'none' },
-        middle: { text: landingData.hero_title_highlight, color: heroColor2, highlight_style: 'rounded' },
-        bottom: { text: `${landingData.hero_title_part3 || ''} ${landingData.hero_title_part4 || ''}`.trim(), color: heroColor2, highlight_style: 'underline' },
-      },
-    };
-    updateSetting.mutate({ key: 'landing_layout', value: updatedLandingData });
+    // Save landing layout WITHOUT hero_title_parts to use the legacy 4-part system
+    // The 4-part system alternates colors: part1/part3 use color1, part2/part4 use color2
+    const { hero_title_parts, ...landingDataWithout3Part } = landingData as LandingLayoutSettings & { hero_title_parts?: unknown };
+    updateSetting.mutate({ key: 'landing_layout', value: landingDataWithout3Part });
   };
 
   if (isLoading) {
