@@ -4,12 +4,19 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Save, Image, Palette, MessageSquare, Calendar, Layout, Megaphone } from 'lucide-react';
-import { useSystemSettings, BrandingSettings as BrandingType, ColorSettings, WhatsAppSettings, TrialSettings, LandingLayoutSettings, AnnouncementBannerSettings, AnnouncementBannerStyle } from '@/hooks/useSystemSettings';
+import { useSystemSettings, BrandingSettings as BrandingType, ColorSettings, WhatsAppSettings, TrialSettings, LandingLayoutSettings, AnnouncementBannerSettings, AnnouncementBannerStyle, HeroTitlePart } from '@/hooks/useSystemSettings';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { ImageUploader } from './ImageUploader';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { AnnouncementBanner } from '@/components/landing/AnnouncementBanner';
+import { HeroTitleEditor } from './HeroTitleEditor';
+
+const defaultTitleParts = {
+  top: { text: 'Transforme seu', color: 'inherit', highlight_style: 'none' as const },
+  middle: { text: 'restaurante', color: '47 97% 60%', highlight_style: 'rounded' as const },
+  bottom: { text: 'em uma máquina de vendas', color: '47 97% 60%', highlight_style: 'underline' as const },
+};
 
 export function BrandingSettings() {
   const { settings, isLoading, updateSetting, branding, colors, whatsapp, trialPeriod, landingLayout } = useSystemSettings();
@@ -57,6 +64,7 @@ export function BrandingSettings() {
       highlight_text: '14 DIAS GRÁTIS',
       style: 'gradient',
     },
+    hero_title_parts: defaultTitleParts,
   });
 
   const bannerStyles: { value: AnnouncementBannerStyle; label: string; description: string }[] = [
@@ -97,7 +105,12 @@ export function BrandingSettings() {
     if (colors) setColorData(colors);
     if (whatsapp) setWhatsappData(whatsapp);
     if (trialPeriod) setTrialData(trialPeriod);
-    if (landingLayout) setLandingData(landingLayout);
+    if (landingLayout) {
+      setLandingData({
+        ...landingLayout,
+        hero_title_parts: landingLayout.hero_title_parts || defaultTitleParts,
+      });
+    }
   }, [branding, colors, whatsapp, trialPeriod, landingLayout]);
 
   const handleSaveBranding = () => {
@@ -471,58 +484,11 @@ export function BrandingSettings() {
             </p>
           </div>
 
-          {/* Hero Title - 4 Parts */}
-          <div className="space-y-4">
-            <Label className="text-base font-semibold">Título Principal (4 partes alternadas)</Label>
-            <p className="text-xs text-muted-foreground">
-              Parte 1 (cor normal) → Parte 2 (cor primária) → Parte 3 (cor normal) → Parte 4 (cor primária com sublinhado)
-            </p>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Parte 1 - Cor Normal</Label>
-                <Input
-                  value={landingData.hero_title}
-                  onChange={(e) => setLandingData({ ...landingData, hero_title: e.target.value })}
-                  placeholder="Transforme seu"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Parte 2 - Cor Primária (Dourada)</Label>
-                <Input
-                  value={landingData.hero_title_highlight}
-                  onChange={(e) => setLandingData({ ...landingData, hero_title_highlight: e.target.value })}
-                  placeholder="restaurante"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Parte 3 - Cor Normal</Label>
-                <Input
-                  value={landingData.hero_title_part3 || ''}
-                  onChange={(e) => setLandingData({ ...landingData, hero_title_part3: e.target.value })}
-                  placeholder="em uma"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Parte 4 - Cor Primária + Sublinhado</Label>
-                <Input
-                  value={landingData.hero_title_part4 || ''}
-                  onChange={(e) => setLandingData({ ...landingData, hero_title_part4: e.target.value })}
-                  placeholder="máquina de vendas"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Preview */}
-          <div className="p-4 bg-muted rounded-lg">
-            <Label className="text-xs text-muted-foreground mb-2 block">Prévia do título:</Label>
-            <p className="text-xl font-bold">
-              {landingData.hero_title}{' '}
-              <span className="text-primary">{landingData.hero_title_highlight}</span>{' '}
-              {landingData.hero_title_part3}{' '}
-              <span className="text-primary underline decoration-2">{landingData.hero_title_part4}</span>
-            </p>
-          </div>
+          {/* New Hero Title Editor - 3 Parts with Colors */}
+          <HeroTitleEditor
+            titleParts={landingData.hero_title_parts || defaultTitleParts}
+            onChange={(parts) => setLandingData({ ...landingData, hero_title_parts: parts })}
+          />
 
           {/* Hero Subtitle/Description */}
           <div className="space-y-2">

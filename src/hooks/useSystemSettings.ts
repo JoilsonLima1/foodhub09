@@ -32,11 +32,21 @@ export type AnnouncementBannerStyle =
   | 'geometric' | 'aurora' | 'pulse' | 'retro' | 'cyber' | 'elegant'
   | 'festive' | 'sunset' | 'ocean' | 'forest' | 'fire' | 'holographic';
 
+export type HeroTitleHighlightStyle = 
+  | 'none' | 'underline' | 'rounded' | 'pill' | 'thought' | 'bubble' 
+  | 'marker' | 'glow' | 'gradient' | 'box' | 'circle' | 'scratch';
+
 export interface AnnouncementBannerSettings {
   is_visible: boolean;
   text: string;
   highlight_text: string;
   style: AnnouncementBannerStyle;
+}
+
+export interface HeroTitlePart {
+  text: string;
+  color: string; // HSL format
+  highlight_style: HeroTitleHighlightStyle;
 }
 
 export interface LandingLayoutSettings {
@@ -54,6 +64,12 @@ export interface LandingLayoutSettings {
   show_testimonials: boolean;
   show_features: boolean;
   announcement_banner?: AnnouncementBannerSettings;
+  // New 3-part title system with individual colors
+  hero_title_parts?: {
+    top: HeroTitlePart;
+    middle: HeroTitlePart;
+    bottom: HeroTitlePart;
+  };
 }
 
 export interface AnalyticsSettings {
