@@ -121,13 +121,21 @@ export function CheckoutDialog({
       // Both gateways return the hosted checkout URL
       if (data?.url) {
         // Save checkout pending to localStorage for auto-refresh on return
-        localStorage.setItem('checkout_pending', JSON.stringify({
-          planId: itemId,
-          planName: itemName,
+        const pending = {
+          // Back-compat for older code paths that expect planId/planName
+          ...(itemType === 'plan' ? { planId: itemId, planName: itemName } : {}),
+
+          itemId,
+          itemName,
           itemType,
           gateway: selectedGateway.provider,
-          timestamp: Date.now()
-        }));
+          // Asaas module checkout returns payment_id; Stripe returns sessionId.
+          paymentId: data?.payment_id || null,
+          sessionId: data?.sessionId || null,
+          timestamp: Date.now(),
+        };
+
+        localStorage.setItem('checkout_pending', JSON.stringify(pending));
         window.open(data.url, '_blank');
         onOpenChange(false);
         onSuccess?.();
