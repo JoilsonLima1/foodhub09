@@ -148,11 +148,12 @@ async function processPixCheckout(
   );
 }
 
-// Find or create Asaas customer
+// Find or create Asaas customer with CPF/CNPJ support
 async function findOrCreateAsaasCustomer(
   baseUrl: string,
   apiKey: string,
-  user: any
+  user: any,
+  supabase: any
 ): Promise<string> {
   // Search for existing customer by email
   const searchResponse = await fetch(
@@ -163,23 +164,62 @@ async function findOrCreateAsaasCustomer(
   );
   const searchResult = await searchResponse.json();
 
-  if (searchResult.data?.length > 0) {
-    logStep("Existing Asaas customer found", { customerId: searchResult.data[0].id });
-    return searchResult.data[0].id;
+  // Try to get CPF from user profile
+  let cpfCnpj: string | null = null;
+  try {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("cpf_cnpj")
+      .eq("user_id", user.id)
+      .single();
+    
+    if (profile?.cpf_cnpj) {
+      cpfCnpj = profile.cpf_cnpj.replace(/\D/g, ''); // Remove non-digits
+      logStep("CPF/CNPJ found in profile", { hasCpf: !!cpfCnpj });
+    }
+  } catch (e) {
+    logStep("No CPF/CNPJ in profile");
   }
 
-  // Create new customer
+  // If customer exists and has CPF, use it
+  if (searchResult.data?.length > 0) {
+    const existingCustomer = searchResult.data[0];
+    
+    // Update CPF if we have it and customer doesn't
+    if (cpfCnpj && !existingCustomer.cpfCnpj) {
+      await fetch(`${baseUrl}/customers/${existingCustomer.id}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'access_token': apiKey
+        },
+        body: JSON.stringify({ cpfCnpj })
+      });
+      logStep("Updated Asaas customer with CPF", { customerId: existingCustomer.id });
+    }
+    
+    logStep("Existing Asaas customer found", { customerId: existingCustomer.id });
+    return existingCustomer.id;
+  }
+
+  // Create new customer with CPF if available
+  const customerData: any = {
+    name: user.user_metadata?.full_name || user.email.split('@')[0],
+    email: user.email,
+    externalReference: user.id
+  };
+
+  if (cpfCnpj) {
+    customerData.cpfCnpj = cpfCnpj;
+  }
+
   const createResponse = await fetch(`${baseUrl}/customers`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'access_token': apiKey
     },
-    body: JSON.stringify({
-      name: user.user_metadata?.full_name || user.email.split('@')[0],
-      email: user.email,
-      externalReference: user.id
-    })
+    body: JSON.stringify(customerData)
   });
 
   const newCustomer = await createResponse.json();
@@ -198,7 +238,8 @@ async function processAsaasCheckout(
   plan: any,
   user: any,
   gatewayConfig: any,
-  origin: string
+  origin: string,
+  supabase: any
 ) {
   logStep("Processing Asaas checkout", { planId: plan.id, userId: user.id });
 
@@ -208,7 +249,6 @@ async function processAsaasCheckout(
   }
 
   // Auto-detect environment from API key prefix
-  // Production keys start with $aact_prod_, sandbox keys start with $aact_
   const isProductionKey = asaasApiKey.startsWith('$aact_prod_');
   const environment = isProductionKey ? 'production' : 'sandbox';
   const baseUrl = isProductionKey
@@ -217,8 +257,8 @@ async function processAsaasCheckout(
 
   logStep("Asaas environment (auto-detected from API key)", { environment, baseUrl, isProductionKey });
 
-  // Find or create customer
-  const customerId = await findOrCreateAsaasCustomer(baseUrl, asaasApiKey, user);
+  // Find or create customer (now with CPF support)
+  const customerId = await findOrCreateAsaasCustomer(baseUrl, asaasApiKey, user, supabase);
 
   // Create payment with UNDEFINED billing type (allows user to choose)
   const dueDate = new Date();
@@ -244,6 +284,13 @@ async function processAsaasCheckout(
 
   if (payment.errors) {
     logStep("Asaas payment creation failed", { errors: payment.errors });
+    
+    // Check if it's specifically a CPF error
+    const cpfError = payment.errors.find((e: any) => e.code === 'invalid_customer.cpfCnpj');
+    if (cpfError) {
+      throw new Error("CPF/CNPJ não cadastrado. Por favor, atualize seu perfil com um CPF válido.");
+    }
+    
     throw new Error("Falha ao criar cobrança no Asaas");
   }
 
@@ -375,7 +422,7 @@ serve(async (req) => {
       case 'pix':
         return await processPixCheckout(plan, user, gatewayConfig, supabase);
       case 'asaas':
-        return await processAsaasCheckout(plan, user, gatewayConfig, origin);
+        return await processAsaasCheckout(plan, user, gatewayConfig, origin, supabase);
       default:
         throw new Error("Gateway não suportado");
     }
@@ -394,7 +441,8 @@ serve(async (req) => {
       "PIX não configurado corretamente",
       "Asaas API Key não configurada",
       "Falha ao criar cliente no Asaas",
-      "Falha ao criar cobrança no Asaas"
+      "Falha ao criar cobrança no Asaas",
+      "CPF/CNPJ não cadastrado. Por favor, atualize seu perfil com um CPF válido."
     ];
     const clientError = safeErrors.includes(errorMessage) ? errorMessage : "Checkout failed";
     

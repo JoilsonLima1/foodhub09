@@ -114,11 +114,12 @@ async function processPixModuleCheckout(
   );
 }
 
-// Find or create Asaas customer
+// Find or create Asaas customer with CPF/CNPJ support
 async function findOrCreateAsaasCustomer(
   baseUrl: string,
   apiKey: string,
-  user: any
+  user: any,
+  supabase: any
 ): Promise<string> {
   const searchResponse = await fetch(
     `${baseUrl}/customers?email=${encodeURIComponent(user.email)}`,
@@ -126,8 +127,49 @@ async function findOrCreateAsaasCustomer(
   );
   const searchResult = await searchResponse.json();
 
+  // Try to get CPF from user profile
+  let cpfCnpj: string | null = null;
+  try {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("cpf_cnpj")
+      .eq("user_id", user.id)
+      .single();
+    
+    if (profile?.cpf_cnpj) {
+      cpfCnpj = profile.cpf_cnpj.replace(/\D/g, '');
+      logStep("CPF/CNPJ found in profile", { hasCpf: !!cpfCnpj });
+    }
+  } catch (e) {
+    logStep("No CPF/CNPJ in profile");
+  }
+
   if (searchResult.data?.length > 0) {
-    return searchResult.data[0].id;
+    const existingCustomer = searchResult.data[0];
+    
+    if (cpfCnpj && !existingCustomer.cpfCnpj) {
+      await fetch(`${baseUrl}/customers/${existingCustomer.id}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'access_token': apiKey
+        },
+        body: JSON.stringify({ cpfCnpj })
+      });
+      logStep("Updated Asaas customer with CPF", { customerId: existingCustomer.id });
+    }
+    
+    return existingCustomer.id;
+  }
+
+  const customerData: any = {
+    name: user.user_metadata?.full_name || user.email.split('@')[0],
+    email: user.email,
+    externalReference: user.id
+  };
+
+  if (cpfCnpj) {
+    customerData.cpfCnpj = cpfCnpj;
   }
 
   const createResponse = await fetch(`${baseUrl}/customers`, {
@@ -136,11 +178,7 @@ async function findOrCreateAsaasCustomer(
       'Content-Type': 'application/json',
       'access_token': apiKey
     },
-    body: JSON.stringify({
-      name: user.user_metadata?.full_name || user.email.split('@')[0],
-      email: user.email,
-      externalReference: user.id
-    })
+    body: JSON.stringify(customerData)
   });
 
   const newCustomer = await createResponse.json();
@@ -155,7 +193,8 @@ async function processAsaasModuleCheckout(
   module: any,
   user: any,
   tenantId: string,
-  gatewayConfig: any
+  gatewayConfig: any,
+  supabase: any
 ) {
   logStep("Processing Asaas module checkout", { moduleId: module.id });
 
@@ -173,7 +212,7 @@ async function processAsaasModuleCheckout(
 
   logStep("Asaas environment (auto-detected from API key)", { environment, baseUrl, isProductionKey });
 
-  const customerId = await findOrCreateAsaasCustomer(baseUrl, asaasApiKey, user);
+  const customerId = await findOrCreateAsaasCustomer(baseUrl, asaasApiKey, user, supabase);
 
   const dueDate = new Date();
   dueDate.setDate(dueDate.getDate() + 3);
@@ -198,6 +237,12 @@ async function processAsaasModuleCheckout(
 
   if (payment.errors) {
     logStep("Asaas payment creation failed", { errors: payment.errors });
+    
+    const cpfError = payment.errors.find((e: any) => e.code === 'invalid_customer.cpfCnpj');
+    if (cpfError) {
+      throw new Error("CPF/CNPJ não cadastrado. Por favor, atualize seu perfil com um CPF válido.");
+    }
+    
     throw new Error("Falha ao criar cobrança no Asaas");
   }
 
@@ -324,7 +369,7 @@ serve(async (req) => {
       case 'pix':
         return await processPixModuleCheckout(module, user, tenantId, gatewayConfig);
       case 'asaas':
-        return await processAsaasModuleCheckout(module, user, tenantId, gatewayConfig);
+        return await processAsaasModuleCheckout(module, user, tenantId, gatewayConfig, supabase);
       default:
         throw new Error("Gateway não suportado");
     }
@@ -345,7 +390,8 @@ serve(async (req) => {
       "Asaas API Key não configurada",
       "Falha ao criar cliente no Asaas",
       "Falha ao criar cobrança no Asaas",
-      "Módulo já está ativo"
+      "Módulo já está ativo",
+      "CPF/CNPJ não cadastrado. Por favor, atualize seu perfil com um CPF válido."
     ];
     const clientError = safeErrors.includes(errorMessage) ? errorMessage : "Checkout failed";
     

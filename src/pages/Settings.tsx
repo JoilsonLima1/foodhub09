@@ -19,6 +19,7 @@ import {
   Monitor,
   MessageSquarePlus,
   Package,
+  User,
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PAYMENT_PROVIDER_LABELS } from '@/lib/constants';
@@ -33,6 +34,7 @@ import { POSSettings } from '@/components/settings/POSSettings';
 import { SuggestionForm } from '@/components/suggestions/SuggestionForm';
 import { StoreSettingsForm } from '@/components/settings/StoreSettingsForm';
 import { ModulesSettings } from '@/components/settings/ModulesSettings';
+import { ProfileSettings } from '@/components/settings/ProfileSettings';
 
 export default function Settings() {
   const { user, profile, roles } = useAuth();
@@ -51,8 +53,12 @@ export default function Settings() {
         </p>
       </div>
 
-      <Tabs defaultValue="subscription" className="space-y-6">
+      <Tabs defaultValue="profile" className="space-y-6">
         <TabsList className="w-full h-auto flex flex-nowrap gap-2 overflow-x-auto justify-start md:flex-wrap md:overflow-visible">
+          <TabsTrigger value="profile" className="shrink-0 flex items-center gap-2 whitespace-nowrap">
+            <User className="h-4 w-4" />
+            Perfil
+          </TabsTrigger>
           <TabsTrigger value="subscription" className="shrink-0 flex items-center gap-2 whitespace-nowrap">
             <Crown className="h-4 w-4" />
             Assinatura
@@ -106,6 +112,11 @@ export default function Settings() {
             Sugestões
           </TabsTrigger>
         </TabsList>
+
+        {/* Profile Settings */}
+        <TabsContent value="profile">
+          <ProfileSettings />
+        </TabsContent>
 
         {/* Subscription Settings */}
         <TabsContent value="subscription">
