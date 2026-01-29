@@ -24,6 +24,20 @@ import { useTenantModules, type TenantModuleDetailed } from '@/hooks/useTenantMo
 import { ModuleStatusBadge, type ImplementationStatus } from './ModuleStatusBadge';
 import { SmartDeliveryPanel } from './SmartDeliveryPanel';
 import { ModuleConfigPanel } from './ModuleConfigPanel';
+import {
+  Integration99FoodPanel,
+  IntegrationKeetaPanel,
+  IntegrationBinaPanel,
+  SMSMarketingPanel,
+  LoyaltyProgramPanel,
+  DiscountCouponsPanel,
+  IntelligentDispatcherPanel,
+  MultiStorePanel,
+  MobileCommandPanel,
+  PasswordPanelModule,
+  TEFIntegrationPanel,
+  KitchenMonitorPanel,
+} from './panels';
 import { cn } from '@/lib/utils';
 
 // Icon mapping for module categories
@@ -90,21 +104,39 @@ export function MyModulesHub() {
       (m) => m.addon_module?.slug === selectedModuleSlug
     );
 
-    if (selectedModuleSlug === 'smart_delivery') {
-      return (
-        <SmartDeliveryPanel
-          module={selectedModule}
-          onBack={handleClosePanel}
-        />
-      );
+    // Route to specific module panel based on slug
+    const panelProps = { module: selectedModule, onBack: handleClosePanel };
+    
+    switch (selectedModuleSlug) {
+      case 'smart_delivery':
+        return <SmartDeliveryPanel {...panelProps} />;
+      case 'integration_99food':
+        return <Integration99FoodPanel {...panelProps} />;
+      case 'integration_keeta':
+        return <IntegrationKeetaPanel {...panelProps} />;
+      case 'integration_bina':
+        return <IntegrationBinaPanel {...panelProps} />;
+      case 'integration_sms':
+        return <SMSMarketingPanel {...panelProps} />;
+      case 'loyalty_program':
+        return <LoyaltyProgramPanel {...panelProps} />;
+      case 'discount_coupons':
+        return <DiscountCouponsPanel {...panelProps} />;
+      case 'intelligent_dispatcher':
+        return <IntelligentDispatcherPanel {...panelProps} />;
+      case 'multi_store':
+        return <MultiStorePanel {...panelProps} />;
+      case 'mobile_command':
+        return <MobileCommandPanel {...panelProps} />;
+      case 'password_panel':
+        return <PasswordPanelModule {...panelProps} />;
+      case 'tef_integration':
+        return <TEFIntegrationPanel {...panelProps} />;
+      case 'kitchen_monitor':
+        return <KitchenMonitorPanel {...panelProps} />;
+      default:
+        return <ModuleConfigPanel {...panelProps} />;
     }
-
-    return (
-      <ModuleConfigPanel
-        module={selectedModule}
-        onBack={handleClosePanel}
-      />
-    );
   }
 
   return (
