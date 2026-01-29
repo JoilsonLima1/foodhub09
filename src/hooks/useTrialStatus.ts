@@ -24,7 +24,7 @@ export function useTrialStatus() {
   const queryClient = useQueryClient();
 
   // Fetch subscription status from Stripe via edge function
-  const { data: subscriptionStatus, isLoading: isLoadingSubscription, refetch: refetchSubscription } = useQuery({
+  const { data: subscriptionStatus, isLoading: isLoadingSubscription, refetch: refetchSubscription, error: subscriptionError } = useQuery({
     queryKey: ['subscription-status', user?.id],
     queryFn: async (): Promise<SubscriptionStatus> => {
       if (!session?.access_token) {
@@ -46,14 +46,7 @@ export function useTrialStatus() {
 
       if (error) {
         console.error('Error checking subscription:', error);
-        return {
-          isSubscribed: false,
-          isTrialing: false,
-          trialEndDate: null,
-          currentPeriodEnd: null,
-          planId: null,
-          status: 'none',
-        };
+        throw error; // Let React Query handle retry
       }
 
       return {
@@ -66,6 +59,8 @@ export function useTrialStatus() {
       };
     },
     enabled: !!user && !!session,
+    retry: 2, // Retry 2 times on failure
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000), // Exponential backoff
     staleTime: 1000 * 60 * 5, // 5 minutes
     refetchOnWindowFocus: true,
   });
@@ -211,6 +206,7 @@ export function useTrialStatus() {
     subscriptionStatus,
     notificationSettings,
     isLoading: isLoadingSubscription,
+    error: subscriptionError,
     shouldShowNotification: shouldShowNotification(),
     dismissNotification,
     getExpirationDisplay,

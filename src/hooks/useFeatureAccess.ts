@@ -34,12 +34,27 @@ export interface FeatureAccessResult {
  * With active subscription: Features based on plan
  */
 export function useFeatureAccess(feature?: FeatureKey): FeatureAccessResult {
-  const { subscriptionStatus, getDaysRemaining, isLoading } = useTrialStatus();
+  const { subscriptionStatus, getDaysRemaining, isLoading, error } = useTrialStatus();
   const { trialPeriod } = usePublicSettings();
   const { user } = useAuth();
 
   const trialDays = trialPeriod?.days ?? 14;
   const daysRemaining = getDaysRemaining();
+
+  // If there was an error checking subscription and we're not loading,
+  // grant temporary trial access to avoid blocking the user
+  if (error && !isLoading && user) {
+    console.warn('[useFeatureAccess] Error checking subscription, granting temporary access');
+    return {
+      hasAccess: true,
+      isTrialActive: true,
+      isTrialExpired: false,
+      daysRemaining: trialDays,
+      trialDays,
+      reason: 'trial_active',
+      isLoading: false,
+    };
+  }
 
   // Not logged in
   if (!user) {
