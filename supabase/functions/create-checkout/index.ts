@@ -140,10 +140,12 @@ async function findOrCreateAsaasCustomer(
 
   if (searchResult.data?.length > 0) {
     const customerId = searchResult.data[0].id;
-    logStep("Existing Asaas customer found", { customerId });
+    const existingCpfCnpj = searchResult.data[0].cpfCnpj;
+    logStep("Existing Asaas customer found", { customerId, hasCpfCnpj: !!existingCpfCnpj });
 
-    // Ensure CPF/CNPJ is present for payment creation (Asaas requirement)
-    if (cpfCnpj) {
+    // IMPORTANTE: Atualizar CPF/CNPJ se fornecido e diferente do atual
+    // Isso é OBRIGATÓRIO para liberar todas as formas de pagamento (PIX, Cartão, Boleto)
+    if (cpfCnpj && cpfCnpj !== existingCpfCnpj) {
       try {
         const updateResponse = await fetch(`${baseUrl}/customers/${customerId}`, {
           method: 'PUT',
@@ -153,31 +155,42 @@ async function findOrCreateAsaasCustomer(
           },
           body: JSON.stringify({ cpfCnpj })
         });
-        if (!updateResponse.ok) {
+        
+        if (updateResponse.ok) {
+          logStep("Asaas customer CPF/CNPJ updated successfully", { customerId });
+        } else {
           const err = await updateResponse.json();
           logStep("Asaas customer update failed (cpfCnpj)", err);
         }
       } catch (e) {
-        logStep("Asaas customer update exception (cpfCnpj)");
+        logStep("Asaas customer update exception (cpfCnpj)", { error: String(e) });
       }
     }
 
     return customerId;
   }
 
-  // Create new customer
+  // Create new customer - CPF/CNPJ é obrigatório para todas as formas de pagamento
+  const customerBody: any = {
+    name: user.user_metadata?.name || user.email.split('@')[0],
+    email: user.email,
+    externalReference: user.id,
+  };
+  
+  // Adicionar CPF/CNPJ se fornecido
+  if (cpfCnpj) {
+    customerBody.cpfCnpj = cpfCnpj;
+  }
+
+  logStep("Creating new Asaas customer", { email: user.email, hasCpfCnpj: !!cpfCnpj });
+
   const createResponse = await fetch(`${baseUrl}/customers`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'access_token': apiKey
     },
-    body: JSON.stringify({
-      name: user.user_metadata?.name || user.email.split('@')[0],
-      email: user.email,
-      externalReference: user.id,
-      ...(cpfCnpj ? { cpfCnpj } : {})
-    })
+    body: JSON.stringify(customerBody)
   });
 
   if (!createResponse.ok) {
