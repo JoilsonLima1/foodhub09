@@ -1,170 +1,213 @@
 
-# Plano de Correção: Tela Preta Após Cadastro no Edge
+
+# Plano de Correção: Tela Preta no Dashboard (Site Publicado - Edge Browser)
 
 ## Problema Identificado
 
-A tela preta após o cadastro é causada por uma **race condition** (condição de corrida) no processo de bootstrap do usuário, que resulta em:
+A tela preta após cadastro no site publicado ocorre devido a uma **falha de timing na verificação de sessão**:
 
-1. **Bootstrap chamado duas vezes simultaneamente** - criando 2 tenants para o mesmo usuário
-2. **Erro de constraint de chave única** - tentativa de inserir perfil duplicado
-3. **Estado inconsistente** - o AuthContext fica em loop tentando carregar dados corrompidos
+1. O usuário completa o cadastro e é redirecionado ao `/dashboard`
+2. O `AuthContext` ainda está estabelecendo a sessão via `onAuthStateChange`
+3. Simultaneamente, o `AppLayout` é renderizado e chama `useFeatureAccess` → `useTrialStatus`
+4. O `useTrialStatus` tenta chamar a Edge Function `check-subscription`
+5. Se a sessão não estiver totalmente pronta, a função retorna erro 500: `"Auth session missing!"`
+6. Isso causa um estado inconsistente onde:
+   - O `user` existe no `AuthContext` (autenticado)
+   - Mas o `subscriptionStatus` falha ao carregar
+   - O layout pode ficar em um estado de loading infinito ou vazio
 
-Os logs confirmam:
+Os logs confirmam este padrão:
 ```text
-Created tenant: 07a1bc0a-dff3-4baf-8db7-ff21ab1eefe3
-Created tenant: c8e09c45-a063-4d6d-8c3b-aab5003a7532  (DUPLICADO!)
-Error: duplicate key value violates unique constraint "profiles_user_id_key"
+04:12:12Z INFO [CHECK-SUBSCRIPTION] ERROR - {"message":"Authentication error: Auth session missing!"}
 ```
 
-## Causa Raiz
+## Causa Raiz Técnica
 
-O `AuthContext.tsx` tem uma lógica onde:
-1. O `signUp()` chama `bootstrap-user` diretamente
-2. O `onAuthStateChange` também dispara `fetchUserData()` 
-3. `fetchUserData()` chama `bootstrapUserIfNeeded()`
-4. Ambos executam simultaneamente criando duplicatas
+### Problema 1: Race Condition Sessão vs. Verificação de Assinatura
+O `useTrialStatus` é habilitado quando `!!user && !!session` (linha 68 de `useTrialStatus.ts`), mas o token de acesso pode não estar totalmente válido no servidor Supabase imediatamente após o signup.
+
+### Problema 2: Tratamento de Erro Insuficiente
+Quando `check-subscription` retorna erro 500, o `subscriptionStatus` fica como `undefined`. O `useFeatureAccess` trata `null` retornando `hasAccess: true`, mas o `isLoading` pode permanecer `true` em certas condições de edge case.
+
+### Problema 3: AppLayout Bloqueia Renderização
+O `AppLayout` mostra um loader enquanto `isLoading` é `true`, mas se o estado ficar preso, a tela fica vazia.
+
+---
 
 ## Solução Proposta
 
-### Fase 1: Corrigir Race Condition no AuthContext
+### Fase 1: Adicionar Retry com Delay na Verificação de Assinatura
 
-Modificar o `AuthContext.tsx` para usar um **flag de mutex** que previne múltiplas chamadas simultâneas ao bootstrap:
+Modificar o `useTrialStatus.ts` para:
+1. Adicionar lógica de retry quando a sessão está instável
+2. Implementar delay inicial após login/signup
+3. Garantir que falhas não deixem o estado em loading infinito
 
 ```typescript
-// Adicionar ref para tracking de bootstrap em andamento
-const bootstrapInProgressRef = useRef<Set<string>>(new Set());
+// Adicionar ao useTrialStatus.ts
+const { data: subscriptionStatus, isLoading, error } = useQuery({
+  queryKey: ['subscription-status', user?.id],
+  queryFn: async (): Promise<SubscriptionStatus> => {
+    // ... código existente ...
+  },
+  enabled: !!user && !!session,
+  retry: 2, // Retry 2 vezes em caso de falha
+  retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000),
+  staleTime: 1000 * 60 * 5,
+  refetchOnWindowFocus: true,
+});
+```
 
-const bootstrapUserIfNeeded = async (userId: string, sessionToken: string, userMetadata?: any): Promise<boolean> => {
-  // Prevenir chamadas duplicadas
-  if (bootstrapInProgressRef.current.has(userId)) {
-    console.log('[AuthContext] Bootstrap já em andamento para:', userId);
-    return false;
+### Fase 2: Melhorar Tratamento de Erro no useFeatureAccess
+
+Modificar o `useFeatureAccess.ts` para:
+1. Tratar explicitamente estados de erro
+2. Garantir que erros de rede não bloqueiem o usuário
+3. Fornecer acesso padrão (trial) quando há falha temporária
+
+```typescript
+// Em useFeatureAccess.ts - adicionar tratamento de erro
+const { subscriptionStatus, getDaysRemaining, isLoading, error } = useTrialStatus();
+
+// Se houve erro na verificação, conceder acesso temporário (trial)
+if (error && !isLoading) {
+  console.warn('[useFeatureAccess] Error checking subscription, granting temporary access');
+  return {
+    hasAccess: true,
+    isTrialActive: true,
+    isTrialExpired: false,
+    daysRemaining: trialDays,
+    trialDays,
+    reason: 'trial_active',
+    isLoading: false,
+  };
+}
+```
+
+### Fase 3: Adicionar Timeout no AppLayout
+
+Modificar o `AppLayout.tsx` para:
+1. Adicionar timeout máximo de loading (5 segundos)
+2. Se exceder, renderizar o conteúdo mesmo assim
+3. Evitar tela preta permanente
+
+```typescript
+// Em AppLayout.tsx
+const [loadingTimeout, setLoadingTimeout] = useState(false);
+
+useEffect(() => {
+  if (isLoading) {
+    const timer = setTimeout(() => {
+      setLoadingTimeout(true);
+    }, 5000); // 5 segundos máximo
+    return () => clearTimeout(timer);
+  }
+}, [isLoading]);
+
+// Renderizar conteúdo se timeout expirou
+if (isLoading && !loadingTimeout) {
+  // ... mostrar loader ...
+}
+// Se timeout expirou, continuar renderizando normalmente
+```
+
+### Fase 4: Melhorar Resiliência da Edge Function check-subscription
+
+Modificar a Edge Function para:
+1. Retornar status de trial ativo como fallback quando há erro de autenticação temporário
+2. Adicionar log mais detalhado para debugging
+3. Não retornar 500 para erros de sessão (retornar trial como padrão)
+
+```typescript
+// Em check-subscription/index.ts
+catch (error) {
+  const errorMessage = error instanceof Error ? error.message : String(error);
+  logStep("ERROR in check-subscription", { message: errorMessage });
+  
+  // Para erros de autenticação temporários, retornar trial ativo
+  // Isso evita bloquear o usuário por problemas de timing
+  if (errorMessage.includes('session') || errorMessage.includes('auth')) {
+    return new Response(JSON.stringify({
+      subscribed: true,
+      is_trialing: true,
+      trial_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      subscription_end: null,
+      product_id: null,
+      status: 'trialing'
+    }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 200, // Retornar 200 com trial padrão, não 500
+    });
   }
   
-  bootstrapInProgressRef.current.add(userId);
-  
-  try {
-    // ... código existente do bootstrap ...
-    return true;
-  } finally {
-    bootstrapInProgressRef.current.delete(userId);
-  }
-};
-```
-
-### Fase 2: Adicionar Verificação de Lock no Edge Function
-
-Modificar `bootstrap-user/index.ts` para usar uma verificação atômica:
-
-```typescript
-// Verificar SE JÁ EXISTE tenant ANTES de criar
-const { data: existingProfile } = await supabaseAdmin
-  .from('profiles')
-  .select('id, tenant_id')
-  .eq('user_id', userId)
-  .maybeSingle()
-
-// Se já tem tenant, retornar imediatamente
-if (existingProfile?.tenant_id) {
-  return new Response(JSON.stringify({ 
-    success: true, 
-    message: 'User already bootstrapped',
-    tenant_id: existingProfile.tenant_id
-  }), ...)
-}
-
-// Usar SELECT FOR UPDATE para lock row-level (se disponível)
-// Ou usar advisory lock do PostgreSQL
-```
-
-### Fase 3: Remover Bootstrap Duplicado do SignUp
-
-No `signUp()`, após criar o usuário, NÃO chamar bootstrap diretamente. Deixar apenas o `onAuthStateChange` fazer isso:
-
-**Antes:**
-```typescript
-const signUp = async (...) => {
-  const { data, error } = await supabase.auth.signUp({...});
-  if (!error && data.user) {
-    // PROBLEMA: Bootstrap chamado aqui
-    await supabase.functions.invoke('bootstrap-user', {...});
-  }
+  return new Response(JSON.stringify({ error: "..." }), {
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    status: 500,
+  });
 }
 ```
 
-**Depois:**
-```typescript
-const signUp = async (...) => {
-  const { data, error } = await supabase.auth.signUp({...});
-  // REMOVIDO: Não chamar bootstrap aqui
-  // O onAuthStateChange vai tratar isso automaticamente
-  return { error };
-}
-```
-
-### Fase 4: Limpar Dados Duplicados do Usuário Afetado
-
-Executar SQL para remover o tenant órfão:
-
-```sql
--- Remover tenant duplicado que não está vinculado ao perfil
-DELETE FROM tenants 
-WHERE id = 'c8e09c45-a063-4d6d-8c3b-aab5003a7532'
-AND id NOT IN (SELECT tenant_id FROM profiles WHERE tenant_id IS NOT NULL);
-```
+---
 
 ## Arquivos a Modificar
 
 | Arquivo | Modificação |
 |---------|-------------|
-| `src/contexts/AuthContext.tsx` | Adicionar mutex para prevenir chamadas duplicadas ao bootstrap |
-| `supabase/functions/bootstrap-user/index.ts` | Adicionar verificação atômica no início |
+| `src/hooks/useTrialStatus.ts` | Adicionar retry + retryDelay, expor `error` |
+| `src/hooks/useFeatureAccess.ts` | Tratar `error` retornando acesso temporário |
+| `src/components/layout/AppLayout.tsx` | Adicionar timeout de loading (5s) |
+| `supabase/functions/check-subscription/index.ts` | Retornar trial padrão em erros de auth |
 
-## Detalhes Técnicos
+---
 
-### Fluxo Corrigido
+## Fluxo Corrigido
 
 ```text
-SignUp Flow (CORRIGIDO):
+Cadastro → Dashboard (CORRIGIDO)
+
 ┌─────────────────┐     ┌──────────────────┐
 │  Auth.tsx       │────►│ signUp()         │
-│  Click Cadastrar│     │ Criar usuário    │
+│  Cadastrar      │     │ Criar usuário    │
 └─────────────────┘     └────────┬─────────┘
                                  │
                                  ▼
                         ┌──────────────────┐
-                        │ onAuthStateChange│
-                        │ SIGNED_IN event  │
+                        │ Redireciona para │
+                        │ /dashboard       │
                         └────────┬─────────┘
                                  │
                                  ▼
                         ┌──────────────────┐
-                        │ fetchUserData()  │
-                        │ COM MUTEX LOCK   │
+                        │ AppLayout        │
+                        │ isLoading = true │
+                        │ Mostra loader    │
                         └────────┬─────────┘
                                  │
-                                 ▼
-                        ┌──────────────────┐
-                        │ bootstrapUser()  │
-                        │ (1x apenas)      │
-                        └────────┬─────────┘
-                                 │
-                                 ▼
-                        ┌──────────────────┐
-                        │ Dashboard OK     │
-                        └──────────────────┘
+           ┌─────────────────────┼─────────────────────┐
+           │                     │                     │
+           ▼                     ▼                     ▼
+    ┌────────────┐      ┌────────────────┐     ┌────────────────┐
+    │ Sessão OK  │      │ Sessão ainda   │     │ Timeout 5s     │
+    │ check-sub  │      │ não pronta     │     │ expirou        │
+    │ = 200      │      │ check-sub=500  │     │                │
+    └─────┬──────┘      └───────┬────────┘     └───────┬────────┘
+          │                     │                      │
+          ▼                     ▼                      ▼
+    ┌────────────┐      ┌────────────────┐     ┌────────────────┐
+    │ Dashboard  │      │ Retry após 1s  │     │ Renderiza com  │
+    │ renderiza  │      │ Retry após 2s  │     │ trial padrão   │
+    │ OK         │      │ ou fallback    │     │                │
+    └────────────┘      └────────────────┘     └────────────────┘
 ```
 
-### Compatibilidade com Edge Browser
+---
 
-O problema **NÃO é específico do Edge**. Aconteceria em qualquer navegador. O Edge pode simplesmente ter timing diferente que evidenciou a race condition.
+## Resumo das Mudanças
 
-## Impacto
+1. **Retry automático**: 2 tentativas com delay exponencial
+2. **Tratamento de erro**: Erros de auth retornam trial ativo
+3. **Timeout de loading**: Máximo 5 segundos de espera
+4. **Edge function resiliente**: Não retorna 500 para erros de sessão
 
-- **Novos cadastros**: Funcionarão corretamente sem duplicação
-- **Usuário afetado**: Precisa de limpeza manual dos dados duplicados
-- **Usuários existentes**: Nenhum impacto
+Essas mudanças garantem que o usuário nunca fique preso em uma tela preta, mesmo quando há instabilidades de timing na sessão de autenticação.
 
-## Prioridade: ALTA
-
-Esta correção é crítica para o funcionamento do fluxo de cadastro.
