@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { AppSidebar } from './AppSidebar';
 import { useLowStockAlerts } from '@/hooks/useLowStockAlerts';
@@ -18,12 +19,24 @@ export function AppLayout() {
   const { roles } = useAuth();
   const { sidebarCollapsed } = useAppearance();
   const { hasAccess, isTrialExpired, reason, isLoading } = useFeatureAccess();
+  const [loadingTimeout, setLoadingTimeout] = useState(false);
   
   // Enable low stock alerts globally
   useLowStockAlerts();
   
   // Enable preparing order alerts globally
   usePreparingAlerts();
+
+  // Safety timeout to prevent infinite loading state (5 seconds max)
+  useEffect(() => {
+    if (isLoading && !loadingTimeout) {
+      const timer = setTimeout(() => {
+        console.warn('[AppLayout] Loading timeout reached, rendering content');
+        setLoadingTimeout(true);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [isLoading, loadingTimeout]);
 
   // Check if current page requires feature access
   const currentPath = location.pathname;
@@ -49,8 +62,8 @@ export function AppLayout() {
     return featureMap[path] || 'esta funcionalidade';
   };
 
-  // Show loading state while checking subscription
-  if (isLoading) {
+  // Show loading state while checking subscription (with timeout protection)
+  if (isLoading && !loadingTimeout) {
     return (
       <div className="min-h-screen flex w-full">
         <AppSidebar />
