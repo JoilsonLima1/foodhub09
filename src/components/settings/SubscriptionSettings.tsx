@@ -171,6 +171,19 @@ export function SubscriptionSettings() {
       return;
     }
 
+    // Check which payment provider was used
+    const provider = subscriptionStatus?.paymentInfo?.lastPaymentProvider;
+    
+    // If paid via Asaas, show informative message (Asaas doesn't have a customer portal)
+    if (provider === 'asaas') {
+      toast({
+        title: 'Gerenciamento de Assinatura',
+        description: 'Para alterar ou cancelar sua assinatura, entre em contato com nosso suporte ou aguarde a próxima renovação.',
+      });
+      return;
+    }
+
+    // For Stripe subscriptions, open the customer portal
     setIsOpeningPortal(true);
     try {
       const { data, error } = await supabase.functions.invoke('customer-portal', {
@@ -188,11 +201,20 @@ export function SubscriptionSettings() {
       }
     } catch (error: any) {
       console.error('Portal error:', error);
-      toast({
-        title: 'Erro ao abrir portal',
-        description: error.message || 'Tente novamente mais tarde',
-        variant: 'destructive',
-      });
+      
+      // Handle case where user doesn't have a Stripe customer (e.g., paid via other gateway)
+      if (error.message?.includes('Customer record not found') || error.message?.includes('Portal access failed')) {
+        toast({
+          title: 'Portal não disponível',
+          description: 'O gerenciamento de assinatura não está disponível para seu método de pagamento. Entre em contato com o suporte para alterações.',
+        });
+      } else {
+        toast({
+          title: 'Erro ao abrir portal',
+          description: error.message || 'Tente novamente mais tarde',
+          variant: 'destructive',
+        });
+      }
     } finally {
       setIsOpeningPortal(false);
     }
