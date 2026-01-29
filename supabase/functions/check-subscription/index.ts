@@ -13,8 +13,6 @@ const logStep = (step: string, details?: Record<string, unknown>) => {
 };
 
 async function getGlobalTrialDays(supabaseClient: any): Promise<number> {
-  // Source of truth: Super Admin -> system_settings.trial_period
-  // Fallback: 14 days
   try {
     const { data, error } = await supabaseClient
       .from('system_settings')
@@ -35,10 +33,39 @@ async function getGlobalTrialDays(supabaseClient: any): Promise<number> {
   }
 }
 
-function computeTrialEndFromUserCreatedAt(userCreatedAtIso: string, trialDays: number): string {
-  const userCreatedAt = new Date(userCreatedAtIso);
-  const trialEndDate = new Date(userCreatedAt.getTime() + trialDays * 24 * 60 * 60 * 1000);
-  return trialEndDate.toISOString();
+interface TrialInfo {
+  trialStartDate: string;
+  trialEndDate: string;
+  totalTrialDays: number;
+  daysUsed: number;
+  daysRemaining: number;
+  isTrialActive: boolean;
+}
+
+function computeTrialInfo(createdAtIso: string, trialDays: number): TrialInfo {
+  const trialStart = new Date(createdAtIso);
+  const trialEnd = new Date(trialStart.getTime() + trialDays * 24 * 60 * 60 * 1000);
+  const now = new Date();
+  
+  const daysUsed = Math.max(0, Math.floor((now.getTime() - trialStart.getTime()) / (1000 * 60 * 60 * 24)));
+  const daysRemaining = Math.max(0, trialDays - daysUsed);
+  const isTrialActive = trialEnd > now;
+  
+  return {
+    trialStartDate: trialStart.toISOString(),
+    trialEndDate: trialEnd.toISOString(),
+    totalTrialDays: trialDays,
+    daysUsed,
+    daysRemaining,
+    isTrialActive,
+  };
+}
+
+function computeNextPaymentDate(subscriptionDate: string, daysRemainingFromTrial: number): string {
+  const subDate = new Date(subscriptionDate);
+  // Next payment = subscription date + remaining trial days + 30 days (billing cycle)
+  const nextPayment = new Date(subDate.getTime() + (daysRemainingFromTrial + 30) * 24 * 60 * 60 * 1000);
+  return nextPayment.toISOString();
 }
 
 serve(async (req) => {
@@ -72,32 +99,40 @@ serve(async (req) => {
     if (!user?.email) throw new Error("User not authenticated or email not available");
     logStep("User authenticated", { userId: user.id, email: user.email });
 
-    // Global trial config (Super Admin) is the single source of truth
+    // Get global trial config
     const globalTrialDays = await getGlobalTrialDays(supabaseClient);
-    const globalTrialEndIso = computeTrialEndFromUserCreatedAt(user.created_at, globalTrialDays);
-    const now = new Date();
-    const globalTrialEnd = new Date(globalTrialEndIso);
-    const isGlobalTrialActive = globalTrialEnd > now;
-    logStep('Global trial computed', {
-      globalTrialDays,
-      trialEnd: globalTrialEndIso,
-      isActive: isGlobalTrialActive,
+    
+    // Compute trial info based on user registration date
+    const trialInfo = computeTrialInfo(user.created_at, globalTrialDays);
+    logStep('Trial info computed', {
+      trialStart: trialInfo.trialStartDate,
+      trialEnd: trialInfo.trialEndDate,
+      daysUsed: trialInfo.daysUsed,
+      daysRemaining: trialInfo.daysRemaining,
+      isActive: trialInfo.isTrialActive,
     });
 
-    // FIRST: Check tenant status in database (for Asaas or any local subscription)
+    // Get tenant info
     const { data: profile } = await supabaseClient
       .from('profiles')
       .select('tenant_id')
       .eq('user_id', user.id)
       .single();
 
+    let tenantPlanId: string | null = null;
+    let subscriptionDate: string | null = null;
+    let tenant: any = null;
+
     if (profile?.tenant_id) {
-      const { data: tenant } = await supabaseClient
+      const { data: tenantData } = await supabaseClient
         .from('tenants')
-        .select('subscription_status, subscription_plan_id, subscription_current_period_start, subscription_current_period_end, trial_ends_at, asaas_payment_id')
+        .select('subscription_status, subscription_plan_id, subscription_current_period_start, subscription_current_period_end, trial_ends_at, asaas_payment_id, created_at')
         .eq('id', profile.tenant_id)
         .single();
 
+      tenant = tenantData;
+      tenantPlanId = tenant?.subscription_plan_id || null;
+      
       logStep("Tenant found", { 
         tenantId: profile.tenant_id, 
         status: tenant?.subscription_status,
@@ -107,6 +142,7 @@ serve(async (req) => {
 
       // If tenant has an active subscription via Asaas (or any other local method)
       if (tenant?.subscription_status === 'active' && tenant?.subscription_plan_id) {
+        subscriptionDate = tenant.subscription_current_period_start;
         const periodEnd = tenant.subscription_current_period_end 
           ? new Date(tenant.subscription_current_period_end)
           : null;
@@ -114,18 +150,36 @@ serve(async (req) => {
 
         // Check if subscription is still valid
         if (!periodEnd || periodEnd > now) {
+          // Calculate next payment considering remaining trial benefit
+          let nextPaymentDate = periodEnd?.toISOString() || null;
+          
+          // If subscription started during trial, user still benefits from remaining trial days
+          if (subscriptionDate && trialInfo.daysRemaining > 0) {
+            nextPaymentDate = computeNextPaymentDate(subscriptionDate, trialInfo.daysRemaining);
+          }
+
           logStep("Active Asaas/local subscription found", {
             planId: tenant.subscription_plan_id,
-            periodEnd: periodEnd?.toISOString()
+            periodEnd: periodEnd?.toISOString(),
+            nextPayment: nextPaymentDate
           });
 
           return new Response(JSON.stringify({
             subscribed: true,
             is_trialing: false,
-            trial_end: null,
-            subscription_end: periodEnd?.toISOString() || null,
+            trial_start: trialInfo.trialStartDate,
+            trial_end: trialInfo.trialEndDate,
+            total_trial_days: trialInfo.totalTrialDays,
+            days_used: trialInfo.daysUsed,
+            days_remaining: trialInfo.daysRemaining,
+            subscription_start: subscriptionDate,
+            subscription_end: nextPaymentDate,
             product_id: tenant.subscription_plan_id,
-            status: 'active'
+            status: 'active',
+            has_trial_benefit: trialInfo.daysRemaining > 0,
+            trial_benefit_message: trialInfo.daysRemaining > 0 
+              ? `Você utilizou ${trialInfo.daysUsed} dias do período de teste e ainda possui ${trialInfo.daysRemaining} dias gratuitos restantes.`
+              : null
           }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
             status: 200,
@@ -133,24 +187,54 @@ serve(async (req) => {
         }
       }
 
-      // Trial status: ALWAYS computed from Super Admin config (system_settings.trial_period)
-      // This prevents inconsistent trial_end dates coming from defaults in the tenants table.
-      if (tenant?.subscription_status !== 'active') {
-        if (isGlobalTrialActive) {
-          return new Response(
-            JSON.stringify({
-              subscribed: true,
-              is_trialing: true,
-              trial_end: globalTrialEndIso,
-              subscription_end: null,
-              product_id: tenant?.subscription_plan_id || null,
-              status: 'trialing',
-            }),
-            {
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-              status: 200,
-            },
-          );
+      // User has contracted a plan but is still in trial period
+      if (tenant?.subscription_plan_id && tenant?.subscription_status !== 'active' && trialInfo.isTrialActive) {
+        const subDate = tenant.subscription_current_period_start || new Date().toISOString();
+        const nextPaymentDate = computeNextPaymentDate(subDate, trialInfo.daysRemaining);
+
+        return new Response(JSON.stringify({
+          subscribed: true,
+          is_trialing: true,
+          trial_start: trialInfo.trialStartDate,
+          trial_end: trialInfo.trialEndDate,
+          total_trial_days: trialInfo.totalTrialDays,
+          days_used: trialInfo.daysUsed,
+          days_remaining: trialInfo.daysRemaining,
+          subscription_start: subscriptionDate,
+          subscription_end: nextPaymentDate,
+          product_id: tenant.subscription_plan_id,
+          status: 'trialing',
+          has_contracted_plan: true,
+          has_trial_benefit: true,
+          trial_benefit_message: `Você utilizou ${trialInfo.daysUsed} dias do período de teste e ainda possui ${trialInfo.daysRemaining} dias gratuitos restantes.`
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        });
+      }
+
+      // Pure trial without any plan contracted
+      if (tenant?.subscription_status !== 'active' && !tenant?.subscription_plan_id) {
+        if (trialInfo.isTrialActive) {
+          return new Response(JSON.stringify({
+            subscribed: true,
+            is_trialing: true,
+            trial_start: trialInfo.trialStartDate,
+            trial_end: trialInfo.trialEndDate,
+            total_trial_days: trialInfo.totalTrialDays,
+            days_used: trialInfo.daysUsed,
+            days_remaining: trialInfo.daysRemaining,
+            subscription_start: null,
+            subscription_end: null,
+            product_id: null,
+            status: 'trialing',
+            has_contracted_plan: false,
+            has_trial_benefit: false,
+            trial_benefit_message: null
+          }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 200,
+          });
         }
       }
     }
@@ -159,15 +243,23 @@ serve(async (req) => {
     const stripe = new Stripe(stripeKey, { apiVersion: "2024-06-20" });
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
     
-    // If no Stripe customer exists, fallback to global trial based on Super Admin settings
+    // If no Stripe customer exists, return trial info
     if (customers.data.length === 0) {
       return new Response(JSON.stringify({ 
-        subscribed: isGlobalTrialActive,
-        is_trialing: isGlobalTrialActive,
-        trial_end: globalTrialEndIso,
+        subscribed: trialInfo.isTrialActive,
+        is_trialing: trialInfo.isTrialActive,
+        trial_start: trialInfo.trialStartDate,
+        trial_end: trialInfo.trialEndDate,
+        total_trial_days: trialInfo.totalTrialDays,
+        days_used: trialInfo.daysUsed,
+        days_remaining: trialInfo.daysRemaining,
+        subscription_start: null,
         subscription_end: null,
-        product_id: null,
-        status: isGlobalTrialActive ? 'trialing' : 'expired'
+        product_id: tenantPlanId,
+        status: trialInfo.isTrialActive ? 'trialing' : 'expired',
+        has_contracted_plan: !!tenantPlanId,
+        has_trial_benefit: false,
+        trial_benefit_message: null
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
@@ -190,44 +282,67 @@ serve(async (req) => {
     );
 
     if (!activeSubscription) {
-      // Customer exists in Stripe but no active subscription - check if they had a trial
       logStep("No active subscription found for Stripe customer");
 
       return new Response(JSON.stringify({ 
-        subscribed: isGlobalTrialActive,
-        is_trialing: isGlobalTrialActive,
-        trial_end: globalTrialEndIso,
+        subscribed: trialInfo.isTrialActive,
+        is_trialing: trialInfo.isTrialActive,
+        trial_start: trialInfo.trialStartDate,
+        trial_end: trialInfo.trialEndDate,
+        total_trial_days: trialInfo.totalTrialDays,
+        days_used: trialInfo.daysUsed,
+        days_remaining: trialInfo.daysRemaining,
+        subscription_start: null,
         subscription_end: null,
-        product_id: null,
-        status: isGlobalTrialActive ? 'trialing' : 'expired'
+        product_id: tenantPlanId,
+        status: trialInfo.isTrialActive ? 'trialing' : 'expired',
+        has_contracted_plan: !!tenantPlanId,
+        has_trial_benefit: false,
+        trial_benefit_message: null
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
       });
     }
 
-    const isTrialing = activeSubscription.status === 'trialing';
-    const trialEnd = activeSubscription.trial_end 
+    const isStripeTrialing = activeSubscription.status === 'trialing';
+    const stripeTrialEnd = activeSubscription.trial_end 
       ? new Date(activeSubscription.trial_end * 1000).toISOString()
       : null;
     const subscriptionEnd = new Date(activeSubscription.current_period_end * 1000).toISOString();
+    const subscriptionStart = new Date(activeSubscription.current_period_start * 1000).toISOString();
     const productId = activeSubscription.items.data[0]?.price.product as string;
+
+    // Calculate next payment with trial benefit
+    let nextPaymentDate = subscriptionEnd;
+    if (trialInfo.daysRemaining > 0 && subscriptionStart) {
+      nextPaymentDate = computeNextPaymentDate(subscriptionStart, trialInfo.daysRemaining);
+    }
 
     logStep("Subscription found", { 
       status: activeSubscription.status,
-      isTrialing,
-      trialEnd,
+      isTrialing: isStripeTrialing,
+      trialEnd: stripeTrialEnd,
       subscriptionEnd,
       productId
     });
 
     return new Response(JSON.stringify({
       subscribed: true,
-      is_trialing: isTrialing,
-      trial_end: trialEnd,
-      subscription_end: subscriptionEnd,
+      is_trialing: isStripeTrialing,
+      trial_start: trialInfo.trialStartDate,
+      trial_end: stripeTrialEnd || trialInfo.trialEndDate,
+      total_trial_days: trialInfo.totalTrialDays,
+      days_used: trialInfo.daysUsed,
+      days_remaining: trialInfo.daysRemaining,
+      subscription_start: subscriptionStart,
+      subscription_end: nextPaymentDate,
       product_id: productId,
-      status: activeSubscription.status
+      status: activeSubscription.status,
+      has_trial_benefit: trialInfo.daysRemaining > 0,
+      trial_benefit_message: trialInfo.daysRemaining > 0 
+        ? `Você utilizou ${trialInfo.daysUsed} dias do período de teste e ainda possui ${trialInfo.daysRemaining} dias gratuitos restantes.`
+        : null
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
@@ -237,7 +352,6 @@ serve(async (req) => {
     logStep("ERROR in check-subscription", { message: errorMessage });
     
     // For temporary auth/session errors, return trial status as fallback
-    // This prevents blocking the user due to timing issues during signup
     if (errorMessage.toLowerCase().includes('session') || 
         errorMessage.toLowerCase().includes('auth') ||
         errorMessage.toLowerCase().includes('token')) {
@@ -245,10 +359,17 @@ serve(async (req) => {
       return new Response(JSON.stringify({
         subscribed: true,
         is_trialing: true,
+        trial_start: new Date().toISOString(),
         trial_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        total_trial_days: 30,
+        days_used: 0,
+        days_remaining: 30,
+        subscription_start: null,
         subscription_end: null,
         product_id: null,
-        status: 'trialing'
+        status: 'trialing',
+        has_trial_benefit: false,
+        trial_benefit_message: null
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
