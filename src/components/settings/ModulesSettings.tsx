@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Separator } from '@/components/ui/separator';
 import { 
   Package, 
   Check, 
@@ -18,17 +19,19 @@ import {
   MessageSquare,
   Gift,
   CreditCard,
+  RefreshCw,
+  Wallet,
 } from 'lucide-react';
 import { 
   useAddonModules, 
-  useMyAddonSubscriptions, 
   ADDON_CATEGORY_LABELS,
-  ADDON_STATUS_LABELS,
   type AddonModule,
   type AddonModuleCategory,
 } from '@/hooks/useAddonModules';
+import { useTenantModules } from '@/hooks/useTenantModules';
+import { useBillingSettings } from '@/hooks/useBillingSettings';
 import { cn } from '@/lib/utils';
-import { CheckoutDialog } from '@/components/checkout/CheckoutDialog';
+import { ModulePurchaseDialog } from './ModulePurchaseDialog';
 
 // Icon mapping for module categories
 const CATEGORY_ICONS: Record<AddonModuleCategory, React.ComponentType<{ className?: string }>> = {
@@ -56,25 +59,18 @@ const getModuleIcon = (iconName: string) => {
 
 export function ModulesSettings() {
   const { modules, isLoading: modulesLoading } = useAddonModules();
-  const { subscriptions, isLoading: subsLoading, hasAddon, refetch } = useMyAddonSubscriptions();
+  const { tenantModules, tenantInfo, isLoading: tenantLoading, getModulesBreakdown, refetch } = useTenantModules();
+  const { settings: billingSettings } = useBillingSettings();
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [purchaseDialogOpen, setPurchaseDialogOpen] = useState(false);
   const [selectedModule, setSelectedModule] = useState<AddonModule | null>(null);
 
-  const isLoading = modulesLoading || subsLoading;
+  const isLoading = modulesLoading || tenantLoading;
+  const breakdown = getModulesBreakdown();
+  const plan = tenantInfo?.subscription_plans as any;
 
   // Group modules by category
   const categories = ['all', ...Object.keys(ADDON_CATEGORY_LABELS)] as const;
-  
-  const filteredModules = modules?.filter(mod => {
-    if (selectedCategory === 'all') return true;
-    return mod.category === selectedCategory;
-  }) || [];
-
-  // Get subscription info for a module
-  const getSubscriptionInfo = (moduleId: string) => {
-    return subscriptions?.find(sub => sub.addon_module_id === moduleId);
-  };
 
   const formatPrice = (price: number, currency: string = 'BRL') => {
     return new Intl.NumberFormat('pt-BR', {
@@ -83,55 +79,34 @@ export function ModulesSettings() {
     }).format(price);
   };
 
-  const handleRequestModule = (module: AddonModule) => {
-    // Open checkout dialog with payment gateway selection
-    setSelectedModule(module);
-    setCheckoutOpen(true);
+  const formatDate = (dateStr: string | null) => {
+    if (!dateStr) return '-';
+    return new Date(dateStr).toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
   };
 
-  const handleCheckoutSuccess = () => {
-    // Refetch subscriptions after successful checkout
+  const handlePurchaseModule = (module: AddonModule) => {
+    setSelectedModule(module);
+    setPurchaseDialogOpen(true);
+  };
+
+  const handlePurchaseSuccess = () => {
     refetch();
   };
 
-  // Get subscription badge info
-  const getSubscriptionBadge = (subscription: ReturnType<typeof getSubscriptionInfo>) => {
-    if (!subscription) return null;
-
-    if (subscription.is_free || subscription.source === 'plan_included') {
-      return {
-        label: 'Incluso no Plano',
-        variant: 'default' as const,
-        icon: Gift,
-        description: 'Gratuito',
-      };
-    }
-
-    if (subscription.price_paid > 0) {
-      return {
-        label: ADDON_STATUS_LABELS[subscription.status],
-        variant: 'default' as const,
-        icon: CreditCard,
-        description: `Pago: ${formatPrice(subscription.price_paid)}/mês`,
-      };
-    }
-
-    return {
-      label: ADDON_STATUS_LABELS[subscription.status],
-      variant: subscription.status === 'trial' ? 'secondary' as const : 'default' as const,
-      icon: subscription.status === 'trial' ? Clock : Check,
-      description: subscription.status === 'trial' ? 'Período de teste' : 'Ativo',
-    };
-  };
+  // Filter available modules by category
+  const filteredAvailable = breakdown.availableModules.filter(mod => {
+    if (selectedCategory === 'all') return true;
+    return mod.category === selectedCategory;
+  });
 
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <div className="flex gap-2 overflow-x-auto pb-2">
-          {[1, 2, 3, 4].map(i => (
-            <Skeleton key={i} className="h-8 w-24 shrink-0" />
-          ))}
-        </div>
+        <Skeleton className="h-32" />
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {[1, 2, 3, 4, 5, 6].map(i => (
             <Skeleton key={i} className="h-64" />
@@ -143,52 +118,162 @@ export function ModulesSettings() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Summary Card */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Package className="h-5 w-5" />
-            Módulos Adicionais
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Package className="h-5 w-5" />
+              <CardTitle>Módulos Adicionais</CardTitle>
+            </div>
+            <Button variant="ghost" size="sm" onClick={() => refetch()}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Atualizar
+            </Button>
+          </div>
           <CardDescription>
-            Expanda as funcionalidades do seu sistema com módulos extras. 
-            Você pode contratar módulos individuais conforme sua necessidade.
+            Expanda as funcionalidades do seu sistema com módulos extras.
           </CardDescription>
         </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="p-4 rounded-lg bg-muted/50 text-center">
+              <p className="text-sm text-muted-foreground">Plano Atual</p>
+              <p className="text-xl font-bold">{plan?.name || 'Nenhum'}</p>
+              <p className="text-sm text-muted-foreground">{formatPrice(breakdown.planPrice)}/mês</p>
+            </div>
+            <div className="p-4 rounded-lg bg-primary/5 text-center">
+              <p className="text-sm text-muted-foreground">Módulos Ativos</p>
+              <p className="text-xl font-bold">
+                {breakdown.includedModules.length + breakdown.purchasedModules.length}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {breakdown.includedModules.length} inclusos + {breakdown.purchasedModules.length} contratados
+              </p>
+            </div>
+            <div className="p-4 rounded-lg bg-green-50 dark:bg-green-950/30 text-center">
+              <p className="text-sm text-green-700 dark:text-green-400">Total Mensal</p>
+              <p className="text-xl font-bold text-green-700 dark:text-green-400">
+                {formatPrice(breakdown.totalMonthly)}
+              </p>
+              {breakdown.modulesTotal > 0 && (
+                <p className="text-xs text-green-600 dark:text-green-500">
+                  + {formatPrice(breakdown.modulesTotal)} em módulos
+                </p>
+              )}
+            </div>
+          </div>
+        </CardContent>
       </Card>
 
-      {/* Active Subscriptions Summary */}
-      {subscriptions && subscriptions.length > 0 && (
-        <Card className="border-primary/30 bg-primary/5">
+      {/* Included Modules */}
+      {breakdown.includedModules.length > 0 && (
+        <Card className="border-green-500/30">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
-              <Check className="h-4 w-4 text-primary" />
-              Módulos Ativos ({subscriptions.length})
+              <Gift className="h-4 w-4 text-green-600" />
+              Incluídos no seu Plano ({breakdown.includedModules.length})
             </CardTitle>
+            <CardDescription>
+              Módulos inclusos gratuitamente no plano {plan?.name}
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-wrap gap-2">
-              {subscriptions.map(sub => {
-                const badgeInfo = getSubscriptionBadge(sub);
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {breakdown.includedModules.map(sub => {
+                const ModuleIcon = getModuleIcon(sub.addon_module?.icon || 'Package');
                 return (
-                  <Badge 
-                    key={sub.id} 
-                    variant={sub.status === 'active' ? 'default' : 'secondary'}
-                    className="gap-1"
+                  <div
+                    key={sub.id}
+                    className="flex items-center gap-3 p-3 rounded-lg border bg-green-50/50 dark:bg-green-950/20"
                   >
-                    {sub.is_free || sub.source === 'plan_included' ? (
-                      <Gift className="h-3 w-3" />
-                    ) : sub.status === 'trial' ? (
-                      <Clock className="h-3 w-3" />
-                    ) : null}
-                    {sub.addon_module?.name}
-                  </Badge>
+                    <div className="h-10 w-10 rounded-lg bg-green-100 dark:bg-green-900/50 flex items-center justify-center">
+                      <ModuleIcon className="h-5 w-5 text-green-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">{sub.addon_module?.name}</p>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="text-xs bg-green-100 text-green-700">
+                          <Gift className="h-3 w-3 mr-1" />
+                          Incluso
+                        </Badge>
+                      </div>
+                    </div>
+                    <Check className="h-5 w-5 text-green-600 shrink-0" />
+                  </div>
                 );
               })}
             </div>
           </CardContent>
         </Card>
       )}
+
+      {/* Purchased Modules */}
+      {breakdown.purchasedModules.length > 0 && (
+        <Card className="border-primary/30">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Wallet className="h-4 w-4 text-primary" />
+              Módulos Adquiridos ({breakdown.purchasedModules.length})
+            </CardTitle>
+            <CardDescription>
+              Módulos contratados separadamente
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {breakdown.purchasedModules.map(sub => {
+                const ModuleIcon = getModuleIcon(sub.addon_module?.icon || 'Package');
+                return (
+                  <div
+                    key={sub.id}
+                    className="flex items-center gap-3 p-4 rounded-lg border bg-primary/5"
+                  >
+                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <ModuleIcon className="h-5 w-5 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium">{sub.addon_module?.name}</p>
+                      <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <CreditCard className="h-3 w-3" />
+                          {formatPrice(sub.addon_module?.monthly_price || sub.price_paid)}/mês
+                        </span>
+                        {sub.purchased_at && (
+                          <span>Contratado em {formatDate(sub.purchased_at)}</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <Badge variant="default">Ativo</Badge>
+                      {sub.next_billing_date && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Próx: {formatDate(sub.next_billing_date)}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <Separator />
+
+      {/* Available Modules */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <ShoppingCart className="h-5 w-5" />
+            Disponíveis para Contratação
+          </CardTitle>
+          <CardDescription>
+            Módulos adicionais que você pode contratar para expandir seu sistema
+          </CardDescription>
+        </CardHeader>
+      </Card>
 
       {/* Category Tabs */}
       <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
@@ -197,10 +282,11 @@ export function ModulesSettings() {
             value="all" 
             className="shrink-0 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
           >
-            Todos
+            Todos ({breakdown.availableModules.length})
           </TabsTrigger>
           {Object.entries(ADDON_CATEGORY_LABELS).map(([key, label]) => {
             const Icon = CATEGORY_ICONS[key as AddonModuleCategory];
+            const count = breakdown.availableModules.filter(m => m.category === key).length;
             return (
               <TabsTrigger 
                 key={key} 
@@ -208,53 +294,42 @@ export function ModulesSettings() {
                 className="shrink-0 flex items-center gap-1 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
               >
                 <Icon className="h-4 w-4" />
-                {label}
+                {label} ({count})
               </TabsTrigger>
             );
           })}
         </TabsList>
 
         <TabsContent value={selectedCategory} className="mt-6">
-          {filteredModules.length === 0 ? (
+          {filteredAvailable.length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center">
-                <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <Check className="h-12 w-12 mx-auto text-green-500 mb-4" />
                 <p className="text-muted-foreground">
-                  Nenhum módulo disponível nesta categoria.
+                  {breakdown.availableModules.length === 0 
+                    ? 'Você já possui todos os módulos disponíveis!' 
+                    : 'Nenhum módulo disponível nesta categoria.'}
                 </p>
               </CardContent>
             </Card>
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {filteredModules.map(module => {
-                const subscription = getSubscriptionInfo(module.id);
-                const isSubscribed = !!subscription && ['active', 'trial'].includes(subscription.status);
+              {filteredAvailable.map(module => {
                 const ModuleIcon = getModuleIcon(module.icon);
-                const badgeInfo = getSubscriptionBadge(subscription);
                 
                 return (
                   <Card 
                     key={module.id}
-                    className={cn(
-                      "flex flex-col transition-all hover:shadow-md",
-                      isSubscribed && "border-primary/50 bg-primary/5"
-                    )}
+                    className="flex flex-col transition-all hover:shadow-md"
                   >
                     <CardHeader className="pb-3">
                       <div className="flex items-start justify-between">
                         <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
                           <ModuleIcon className="h-5 w-5 text-primary" />
                         </div>
-                        {isSubscribed && badgeInfo ? (
-                          <Badge variant={badgeInfo.variant} className="gap-1">
-                            <badgeInfo.icon className="h-3 w-3" />
-                            {badgeInfo.label}
-                          </Badge>
-                        ) : (
-                          <Badge variant="secondary">
-                            {ADDON_CATEGORY_LABELS[module.category]}
-                          </Badge>
-                        )}
+                        <Badge variant="secondary">
+                          {ADDON_CATEGORY_LABELS[module.category]}
+                        </Badge>
                       </div>
                       <CardTitle className="text-lg mt-3">{module.name}</CardTitle>
                       <CardDescription className="line-clamp-2">
@@ -285,59 +360,25 @@ export function ModulesSettings() {
                     <CardFooter className="flex-col items-stretch gap-3 pt-4 border-t">
                       <div className="flex items-baseline justify-between">
                         <div>
-                          {isSubscribed && badgeInfo ? (
-                            <>
-                              <span className="text-sm text-muted-foreground block">
-                                {badgeInfo.description}
-                              </span>
-                              {subscription?.is_free || subscription?.source === 'plan_included' ? (
-                                <span className="text-xl font-bold text-primary">Grátis</span>
-                              ) : (
-                                <span className="text-xl font-bold">
-                                  {formatPrice(subscription?.price_paid || module.monthly_price)}
-                                  <span className="text-sm text-muted-foreground font-normal">/mês</span>
-                                </span>
-                              )}
-                            </>
-                          ) : (
-                            <>
-                              {module.setup_fee > 0 && (
-                                <span className="text-xs text-muted-foreground block">
-                                  Setup: {formatPrice(module.setup_fee)}
-                                </span>
-                              )}
-                              <span className="text-xl font-bold">
-                                {formatPrice(module.monthly_price)}
-                              </span>
-                              <span className="text-sm text-muted-foreground">/mês</span>
-                            </>
+                          {module.setup_fee > 0 && (
+                            <span className="text-xs text-muted-foreground block">
+                              Setup: {formatPrice(module.setup_fee)}
+                            </span>
                           )}
+                          <span className="text-xl font-bold">
+                            {formatPrice(module.monthly_price)}
+                          </span>
+                          <span className="text-sm text-muted-foreground">/mês</span>
                         </div>
                       </div>
                       
-                      {isSubscribed ? (
-                        <Button variant="outline" disabled className="w-full">
-                          {subscription?.is_free || subscription?.source === 'plan_included' ? (
-                            <>
-                              <Gift className="h-4 w-4 mr-2" />
-                              Incluso no Plano
-                            </>
-                          ) : (
-                            <>
-                              <Check className="h-4 w-4 mr-2" />
-                              Instalado
-                            </>
-                          )}
-                        </Button>
-                      ) : (
-                        <Button 
-                          onClick={() => handleRequestModule(module)}
-                          className="w-full"
-                        >
-                          <ShoppingCart className="h-4 w-4 mr-2" />
-                          Contratar Módulo
-                        </Button>
-                      )}
+                      <Button 
+                        onClick={() => handlePurchaseModule(module)}
+                        className="w-full"
+                      >
+                        <ShoppingCart className="h-4 w-4 mr-2" />
+                        Contratar Módulo
+                      </Button>
                     </CardFooter>
                   </Card>
                 );
@@ -347,18 +388,13 @@ export function ModulesSettings() {
         </TabsContent>
       </Tabs>
 
-      {/* Checkout Dialog for module purchase */}
-      {selectedModule && (
-        <CheckoutDialog
-          open={checkoutOpen}
-          onOpenChange={setCheckoutOpen}
-          itemType="module"
-          itemId={selectedModule.id}
-          itemName={selectedModule.name}
-          itemPrice={selectedModule.monthly_price}
-          onSuccess={handleCheckoutSuccess}
-        />
-      )}
+      {/* Purchase Dialog */}
+      <ModulePurchaseDialog
+        open={purchaseDialogOpen}
+        onOpenChange={setPurchaseDialogOpen}
+        module={selectedModule}
+        onSuccess={handlePurchaseSuccess}
+      />
     </div>
   );
 }

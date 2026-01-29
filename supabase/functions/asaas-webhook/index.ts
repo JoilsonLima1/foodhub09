@@ -202,7 +202,7 @@ function getPaymentMethodFromAsaas(billingType: string | undefined): string {
 
 async function activateModuleSubscription(
   supabase: any,
-  metadata: { module_id: string; tenant_id: string },
+  metadata: { module_id: string; tenant_id: string; user_id: string },
   payment: any
 ) {
   logStep("Activating module subscription", { moduleId: metadata.module_id, tenantId: metadata.tenant_id });
@@ -211,15 +211,25 @@ async function activateModuleSubscription(
   const expiresAt = new Date(now);
   expiresAt.setDate(expiresAt.getDate() + 30);
 
-  // Create or update module subscription
+  const nextBillingDate = new Date(now);
+  nextBillingDate.setDate(nextBillingDate.getDate() + 30);
+
+  // Create or update module subscription with full payment tracking
   const { error: upsertError } = await supabase
     .from('tenant_addon_subscriptions')
     .upsert({
       tenant_id: metadata.tenant_id,
       addon_module_id: metadata.module_id,
       status: 'active',
+      source: 'purchase',
+      is_free: false,
+      price_paid: payment.value || 0,
       started_at: now.toISOString(),
-      expires_at: expiresAt.toISOString()
+      expires_at: expiresAt.toISOString(),
+      purchased_at: now.toISOString(),
+      next_billing_date: nextBillingDate.toISOString(),
+      asaas_payment_id: payment.id,
+      billing_mode: 'bundle' // Default, can be changed via settings
     }, {
       onConflict: 'tenant_id,addon_module_id'
     });
@@ -231,6 +241,8 @@ async function activateModuleSubscription(
 
   logStep("Module activated successfully", { 
     tenantId: metadata.tenant_id, 
-    moduleId: metadata.module_id 
+    moduleId: metadata.module_id,
+    pricePaid: payment.value,
+    nextBilling: nextBillingDate.toISOString()
   });
 }

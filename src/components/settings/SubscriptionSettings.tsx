@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Crown, Calendar, CreditCard, ExternalLink, Loader2, AlertTriangle, Check, Clock, Gift, Receipt, Wallet, RefreshCw, ArrowUp, ArrowDown } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
+import { Crown, Calendar, CreditCard, ExternalLink, Loader2, AlertTriangle, Check, Clock, Gift, Receipt, Wallet, RefreshCw, ArrowUp, ArrowDown, Package, DollarSign } from 'lucide-react';
 import { useTrialStatus } from '@/hooks/useTrialStatus';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,6 +12,9 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { CheckoutDialog } from '@/components/checkout/CheckoutDialog';
 import { PlanChangeDialog } from '@/components/settings/PlanChangeDialog';
+import { SubscriptionCompositionCard } from '@/components/settings/SubscriptionCompositionCard';
+import { useTenantModules } from '@/hooks/useTenantModules';
+import { useBillingSettings } from '@/hooks/useBillingSettings';
 import { cn } from '@/lib/utils';
 
 interface CheckoutPendingData {
@@ -52,6 +56,8 @@ interface SubscriptionPlan {
 export function SubscriptionSettings() {
   const { session } = useAuth();
   const { subscriptionStatus, isLoading, getDaysRemaining, getTrialStartDisplay, getExpirationDisplay, refetchSubscription, forceRefresh } = useTrialStatus();
+  const { getModulesBreakdown, tenantModules, isLoading: modulesLoading, refetch: refetchModules } = useTenantModules();
+  const { settings: billingSettings } = useBillingSettings();
   const { toast } = useToast();
   const [isUpgrading, setIsUpgrading] = useState<string | null>(null);
   const [isOpeningPortal, setIsOpeningPortal] = useState(false);
@@ -681,6 +687,15 @@ export function SubscriptionSettings() {
             )}
           </CardContent>
         </Card>
+      )}
+
+      {/* Subscription Composition Card - Shows plan + modules breakdown */}
+      {hasContractedPlan && (
+        <SubscriptionCompositionCard 
+          breakdown={getModulesBreakdown()} 
+          billingMode={billingSettings?.modules_billing_mode || 'bundle'}
+          currentPeriodEnd={subscriptionStatus?.currentPeriodEnd}
+        />
       )}
 
       {/* Current Plan Card (if user has one) */}
