@@ -2576,6 +2576,9 @@ export type Database = {
           pos_display_mode: string | null
           slug: string
           state: string | null
+          subscription_current_period_end: string | null
+          subscription_current_period_start: string | null
+          subscription_plan_id: string | null
           subscription_status: string | null
           trial_ends_at: string | null
           updated_at: string | null
@@ -2606,6 +2609,9 @@ export type Database = {
           pos_display_mode?: string | null
           slug: string
           state?: string | null
+          subscription_current_period_end?: string | null
+          subscription_current_period_start?: string | null
+          subscription_plan_id?: string | null
           subscription_status?: string | null
           trial_ends_at?: string | null
           updated_at?: string | null
@@ -2636,13 +2642,24 @@ export type Database = {
           pos_display_mode?: string | null
           slug?: string
           state?: string | null
+          subscription_current_period_end?: string | null
+          subscription_current_period_start?: string | null
+          subscription_plan_id?: string | null
           subscription_status?: string | null
           trial_ends_at?: string | null
           updated_at?: string | null
           whatsapp_number?: string | null
           zip_code?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "tenants_subscription_plan_id_fkey"
+            columns: ["subscription_plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       trial_notification_dismissals: {
         Row: {

@@ -125,7 +125,17 @@ export function SubscriptionSettings() {
 
     switch (subscriptionStatus.status) {
       case 'active':
-        return <Badge className="bg-green-500/10 text-green-600 border-green-500/20">Ativo</Badge>;
+        return (
+          <div className="flex items-center gap-2">
+            <Badge className="bg-green-500/10 text-green-600 border-green-500/20">
+              <Check className="h-3 w-3 mr-1" />
+              Ativo
+            </Badge>
+            <Badge variant="outline" className="text-green-600 border-green-500/30">
+              Pagamento Confirmado
+            </Badge>
+          </div>
+        );
       case 'trialing':
         return <Badge className="bg-blue-500/10 text-blue-600 border-blue-500/20">Período de Teste</Badge>;
       case 'canceled':
@@ -319,21 +329,23 @@ export function SubscriptionSettings() {
               return (
                 <div 
                   key={plan.id}
-                  className={`p-4 border rounded-lg space-y-4 relative ${
+                  className={`p-4 border rounded-lg space-y-4 relative transition-all ${
                     isProfessional ? 'border-2 border-primary' : ''
-                  } ${isCurrent ? 'bg-primary/5' : ''}`}
+                  } ${isCurrent ? 'bg-primary/10 border-primary ring-2 ring-primary/30' : ''}`}
                 >
-                  {isProfessional && (
+                  {isProfessional && !isCurrent && (
                     <Badge className="absolute -top-2 right-4 bg-primary text-primary-foreground">
                       Mais Popular
+                    </Badge>
+                  )}
+                  {isCurrent && (
+                    <Badge className="absolute -top-2 right-4 bg-green-500 text-white">
+                      ✓ Plano Atual
                     </Badge>
                   )}
                   
                   <div className="flex items-center justify-between">
                     <h3 className="font-semibold">{plan.name}</h3>
-                    {isCurrent && (
-                      <Badge variant="secondary">Atual</Badge>
-                    )}
                   </div>
                   
                   <p className="text-2xl font-bold">
