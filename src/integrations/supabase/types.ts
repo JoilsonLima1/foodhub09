@@ -2482,6 +2482,7 @@ export type Database = {
       tenant_addon_subscriptions: {
         Row: {
           addon_module_id: string
+          asaas_payment_id: string | null
           cancelled_at: string | null
           created_at: string
           created_by: string | null
@@ -2499,6 +2500,7 @@ export type Database = {
         }
         Insert: {
           addon_module_id: string
+          asaas_payment_id?: string | null
           cancelled_at?: string | null
           created_at?: string
           created_by?: string | null
@@ -2516,6 +2518,7 @@ export type Database = {
         }
         Update: {
           addon_module_id?: string
+          asaas_payment_id?: string | null
           cancelled_at?: string | null
           created_at?: string
           created_by?: string | null
@@ -2551,6 +2554,8 @@ export type Database = {
       tenants: {
         Row: {
           address: string | null
+          asaas_customer_id: string | null
+          asaas_payment_id: string | null
           business_category: string | null
           city: string | null
           created_at: string | null
@@ -2579,6 +2584,8 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          asaas_customer_id?: string | null
+          asaas_payment_id?: string | null
           business_category?: string | null
           city?: string | null
           created_at?: string | null
@@ -2607,6 +2614,8 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          asaas_customer_id?: string | null
+          asaas_payment_id?: string | null
           business_category?: string | null
           city?: string | null
           created_at?: string | null
