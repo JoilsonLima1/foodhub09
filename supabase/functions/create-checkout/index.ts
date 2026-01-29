@@ -117,193 +117,27 @@ async function processStripeCheckout(
   );
 }
 
-// Process PIX checkout
-async function processPixCheckout(
-  plan: any,
-  user: any,
-  gatewayConfig: any,
-  supabase: any
-) {
-  logStep("Processing PIX checkout", { planId: plan.id, userId: user.id });
-
-  const pixKey = gatewayConfig?.config?.pix_key || '';
-  const qrCodeUrl = gatewayConfig?.config?.qr_code_url || '';
-
-  if (!pixKey) {
-    throw new Error("PIX não configurado corretamente");
-  }
-
-  // For PIX, we return the payment info directly (manual verification required)
-  return new Response(
-    JSON.stringify({
-      gateway: 'pix',
-      pix_key: pixKey,
-      qr_code: qrCodeUrl,
-      amount: plan.monthly_price,
-      plan_id: plan.id,
-      user_id: user.id,
-      instructions: 'Após o pagamento, sua assinatura será ativada em até 24h úteis.'
-    }),
-    { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
-  );
-}
-
-// Find or create Asaas customer with CPF/CNPJ support
-async function findOrCreateAsaasCustomer(
-  baseUrl: string,
-  apiKey: string,
-  user: any,
-  supabase: any
-): Promise<string> {
-  // Search for existing customer by email
-  const searchResponse = await fetch(
-    `${baseUrl}/customers?email=${encodeURIComponent(user.email)}`,
-    {
-      headers: { 'access_token': apiKey }
-    }
-  );
-  const searchResult = await searchResponse.json();
-
-  // Try to get CPF from user profile
-  let cpfCnpj: string | null = null;
-  try {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("cpf_cnpj")
-      .eq("user_id", user.id)
-      .single();
-    
-    if (profile?.cpf_cnpj) {
-      cpfCnpj = profile.cpf_cnpj.replace(/\D/g, ''); // Remove non-digits
-      logStep("CPF/CNPJ found in profile", { hasCpf: !!cpfCnpj });
-    }
-  } catch (e) {
-    logStep("No CPF/CNPJ in profile");
-  }
-
-  // If customer exists and has CPF, use it
-  if (searchResult.data?.length > 0) {
-    const existingCustomer = searchResult.data[0];
-    
-    // Update CPF if we have it and customer doesn't
-    if (cpfCnpj && !existingCustomer.cpfCnpj) {
-      await fetch(`${baseUrl}/customers/${existingCustomer.id}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'access_token': apiKey
-        },
-        body: JSON.stringify({ cpfCnpj })
-      });
-      logStep("Updated Asaas customer with CPF", { customerId: existingCustomer.id });
-    }
-    
-    logStep("Existing Asaas customer found", { customerId: existingCustomer.id });
-    return existingCustomer.id;
-  }
-
-  // Create new customer with CPF if available
-  const customerData: any = {
-    name: user.user_metadata?.full_name || user.email.split('@')[0],
-    email: user.email,
-    externalReference: user.id
-  };
-
-  if (cpfCnpj) {
-    customerData.cpfCnpj = cpfCnpj;
-  }
-
-  const createResponse = await fetch(`${baseUrl}/customers`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'access_token': apiKey
-    },
-    body: JSON.stringify(customerData)
-  });
-
-  const newCustomer = await createResponse.json();
-  
-  if (newCustomer.errors) {
-    logStep("Asaas customer creation failed", { errors: newCustomer.errors });
-    throw new Error("Falha ao criar cliente no Asaas");
-  }
-
-  logStep("Asaas customer created", { customerId: newCustomer.id });
-  return newCustomer.id;
-}
-
-// Process Asaas checkout - creates dynamic payment
+// Process Asaas checkout - uses static checkout_url from Super Admin config
 async function processAsaasCheckout(
   plan: any,
   user: any,
-  gatewayConfig: any,
-  origin: string,
-  supabase: any
+  gatewayConfig: any
 ) {
-  logStep("Processing Asaas checkout", { planId: plan.id, userId: user.id });
+  logStep("Processing Asaas checkout (static URL)", { planId: plan.id, userId: user.id });
 
-  const asaasApiKey = Deno.env.get("ASAAS_API_KEY");
-  if (!asaasApiKey) {
-    throw new Error("Asaas API Key não configurada");
+  const checkoutUrl = gatewayConfig?.config?.checkout_url;
+
+  if (!checkoutUrl) {
+    logStep("Asaas checkout URL not configured");
+    throw new Error("Asaas checkout não configurado. Configure a URL no painel de administração.");
   }
 
-  // Auto-detect environment from API key prefix
-  const isProductionKey = asaasApiKey.startsWith('$aact_prod_');
-  const environment = isProductionKey ? 'production' : 'sandbox';
-  const baseUrl = isProductionKey
-    ? 'https://api.asaas.com/v3'
-    : 'https://sandbox.asaas.com/api/v3';
-
-  logStep("Asaas environment (auto-detected from API key)", { environment, baseUrl, isProductionKey });
-
-  // Find or create customer (now with CPF support)
-  const customerId = await findOrCreateAsaasCustomer(baseUrl, asaasApiKey, user, supabase);
-
-  // Create payment with UNDEFINED billing type (allows user to choose)
-  const dueDate = new Date();
-  dueDate.setDate(dueDate.getDate() + 3); // Due in 3 days
-
-  const paymentResponse = await fetch(`${baseUrl}/payments`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'access_token': asaasApiKey
-    },
-    body: JSON.stringify({
-      customer: customerId,
-      billingType: 'UNDEFINED', // Allows PIX, Credit Card, or Boleto
-      value: plan.monthly_price,
-      dueDate: dueDate.toISOString().split('T')[0],
-      description: `Assinatura ${plan.name} - FoodHub`,
-      externalReference: `plan_${plan.id}_user_${user.id}`
-    })
-  });
-
-  const payment = await paymentResponse.json();
-
-  if (payment.errors) {
-    logStep("Asaas payment creation failed", { errors: payment.errors });
-    
-    // Check if it's specifically a CPF error
-    const cpfError = payment.errors.find((e: any) => e.code === 'invalid_customer.cpfCnpj');
-    if (cpfError) {
-      throw new Error("CPF/CNPJ não cadastrado. Por favor, atualize seu perfil com um CPF válido.");
-    }
-    
-    throw new Error("Falha ao criar cobrança no Asaas");
-  }
-
-  logStep("Asaas payment created", { 
-    paymentId: payment.id, 
-    invoiceUrl: payment.invoiceUrl 
-  });
+  logStep("Asaas checkout URL found", { checkoutUrl });
 
   return new Response(
     JSON.stringify({
       gateway: 'asaas',
-      url: payment.invoiceUrl, // Dynamic checkout URL with correct amount
-      payment_id: payment.id,
+      url: checkoutUrl,
       plan_id: plan.id,
       user_id: user.id
     }),
@@ -399,33 +233,30 @@ serve(async (req) => {
       return await processStripeCheckout(plan, user, origin, supabase, globalTrialDays);
     }
 
-    // For non-Stripe gateways, fetch gateway config
-    const { data: gatewayConfig, error: gatewayError } = await supabase
-      .from("payment_gateways")
-      .select("*")
-      .eq("provider", gateway)
-      .eq("is_active", true)
-      .maybeSingle();
+    // For Asaas, fetch gateway config with checkout_url
+    if (gateway === 'asaas') {
+      const { data: gatewayConfig, error: gatewayError } = await supabase
+        .from("payment_gateways")
+        .select("*")
+        .eq("provider", "asaas")
+        .eq("is_active", true)
+        .maybeSingle();
 
-    if (gatewayError) {
-      logStep("Gateway lookup error", { gateway, error: gatewayError.message });
+      if (gatewayError) {
+        logStep("Gateway lookup error", { gateway, error: gatewayError.message });
+      }
+
+      if (!gatewayConfig) {
+        logStep("Asaas gateway not found or inactive");
+        throw new Error("Gateway de pagamento não disponível");
+      }
+
+      logStep("Asaas gateway config found", { gatewayId: gatewayConfig.id });
+
+      return await processAsaasCheckout(plan, user, gatewayConfig);
     }
 
-    if (!gatewayConfig) {
-      logStep("Gateway not found or inactive", { gateway });
-      throw new Error("Gateway de pagamento não disponível");
-    }
-
-    logStep("Gateway config found", { gateway, gatewayId: gatewayConfig.id });
-
-    switch (gateway) {
-      case 'pix':
-        return await processPixCheckout(plan, user, gatewayConfig, supabase);
-      case 'asaas':
-        return await processAsaasCheckout(plan, user, gatewayConfig, origin, supabase);
-      default:
-        throw new Error("Gateway não suportado");
-    }
+    throw new Error("Gateway não suportado");
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Checkout failed";
@@ -438,11 +269,7 @@ serve(async (req) => {
       "Payment service unavailable",
       "Gateway de pagamento não disponível",
       "Gateway não suportado",
-      "PIX não configurado corretamente",
-      "Asaas API Key não configurada",
-      "Falha ao criar cliente no Asaas",
-      "Falha ao criar cobrança no Asaas",
-      "CPF/CNPJ não cadastrado. Por favor, atualize seu perfil com um CPF válido."
+      "Asaas checkout não configurado. Configure a URL no painel de administração."
     ];
     const clientError = safeErrors.includes(errorMessage) ? errorMessage : "Checkout failed";
     

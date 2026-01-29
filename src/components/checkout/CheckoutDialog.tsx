@@ -3,7 +3,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 import { PaymentMethodSelector } from './PaymentMethodSelector';
-import { PixPaymentDialog } from './PixPaymentDialog';
 import { useActivePaymentGateways } from '@/hooks/useActivePaymentGateways';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -31,22 +30,22 @@ export function CheckoutDialog({
   const { data: gateways, isLoading: loadingGateways } = useActivePaymentGateways();
   const [selectedGatewayId, setSelectedGatewayId] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [pixData, setPixData] = useState<{ pixKey: string; qrCode: string; amount: number } | null>(null);
 
-  const selectedGateway = gateways?.find(g => g.id === selectedGatewayId);
+  // Filter out PIX manual gateways - only show stripe and asaas
+  const filteredGateways = gateways?.filter(g => g.provider !== 'pix') || [];
+  const selectedGateway = filteredGateways.find(g => g.id === selectedGatewayId);
 
   // Auto-select default gateway on load
   useEffect(() => {
-    if (gateways && gateways.length > 0 && !selectedGatewayId) {
-      const defaultGateway = gateways.find(g => g.is_default) || gateways[0];
+    if (filteredGateways.length > 0 && !selectedGatewayId) {
+      const defaultGateway = filteredGateways.find(g => g.is_default) || filteredGateways[0];
       setSelectedGatewayId(defaultGateway.id);
     }
-  }, [gateways, selectedGatewayId]);
+  }, [filteredGateways, selectedGatewayId]);
 
   // Reset state when dialog closes
   useEffect(() => {
     if (!open) {
-      setPixData(null);
       setIsProcessing(false);
     }
   }, [open]);
@@ -77,31 +76,13 @@ export function CheckoutDialog({
 
       if (error) throw error;
 
-      // Handle response based on gateway
-      switch (selectedGateway.provider) {
-        case 'stripe':
-        case 'asaas':
-          if (data?.url) {
-            window.open(data.url, '_blank');
-            onOpenChange(false);
-            onSuccess?.();
-          } else {
-            throw new Error('URL de pagamento não retornada');
-          }
-          break;
-        case 'pix':
-          if (data?.pix_key) {
-            setPixData({
-              pixKey: data.pix_key,
-              qrCode: data.qr_code || '',
-              amount: data.amount || itemPrice,
-            });
-          } else {
-            throw new Error('Dados do PIX não retornados');
-          }
-          break;
-        default:
-          throw new Error('Gateway não suportado');
+      // Handle response - both Stripe and Asaas return a URL
+      if (data?.url) {
+        window.open(data.url, '_blank');
+        onOpenChange(false);
+        onSuccess?.();
+      } else {
+        throw new Error('URL de pagamento não retornada');
       }
     } catch (error: any) {
       console.error('[CheckoutDialog] Error:', error);
@@ -122,24 +103,6 @@ export function CheckoutDialog({
     }).format(value);
   };
 
-  // Show PIX dialog if PIX data is available
-  if (pixData) {
-    return (
-      <PixPaymentDialog
-        open={true}
-        onOpenChange={() => {
-          setPixData(null);
-          onOpenChange(false);
-          onSuccess?.();
-        }}
-        pixKey={pixData.pixKey}
-        qrCodeUrl={pixData.qrCode}
-        amount={pixData.amount}
-        itemName={itemName}
-      />
-    );
-  }
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
@@ -155,9 +118,9 @@ export function CheckoutDialog({
           <div className="flex justify-center py-8">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
-        ) : gateways && gateways.length > 0 ? (
+        ) : filteredGateways.length > 0 ? (
           <PaymentMethodSelector
-            gateways={gateways}
+            gateways={filteredGateways}
             selectedGateway={selectedGatewayId}
             onSelect={setSelectedGatewayId}
             isLoading={isProcessing}
@@ -174,7 +137,7 @@ export function CheckoutDialog({
           </Button>
           <Button
             onClick={handleConfirmPayment}
-            disabled={!selectedGatewayId || isProcessing || !gateways?.length}
+            disabled={!selectedGatewayId || isProcessing || !filteredGateways.length}
           >
             {isProcessing ? (
               <>
