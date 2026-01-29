@@ -350,6 +350,19 @@ serve(async (req) => {
       );
     }
 
+    // Asaas requires minimum value of R$ 5,00
+    const ASAAS_MIN_VALUE = 5.00;
+    if (gateway === 'asaas' && Number(plan.monthly_price) < ASAAS_MIN_VALUE) {
+      logStep("Plan price below Asaas minimum", { price: plan.monthly_price, minimum: ASAAS_MIN_VALUE });
+      return new Response(
+        JSON.stringify({ 
+          error: `Valor mínimo para Asaas é R$ ${ASAAS_MIN_VALUE.toFixed(2)}. Ajuste o preço do plano ou use outro gateway.`,
+          code: "ASAAS_MIN_VALUE_ERROR" 
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+      );
+    }
+
     // Get global trial period from system settings
     let globalTrialDays = 14;
     try {
