@@ -184,13 +184,16 @@ async function processAsaasModuleCheckout(
   const cpfCnpj = customerCpfCnpj?.replace(/\D/g, '');
   const customerId = await findOrCreateAsaasCustomer(baseUrl, asaasApiKey, user, cpfCnpj);
 
-  // 2. Create payment with UNDEFINED billing type
+  // 2. Create payment
+  // IMPORTANT: Asaas enforces a minimum value of R$ 5,00 for billingType=UNDEFINED ("Pergunte ao Cliente").
+  // For low-priced modules, force PIX to keep the flow working.
+  const billingType = Number(module.monthly_price) < 5 ? 'PIX' : 'UNDEFINED';
   const dueDate = new Date();
   dueDate.setDate(dueDate.getDate() + 3);
 
   const paymentBody = {
     customer: customerId,
-    billingType: 'UNDEFINED',
+    billingType,
     value: module.monthly_price,
     dueDate: dueDate.toISOString().split('T')[0],
     description: `Módulo: ${module.name}`,
@@ -199,7 +202,7 @@ async function processAsaasModuleCheckout(
     externalReference: `m:${module.id}|t:${tenantId}|u:${user.id}`
   };
 
-  logStep("Creating Asaas module payment", { customerId, value: module.monthly_price });
+  logStep("Creating Asaas module payment", { customerId, value: module.monthly_price, billingType });
 
   const paymentResponse = await fetch(`${baseUrl}/payments`, {
     method: 'POST',
