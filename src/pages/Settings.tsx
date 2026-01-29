@@ -20,6 +20,7 @@ import {
   MessageSquarePlus,
   Package,
   User,
+  ShoppingCart,
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PAYMENT_PROVIDER_LABELS } from '@/lib/constants';
@@ -35,6 +36,7 @@ import { SuggestionForm } from '@/components/suggestions/SuggestionForm';
 import { StoreSettingsForm } from '@/components/settings/StoreSettingsForm';
 import { ModulesSettings } from '@/components/settings/ModulesSettings';
 import { ProfileSettings } from '@/components/settings/ProfileSettings';
+import { MyModulesHub } from '@/components/modules/MyModulesHub';
 
 export default function Settings() {
   const { user, profile, roles } = useAuth();
@@ -63,9 +65,13 @@ export default function Settings() {
             <Crown className="h-4 w-4" />
             Assinatura
           </TabsTrigger>
-          <TabsTrigger value="modules" className="shrink-0 flex items-center gap-2 whitespace-nowrap">
+          <TabsTrigger value="my-modules" className="shrink-0 flex items-center gap-2 whitespace-nowrap">
             <Package className="h-4 w-4" />
-            Módulos
+            Meus Módulos
+          </TabsTrigger>
+          <TabsTrigger value="modules" className="shrink-0 flex items-center gap-2 whitespace-nowrap">
+            <ShoppingCart className="h-4 w-4" />
+            Loja de Módulos
           </TabsTrigger>
           <TabsTrigger value="category" className="shrink-0 flex items-center gap-2 whitespace-nowrap">
             <Building2 className="h-4 w-4" />
@@ -123,7 +129,12 @@ export default function Settings() {
           <SubscriptionSettings />
         </TabsContent>
 
-        {/* Modules Add-on */}
+        {/* My Modules Hub */}
+        <TabsContent value="my-modules">
+          <MyModulesHub />
+        </TabsContent>
+
+        {/* Modules Store */}
         <TabsContent value="modules">
           <ModulesSettings />
         </TabsContent>

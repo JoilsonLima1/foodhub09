@@ -4,6 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 
 export type AddonModuleCategory = 'integrations' | 'operations' | 'marketing' | 'hardware' | 'logistics';
 export type AddonSubscriptionStatus = 'active' | 'trial' | 'suspended' | 'cancelled';
+export type ImplementationStatus = 'ready' | 'beta' | 'coming_soon' | 'development';
 
 export interface AddonModule {
   id: string;
@@ -19,6 +20,7 @@ export interface AddonModule {
   display_order: number;
   features: string[];
   requirements: string | null;
+  implementation_status: ImplementationStatus;
   created_at: string;
   updated_at: string;
 }

@@ -21,17 +21,20 @@ import {
   CreditCard,
   RefreshCw,
   Wallet,
+  Construction,
 } from 'lucide-react';
 import { 
   useAddonModules, 
   ADDON_CATEGORY_LABELS,
   type AddonModule,
   type AddonModuleCategory,
+  type ImplementationStatus,
 } from '@/hooks/useAddonModules';
 import { useTenantModules } from '@/hooks/useTenantModules';
 import { useBillingSettings } from '@/hooks/useBillingSettings';
 import { cn } from '@/lib/utils';
 import { ModulePurchaseDialog } from './ModulePurchaseDialog';
+import { ModuleStatusBadge } from '@/components/modules/ModuleStatusBadge';
 
 // Icon mapping for module categories
 const CATEGORY_ICONS: Record<AddonModuleCategory, React.ComponentType<{ className?: string }>> = {
@@ -335,20 +338,28 @@ export function ModulesSettings() {
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {filteredAvailable.map(module => {
                 const ModuleIcon = getModuleIcon(module.icon);
+                const implStatus = module.implementation_status || 'coming_soon';
+                const isAvailableForPurchase = ['ready', 'beta'].includes(implStatus);
                 
                 return (
                   <Card 
                     key={module.id}
-                    className="flex flex-col transition-all hover:shadow-md"
+                    className={cn(
+                      "flex flex-col transition-all",
+                      isAvailableForPurchase ? "hover:shadow-md" : "opacity-80"
+                    )}
                   >
                     <CardHeader className="pb-3">
                       <div className="flex items-start justify-between">
                         <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
                           <ModuleIcon className="h-5 w-5 text-primary" />
                         </div>
-                        <Badge variant="secondary">
-                          {ADDON_CATEGORY_LABELS[module.category]}
-                        </Badge>
+                        <div className="flex flex-col items-end gap-1">
+                          <ModuleStatusBadge status={implStatus} />
+                          <Badge variant="outline" className="text-xs">
+                            {ADDON_CATEGORY_LABELS[module.category]}
+                          </Badge>
+                        </div>
                       </div>
                       <CardTitle className="text-lg mt-3">{module.name}</CardTitle>
                       <CardDescription className="line-clamp-2">
@@ -391,13 +402,25 @@ export function ModulesSettings() {
                         </div>
                       </div>
                       
-                      <Button 
-                        onClick={() => handlePurchaseModule(module)}
-                        className="w-full"
-                      >
-                        <ShoppingCart className="h-4 w-4 mr-2" />
-                        Contratar Módulo
-                      </Button>
+                      {isAvailableForPurchase ? (
+                        <Button 
+                          onClick={() => handlePurchaseModule(module)}
+                          className="w-full"
+                        >
+                          <ShoppingCart className="h-4 w-4 mr-2" />
+                          Contratar Módulo
+                        </Button>
+                      ) : (
+                        <div className="w-full text-center py-2 px-3 rounded-md bg-muted">
+                          <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                            <Construction className="h-4 w-4" />
+                            <span>Em desenvolvimento</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Disponível em breve
+                          </p>
+                        </div>
+                      )}
                     </CardFooter>
                   </Card>
                 );

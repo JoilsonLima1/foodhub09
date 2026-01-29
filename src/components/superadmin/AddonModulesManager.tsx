@@ -3,6 +3,7 @@ import {
   useAddonModules, 
   AddonModule, 
   AddonModuleCategory,
+  ImplementationStatus,
   ADDON_CATEGORY_LABELS 
 } from '@/hooks/useAddonModules';
 import { Button } from '@/components/ui/button';
@@ -93,6 +94,7 @@ interface ModuleFormData {
   requirements: string;
   is_active: boolean;
   display_order: number;
+  implementation_status: ImplementationStatus;
 }
 
 const defaultFormData: ModuleFormData = {
@@ -107,6 +109,14 @@ const defaultFormData: ModuleFormData = {
   requirements: '',
   is_active: true,
   display_order: 0,
+  implementation_status: 'coming_soon',
+};
+
+const IMPLEMENTATION_STATUS_LABELS: Record<ImplementationStatus, string> = {
+  ready: 'Pronto',
+  beta: 'Beta',
+  coming_soon: 'Em Breve',
+  development: 'Desenvolvimento',
 };
 
 export function AddonModulesManager() {
@@ -131,6 +141,7 @@ export function AddonModulesManager() {
         requirements: module.requirements || '',
         is_active: module.is_active,
         display_order: module.display_order,
+        implementation_status: module.implementation_status || 'coming_soon',
       });
     } else {
       setEditingModule(null);
@@ -162,6 +173,7 @@ export function AddonModulesManager() {
       is_active: formData.is_active,
       display_order: formData.display_order,
       currency: 'BRL',
+      implementation_status: formData.implementation_status,
     };
 
     if (editingModule) {
