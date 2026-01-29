@@ -315,22 +315,23 @@ export function SubscribersManager() {
           </div>
 
           {/* Table */}
-          <div className="rounded-md border">
+          <div className="rounded-md border overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Empresa</TableHead>
                   <TableHead>Plano</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Último Pagamento</TableHead>
+                  <TableHead>Método</TableHead>
                   <TableHead>Próx. Cobrança</TableHead>
-                  <TableHead>Criado em</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredSubscribers?.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                       Nenhum assinante encontrado
                     </TableCell>
                   </TableRow>
@@ -359,13 +360,26 @@ export function SubscribersManager() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {sub.current_period_end 
-                          ? format(new Date(sub.current_period_end), 'dd/MM/yyyy', { locale: ptBR })
+                        {sub.tenant?.last_payment_at 
+                          ? format(new Date(sub.tenant.last_payment_at), 'dd/MM/yyyy', { locale: ptBR })
                           : '-'
                         }
                       </TableCell>
                       <TableCell>
-                        {format(new Date(sub.created_at), 'dd/MM/yyyy', { locale: ptBR })}
+                        {sub.tenant?.last_payment_method ? (
+                          <Badge variant="secondary" className="text-xs">
+                            {sub.tenant.last_payment_method === 'pix' ? 'PIX' :
+                             sub.tenant.last_payment_method === 'credit_card' ? 'Cartão' :
+                             sub.tenant.last_payment_method === 'boleto' ? 'Boleto' :
+                             sub.tenant.last_payment_method}
+                          </Badge>
+                        ) : '-'}
+                      </TableCell>
+                      <TableCell>
+                        {sub.current_period_end 
+                          ? format(new Date(sub.current_period_end), 'dd/MM/yyyy', { locale: ptBR })
+                          : '-'
+                        }
                       </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>

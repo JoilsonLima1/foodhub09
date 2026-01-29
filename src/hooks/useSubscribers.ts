@@ -21,6 +21,11 @@ export interface Subscriber {
     email: string | null;
     phone: string | null;
     subscription_status: string | null;
+    last_payment_at: string | null;
+    last_payment_method: string | null;
+    last_payment_provider: string | null;
+    last_payment_status: string | null;
+    asaas_customer_id: string | null;
   };
   subscription_plans?: {
     id: string;
@@ -41,7 +46,7 @@ export function useSubscribers() {
         .from('subscriptions')
         .select(`
           *,
-          tenant:tenants(id, name, email, phone, subscription_status),
+          tenant:tenants(id, name, email, phone, subscription_status, last_payment_at, last_payment_method, last_payment_provider, last_payment_status, asaas_customer_id),
           subscription_plans(id, name, monthly_price)
         `)
         .order('created_at', { ascending: false });
@@ -69,6 +74,11 @@ export function useSubscribers() {
           trial_ends_at,
           created_at,
           updated_at,
+          last_payment_at,
+          last_payment_method,
+          last_payment_provider,
+          last_payment_status,
+          asaas_customer_id,
           subscription_plans:subscription_plan_id(id, name, monthly_price)
         `)
         .order('created_at', { ascending: false });
@@ -95,6 +105,11 @@ export function useSubscribers() {
           email: tenant.email,
           phone: tenant.phone,
           subscription_status: tenant.subscription_status,
+          last_payment_at: tenant.last_payment_at,
+          last_payment_method: tenant.last_payment_method,
+          last_payment_provider: tenant.last_payment_provider,
+          last_payment_status: tenant.last_payment_status,
+          asaas_customer_id: tenant.asaas_customer_id,
         },
         subscription_plans: tenant.subscription_plans,
       })) as Subscriber[];
