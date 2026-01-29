@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Crown, Calendar, CreditCard, ExternalLink, Loader2, AlertTriangle, Check, Clock, Gift } from 'lucide-react';
+import { Crown, Calendar, CreditCard, ExternalLink, Loader2, AlertTriangle, Check, Clock, Gift, Receipt, Wallet } from 'lucide-react';
 import { useTrialStatus } from '@/hooks/useTrialStatus';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -121,7 +121,7 @@ export function SubscriptionSettings() {
   const getStatusBadge = () => {
     if (!subscriptionStatus) return null;
 
-    const { status, hasContractedPlan, tenantPlanId } = subscriptionStatus;
+    const { status, hasContractedPlan, tenantPlanId, tenantPlanName } = subscriptionStatus;
 
     switch (status) {
       case 'active':
@@ -143,14 +143,10 @@ export function SubscriptionSettings() {
               <Gift className="h-3 w-3 mr-1" />
               Período de Teste Gratuito
             </Badge>
-            {hasContractedPlan || tenantPlanId ? (
-              <Badge variant="outline" className="text-green-600 border-green-500/30">
+            {(hasContractedPlan || tenantPlanId) && (
+              <Badge className="bg-green-500/10 text-green-600 border-green-500/20">
                 <Check className="h-3 w-3 mr-1" />
-                Plano Contratado
-              </Badge>
-            ) : (
-              <Badge variant="outline" className="text-muted-foreground">
-                Nenhum plano contratado
+                Plano Contratado: {tenantPlanName || 'Ativo'}
               </Badge>
             )}
           </div>
@@ -171,20 +167,40 @@ export function SubscriptionSettings() {
     return format(new Date(dateString), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
   };
 
+  const formatDateTime = (dateString: string | null) => {
+    if (!dateString) return 'N/A';
+    return format(new Date(dateString), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
+  };
+
+  const getPaymentMethodLabel = (method: string | null): string => {
+    if (!method) return 'N/A';
+    const labels: Record<string, string> = {
+      pix: 'PIX',
+      credit_card: 'Cartão de Crédito',
+      boleto: 'Boleto Bancário',
+      multiple: 'Múltiplos Métodos',
+      unknown: 'Não Identificado',
+    };
+    return labels[method] || method;
+  };
+
+  const getPaymentStatusLabel = (status: string | null): string => {
+    if (!status) return 'N/A';
+    const labels: Record<string, string> = {
+      confirmed: 'Confirmado',
+      pending: 'Pendente',
+      paid: 'Pago',
+      failed: 'Falhou',
+    };
+    return labels[status] || status;
+  };
+
   const isCurrentPlan = (planId: string) => {
     if (subscriptionStatus?.tenantPlanId === planId) {
       return true;
     }
     return subscriptionStatus?.planId?.includes(planId.replace(/-/g, '_')) || false;
   };
-
-  const availablePlansForUpgrade = plans.filter(plan => {
-    const isCurrent = isCurrentPlan(plan.id);
-    if ((subscriptionStatus?.status === 'active' || subscriptionStatus?.hasContractedPlan) && isCurrent) {
-      return false;
-    }
-    return true;
-  });
 
   const getPlanFeatures = (plan: SubscriptionPlan): string[] => {
     const features: string[] = [];
@@ -205,12 +221,6 @@ export function SubscriptionSettings() {
     return features;
   };
 
-  const getPlanNameById = (planId: string | null): string => {
-    if (!planId) return 'Nenhum';
-    const plan = plans.find(p => p.id === planId);
-    return plan?.name || 'Plano Contratado';
-  };
-
   if (isLoading || loadingPlans) {
     return (
       <Card>
@@ -223,13 +233,14 @@ export function SubscriptionSettings() {
 
   const isTrialing = subscriptionStatus?.isTrialing;
   const isActive = subscriptionStatus?.status === 'active';
-  const isExpired = subscriptionStatus?.status === 'expired' || subscriptionStatus?.status === 'none';
   const daysRemaining = subscriptionStatus?.daysRemaining || 0;
   const daysUsed = subscriptionStatus?.daysUsed || 0;
   const totalTrialDays = subscriptionStatus?.totalTrialDays || 14;
   const hasContractedPlan = subscriptionStatus?.hasContractedPlan || !!subscriptionStatus?.tenantPlanId;
   const hasTrialBenefit = subscriptionStatus?.hasTrialBenefit;
   const trialBenefitMessage = subscriptionStatus?.trialBenefitMessage;
+  const tenantPlanName = subscriptionStatus?.tenantPlanName;
+  const paymentInfo = subscriptionStatus?.paymentInfo;
   
   const hasStripeSubscription = isActive || (isTrialing && subscriptionStatus?.planId);
 
@@ -265,6 +276,39 @@ export function SubscriptionSettings() {
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Contracted Plan Display - Single Source of Truth */}
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className={`flex items-center gap-3 p-4 border rounded-lg ${hasContractedPlan ? 'border-green-500/30 bg-green-500/5' : ''}`}>
+              <Crown className={`h-5 w-5 ${hasContractedPlan ? 'text-green-600' : 'text-muted-foreground'}`} />
+              <div>
+                <p className="text-sm text-muted-foreground">Plano Contratado</p>
+                {hasContractedPlan && tenantPlanName ? (
+                  <div className="flex items-center gap-2">
+                    <p className="font-semibold text-green-600">{tenantPlanName}</p>
+                    <Badge className="bg-green-500/10 text-green-600 border-green-500/20 text-xs">
+                      Ativo
+                    </Badge>
+                  </div>
+                ) : (
+                  <p className="font-medium text-muted-foreground">Nenhum plano contratado</p>
+                )}
+              </div>
+            </div>
+
+            {/* Next Payment Date */}
+            {hasContractedPlan && subscriptionStatus?.currentPeriodEnd && (
+              <div className="flex items-center gap-3 p-4 border rounded-lg">
+                <Calendar className="h-5 w-5 text-muted-foreground" />
+                <div>
+                  <p className="text-sm text-muted-foreground">
+                    {isActive ? 'Próxima Renovação' : 'Próximo Pagamento'}
+                  </p>
+                  <p className="font-medium">{formatDate(subscriptionStatus.currentPeriodEnd)}</p>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Trial Details Card */}
@@ -318,7 +362,7 @@ export function SubscriptionSettings() {
                   Benefício do Período de Teste
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  {trialBenefitMessage}
+                  Você contratou o plano {tenantPlanName || 'selecionado'}, mas ainda possui {daysRemaining} dias restantes de teste gratuito. Após isso, inicia seu ciclo pago.
                 </p>
               </div>
             </div>
@@ -341,33 +385,6 @@ export function SubscriptionSettings() {
               </div>
             </div>
           )}
-
-          {/* Dates Grid */}
-          <div className="grid gap-4 md:grid-cols-2">
-            {/* Contracted Plan Info */}
-            {hasContractedPlan && subscriptionStatus?.tenantPlanId && (
-              <div className="flex items-center gap-3 p-3 border rounded-lg">
-                <Crown className="h-5 w-5 text-primary" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Plano Contratado</p>
-                  <p className="font-medium">{getPlanNameById(subscriptionStatus.tenantPlanId)}</p>
-                </div>
-              </div>
-            )}
-
-            {/* Next Payment Date */}
-            {hasContractedPlan && subscriptionStatus?.currentPeriodEnd && (
-              <div className="flex items-center gap-3 p-3 border rounded-lg">
-                <Calendar className="h-5 w-5 text-muted-foreground" />
-                <div>
-                  <p className="text-sm text-muted-foreground">
-                    {isActive ? 'Próxima Renovação' : 'Próximo Pagamento'}
-                  </p>
-                  <p className="font-medium">{formatDate(subscriptionStatus.currentPeriodEnd)}</p>
-                </div>
-              </div>
-            )}
-          </div>
 
           {/* Manage Subscription Button */}
           {hasStripeSubscription && subscriptionStatus?.isSubscribed && (
@@ -402,9 +419,68 @@ export function SubscriptionSettings() {
         </CardContent>
       </Card>
 
+      {/* Payment Information Card */}
+      {hasContractedPlan && paymentInfo && paymentInfo.lastPaymentAt && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Receipt className="h-5 w-5 text-primary" />
+              Informações de Pagamento
+            </CardTitle>
+            <CardDescription>
+              Detalhes do último pagamento confirmado
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <div className="flex items-center gap-3 p-3 border rounded-lg">
+                <Calendar className="h-5 w-5 text-muted-foreground" />
+                <div>
+                  <p className="text-xs text-muted-foreground">Pagamento Confirmado em</p>
+                  <p className="font-medium">{formatDateTime(paymentInfo.lastPaymentAt)}</p>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-3 p-3 border rounded-lg">
+                <Wallet className="h-5 w-5 text-muted-foreground" />
+                <div>
+                  <p className="text-xs text-muted-foreground">Forma de Pagamento</p>
+                  <p className="font-medium">{getPaymentMethodLabel(paymentInfo.lastPaymentMethod)}</p>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-3 p-3 border rounded-lg">
+                <CreditCard className="h-5 w-5 text-muted-foreground" />
+                <div>
+                  <p className="text-xs text-muted-foreground">Gateway</p>
+                  <p className="font-medium capitalize">{paymentInfo.lastPaymentProvider || 'N/A'}</p>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-3 p-3 border rounded-lg">
+                <Check className="h-5 w-5 text-green-600" />
+                <div>
+                  <p className="text-xs text-muted-foreground">Status da Cobrança</p>
+                  <Badge className="bg-green-500/10 text-green-600 border-green-500/20">
+                    {getPaymentStatusLabel(paymentInfo.lastPaymentStatus)}
+                  </Badge>
+                </div>
+              </div>
+            </div>
+            
+            {paymentInfo.asaasPaymentId && (
+              <div className="mt-4 p-3 bg-muted/50 rounded-lg">
+                <p className="text-xs text-muted-foreground">ID da Cobrança</p>
+                <p className="font-mono text-sm">{paymentInfo.asaasPaymentId}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Current Plan Card (if user has one) */}
       {hasContractedPlan && subscriptionStatus?.tenantPlanId && (
-        <Card className="border-primary">
+        <Card className="border-green-500/30 ring-2 ring-green-500/20">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Check className="h-5 w-5 text-green-500" />
@@ -419,7 +495,7 @@ export function SubscriptionSettings() {
                   <div className="space-y-2">
                     <div className="flex items-center gap-3">
                       <h3 className="text-xl font-semibold">{plan.name}</h3>
-                      <Badge className="bg-green-500/10 text-green-600 border-green-500/20">
+                      <Badge className="bg-green-500 text-white">
                         ✓ Plano Atual
                       </Badge>
                     </div>
@@ -464,21 +540,17 @@ export function SubscriptionSettings() {
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {availablePlansForUpgrade.map((plan) => {
+            {plans.map((plan) => {
               const isCurrent = isCurrentPlan(plan.id);
               const isProfessional = plan.slug === 'professional';
               const features = getPlanFeatures(plan);
-              
-              if (isCurrent && hasContractedPlan) {
-                return null;
-              }
               
               return (
                 <div 
                   key={plan.id}
                   className={`p-4 border rounded-lg space-y-4 relative transition-all ${
-                    isProfessional ? 'border-2 border-primary' : ''
-                  } ${isCurrent ? 'bg-primary/10 border-primary ring-2 ring-primary/30' : ''}`}
+                    isProfessional && !isCurrent ? 'border-2 border-primary' : ''
+                  } ${isCurrent ? 'bg-green-500/5 border-green-500/30 ring-2 ring-green-500/20' : ''}`}
                 >
                   {isProfessional && !isCurrent && (
                     <Badge className="absolute -top-2 right-4 bg-primary text-primary-foreground">
@@ -521,7 +593,7 @@ export function SubscriptionSettings() {
                   
                   <Button 
                     className="w-full"
-                    variant={isCurrent ? 'secondary' : isProfessional ? 'default' : 'outline'}
+                    variant={isCurrent ? 'outline' : isProfessional ? 'default' : 'outline'}
                     disabled={isCurrent || isUpgrading === plan.id}
                     onClick={() => handleSelectPlan(plan)}
                   >
@@ -531,7 +603,10 @@ export function SubscriptionSettings() {
                         Carregando...
                       </>
                     ) : isCurrent ? (
-                      'Plano Atual'
+                      <>
+                        <Check className="h-4 w-4 mr-2" />
+                        Plano Atual
+                      </>
                     ) : plan.monthly_price === 0 ? (
                       'Selecionar Grátis'
                     ) : (
