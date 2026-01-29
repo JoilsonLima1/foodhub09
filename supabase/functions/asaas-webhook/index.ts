@@ -223,28 +223,40 @@ async function activateModuleSubscription(
   logStep("Activating module subscription", { modulePrefix: metadata.module_id_prefix, tenantPrefix: metadata.tenant_id_prefix });
 
   // Find full module ID from prefix
-  const { data: moduleData, error: moduleError } = await supabase
+  const { data: modulesFound, error: moduleError } = await supabase
     .from('addon_modules')
     .select('id, name')
     .like('id', `${metadata.module_id_prefix}%`)
-    .single();
+    .limit(2);
 
-  if (moduleError || !moduleData) {
+  if (moduleError || !modulesFound || modulesFound.length === 0) {
     logStep("Module not found by prefix", { prefix: metadata.module_id_prefix, error: moduleError?.message });
     throw new Error("Module not found");
   }
+  
+  if (modulesFound.length > 1) {
+    logStep("Multiple modules found by prefix - using first match", { prefix: metadata.module_id_prefix, count: modulesFound.length });
+  }
+  
+  const moduleData = modulesFound[0];
 
   // Find full tenant ID from prefix
-  const { data: tenantData, error: tenantError } = await supabase
+  const { data: tenantsFound, error: tenantError } = await supabase
     .from('tenants')
     .select('id')
     .like('id', `${metadata.tenant_id_prefix}%`)
-    .single();
+    .limit(2);
 
-  if (tenantError || !tenantData) {
+  if (tenantError || !tenantsFound || tenantsFound.length === 0) {
     logStep("Tenant not found by prefix", { prefix: metadata.tenant_id_prefix, error: tenantError?.message });
     throw new Error("Tenant not found");
   }
+  
+  if (tenantsFound.length > 1) {
+    logStep("Multiple tenants found by prefix - using first match", { prefix: metadata.tenant_id_prefix, count: tenantsFound.length });
+  }
+  
+  const tenantData = tenantsFound[0];
 
   const moduleId = moduleData.id;
   const tenantId = tenantData.id;
