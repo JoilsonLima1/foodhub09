@@ -24,12 +24,16 @@ import {
   Loader2,
   Shield,
   Minus,
-  Plus
+  Plus,
+  Gift
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { usePlanAddonModules } from '@/hooks/usePlanAddonModules';
+import { useTenantModules } from '@/hooks/useTenantModules';
+import type { AddonModule } from '@/hooks/useAddonModules';
 
 interface SubscriptionPlan {
   id: string;
@@ -101,6 +105,8 @@ export function PlanChangeDialog({
 }: PlanChangeDialogProps) {
   const { session } = useAuth();
   const { toast } = useToast();
+  const { allPlanAddons } = usePlanAddonModules();
+  const { tenantModules } = useTenantModules();
   const [step, setStep] = useState<'comparison' | 'password' | 'confirm'>('comparison');
   const [password, setPassword] = useState('');
   const [isVerifyingPassword, setIsVerifyingPassword] = useState(false);
@@ -181,6 +187,41 @@ export function PlanChangeDialog({
     
     return { gained, lost, kept };
   }, [currentPlan, targetPlan]);
+
+  const moduleComparison = useMemo(() => {
+    const purchasedIds = new Set(
+      (tenantModules || [])
+        .filter((m) => m.source === 'purchase' && ['active', 'trial'].includes(m.status))
+        .map((m) => m.addon_module_id)
+    );
+
+    const currentIncluded: AddonModule[] = (
+      currentPlan
+        ? (allPlanAddons || [])
+            .filter((pa) => pa.plan_id === currentPlan.id)
+            .map((pa) => pa.addon_module)
+            .filter(Boolean)
+        : []
+    ) as AddonModule[];
+
+    const targetIncluded: AddonModule[] = ((allPlanAddons || [])
+      .filter((pa) => pa.plan_id === targetPlan.id)
+      .map((pa) => pa.addon_module)
+      .filter(Boolean) as AddonModule[]) || [];
+
+    const currentIds = new Set(currentIncluded.map((m) => m.id));
+    const targetIds = new Set(targetIncluded.map((m) => m.id));
+
+    const gained = targetIncluded.filter((m) => !currentIds.has(m.id));
+    const lost = currentIncluded.filter((m) => !targetIds.has(m.id) && !purchasedIds.has(m.id));
+
+    return {
+      currentIncluded,
+      targetIncluded,
+      gained,
+      lost,
+    };
+  }, [allPlanAddons, currentPlan, targetPlan, tenantModules]);
 
   // Format limit value for display
   const formatLimitValue = (value: number | null): string => {
@@ -400,6 +441,24 @@ export function PlanChangeDialog({
                       </ul>
                     </div>
                   )}
+
+                  {currentPlan && (
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-muted-foreground uppercase">Módulos incluídos (brinde)</p>
+                      {moduleComparison.currentIncluded.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">Nenhum módulo incluso.</p>
+                      ) : (
+                        <ul className="space-y-1.5 text-sm">
+                          {moduleComparison.currentIncluded.map((m) => (
+                            <li key={m.id} className="flex items-center justify-between gap-2">
+                              <span className="text-muted-foreground">{m.name}</span>
+                              <Badge variant="outline" className="text-xs">Brinde</Badge>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
@@ -462,6 +521,34 @@ export function PlanChangeDialog({
                       })}
                     </ul>
                   </div>
+
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-muted-foreground uppercase">Módulos incluídos (brinde)</p>
+                    {moduleComparison.targetIncluded.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">Nenhum módulo incluso.</p>
+                    ) : (
+                      <ul className="space-y-1.5 text-sm">
+                        {moduleComparison.targetIncluded.map((m) => {
+                          const isNew = moduleComparison.gained.some((g) => g.id === m.id);
+                          return (
+                            <li key={m.id} className="flex items-center justify-between gap-2">
+                              <span className={cn(isNew ? 'text-green-600 font-medium' : 'text-muted-foreground')}>
+                                {m.name}
+                              </span>
+                              <div className="flex items-center gap-2">
+                                <Badge variant="outline" className="text-xs">Brinde</Badge>
+                                {isNew && (
+                                  <Badge variant="outline" className="text-xs bg-green-500/10 text-green-600 border-green-500/30">
+                                    Novo
+                                  </Badge>
+                                )}
+                              </div>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             </div>
@@ -481,6 +568,12 @@ export function PlanChangeDialog({
                       <li key={feature.key} className="flex items-center gap-2 text-sm">
                         <Check className="h-4 w-4 text-green-500" />
                         <span>{feature.label}</span>
+                      </li>
+                    ))}
+                    {moduleComparison.gained.map((m) => (
+                      <li key={m.id} className="flex items-center gap-2 text-sm">
+                        <Gift className="h-4 w-4 text-green-500" />
+                        <span>{m.name} (módulo brinde)</span>
                       </li>
                     ))}
                   </ul>
@@ -505,6 +598,12 @@ export function PlanChangeDialog({
                         <span className="text-red-600">{feature.label}</span>
                       </li>
                     ))}
+                    {moduleComparison.lost.map((m) => (
+                      <li key={m.id} className="flex items-center gap-2 text-sm">
+                        <X className="h-4 w-4 text-red-500" />
+                        <span className="text-red-600">{m.name} (módulo brinde)</span>
+                      </li>
+                    ))}
                   </ul>
                 </CardContent>
               </Card>
@@ -520,7 +619,7 @@ export function PlanChangeDialog({
                   </p>
                   <p className="text-sm text-muted-foreground">
                     Ao fazer downgrade, você perderá imediatamente o acesso às funcionalidades 
-                    listadas acima. Essa ação requer confirmação por senha.
+                    listadas acima. {moduleComparison.lost.length > 0 ? 'Módulos incluídos também podem ser removidos se não tiverem sido adquiridos.' : ''} Essa ação requer confirmação por senha.
                   </p>
                 </div>
               </div>

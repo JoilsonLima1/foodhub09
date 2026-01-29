@@ -24,6 +24,8 @@ export interface TenantModuleDetailed {
 }
 
 export interface ModulesBreakdown {
+  /** Modules included in the tenant's current plan (brinde), even if not provisioned yet */
+  planIncludedModules: AddonModule[];
   includedModules: TenantModuleDetailed[];
   purchasedModules: TenantModuleDetailed[];
   availableModules: AddonModule[];
@@ -159,6 +161,9 @@ export function useTenantModules() {
       allPlanAddons?.filter(pa => pa.plan_id === planId).map(pa => pa.addon_module_id) || []
     );
 
+    // Plan included module details (brinde) from catalog
+    const planIncludedModules = allModules?.filter(m => planIncludedIds.has(m.id)) || [];
+
     // Available = all active modules that are not already subscribed AND not included in plan
     const availableModules = allModules?.filter(m => 
       !activeModuleIds.has(m.id) && !planIncludedIds.has(m.id)
@@ -171,6 +176,7 @@ export function useTenantModules() {
     );
 
     return {
+      planIncludedModules,
       includedModules,
       purchasedModules,
       availableModules,

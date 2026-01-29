@@ -13,8 +13,10 @@ import { ptBR } from 'date-fns/locale';
 import { CheckoutDialog } from '@/components/checkout/CheckoutDialog';
 import { PlanChangeDialog } from '@/components/settings/PlanChangeDialog';
 import { SubscriptionCompositionCard } from '@/components/settings/SubscriptionCompositionCard';
+import { PlanInclusionsDialog } from '@/components/settings/PlanInclusionsDialog';
 import { useTenantModules } from '@/hooks/useTenantModules';
 import { useBillingSettings } from '@/hooks/useBillingSettings';
+import { usePlanAddonModules } from '@/hooks/usePlanAddonModules';
 import { cn } from '@/lib/utils';
 
 interface CheckoutPendingData {
@@ -58,6 +60,7 @@ export function SubscriptionSettings() {
   const { subscriptionStatus, isLoading, getDaysRemaining, getTrialStartDisplay, getExpirationDisplay, refetchSubscription, forceRefresh } = useTrialStatus();
   const { getModulesBreakdown, tenantModules, isLoading: modulesLoading, refetch: refetchModules } = useTenantModules();
   const { settings: billingSettings } = useBillingSettings();
+  const { allPlanAddons } = usePlanAddonModules();
   const { toast } = useToast();
   const [isUpgrading, setIsUpgrading] = useState<string | null>(null);
   const [isOpeningPortal, setIsOpeningPortal] = useState(false);
@@ -72,6 +75,41 @@ export function SubscriptionSettings() {
   // Plan change dialog state
   const [planChangeOpen, setPlanChangeOpen] = useState(false);
   const [targetPlanForChange, setTargetPlanForChange] = useState<SubscriptionPlan | null>(null);
+
+  // Plan inclusions dialog (features + módulos brinde + módulos adquiridos)
+  const [planInclusionsOpen, setPlanInclusionsOpen] = useState(false);
+  const [planInclusionsPayload, setPlanInclusionsPayload] = useState<null | {
+    title: string;
+    description?: string;
+    planName: string;
+    planPriceLabel?: string;
+    planFeatures: string[];
+    includedModules: { id: string; name: string }[];
+    purchasedModules?: { id: string; name: string; priceLabel?: string; metaLabel?: string }[];
+  }>(null);
+
+  const formatPrice = (price: number) =>
+    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(price);
+
+  const getPlanIncludedModules = useCallback(
+    (planId: string): { id: string; name: string }[] => {
+      const list = allPlanAddons
+        ?.filter((pa) => pa.plan_id === planId)
+        .map((pa) => pa.addon_module)
+        .filter(Boolean)
+        .map((m) => ({ id: (m as any).id, name: (m as any).name })) as { id: string; name: string }[] | undefined;
+      return list || [];
+    },
+    [allPlanAddons]
+  );
+
+  const openPlanInclusions = useCallback(
+    (payload: NonNullable<typeof planInclusionsPayload>) => {
+      setPlanInclusionsPayload(payload);
+      setPlanInclusionsOpen(true);
+    },
+    []
+  );
 
   // Detect checkout pending on page load (user returning from payment)
   useEffect(() => {
@@ -402,6 +440,8 @@ export function SubscriptionSettings() {
   const trialBenefitMessage = subscriptionStatus?.trialBenefitMessage;
   const tenantPlanName = subscriptionStatus?.tenantPlanName;
   const paymentInfo = subscriptionStatus?.paymentInfo;
+
+  const modulesBreakdown = getModulesBreakdown();
   
   const hasStripeSubscription = isActive || (isTrialing && subscriptionStatus?.planId);
 
@@ -710,6 +750,17 @@ export function SubscriptionSettings() {
           <CardContent>
             {plans.filter(p => p.id === subscriptionStatus.tenantPlanId).map(plan => {
               const features = getPlanFeatures(plan);
+
+              const summaryItems = [
+                ...features.map((label) => ({ kind: 'feature' as const, label })),
+                ...modulesBreakdown.planIncludedModules.map((m) => ({ kind: 'included' as const, label: m.name })),
+                ...modulesBreakdown.purchasedModules
+                  .filter((m) => m.addon_module?.name)
+                  .map((m) => ({ kind: 'purchased' as const, label: m.addon_module!.name })),
+              ];
+              const visible = summaryItems.slice(0, 6);
+              const hiddenCount = Math.max(0, summaryItems.length - visible.length);
+
               return (
                 <div key={plan.id} className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
                   <div className="space-y-2">
@@ -727,16 +778,42 @@ export function SubscriptionSettings() {
                       <p className="text-sm text-muted-foreground">{plan.description}</p>
                     )}
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    {features.slice(0, 4).map((feature, i) => (
-                      <Badge key={i} variant="secondary" className="text-xs">
-                        {feature}
+                  <div className="flex flex-wrap items-center gap-2">
+                    {visible.map((item, i) => (
+                      <Badge
+                        key={`${item.kind}-${i}`}
+                        variant={item.kind === 'feature' ? 'secondary' : 'outline'}
+                        className="text-xs"
+                      >
+                        {item.kind === 'included' ? `🎁 ${item.label}` : item.kind === 'purchased' ? `💳 ${item.label}` : item.label}
                       </Badge>
                     ))}
-                    {features.length > 4 && (
-                      <Badge variant="outline" className="text-xs">
-                        +{features.length - 4} mais
-                      </Badge>
+                    {hiddenCount > 0 && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-6 rounded-full px-2 text-xs"
+                        onClick={() =>
+                          openPlanInclusions({
+                            title: 'Itens inclusos no seu plano',
+                            description:
+                              'Aqui você vê todos os recursos do plano, módulos incluídos como brinde e módulos adquiridos.',
+                            planName: plan.name,
+                            planPriceLabel: plan.monthly_price === 0 ? 'Grátis' : `${formatPrice(plan.monthly_price)}/mês`,
+                            planFeatures: features,
+                            includedModules: modulesBreakdown.planIncludedModules.map((m) => ({ id: m.id, name: m.name })),
+                            purchasedModules: modulesBreakdown.purchasedModules.map((m) => ({
+                              id: m.id,
+                              name: m.addon_module?.name || 'Módulo',
+                              priceLabel: formatPrice(m.addon_module?.monthly_price || m.price_paid || 0),
+                              metaLabel: m.purchased_at ? `Contratado em ${format(new Date(m.purchased_at), 'dd/MM/yyyy', { locale: ptBR })}` : undefined,
+                            })),
+                          })
+                        }
+                      >
+                        +{hiddenCount} mais
+                      </Button>
                     )}
                   </div>
                 </div>
@@ -764,6 +841,12 @@ export function SubscriptionSettings() {
               const isCurrent = isCurrentPlan(plan.id);
               const isProfessional = plan.slug === 'professional';
               const features = getPlanFeatures(plan);
+              const includedModules = getPlanIncludedModules(plan.id);
+
+              const previewFeatures = features.slice(0, 6);
+              const previewModules = includedModules.slice(0, 3);
+              const moreFeatures = Math.max(0, features.length - previewFeatures.length);
+              const moreModules = Math.max(0, includedModules.length - previewModules.length);
               
               return (
                 <div 
@@ -801,15 +884,64 @@ export function SubscriptionSettings() {
                   {plan.description && (
                     <p className="text-sm text-muted-foreground">{plan.description}</p>
                   )}
+
+                  <div className="text-sm text-muted-foreground">
+                    Este plano inclui: <span className="font-medium">✅ {features.length} recursos</span>{' '}
+                    • <span className="font-medium">🎁 {includedModules.length} módulos brinde</span>
+                  </div>
                   
-                  <ul className="text-sm space-y-2">
-                    {features.map((feature, i) => (
-                      <li key={i} className="flex items-center gap-2">
-                        <Check className="h-4 w-4 text-green-500 shrink-0" />
-                        <span className="text-muted-foreground">{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
+                  <div className="space-y-3">
+                    {/* Recursos */}
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-muted-foreground uppercase">Recursos do plano</p>
+                      <ul className="text-sm space-y-2">
+                        {previewFeatures.map((feature, i) => (
+                          <li key={i} className="flex items-center gap-2">
+                            <Check className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <span className="text-muted-foreground">{feature}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    {/* Módulos brinde */}
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-muted-foreground uppercase">Módulos incluídos (brinde)</p>
+                      {includedModules.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">Nenhum módulo incluso neste plano.</p>
+                      ) : (
+                        <ul className="text-sm space-y-2">
+                          {previewModules.map((m) => (
+                            <li key={m.id} className="flex items-center justify-between gap-2">
+                              <span className="text-muted-foreground">{m.name}</span>
+                              <Badge variant="outline" className="text-xs">Brinde</Badge>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+
+                    {(moreFeatures > 0 || moreModules > 0) && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="px-0"
+                        onClick={() =>
+                          openPlanInclusions({
+                            title: `Detalhes do plano ${plan.name}`,
+                            description: 'Lista completa de recursos e módulos incluídos como brinde.',
+                            planName: plan.name,
+                            planPriceLabel: plan.monthly_price === 0 ? 'Grátis' : `${formatPrice(plan.monthly_price)}/mês`,
+                            planFeatures: features,
+                            includedModules,
+                          })
+                        }
+                      >
+                        Ver detalhes ({moreFeatures + moreModules} itens)
+                      </Button>
+                    )}
+                  </div>
                   
                   <Button 
                     className="w-full"
@@ -876,6 +1008,21 @@ export function SubscriptionSettings() {
           currentPlan={currentPlan}
           targetPlan={targetPlanForChange}
           onSuccess={handlePlanChangeSuccess}
+        />
+      )}
+
+      {/* Plan inclusions dialog (reused across cards) */}
+      {planInclusionsPayload && (
+        <PlanInclusionsDialog
+          open={planInclusionsOpen}
+          onOpenChange={setPlanInclusionsOpen}
+          title={planInclusionsPayload.title}
+          description={planInclusionsPayload.description}
+          planName={planInclusionsPayload.planName}
+          planPriceLabel={planInclusionsPayload.planPriceLabel}
+          planFeatures={planInclusionsPayload.planFeatures}
+          includedModules={planInclusionsPayload.includedModules}
+          purchasedModules={planInclusionsPayload.purchasedModules}
         />
       )}
     </div>

@@ -31,7 +31,12 @@ export function SubscriptionCompositionCard({
 
   const hasModules = breakdown.includedModules.length > 0 || breakdown.purchasedModules.length > 0;
 
-  if (!hasModules && breakdown.planPrice === 0) {
+  const hasAnyModules =
+    breakdown.planIncludedModules.length > 0 ||
+    breakdown.purchasedModules.length > 0 ||
+    breakdown.includedModules.length > 0;
+
+  if (!hasAnyModules && breakdown.planPrice === 0) {
     return null;
   }
 
@@ -76,13 +81,13 @@ export function SubscriptionCompositionCard({
             </div>
           </div>
 
-          {/* Included Modules */}
-          {breakdown.includedModules.map(mod => (
+          {/* Included Modules (by plan) */}
+          {breakdown.planIncludedModules.map(mod => (
             <div key={mod.id} className="px-4 py-3 border-b">
               <div className="grid grid-cols-3 items-center">
                 <div className="flex items-center gap-2">
                   <Gift className="h-4 w-4 text-blue-600" />
-                  <span>{mod.addon_module?.name}</span>
+                  <span>{mod.name}</span>
                 </div>
                 <div className="text-center">
                   <Badge variant="secondary" className="text-xs">

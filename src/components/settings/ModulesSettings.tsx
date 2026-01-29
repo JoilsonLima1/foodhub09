@@ -69,6 +69,17 @@ export function ModulesSettings() {
   const breakdown = getModulesBreakdown();
   const plan = tenantInfo?.subscription_plans as any;
 
+  const isModuleProvisionedFromPlan = (moduleId: string) => {
+    return (
+      tenantModules?.some(
+        (m) =>
+          m.addon_module_id === moduleId &&
+          m.source === 'plan_included' &&
+          ['active', 'trial'].includes(m.status)
+      ) || false
+    );
+  };
+
   // Group modules by category
   const categories = ['all', ...Object.keys(ADDON_CATEGORY_LABELS)] as const;
 
@@ -145,10 +156,10 @@ export function ModulesSettings() {
             <div className="p-4 rounded-lg bg-primary/5 text-center">
               <p className="text-sm text-muted-foreground">Módulos Ativos</p>
               <p className="text-xl font-bold">
-                {breakdown.includedModules.length + breakdown.purchasedModules.length}
+                {breakdown.planIncludedModules.length + breakdown.purchasedModules.length}
               </p>
               <p className="text-sm text-muted-foreground">
-                {breakdown.includedModules.length} inclusos + {breakdown.purchasedModules.length} contratados
+                {breakdown.planIncludedModules.length} inclusos + {breakdown.purchasedModules.length} contratados
               </p>
             </div>
             <div className="p-4 rounded-lg bg-green-50 dark:bg-green-950/30 text-center">
@@ -166,13 +177,13 @@ export function ModulesSettings() {
         </CardContent>
       </Card>
 
-      {/* Included Modules */}
-      {breakdown.includedModules.length > 0 && (
+      {/* Included Modules (by plan mapping) */}
+      {breakdown.planIncludedModules.length > 0 && (
         <Card className="border-green-500/30">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <Gift className="h-4 w-4 text-green-600" />
-              Incluídos no seu Plano ({breakdown.includedModules.length})
+              Incluídos no seu Plano ({breakdown.planIncludedModules.length})
             </CardTitle>
             <CardDescription>
               Módulos inclusos gratuitamente no plano {plan?.name}
@@ -180,26 +191,34 @@ export function ModulesSettings() {
           </CardHeader>
           <CardContent>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {breakdown.includedModules.map(sub => {
-                const ModuleIcon = getModuleIcon(sub.addon_module?.icon || 'Package');
+              {breakdown.planIncludedModules.map((module) => {
+                const ModuleIcon = getModuleIcon(module.icon || 'Package');
+                const isProvisioned = isModuleProvisionedFromPlan(module.id);
                 return (
                   <div
-                    key={sub.id}
+                    key={module.id}
                     className="flex items-center gap-3 p-3 rounded-lg border bg-green-50/50 dark:bg-green-950/20"
                   >
                     <div className="h-10 w-10 rounded-lg bg-green-100 dark:bg-green-900/50 flex items-center justify-center">
                       <ModuleIcon className="h-5 w-5 text-green-600" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{sub.addon_module?.name}</p>
+                      <p className="font-medium truncate">{module.name}</p>
                       <div className="flex items-center gap-2">
                         <Badge variant="secondary" className="text-xs bg-green-100 text-green-700">
                           <Gift className="h-3 w-3 mr-1" />
                           Incluso
                         </Badge>
+                        <Badge variant="outline" className="text-xs">
+                          {isProvisioned ? 'Ativo' : 'Incluído'}
+                        </Badge>
                       </div>
                     </div>
-                    <Check className="h-5 w-5 text-green-600 shrink-0" />
+                    {isProvisioned ? (
+                      <Check className="h-5 w-5 text-green-600 shrink-0" />
+                    ) : (
+                      <Clock className="h-5 w-5 text-muted-foreground shrink-0" />
+                    )}
                   </div>
                 );
               })}
