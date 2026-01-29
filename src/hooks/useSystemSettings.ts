@@ -26,11 +26,7 @@ export interface TrialSettings {
   end_date: string | null;
 }
 
-export type AnnouncementBannerStyle = 
-  | 'gradient' | 'minimal' | 'glass' | 'ribbon' | 'badge' | 'glow'
-  | 'bubbles' | 'circles' | 'neon' | 'stripes' | 'confetti' | 'wave' | 'sparkle'
-  | 'geometric' | 'aurora' | 'pulse' | 'retro' | 'cyber' | 'elegant'
-  | 'festive' | 'sunset' | 'ocean' | 'forest' | 'fire' | 'holographic';
+export type AnnouncementBannerStyle = 'gradient' | 'elegant' | 'minimal';
 
 export type HeroTitleHighlightStyle = 
   | 'none' | 'underline' | 'rounded' | 'pill' | 'thought' | 'bubble' 

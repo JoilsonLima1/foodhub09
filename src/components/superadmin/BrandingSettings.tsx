@@ -68,36 +68,9 @@ export function BrandingSettings() {
   const [heroColor2, setHeroColor2] = useState(defaultHeroColor2);
 
   const bannerStyles: { value: AnnouncementBannerStyle; label: string; description: string }[] = [
-    // Básicos
-    { value: 'gradient', label: 'Gradiente', description: 'Banner colorido com padrão grid' },
-    { value: 'minimal', label: 'Minimalista', description: 'Fundo neutro, borda inferior' },
-    { value: 'glass', label: 'Vidro', description: 'Transparência com blur' },
-    { value: 'ribbon', label: 'Fita', description: 'Linhas decorativas laterais' },
-    { value: 'badge', label: 'Badge', description: 'Centralizado em forma de pílula' },
-    { value: 'glow', label: 'Brilho', description: 'Efeito luminoso nas laterais' },
-    // Animados
-    { value: 'bubbles', label: 'Bolhas', description: 'Bolhas flutuantes animadas' },
-    { value: 'circles', label: 'Círculos', description: 'Círculos de destaque fixos' },
-    { value: 'neon', label: 'Neon', description: 'Efeito neon brilhante' },
-    { value: 'stripes', label: 'Listras', description: 'Padrão de listras diagonais' },
-    { value: 'confetti', label: 'Confete', description: 'Partículas coloridas festivas' },
-    { value: 'wave', label: 'Onda', description: 'Ondas suaves decorativas' },
-    { value: 'sparkle', label: 'Brilhos', description: 'Estrelas cintilantes' },
-    // Geométricos
-    { value: 'geometric', label: 'Geométrico', description: 'Formas geométricas abstratas' },
-    { value: 'aurora', label: 'Aurora', description: 'Gradiente aurora boreal' },
-    { value: 'pulse', label: 'Pulso', description: 'Efeito de pulsação' },
-    // Temáticos
-    { value: 'retro', label: 'Retrô', description: 'Estilo vintage anos 70' },
-    { value: 'cyber', label: 'Cyber', description: 'Futurista cyberpunk' },
+    { value: 'gradient', label: 'Gradiente', description: 'Banner colorido com efeito de brilho' },
     { value: 'elegant', label: 'Elegante', description: 'Sofisticado e refinado' },
-    { value: 'festive', label: 'Festivo', description: 'Celebração e festa' },
-    // Natureza
-    { value: 'sunset', label: 'Pôr do Sol', description: 'Tons quentes de sunset' },
-    { value: 'ocean', label: 'Oceano', description: 'Azuis profundos do mar' },
-    { value: 'forest', label: 'Floresta', description: 'Verdes naturais' },
-    { value: 'fire', label: 'Fogo', description: 'Laranjas e vermelhos vibrantes' },
-    { value: 'holographic', label: 'Holográfico', description: 'Efeito iridescente futurista' },
+    { value: 'minimal', label: 'Minimalista', description: 'Fundo neutro, simples e direto' },
   ];
 
   useEffect(() => {
