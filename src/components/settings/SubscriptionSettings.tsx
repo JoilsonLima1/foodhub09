@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Crown, Calendar, CreditCard, ExternalLink, Loader2, AlertTriangle, Check } from 'lucide-react';
+import { Crown, Calendar, CreditCard, ExternalLink, Loader2, AlertTriangle, Check, Clock, Gift } from 'lucide-react';
 import { useTrialStatus } from '@/hooks/useTrialStatus';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -29,7 +29,7 @@ interface SubscriptionPlan {
 
 export function SubscriptionSettings() {
   const { session } = useAuth();
-  const { subscriptionStatus, isLoading, getDaysRemaining } = useTrialStatus();
+  const { subscriptionStatus, isLoading, getDaysRemaining, getTrialStartDisplay, getExpirationDisplay } = useTrialStatus();
   const { toast } = useToast();
   const [isUpgrading, setIsUpgrading] = useState<string | null>(null);
   const [isOpeningPortal, setIsOpeningPortal] = useState(false);
@@ -69,7 +69,6 @@ export function SubscriptionSettings() {
       return;
     }
 
-    // Free plan - just show confirmation
     if (plan.monthly_price === 0) {
       toast({
         title: 'Plano Grátis',
@@ -78,7 +77,6 @@ export function SubscriptionSettings() {
       return;
     }
 
-    // Open checkout dialog with payment method selection
     setSelectedPlan(plan);
     setCheckoutOpen(true);
   };
@@ -123,10 +121,12 @@ export function SubscriptionSettings() {
   const getStatusBadge = () => {
     if (!subscriptionStatus) return null;
 
-    switch (subscriptionStatus.status) {
+    const { status, hasContractedPlan, tenantPlanId } = subscriptionStatus;
+
+    switch (status) {
       case 'active':
         return (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Badge className="bg-green-500/10 text-green-600 border-green-500/20">
               <Check className="h-3 w-3 mr-1" />
               Ativo
@@ -138,9 +138,17 @@ export function SubscriptionSettings() {
         );
       case 'trialing':
         return (
-          <div className="flex items-center gap-2">
-            <Badge className="bg-blue-500/10 text-blue-600 border-blue-500/20">Período de Teste</Badge>
-            {!subscriptionStatus.planId && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <Badge className="bg-blue-500/10 text-blue-600 border-blue-500/20">
+              <Gift className="h-3 w-3 mr-1" />
+              Período de Teste Gratuito
+            </Badge>
+            {hasContractedPlan || tenantPlanId ? (
+              <Badge variant="outline" className="text-green-600 border-green-500/30">
+                <Check className="h-3 w-3 mr-1" />
+                Plano Contratado
+              </Badge>
+            ) : (
               <Badge variant="outline" className="text-muted-foreground">
                 Nenhum plano contratado
               </Badge>
@@ -164,19 +172,15 @@ export function SubscriptionSettings() {
   };
 
   const isCurrentPlan = (planId: string) => {
-    // Check by tenant's actual plan ID from database first
     if (subscriptionStatus?.tenantPlanId === planId) {
       return true;
     }
-    // Fallback to Stripe product ID matching
     return subscriptionStatus?.planId?.includes(planId.replace(/-/g, '_')) || false;
   };
 
-  // Filter out plans that are already contracted (for upgrade list)
   const availablePlansForUpgrade = plans.filter(plan => {
     const isCurrent = isCurrentPlan(plan.id);
-    // If user has an active subscription, hide their current plan from upgrade options
-    if (subscriptionStatus?.status === 'active' && isCurrent) {
+    if ((subscriptionStatus?.status === 'active' || subscriptionStatus?.hasContractedPlan) && isCurrent) {
       return false;
     }
     return true;
@@ -201,6 +205,12 @@ export function SubscriptionSettings() {
     return features;
   };
 
+  const getPlanNameById = (planId: string | null): string => {
+    if (!planId) return 'Nenhum';
+    const plan = plans.find(p => p.id === planId);
+    return plan?.name || 'Plano Contratado';
+  };
+
   if (isLoading || loadingPlans) {
     return (
       <Card>
@@ -214,10 +224,13 @@ export function SubscriptionSettings() {
   const isTrialing = subscriptionStatus?.isTrialing;
   const isActive = subscriptionStatus?.status === 'active';
   const isExpired = subscriptionStatus?.status === 'expired' || subscriptionStatus?.status === 'none';
-  const daysRemaining = getDaysRemaining();
+  const daysRemaining = subscriptionStatus?.daysRemaining || 0;
+  const daysUsed = subscriptionStatus?.daysUsed || 0;
+  const totalTrialDays = subscriptionStatus?.totalTrialDays || 14;
+  const hasContractedPlan = subscriptionStatus?.hasContractedPlan || !!subscriptionStatus?.tenantPlanId;
+  const hasTrialBenefit = subscriptionStatus?.hasTrialBenefit;
+  const trialBenefitMessage = subscriptionStatus?.trialBenefitMessage;
   
-  // User has a real Stripe subscription if they have active status (not just trialing without payment)
-  // or if they completed checkout (have a product_id from Stripe)
   const hasStripeSubscription = isActive || (isTrialing && subscriptionStatus?.planId);
 
   return (
@@ -243,35 +256,76 @@ export function SubscriptionSettings() {
               </div>
             </div>
             <div className="text-right space-y-1">
-              {isTrialing && daysRemaining > 0 && (
+              {isTrialing && (
                 <div>
-                  <p className="text-sm text-muted-foreground">Trial restante</p>
-                  <p className="font-medium text-blue-600">
+                  <p className="text-sm text-muted-foreground">Dias restantes</p>
+                  <p className="font-medium text-blue-600 text-lg">
                     {daysRemaining} {daysRemaining === 1 ? 'dia' : 'dias'}
                   </p>
                 </div>
               )}
-              {subscriptionStatus?.planId ? (
-                <div>
-                  <p className="text-sm text-muted-foreground">Plano</p>
-                  <p className="font-medium">
-                    {subscriptionStatus.planId.includes('free') ? 'Grátis' :
-                     subscriptionStatus.planId.includes('starter') ? 'Starter' : 
-                     subscriptionStatus.planId.includes('professional') ? 'Professional' : 
-                     subscriptionStatus.planId.includes('enterprise') ? 'Enterprise' : 'Básico'}
-                  </p>
-                </div>
-              ) : isTrialing ? (
-                <div>
-                  <p className="text-sm text-muted-foreground">Plano</p>
-                  <p className="font-medium text-muted-foreground">Nenhum contratado</p>
-                </div>
-              ) : null}
             </div>
           </div>
 
+          {/* Trial Details Card */}
+          {isTrialing && (
+            <div className="p-4 bg-blue-500/5 border border-blue-500/20 rounded-lg space-y-4">
+              <div className="flex items-center gap-2">
+                <Gift className="h-5 w-5 text-blue-600" />
+                <h4 className="font-medium text-blue-700 dark:text-blue-400">Detalhes do Período de Teste</h4>
+              </div>
+              
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Data de Início</p>
+                  <p className="font-medium">{getTrialStartDisplay() || 'N/A'}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Total de Dias Grátis</p>
+                  <p className="font-medium">{totalTrialDays} dias</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Data Final do Teste</p>
+                  <p className="font-medium">{getExpirationDisplay() || 'N/A'}</p>
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="flex items-center gap-3 p-3 bg-background/50 rounded-lg">
+                  <Clock className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">Dias utilizados</p>
+                    <p className="font-medium">{daysUsed} dias</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 p-3 bg-background/50 rounded-lg">
+                  <Gift className="h-5 w-5 text-blue-600" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">Dias restantes</p>
+                    <p className="font-medium text-blue-600">{daysRemaining} dias</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Trial Benefit Message (when user has contracted a plan during trial) */}
+          {hasContractedPlan && hasTrialBenefit && trialBenefitMessage && (
+            <div className="flex items-start gap-3 p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
+              <Check className="h-5 w-5 text-green-600 mt-0.5" />
+              <div>
+                <p className="font-medium text-green-700 dark:text-green-500">
+                  Benefício do Período de Teste
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {trialBenefitMessage}
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Trial Warning */}
-          {isTrialing && daysRemaining <= 3 && (
+          {isTrialing && daysRemaining <= 3 && !hasContractedPlan && (
             <div className="flex items-start gap-3 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
               <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5" />
               <div>
@@ -282,37 +336,40 @@ export function SubscriptionSettings() {
                   {daysRemaining === 0 
                     ? 'Seu período de teste expira hoje.' 
                     : `Restam apenas ${daysRemaining} dias de teste.`}
-                  {' '}Faça upgrade para continuar usando todas as funcionalidades.
+                  {' '}Contrate um plano para continuar usando todas as funcionalidades.
                 </p>
               </div>
             </div>
           )}
 
-          {/* Dates */}
-          {(subscriptionStatus?.trialEndDate || subscriptionStatus?.currentPeriodEnd) && (
-            <div className="grid gap-4 md:grid-cols-2">
-              {isTrialing && subscriptionStatus.trialEndDate && (
-                <div className="flex items-center gap-3 p-3 border rounded-lg">
-                  <Calendar className="h-5 w-5 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm text-muted-foreground">Fim do Período de Teste</p>
-                    <p className="font-medium">{formatDate(subscriptionStatus.trialEndDate)}</p>
-                  </div>
+          {/* Dates Grid */}
+          <div className="grid gap-4 md:grid-cols-2">
+            {/* Contracted Plan Info */}
+            {hasContractedPlan && subscriptionStatus?.tenantPlanId && (
+              <div className="flex items-center gap-3 p-3 border rounded-lg">
+                <Crown className="h-5 w-5 text-primary" />
+                <div>
+                  <p className="text-sm text-muted-foreground">Plano Contratado</p>
+                  <p className="font-medium">{getPlanNameById(subscriptionStatus.tenantPlanId)}</p>
                 </div>
-              )}
-              {isActive && subscriptionStatus.currentPeriodEnd && (
-                <div className="flex items-center gap-3 p-3 border rounded-lg">
-                  <Calendar className="h-5 w-5 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm text-muted-foreground">Próxima Renovação</p>
-                    <p className="font-medium">{formatDate(subscriptionStatus.currentPeriodEnd)}</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+              </div>
+            )}
 
-          {/* Manage Subscription Button - Only show when user has a real Stripe subscription */}
+            {/* Next Payment Date */}
+            {hasContractedPlan && subscriptionStatus?.currentPeriodEnd && (
+              <div className="flex items-center gap-3 p-3 border rounded-lg">
+                <Calendar className="h-5 w-5 text-muted-foreground" />
+                <div>
+                  <p className="text-sm text-muted-foreground">
+                    {isActive ? 'Próxima Renovação' : 'Próximo Pagamento'}
+                  </p>
+                  <p className="font-medium">{formatDate(subscriptionStatus.currentPeriodEnd)}</p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Manage Subscription Button */}
           {hasStripeSubscription && subscriptionStatus?.isSubscribed && (
             <Button variant="outline" onClick={handleManageSubscription} disabled={isOpeningPortal}>
               {isOpeningPortal ? (
@@ -330,14 +387,14 @@ export function SubscriptionSettings() {
             </Button>
           )}
           
-          {/* Info message for users in automatic trial (no Stripe customer yet) */}
-          {isTrialing && !hasStripeSubscription && (
+          {/* Info message for users in trial without plan */}
+          {isTrialing && !hasContractedPlan && (
             <div className="flex items-start gap-3 p-4 bg-muted/50 border rounded-lg">
               <CreditCard className="h-5 w-5 text-muted-foreground mt-0.5" />
               <div>
                 <p className="font-medium text-sm">Período de Teste Gratuito</p>
                 <p className="text-sm text-muted-foreground">
-                  Você está aproveitando o período de teste. Faça upgrade para um plano pago para ter acesso ao gerenciamento de assinatura.
+                  Você está aproveitando o período de teste. Contrate um plano pago para garantir acesso contínuo após o término do teste.
                 </p>
               </div>
             </div>
@@ -346,7 +403,7 @@ export function SubscriptionSettings() {
       </Card>
 
       {/* Current Plan Card (if user has one) */}
-      {subscriptionStatus?.tenantPlanId && (
+      {hasContractedPlan && subscriptionStatus?.tenantPlanId && (
         <Card className="border-primary">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -363,7 +420,7 @@ export function SubscriptionSettings() {
                     <div className="flex items-center gap-3">
                       <h3 className="text-xl font-semibold">{plan.name}</h3>
                       <Badge className="bg-green-500/10 text-green-600 border-green-500/20">
-                        Ativo
+                        ✓ Plano Atual
                       </Badge>
                     </div>
                     <p className="text-2xl font-bold">
@@ -397,23 +454,22 @@ export function SubscriptionSettings() {
       <Card>
         <CardHeader>
           <CardTitle>
-            {subscriptionStatus?.tenantPlanId ? 'Fazer Upgrade' : 'Planos Disponíveis'}
+            {hasContractedPlan ? 'Fazer Upgrade' : 'Planos Disponíveis'}
           </CardTitle>
           <CardDescription>
-            {subscriptionStatus?.tenantPlanId 
+            {hasContractedPlan 
               ? 'Escolha um plano superior para mais recursos'
               : 'Compare os planos e escolha o melhor para seu negócio'}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {availablePlansForUpgrade.map((plan, index) => {
+            {availablePlansForUpgrade.map((plan) => {
               const isCurrent = isCurrentPlan(plan.id);
               const isProfessional = plan.slug === 'professional';
               const features = getPlanFeatures(plan);
               
-              // Skip current plan in upgrade list
-              if (isCurrent && subscriptionStatus?.status === 'active') {
+              if (isCurrent && hasContractedPlan) {
                 return null;
               }
               
@@ -481,7 +537,7 @@ export function SubscriptionSettings() {
                     ) : (
                       <>
                         <Crown className="h-4 w-4 mr-2" />
-                        Fazer Upgrade
+                        {hasContractedPlan ? 'Fazer Upgrade' : 'Contratar Plano'}
                       </>
                     )}
                   </Button>

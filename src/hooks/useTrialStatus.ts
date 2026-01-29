@@ -13,18 +13,26 @@ export interface TrialNotificationSettings {
 export interface SubscriptionStatus {
   isSubscribed: boolean;
   isTrialing: boolean;
+  trialStartDate: string | null;
   trialEndDate: string | null;
+  totalTrialDays: number;
+  daysUsed: number;
+  daysRemaining: number;
+  subscriptionStartDate: string | null;
   currentPeriodEnd: string | null;
   planId: string | null;
   status: 'active' | 'trialing' | 'canceled' | 'past_due' | 'none' | 'expired';
-  tenantPlanId: string | null; // The actual plan ID from the database
+  tenantPlanId: string | null;
+  hasContractedPlan: boolean;
+  hasTrialBenefit: boolean;
+  trialBenefitMessage: string | null;
 }
 
 export function useTrialStatus() {
   const { user, session } = useAuth();
   const queryClient = useQueryClient();
 
-  // Fetch subscription status from Stripe via edge function
+  // Fetch subscription status from edge function
   const { data: subscriptionStatus, isLoading: isLoadingSubscription, refetch: refetchSubscription, error: subscriptionError } = useQuery({
     queryKey: ['subscription-status', user?.id],
     queryFn: async (): Promise<SubscriptionStatus> => {
@@ -32,11 +40,19 @@ export function useTrialStatus() {
         return {
           isSubscribed: false,
           isTrialing: false,
+          trialStartDate: null,
           trialEndDate: null,
+          totalTrialDays: 14,
+          daysUsed: 0,
+          daysRemaining: 0,
+          subscriptionStartDate: null,
           currentPeriodEnd: null,
           planId: null,
           status: 'none',
           tenantPlanId: null,
+          hasContractedPlan: false,
+          hasTrialBenefit: false,
+          trialBenefitMessage: null,
         };
       }
 
@@ -48,7 +64,7 @@ export function useTrialStatus() {
 
       if (error) {
         console.error('Error checking subscription:', error);
-        throw error; // Let React Query handle retry
+        throw error;
       }
 
       // Also fetch tenant's subscription_plan_id from database for accurate plan display
@@ -72,17 +88,25 @@ export function useTrialStatus() {
       return {
         isSubscribed: data.subscribed || false,
         isTrialing: data.is_trialing || false,
+        trialStartDate: data.trial_start || null,
         trialEndDate: data.trial_end || null,
+        totalTrialDays: data.total_trial_days || 14,
+        daysUsed: data.days_used || 0,
+        daysRemaining: data.days_remaining || 0,
+        subscriptionStartDate: data.subscription_start || null,
         currentPeriodEnd: data.subscription_end || null,
         planId: data.product_id || null,
         status: data.status || 'none',
-        tenantPlanId, // Add the actual plan ID from database
+        tenantPlanId: tenantPlanId || data.product_id || null,
+        hasContractedPlan: data.has_contracted_plan || !!tenantPlanId,
+        hasTrialBenefit: data.has_trial_benefit || false,
+        trialBenefitMessage: data.trial_benefit_message || null,
       };
     },
     enabled: !!user && !!session,
-    retry: 2, // Retry 2 times on failure
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000), // Exponential backoff
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    retry: 2,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000),
+    staleTime: 1000 * 60 * 5,
     refetchOnWindowFocus: true,
   });
 
@@ -108,7 +132,7 @@ export function useTrialStatus() {
 
       return data.setting_value as unknown as TrialNotificationSettings;
     },
-    staleTime: 1000 * 60 * 10, // 10 minutes
+    staleTime: 1000 * 60 * 10,
   });
 
   // Check if user has dismissed the notification recently
@@ -166,19 +190,18 @@ export function useTrialStatus() {
       return false;
     }
 
-    const trialEnd = new Date(subscriptionStatus.trialEndDate);
-    const now = new Date();
-    const daysUntilExpiration = Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    const daysRemaining = subscriptionStatus.daysRemaining;
 
     // Check if we're within the notification window
     const daysBeforeExpiration = notificationSettings?.days_before_expiration ?? 3;
-    if (daysUntilExpiration > daysBeforeExpiration) {
+    if (daysRemaining > daysBeforeExpiration) {
       return false;
     }
 
     // Check if notification was dismissed recently
     if (dismissalInfo?.dismissed_at) {
       const dismissedAt = new Date(dismissalInfo.dismissed_at);
+      const now = new Date();
       const hoursSinceDismissal = (now.getTime() - dismissedAt.getTime()) / (1000 * 60 * 60);
       const frequencyHours = notificationSettings?.show_frequency_hours ?? 24;
 
@@ -214,13 +237,19 @@ export function useTrialStatus() {
     });
   };
 
-  // Calculate days remaining
+  // Get days remaining from the subscription status
   const getDaysRemaining = (): number => {
-    if (!subscriptionStatus?.trialEndDate) return 0;
+    return subscriptionStatus?.daysRemaining ?? 0;
+  };
 
-    const trialEnd = new Date(subscriptionStatus.trialEndDate);
-    const now = new Date();
-    return Math.max(0, Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+  // Get trial start display
+  const getTrialStartDisplay = (): string => {
+    if (!subscriptionStatus?.trialStartDate) return '';
+    return new Date(subscriptionStatus.trialStartDate).toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
   };
 
   return {
@@ -232,6 +261,7 @@ export function useTrialStatus() {
     dismissNotification,
     getExpirationDisplay,
     getDaysRemaining,
+    getTrialStartDisplay,
     refetchSubscription,
   };
 }
