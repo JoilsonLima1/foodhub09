@@ -21,10 +21,16 @@ import { cn } from '@/lib/utils';
 import { extractPlanFeatures } from '@/lib/planFeatures';
 
 interface CheckoutPendingData {
-  planId: string;
-  planName: string;
-  itemType: string;
+  // Back-compat (older versions saved planId/planName only)
+  planId?: string;
+  planName?: string;
+
+  itemId?: string;
+  itemName?: string;
+  itemType: 'plan' | 'module' | string;
   gateway: string;
+  paymentId?: string | null;
+  sessionId?: string | null;
   timestamp: number;
 }
 
@@ -117,13 +123,23 @@ export function SubscriptionSettings() {
     const pending = localStorage.getItem('checkout_pending');
     if (pending) {
       try {
-        const data: CheckoutPendingData = JSON.parse(pending);
+        const raw: CheckoutPendingData = JSON.parse(pending);
+        const data: CheckoutPendingData = {
+          ...raw,
+          // Normalize (so module purchases don't get treated like plan purchases)
+          itemId: raw.itemId || raw.planId,
+          itemName: raw.itemName || raw.planName,
+        };
         // Only consider if within last 10 minutes
         if (Date.now() - data.timestamp < 10 * 60 * 1000) {
           setCheckoutPending(data);
           setIsPolling(true);
           // Force immediate refetch
-          refetchSubscription();
+          if (data.itemType === 'module') {
+            refetchModules();
+          } else {
+            refetchSubscription();
+          }
         } else {
           localStorage.removeItem('checkout_pending');
         }
@@ -138,6 +154,24 @@ export function SubscriptionSettings() {
     if (!isPolling) return;
     
     const interval = setInterval(() => {
+      // Plan vs module polling
+      if (checkoutPending?.itemType === 'module') {
+        // Try to reconcile Asaas payment (fallback when webhook doesn't run)
+        if (checkoutPending.gateway === 'asaas' && checkoutPending.paymentId && session?.access_token) {
+          supabase.functions.invoke('reconcile-module-payment', {
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: { paymentId: checkoutPending.paymentId },
+          }).catch(() => {
+            // Silent; we keep polling anyway
+          });
+        }
+
+        refetchModules();
+        return;
+      }
+
       refetchSubscription();
     }, 5000); // Every 5 seconds
     
@@ -152,11 +186,11 @@ export function SubscriptionSettings() {
       clearInterval(interval);
       clearTimeout(timeout);
     };
-  }, [isPolling, refetchSubscription]);
+  }, [isPolling, checkoutPending, session?.access_token, refetchSubscription, refetchModules]);
 
   // Stop polling when plan is detected
   useEffect(() => {
-    if (isPolling && subscriptionStatus?.hasContractedPlan) {
+    if (isPolling && checkoutPending?.itemType !== 'module' && subscriptionStatus?.hasContractedPlan) {
       setIsPolling(false);
       setCheckoutPending(null);
       localStorage.removeItem('checkout_pending');
@@ -165,7 +199,30 @@ export function SubscriptionSettings() {
         description: `Seu plano ${subscriptionStatus.tenantPlanName || ''} foi ativado com sucesso.`,
       });
     }
-  }, [isPolling, subscriptionStatus?.hasContractedPlan, subscriptionStatus?.tenantPlanName, toast]);
+  }, [isPolling, checkoutPending?.itemType, subscriptionStatus?.hasContractedPlan, subscriptionStatus?.tenantPlanName, toast]);
+
+  // Stop polling when module is detected as active
+  useEffect(() => {
+    if (!isPolling || checkoutPending?.itemType !== 'module' || !checkoutPending.itemId) return;
+
+    const isModuleActive =
+      tenantModules?.some(
+        (m) =>
+          m.addon_module_id === checkoutPending.itemId &&
+          m.source === 'purchase' &&
+          ['active', 'trial'].includes(m.status)
+      ) || false;
+
+    if (isModuleActive) {
+      setIsPolling(false);
+      setCheckoutPending(null);
+      localStorage.removeItem('checkout_pending');
+      toast({
+        title: 'Módulo ativado! 🎉',
+        description: `O módulo ${checkoutPending.itemName || ''} foi liberado com sucesso.`,
+      });
+    }
+  }, [isPolling, checkoutPending?.itemType, checkoutPending?.itemId, checkoutPending?.itemName, tenantModules, toast]);
 
   const handleManualRefresh = useCallback(async () => {
     setIsRefreshing(true);
@@ -444,8 +501,8 @@ export function SubscriptionSettings() {
                 Aguardando confirmação do pagamento
               </p>
               <p className="text-sm text-muted-foreground">
-                Você contratou o plano {checkoutPending.planName}. 
-                A ativação será automática assim que o pagamento for processado.
+                Você contratou {checkoutPending.itemType === 'module' ? 'o módulo' : 'o plano'}{' '}
+                {checkoutPending.itemName || checkoutPending.planName}. A ativação será automática assim que o pagamento for processado.
               </p>
             </div>
             <Button 
