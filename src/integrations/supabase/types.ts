@@ -2566,6 +2566,10 @@ export type Database = {
             | Database["public"]["Enums"]["payment_provider"]
             | null
           is_active: boolean | null
+          last_payment_at: string | null
+          last_payment_method: string | null
+          last_payment_provider: string | null
+          last_payment_status: string | null
           logo_url: string | null
           name: string
           online_gateway_card: boolean | null
@@ -2599,6 +2603,10 @@ export type Database = {
             | Database["public"]["Enums"]["payment_provider"]
             | null
           is_active?: boolean | null
+          last_payment_at?: string | null
+          last_payment_method?: string | null
+          last_payment_provider?: string | null
+          last_payment_status?: string | null
           logo_url?: string | null
           name: string
           online_gateway_card?: boolean | null
@@ -2632,6 +2640,10 @@ export type Database = {
             | Database["public"]["Enums"]["payment_provider"]
             | null
           is_active?: boolean | null
+          last_payment_at?: string | null
+          last_payment_method?: string | null
+          last_payment_provider?: string | null
+          last_payment_status?: string | null
           logo_url?: string | null
           name?: string
           online_gateway_card?: boolean | null

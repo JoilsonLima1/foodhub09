@@ -147,7 +147,10 @@ async function activatePlanSubscription(
   const periodEnd = new Date(now);
   periodEnd.setDate(periodEnd.getDate() + 30);
 
-  // Update tenant with new subscription - including Asaas tracking fields
+  // Determine payment method from Asaas billing type
+  const paymentMethod = getPaymentMethodFromAsaas(payment.billingType);
+
+  // Update tenant with new subscription - including Asaas tracking fields and payment info
   const { error: updateError } = await supabase
     .from('tenants')
     .update({
@@ -156,7 +159,12 @@ async function activatePlanSubscription(
       subscription_current_period_start: now.toISOString(),
       subscription_current_period_end: periodEnd.toISOString(),
       asaas_customer_id: payment.customer,
-      asaas_payment_id: payment.id
+      asaas_payment_id: payment.id,
+      // Payment tracking fields
+      last_payment_at: now.toISOString(),
+      last_payment_method: paymentMethod,
+      last_payment_provider: 'asaas',
+      last_payment_status: 'confirmed'
     })
     .eq('id', profile.tenant_id);
 
@@ -172,8 +180,24 @@ async function activatePlanSubscription(
     periodStart: now.toISOString(),
     periodEnd: periodEnd.toISOString(),
     asaasCustomerId: payment.customer,
-    asaasPaymentId: payment.id
+    asaasPaymentId: payment.id,
+    paymentMethod: paymentMethod
   });
+}
+
+function getPaymentMethodFromAsaas(billingType: string | undefined): string {
+  switch (billingType) {
+    case 'PIX':
+      return 'pix';
+    case 'CREDIT_CARD':
+      return 'credit_card';
+    case 'BOLETO':
+      return 'boleto';
+    case 'UNDEFINED':
+      return 'multiple';
+    default:
+      return billingType?.toLowerCase() || 'unknown';
+  }
 }
 
 async function activateModuleSubscription(

@@ -10,6 +10,14 @@ export interface TrialNotificationSettings {
   show_expiration_datetime: boolean;
 }
 
+export interface PaymentInfo {
+  lastPaymentAt: string | null;
+  lastPaymentMethod: string | null;
+  lastPaymentProvider: string | null;
+  lastPaymentStatus: string | null;
+  asaasPaymentId: string | null;
+}
+
 export interface SubscriptionStatus {
   isSubscribed: boolean;
   isTrialing: boolean;
@@ -23,9 +31,11 @@ export interface SubscriptionStatus {
   planId: string | null;
   status: 'active' | 'trialing' | 'canceled' | 'past_due' | 'none' | 'expired';
   tenantPlanId: string | null;
+  tenantPlanName: string | null;
   hasContractedPlan: boolean;
   hasTrialBenefit: boolean;
   trialBenefitMessage: string | null;
+  paymentInfo: PaymentInfo | null;
 }
 
 export function useTrialStatus() {
@@ -50,9 +60,11 @@ export function useTrialStatus() {
           planId: null,
           status: 'none',
           tenantPlanId: null,
+          tenantPlanName: null,
           hasContractedPlan: false,
           hasTrialBenefit: false,
           trialBenefitMessage: null,
+          paymentInfo: null,
         };
       }
 
@@ -67,8 +79,11 @@ export function useTrialStatus() {
         throw error;
       }
 
-      // Also fetch tenant's subscription_plan_id from database for accurate plan display
+      // Also fetch tenant's subscription info from database for accurate display
       let tenantPlanId: string | null = null;
+      let tenantPlanName: string | null = null;
+      let paymentInfo: PaymentInfo | null = null;
+
       const { data: profile } = await supabase
         .from('profiles')
         .select('tenant_id')
@@ -78,11 +93,40 @@ export function useTrialStatus() {
       if (profile?.tenant_id) {
         const { data: tenant } = await supabase
           .from('tenants')
-          .select('subscription_plan_id')
+          .select(`
+            subscription_plan_id,
+            last_payment_at,
+            last_payment_method,
+            last_payment_provider,
+            last_payment_status,
+            asaas_payment_id
+          `)
           .eq('id', profile.tenant_id)
           .single();
         
         tenantPlanId = tenant?.subscription_plan_id || null;
+
+        // Fetch plan name if tenant has a plan
+        if (tenantPlanId) {
+          const { data: planData } = await supabase
+            .from('subscription_plans')
+            .select('name')
+            .eq('id', tenantPlanId)
+            .single();
+          
+          tenantPlanName = planData?.name || null;
+        }
+
+        // Build payment info if available
+        if (tenant?.last_payment_at) {
+          paymentInfo = {
+            lastPaymentAt: tenant.last_payment_at,
+            lastPaymentMethod: tenant.last_payment_method,
+            lastPaymentProvider: tenant.last_payment_provider,
+            lastPaymentStatus: tenant.last_payment_status,
+            asaasPaymentId: tenant.asaas_payment_id,
+          };
+        }
       }
 
       return {
@@ -98,9 +142,11 @@ export function useTrialStatus() {
         planId: data.product_id || null,
         status: data.status || 'none',
         tenantPlanId: tenantPlanId || data.product_id || null,
+        tenantPlanName: tenantPlanName,
         hasContractedPlan: data.has_contracted_plan || !!tenantPlanId,
         hasTrialBenefit: data.has_trial_benefit || false,
         trialBenefitMessage: data.trial_benefit_message || null,
+        paymentInfo: paymentInfo,
       };
     },
     enabled: !!user && !!session,
