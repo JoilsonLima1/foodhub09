@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import type { AppRole, UserWithProfile } from '@/types/database';
@@ -27,8 +27,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [tenantId, setTenantId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Mutex to prevent concurrent bootstrap calls for the same user
+  const bootstrapInProgressRef = useRef<Set<string>>(new Set());
+
   // Helper function to bootstrap user if needed (creates profile + tenant + role)
   const bootstrapUserIfNeeded = async (userId: string, sessionToken: string, userMetadata?: any): Promise<boolean> => {
+    // Prevent concurrent bootstrap calls for same user
+    if (bootstrapInProgressRef.current.has(userId)) {
+      console.log('[AuthContext] Bootstrap already in progress for:', userId);
+      return false;
+    }
+    
+    bootstrapInProgressRef.current.add(userId);
+    
     try {
       console.log('[AuthContext] Checking if user needs bootstrap...');
       
@@ -56,6 +67,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error('[AuthContext] Bootstrap exception:', error);
       return false;
+    } finally {
+      bootstrapInProgressRef.current.delete(userId);
     }
   };
 
@@ -242,65 +255,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       },
     });
 
-    if (!error && data.user) {
+    if (error) {
+      console.error('[signUp] Signup error:', error);
+      return { error };
+    }
+
+    if (data.user) {
       console.log('[signUp] User created successfully:', data.user.id);
-      
-      // Bootstrap user: create tenant (organization) + profile + admin role
-      try {
-        // Use session from signup response directly (more reliable than getSession)
-        let token = data.session?.access_token;
-        
-        // Fallback: try getSession if signup didn't return session immediately
-        if (!token) {
-          console.log('[signUp] No session in response, waiting for session...');
-          // Wait briefly for session to be established
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          const { data: sessionData } = await supabase.auth.getSession();
-          token = sessionData.session?.access_token;
-        }
-        
-        if (!token) {
-          console.error('[signUp] No session token available after signup');
-          // Don't fail - the user was created, they just need to log in
-          return { error: new Error('Conta criada com sucesso! Faça login para continuar.') };
-        }
-
-        console.log('[signUp] Token obtained, calling bootstrap-user...');
-        
-        const res = await supabase.functions.invoke('bootstrap-user', {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          body: {
-            tenantName,
-            businessCategory,
-          },
-        });
-
-        console.log('[signUp] Bootstrap response:', res);
-
-        if (res.error) {
-          console.error('[signUp] Bootstrap function error:', res.error);
-          // Don't throw - user was created, just bootstrap failed
-          // They can retry by logging in
-          return { error: new Error('Conta criada, mas houve um erro ao configurar. Faça login para continuar.') };
-        }
-        
-        if (res.data?.error) {
-          console.error('[signUp] Bootstrap response error:', res.data.error);
-          return { error: new Error('Conta criada, mas houve um erro ao configurar. Faça login para continuar.') };
-        }
-        
-        console.log('[signUp] Bootstrap successful:', res.data);
-        
-        // Refresh user data after bootstrap
-        await fetchUserData(data.user.id);
-        
-      } catch (bootstrapError: any) {
-        console.error('[signUp] Bootstrap error:', bootstrapError);
-        // Don't fail completely - user was created
-        return { error: new Error('Conta criada! Faça login para finalizar a configuração.') };
-      }
+      // Bootstrap will be triggered by onAuthStateChange -> fetchUserData
+      // No need to call it here - this prevents race condition
     }
 
     return { error };
