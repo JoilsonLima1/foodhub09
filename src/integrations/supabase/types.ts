@@ -118,6 +118,33 @@ export type Database = {
           },
         ]
       }
+      billing_settings: {
+        Row: {
+          created_at: string
+          id: string
+          invoice_show_breakdown: boolean
+          modules_billing_mode: string
+          proration_enabled: boolean
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          invoice_show_breakdown?: boolean
+          modules_billing_mode?: string
+          proration_enabled?: boolean
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          invoice_show_breakdown?: boolean
+          modules_billing_mode?: string
+          proration_enabled?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       business_category_configs: {
         Row: {
           category_key: string
@@ -2483,17 +2510,22 @@ export type Database = {
         Row: {
           addon_module_id: string
           asaas_payment_id: string | null
+          asaas_subscription_id: string | null
+          billing_mode: string | null
           cancelled_at: string | null
           created_at: string
           created_by: string | null
           expires_at: string | null
           id: string
           is_free: boolean | null
+          next_billing_date: string | null
           notes: string | null
           price_paid: number | null
+          purchased_at: string | null
           source: string | null
           started_at: string
           status: Database["public"]["Enums"]["addon_subscription_status"]
+          stripe_subscription_id: string | null
           tenant_id: string
           trial_ends_at: string | null
           updated_at: string
@@ -2501,17 +2533,22 @@ export type Database = {
         Insert: {
           addon_module_id: string
           asaas_payment_id?: string | null
+          asaas_subscription_id?: string | null
+          billing_mode?: string | null
           cancelled_at?: string | null
           created_at?: string
           created_by?: string | null
           expires_at?: string | null
           id?: string
           is_free?: boolean | null
+          next_billing_date?: string | null
           notes?: string | null
           price_paid?: number | null
+          purchased_at?: string | null
           source?: string | null
           started_at?: string
           status?: Database["public"]["Enums"]["addon_subscription_status"]
+          stripe_subscription_id?: string | null
           tenant_id: string
           trial_ends_at?: string | null
           updated_at?: string
@@ -2519,17 +2556,22 @@ export type Database = {
         Update: {
           addon_module_id?: string
           asaas_payment_id?: string | null
+          asaas_subscription_id?: string | null
+          billing_mode?: string | null
           cancelled_at?: string | null
           created_at?: string
           created_by?: string | null
           expires_at?: string | null
           id?: string
           is_free?: boolean | null
+          next_billing_date?: string | null
           notes?: string | null
           price_paid?: number | null
+          purchased_at?: string | null
           source?: string | null
           started_at?: string
           status?: Database["public"]["Enums"]["addon_subscription_status"]
+          stripe_subscription_id?: string | null
           tenant_id?: string
           trial_ends_at?: string | null
           updated_at?: string
@@ -3081,6 +3123,62 @@ export type Database = {
           },
         ]
       }
+      tenant_modules_detailed: {
+        Row: {
+          addon_module_id: string | null
+          asaas_payment_id: string | null
+          asaas_subscription_id: string | null
+          billing_mode: string | null
+          expires_at: string | null
+          id: string | null
+          is_free: boolean | null
+          module_category:
+            | Database["public"]["Enums"]["addon_module_category"]
+            | null
+          module_description: string | null
+          module_features: Json | null
+          module_icon: string | null
+          module_name: string | null
+          module_price: number | null
+          module_slug: string | null
+          next_billing_date: string | null
+          plan_name: string | null
+          price_paid: number | null
+          purchased_at: string | null
+          source: string | null
+          started_at: string | null
+          status:
+            | Database["public"]["Enums"]["addon_subscription_status"]
+            | null
+          stripe_subscription_id: string | null
+          subscription_plan_id: string | null
+          tenant_id: string | null
+          tenant_name: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_addon_subscriptions_addon_module_id_fkey"
+            columns: ["addon_module_id"]
+            isOneToOne: false
+            referencedRelation: "addon_modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_addon_subscriptions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenants_subscription_plan_id_fkey"
+            columns: ["subscription_plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       get_active_payment_gateways: {
@@ -3091,6 +3189,14 @@ export type Database = {
           is_default: boolean
           name: string
           provider: string
+        }[]
+      }
+      get_billing_settings: {
+        Args: never
+        Returns: {
+          invoice_show_breakdown: boolean
+          modules_billing_mode: string
+          proration_enabled: boolean
         }[]
       }
       get_ifood_integration_safe: {
@@ -3246,6 +3352,10 @@ export type Database = {
           p_p256dh?: string
         }
         Returns: Json
+      }
+      sync_tenant_modules_from_plan: {
+        Args: { p_tenant_id: string }
+        Returns: undefined
       }
       tenant_has_addon: {
         Args: { _addon_slug: string; _tenant_id: string }
