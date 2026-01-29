@@ -28,6 +28,7 @@ import {
   type AddonModuleCategory,
 } from '@/hooks/useAddonModules';
 import { cn } from '@/lib/utils';
+import { CheckoutDialog } from '@/components/checkout/CheckoutDialog';
 
 // Icon mapping for module categories
 const CATEGORY_ICONS: Record<AddonModuleCategory, React.ComponentType<{ className?: string }>> = {
@@ -55,8 +56,10 @@ const getModuleIcon = (iconName: string) => {
 
 export function ModulesSettings() {
   const { modules, isLoading: modulesLoading } = useAddonModules();
-  const { subscriptions, isLoading: subsLoading, hasAddon } = useMyAddonSubscriptions();
+  const { subscriptions, isLoading: subsLoading, hasAddon, refetch } = useMyAddonSubscriptions();
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [selectedModule, setSelectedModule] = useState<AddonModule | null>(null);
 
   const isLoading = modulesLoading || subsLoading;
 
@@ -81,11 +84,14 @@ export function ModulesSettings() {
   };
 
   const handleRequestModule = (module: AddonModule) => {
-    // Open WhatsApp or contact form to request module
-    const message = encodeURIComponent(
-      `Olá! Gostaria de contratar o módulo "${module.name}" para minha conta.`
-    );
-    window.open(`https://wa.me/5511999999999?text=${message}`, '_blank');
+    // Open checkout dialog with payment gateway selection
+    setSelectedModule(module);
+    setCheckoutOpen(true);
+  };
+
+  const handleCheckoutSuccess = () => {
+    // Refetch subscriptions after successful checkout
+    refetch();
   };
 
   // Get subscription badge info
@@ -340,6 +346,19 @@ export function ModulesSettings() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Checkout Dialog for module purchase */}
+      {selectedModule && (
+        <CheckoutDialog
+          open={checkoutOpen}
+          onOpenChange={setCheckoutOpen}
+          itemType="module"
+          itemId={selectedModule.id}
+          itemName={selectedModule.name}
+          itemPrice={selectedModule.monthly_price}
+          onSuccess={handleCheckoutSuccess}
+        />
+      )}
     </div>
   );
 }

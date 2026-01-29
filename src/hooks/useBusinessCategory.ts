@@ -76,15 +76,62 @@ export function useBusinessCategories() {
   return useQuery({
     queryKey: ['business-categories'],
     queryFn: async (): Promise<BusinessCategoryConfig[]> => {
-      const { data, error } = await supabase
+      // Try direct query first
+      const { data: directData, error: directError } = await supabase
         .from('business_category_configs')
         .select('*')
         .eq('is_active', true)
         .order('display_order');
 
-      if (error) throw error;
+      // If direct query works and has data, use it
+      if (!directError && directData && directData.length > 0) {
+        return directData.map(item => ({
+          id: item.id,
+          category_key: item.category_key,
+          name: item.name,
+          icon: item.icon,
+          description: item.description,
+          theme: item.theme as unknown as CategoryTheme,
+          terminology: item.terminology as unknown as CategoryTerminology,
+          features: item.features as unknown as CategoryFeatures,
+          is_active: item.is_active ?? true,
+          display_order: item.display_order ?? 0,
+        }));
+      }
+
+      // Fallback: use RPC public function (bypasses RLS)
+      console.warn('[useBusinessCategories] Direct query failed/empty, using RPC fallback');
+      const { data: rpcData, error: rpcError } = await supabase.rpc('get_public_business_categories');
       
-      return (data || []).map(item => ({
+      if (rpcError) throw rpcError;
+      if (!rpcData || rpcData.length === 0) return [];
+      
+      // RPC returns limited fields, fetch full configs by IDs
+      const categoryIds = rpcData.map((c: any) => c.id);
+      const { data: fullConfigs, error: fullError } = await supabase
+        .from('business_category_configs')
+        .select('*')
+        .in('id', categoryIds)
+        .eq('is_active', true)
+        .order('display_order');
+      
+      if (fullError || !fullConfigs) {
+        // If full fetch also fails, return basic data from RPC
+        return rpcData.map((item: any) => ({
+          id: item.id,
+          category_key: item.category_key,
+          name: item.name,
+          icon: item.icon,
+          description: item.description,
+          theme: DEFAULT_THEME,
+          terminology: DEFAULT_TERMINOLOGY,
+          features: DEFAULT_FEATURES,
+          is_active: true,
+          display_order: item.display_order ?? 0,
+        }));
+      }
+      
+      return fullConfigs.map(item => ({
         id: item.id,
         category_key: item.category_key,
         name: item.name,
@@ -97,6 +144,8 @@ export function useBusinessCategories() {
         display_order: item.display_order ?? 0,
       }));
     },
+    retry: 2,
+    retryDelay: 1000,
     staleTime: 1000 * 60 * 10, // Cache for 10 minutes
   });
 }

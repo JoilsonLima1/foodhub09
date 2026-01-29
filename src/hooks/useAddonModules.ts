@@ -313,7 +313,7 @@ export function useTenantAddonSubscriptions(tenantId?: string) {
  * Hook to get current tenant's addon subscriptions
  */
 export function useMyAddonSubscriptions() {
-  const { data: subscriptions, isLoading, error } = useQuery({
+  const { data: subscriptions, isLoading, error, refetch } = useQuery({
     queryKey: ['my-addon-subscriptions'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -345,6 +345,7 @@ export function useMyAddonSubscriptions() {
     isLoading,
     error,
     hasAddon,
+    refetch,
   };
 }
 
