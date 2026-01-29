@@ -44,3 +44,6 @@ verify_jwt = false
 
 [functions.asaas-webhook]
 verify_jwt = false
+
+[functions.change-plan]
+verify_jwt = false
