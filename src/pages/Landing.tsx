@@ -7,6 +7,7 @@ import { resetThemeToDefault } from '@/hooks/useBusinessCategory';
 import fallbackLogo from '@/assets/logo.png';
 import PartnersCarousel from '@/components/landing/PartnersCarousel';
 import { LandingHeader } from '@/components/landing/LandingHeader';
+import { AnnouncementBanner } from '@/components/landing/AnnouncementBanner';
 import { HeroSection } from '@/components/landing/HeroSection';
 import { CategoriesSection } from '@/components/landing/CategoriesSection';
 import { FeaturesSection } from '@/components/landing/FeaturesSection';
@@ -43,8 +44,21 @@ export default function Landing() {
   // Get WhatsApp number from system settings
   const whatsappNumber = whatsapp?.number || undefined;
 
+  // Get announcement banner settings
+  const announcementBanner = landingLayout.announcement_banner;
+
   return (
     <div className="min-h-screen bg-background">
+      {/* Announcement Banner */}
+      {announcementBanner && (
+        <AnnouncementBanner
+          text={announcementBanner.text}
+          highlightText={announcementBanner.highlight_text}
+          style={announcementBanner.style}
+          isVisible={announcementBanner.is_visible}
+        />
+      )}
+
       {/* Header */}
       <LandingHeader 
         logoUrl={logoUrl} 
