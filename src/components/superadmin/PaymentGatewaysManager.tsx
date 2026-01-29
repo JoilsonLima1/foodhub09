@@ -54,17 +54,28 @@ export function PaymentGatewaysManager() {
     api_key_masked: '',
     is_active: false,
     is_default: false,
+    config: {
+      pix_key: '',
+      qr_code_url: '',
+      checkout_url: '',
+    },
   });
 
   const handleOpenDialog = (gateway?: PaymentGateway) => {
     if (gateway) {
       setEditingGateway(gateway);
+      const config = (gateway as any).config || {};
       setFormData({
         name: gateway.name,
         provider: gateway.provider,
         api_key_masked: gateway.api_key_masked || '',
         is_active: gateway.is_active,
         is_default: gateway.is_default,
+        config: {
+          pix_key: config.pix_key || '',
+          qr_code_url: config.qr_code_url || '',
+          checkout_url: config.checkout_url || '',
+        },
       });
     } else {
       setEditingGateway(null);
@@ -74,18 +85,41 @@ export function PaymentGatewaysManager() {
         api_key_masked: '',
         is_active: false,
         is_default: false,
+        config: {
+          pix_key: '',
+          qr_code_url: '',
+          checkout_url: '',
+        },
       });
     }
     setDialogOpen(true);
   };
 
   const handleSave = () => {
+    // Build config based on provider
+    const config: Record<string, string> = {};
+    if (formData.provider === 'pix') {
+      if (formData.config.pix_key) config.pix_key = formData.config.pix_key;
+      if (formData.config.qr_code_url) config.qr_code_url = formData.config.qr_code_url;
+    } else if (formData.provider === 'asaas') {
+      if (formData.config.checkout_url) config.checkout_url = formData.config.checkout_url;
+    }
+
+    const payload = {
+      name: formData.name,
+      provider: formData.provider,
+      api_key_masked: formData.api_key_masked,
+      is_active: formData.is_active,
+      is_default: formData.is_default,
+      config,
+    };
+
     if (editingGateway) {
-      updateGateway.mutate({ id: editingGateway.id, ...formData }, {
+      updateGateway.mutate({ id: editingGateway.id, ...payload }, {
         onSuccess: () => setDialogOpen(false),
       });
     } else {
-      createGateway.mutate({ ...formData, config: {} }, {
+      createGateway.mutate(payload, {
         onSuccess: () => setDialogOpen(false),
       });
     }
@@ -253,6 +287,62 @@ export function PaymentGatewaysManager() {
                 A chave será armazenada de forma segura e exibida mascarada.
               </p>
             </div>
+
+            {/* PIX-specific fields */}
+            {formData.provider === 'pix' && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="pix_key">Chave PIX *</Label>
+                  <Input
+                    id="pix_key"
+                    value={formData.config.pix_key}
+                    onChange={(e) => setFormData({ 
+                      ...formData, 
+                      config: { ...formData.config, pix_key: e.target.value } 
+                    })}
+                    placeholder="email@exemplo.com, CPF, CNPJ ou chave aleatória"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Chave PIX para receber pagamentos
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="qr_code_url">URL do QR Code (opcional)</Label>
+                  <Input
+                    id="qr_code_url"
+                    value={formData.config.qr_code_url}
+                    onChange={(e) => setFormData({ 
+                      ...formData, 
+                      config: { ...formData.config, qr_code_url: e.target.value } 
+                    })}
+                    placeholder="https://..."
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    URL de uma imagem do QR Code estático
+                  </p>
+                </div>
+              </>
+            )}
+
+            {/* Asaas-specific fields */}
+            {formData.provider === 'asaas' && (
+              <div className="space-y-2">
+                <Label htmlFor="checkout_url">URL de Checkout do Asaas *</Label>
+                <Input
+                  id="checkout_url"
+                  value={formData.config.checkout_url}
+                  onChange={(e) => setFormData({ 
+                    ...formData, 
+                    config: { ...formData.config, checkout_url: e.target.value } 
+                  })}
+                  placeholder="https://www.asaas.com/c/..."
+                />
+                <p className="text-xs text-muted-foreground">
+                  Link de pagamento do Asaas (crie em: Cobranças → Links de Pagamento)
+                </p>
+              </div>
+            )}
 
             <div className="flex items-center justify-between">
               <Label htmlFor="is_active">Ativo</Label>
