@@ -1,23 +1,12 @@
-import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  ArrowLeft, 
-  Monitor,
-  Settings2,
-  Users,
-  Clock,
-  AlertCircle,
-  Volume2,
-  Eye,
-  Tv,
-} from 'lucide-react';
-import { ModuleStatusBadge } from '../ModuleStatusBadge';
+import { ArrowLeft, Monitor, Settings2, Users, Clock, Loader2, Play, RotateCcw, Check, Volume2 } from 'lucide-react';
+import { usePasswordPanel } from '@/hooks/usePasswordPanel';
+import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import type { TenantModuleDetailed } from '@/hooks/useTenantModules';
 
 interface PasswordPanelModuleProps {
@@ -26,185 +15,94 @@ interface PasswordPanelModuleProps {
 }
 
 export function PasswordPanelModule({ module, onBack }: PasswordPanelModuleProps) {
-  const [settings, setSettings] = useState({
-    soundEnabled: true,
-    voiceCall: false,
-    showWaitTime: true,
-  });
+  const { config, queue, readyPasswords, stats, isLoading, saveConfig, generatePassword, callPassword, updateStatus, resetCounter } = usePasswordPanel();
+
+  if (isLoading) {
+    return <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
+  }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={onBack}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
+        <Button variant="ghost" size="icon" onClick={onBack}><ArrowLeft className="h-5 w-5" /></Button>
         <div className="flex-1">
           <div className="flex items-center gap-2">
             <Monitor className="h-6 w-6 text-cyan-600" />
             <h1 className="text-xl font-bold">Painel de Senha</h1>
-            <ModuleStatusBadge status="coming_soon" />
+            <Badge variant="outline">{module?.status === 'active' ? 'Ativo' : 'Inativo'}</Badge>
           </div>
-          <p className="text-sm text-muted-foreground">
-            Sistema de senhas para retirada de pedidos
-          </p>
+          <p className="text-sm text-muted-foreground">Sistema de senhas para retirada</p>
         </div>
       </div>
 
-      {/* Quick Stats */}
       <div className="grid gap-4 sm:grid-cols-4">
-        <Card>
+        <Card className="bg-gradient-to-br from-cyan-500 to-cyan-600 text-white">
           <CardContent className="p-4 text-center">
-            <Eye className="h-8 w-8 mx-auto text-cyan-600 mb-2" />
-            <p className="text-2xl font-bold">-</p>
-            <p className="text-sm text-muted-foreground">Senha Atual</p>
+            <Monitor className="h-8 w-8 mx-auto mb-2 opacity-80" />
+            <p className="text-4xl font-bold font-mono">{stats.currentNumber.toString().padStart(3, '0')}</p>
+            <p className="text-sm opacity-80">Senha Atual</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <Users className="h-8 w-8 mx-auto text-blue-600 mb-2" />
-            <p className="text-2xl font-bold">-</p>
-            <p className="text-sm text-muted-foreground">Na Fila</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <Clock className="h-8 w-8 mx-auto text-green-600 mb-2" />
-            <p className="text-2xl font-bold">-</p>
-            <p className="text-sm text-muted-foreground">Tempo Médio</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <Tv className="h-8 w-8 mx-auto text-amber-600 mb-2" />
-            <p className="text-2xl font-bold">-</p>
-            <p className="text-sm text-muted-foreground">Telas Ativas</p>
-          </CardContent>
-        </Card>
+        <Card><CardContent className="p-4 text-center"><Users className="h-8 w-8 mx-auto text-blue-600 mb-2" /><p className="text-2xl font-bold">{stats.waiting}</p><p className="text-sm text-muted-foreground">Na Fila</p></CardContent></Card>
+        <Card><CardContent className="p-4 text-center"><Clock className="h-8 w-8 mx-auto text-green-600 mb-2" /><p className="text-2xl font-bold">{stats.ready}</p><p className="text-sm text-muted-foreground">Prontas</p></CardContent></Card>
+        <Card><CardContent className="p-4 text-center"><Check className="h-8 w-8 mx-auto text-amber-600 mb-2" /><p className="text-2xl font-bold">{stats.delivered}</p><p className="text-sm text-muted-foreground">Entregues</p></CardContent></Card>
       </div>
 
-      <Tabs defaultValue="display" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="display">
-            <Monitor className="h-4 w-4 mr-2" />
-            Painel
-          </TabsTrigger>
-          <TabsTrigger value="config">
-            <Settings2 className="h-4 w-4 mr-2" />
-            Configurações
-          </TabsTrigger>
-        </TabsList>
+      <div className="flex gap-4">
+        <Button size="lg" className="flex-1" onClick={() => generatePassword.mutate(undefined)} disabled={generatePassword.isPending}>
+          {generatePassword.isPending ? <Loader2 className="h-5 w-5 mr-2 animate-spin" /> : <Play className="h-5 w-5 mr-2" />}
+          Gerar Nova Senha
+        </Button>
+        <Button size="lg" variant="outline" onClick={() => resetCounter.mutate()} disabled={resetCounter.isPending}>
+          <RotateCcw className="h-5 w-5 mr-2" />Reiniciar
+        </Button>
+      </div>
 
-        <TabsContent value="display">
+      <Tabs defaultValue="queue" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="queue"><Users className="h-4 w-4 mr-2" />Fila</TabsTrigger>
+          <TabsTrigger value="config"><Settings2 className="h-4 w-4 mr-2" />Configurações</TabsTrigger>
+        </TabsList>
+        <TabsContent value="queue">
           <Card>
-            <CardHeader>
-              <CardTitle>Visualização do Painel</CardTitle>
-              <CardDescription>
-                Configure a exibição no monitor de senhas
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="aspect-video bg-muted rounded-lg flex items-center justify-center">
-                <div className="text-center">
-                  <Monitor className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-30" />
-                  <p className="text-muted-foreground">Preview do Painel</p>
-                </div>
-              </div>
-              
-              <div className="flex gap-2">
-                <Button variant="outline" className="flex-1" disabled>
-                  Abrir em Nova Janela
-                </Button>
-                <Button variant="outline" className="flex-1" disabled>
-                  Modo Tela Cheia
-                </Button>
-              </div>
-              
-              <div className="mt-4 p-4 bg-amber-50 dark:bg-amber-950/30 rounded-lg">
-                <div className="flex items-start gap-2">
-                  <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-medium text-amber-800 dark:text-amber-200">Em Desenvolvimento</p>
-                    <p className="text-sm text-amber-700 dark:text-amber-300">
-                      Esta funcionalidade está em desenvolvimento e será liberada em breve.
-                    </p>
+            <CardHeader><CardTitle>Fila de Senhas</CardTitle></CardHeader>
+            <CardContent>
+              {queue.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground"><Users className="h-12 w-12 mx-auto mb-4 opacity-30" /><p>Fila vazia</p></div>
+              ) : (
+                <ScrollArea className="h-[300px]">
+                  <div className="space-y-2">
+                    {queue.map((item) => (
+                      <div key={item.id} className={`p-4 border rounded-lg flex items-center justify-between ${item.status === 'ready' || item.status === 'called' ? 'bg-green-50 dark:bg-green-950/30' : ''}`}>
+                        <div className="flex items-center gap-4">
+                          <span className="text-3xl font-mono font-bold">{item.password_number}</span>
+                          <Badge>{item.status === 'waiting' ? 'Aguardando' : item.status === 'preparing' ? 'Preparando' : item.status === 'ready' ? 'Pronta' : item.status === 'called' ? 'Chamada' : 'Entregue'}</Badge>
+                        </div>
+                        <div className="flex gap-2">
+                          {item.status === 'waiting' && <Button size="sm" onClick={() => updateStatus.mutate({ id: item.id, status: 'preparing' })}>Preparando</Button>}
+                          {item.status === 'preparing' && <Button size="sm" onClick={() => updateStatus.mutate({ id: item.id, status: 'ready' })}>Pronto</Button>}
+                          {item.status === 'ready' && <Button size="sm" onClick={() => callPassword.mutate(item.id)}><Volume2 className="h-4 w-4 mr-1" />Chamar</Button>}
+                          {(item.status === 'ready' || item.status === 'called') && <Button size="sm" variant="outline" onClick={() => updateStatus.mutate({ id: item.id, status: 'delivered' })}><Check className="h-4 w-4 mr-1" />Entregue</Button>}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                </div>
-              </div>
+                </ScrollArea>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
-
         <TabsContent value="config">
           <Card>
-            <CardHeader>
-              <CardTitle>Configurações do Painel</CardTitle>
-              <CardDescription>
-                Personalize o comportamento do sistema de senhas
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
+            <CardHeader><CardTitle>Configurações</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Som de Chamada</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Tocar som ao chamar nova senha
-                  </p>
-                </div>
-                <Switch
-                  checked={settings.soundEnabled}
-                  onCheckedChange={(checked) => 
-                    setSettings(prev => ({ ...prev, soundEnabled: checked }))
-                  }
-                  disabled
-                />
+                <div><Label>Chamada por Voz</Label><p className="text-sm text-muted-foreground">Anunciar senha em voz alta</p></div>
+                <Switch checked={config?.voice_enabled ?? false} onCheckedChange={(checked) => saveConfig.mutate({ voice_enabled: checked })} />
               </div>
-
-              <Separator />
-
               <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Chamada por Voz</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Anunciar senha em voz alta (Text-to-Speech)
-                  </p>
-                </div>
-                <Switch
-                  checked={settings.voiceCall}
-                  onCheckedChange={(checked) => 
-                    setSettings(prev => ({ ...prev, voiceCall: checked }))
-                  }
-                  disabled
-                />
-              </div>
-
-              <Separator />
-
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Mostrar Tempo de Espera</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Exibir tempo médio de espera no painel
-                  </p>
-                </div>
-                <Switch
-                  checked={settings.showWaitTime}
-                  onCheckedChange={(checked) => 
-                    setSettings(prev => ({ ...prev, showWaitTime: checked }))
-                  }
-                  disabled
-                />
-              </div>
-
-              <Separator />
-
-              <div className="space-y-2">
-                <Label>Prefixo da Senha</Label>
-                <Input placeholder="Ex: A, B, C..." disabled />
-              </div>
-
-              <div className="pt-4">
-                <Button disabled>Salvar Configurações</Button>
+                <div><Label>Reiniciar Diariamente</Label><p className="text-sm text-muted-foreground">Zerar à meia-noite</p></div>
+                <Switch checked={config?.reset_daily ?? true} onCheckedChange={(checked) => saveConfig.mutate({ reset_daily: checked })} />
               </div>
             </CardContent>
           </Card>

@@ -1,7 +1,5 @@
-import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -18,9 +16,17 @@ import {
   BarChart3,
   Clock,
   AlertCircle,
+  Loader2,
+  ExternalLink,
+  History,
 } from 'lucide-react';
 import { ModuleStatusBadge } from '../ModuleStatusBadge';
+import { useMarketplaceIntegration } from '@/hooks/useMarketplaceIntegration';
+import { formatDistanceToNow } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import type { TenantModuleDetailed } from '@/hooks/useTenantModules';
+import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface Integration99FoodPanelProps {
   module?: TenantModuleDetailed;
@@ -28,12 +34,39 @@ interface Integration99FoodPanelProps {
 }
 
 export function Integration99FoodPanel({ module, onBack }: Integration99FoodPanelProps) {
-  const [isConnected, setIsConnected] = useState(false);
-  const [settings, setSettings] = useState({
-    autoAccept: true,
-    syncMenu: true,
-    syncPrices: true,
-  });
+  const {
+    integration,
+    orders,
+    stats,
+    isLoading,
+    saveCredentials,
+    updateSettings,
+    testConnection,
+  } = useMarketplaceIntegration('99food');
+
+  const isConnected = integration?.is_active && integration?.credentials_configured;
+
+  const handleTestConnection = () => {
+    testConnection.mutate();
+  };
+
+  const handleSaveCredentials = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    saveCredentials.mutate({
+      api_key: formData.get('api_key') as string,
+      client_secret: formData.get('api_secret') as string,
+      merchant_id: formData.get('merchant_id') as string,
+    });
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -46,7 +79,7 @@ export function Integration99FoodPanel({ module, onBack }: Integration99FoodPane
           <div className="flex items-center gap-2">
             <Plug2 className="h-6 w-6 text-orange-500" />
             <h1 className="text-xl font-bold">99Food</h1>
-            <ModuleStatusBadge status="coming_soon" />
+            <Badge variant="outline">{module?.status === 'active' ? 'Ativo' : 'Inativo'}</Badge>
           </div>
           <p className="text-sm text-muted-foreground">
             Integração com marketplace 99Food para receber pedidos
@@ -76,8 +109,17 @@ export function Integration99FoodPanel({ module, onBack }: Integration99FoodPane
                 </p>
               </div>
             </div>
-            <Button variant={isConnected ? 'outline' : 'default'} disabled>
-              {isConnected ? 'Desconectar' : 'Conectar'}
+            <Button 
+              variant={isConnected ? 'outline' : 'default'}
+              onClick={handleTestConnection}
+              disabled={testConnection.isPending || !integration?.credentials_configured}
+            >
+              {testConnection.isPending ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4 mr-2" />
+              )}
+              Testar Conexão
             </Button>
           </div>
         </CardContent>
@@ -88,35 +130,41 @@ export function Integration99FoodPanel({ module, onBack }: Integration99FoodPane
         <Card>
           <CardContent className="p-4 text-center">
             <ShoppingBag className="h-8 w-8 mx-auto text-orange-600 mb-2" />
-            <p className="text-2xl font-bold">-</p>
+            <p className="text-2xl font-bold">{stats.ordersToday}</p>
             <p className="text-sm text-muted-foreground">Pedidos Hoje</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4 text-center">
             <Clock className="h-8 w-8 mx-auto text-blue-600 mb-2" />
-            <p className="text-2xl font-bold">-</p>
+            <p className="text-2xl font-bold">{stats.avgTime || '-'} min</p>
             <p className="text-sm text-muted-foreground">Tempo Médio</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4 text-center">
             <BarChart3 className="h-8 w-8 mx-auto text-green-600 mb-2" />
-            <p className="text-2xl font-bold">-</p>
+            <p className="text-2xl font-bold">
+              {stats.totalRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+            </p>
             <p className="text-sm text-muted-foreground">Faturamento</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4 text-center">
             <AlertCircle className="h-8 w-8 mx-auto text-amber-600 mb-2" />
-            <p className="text-2xl font-bold">-</p>
+            <p className="text-2xl font-bold">{stats.cancelledCount}</p>
             <p className="text-sm text-muted-foreground">Cancelados</p>
           </CardContent>
         </Card>
       </div>
 
-      <Tabs defaultValue="config" className="space-y-4">
+      <Tabs defaultValue="orders" className="space-y-4">
         <TabsList>
+          <TabsTrigger value="orders">
+            <ShoppingBag className="h-4 w-4 mr-2" />
+            Pedidos
+          </TabsTrigger>
           <TabsTrigger value="config">
             <Settings2 className="h-4 w-4 mr-2" />
             Configurações
@@ -126,6 +174,51 @@ export function Integration99FoodPanel({ module, onBack }: Integration99FoodPane
             Credenciais
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="orders">
+          <Card>
+            <CardHeader>
+              <CardTitle>Pedidos Recentes</CardTitle>
+              <CardDescription>
+                Últimos pedidos recebidos do 99Food
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {orders.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <ShoppingBag className="h-12 w-12 mx-auto mb-4 opacity-30" />
+                  <p>Nenhum pedido recebido ainda</p>
+                </div>
+              ) : (
+                <ScrollArea className="h-[400px]">
+                  <div className="space-y-3">
+                    {orders.map((order) => (
+                      <div key={order.id} className="p-4 border rounded-lg">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono font-bold">#{order.external_order_id?.slice(-6)}</span>
+                            <Badge variant={order.status === 'confirmed' ? 'default' : 'secondary'}>
+                              {order.status}
+                            </Badge>
+                          </div>
+                          <span className="text-sm text-muted-foreground">
+                            {formatDistanceToNow(new Date(order.created_at!), { 
+                              addSuffix: true, 
+                              locale: ptBR 
+                            })}
+                          </span>
+                        </div>
+                        <p className="font-semibold">
+                          {order.total?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         <TabsContent value="config">
           <Card>
@@ -144,11 +237,10 @@ export function Integration99FoodPanel({ module, onBack }: Integration99FoodPane
                   </p>
                 </div>
                 <Switch
-                  checked={settings.autoAccept}
+                  checked={integration?.auto_accept_orders ?? true}
                   onCheckedChange={(checked) => 
-                    setSettings(prev => ({ ...prev, autoAccept: checked }))
+                    updateSettings.mutate({ auto_accept_orders: checked })
                   }
-                  disabled
                 />
               </div>
 
@@ -162,34 +254,21 @@ export function Integration99FoodPanel({ module, onBack }: Integration99FoodPane
                   </p>
                 </div>
                 <Switch
-                  checked={settings.syncMenu}
+                  checked={integration?.sync_menu ?? true}
                   onCheckedChange={(checked) => 
-                    setSettings(prev => ({ ...prev, syncMenu: checked }))
+                    updateSettings.mutate({ sync_menu: checked })
                   }
-                  disabled
-                />
-              </div>
-
-              <Separator />
-
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Sincronizar Preços</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Atualizar preços automaticamente no 99Food
-                  </p>
-                </div>
-                <Switch
-                  checked={settings.syncPrices}
-                  onCheckedChange={(checked) => 
-                    setSettings(prev => ({ ...prev, syncPrices: checked }))
-                  }
-                  disabled
                 />
               </div>
 
               <div className="pt-4">
-                <Button disabled>Salvar Configurações</Button>
+                <Button 
+                  onClick={() => updateSettings.mutate({})}
+                  disabled={updateSettings.isPending}
+                >
+                  {updateSettings.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  Salvar Configurações
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -203,39 +282,50 @@ export function Integration99FoodPanel({ module, onBack }: Integration99FoodPane
                 Insira suas credenciais do 99Food para conectar
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>Client ID</Label>
-                <Input placeholder="Seu Client ID do 99Food" disabled />
-              </div>
-              <div className="space-y-2">
-                <Label>Client Secret</Label>
-                <Input type="password" placeholder="Seu Client Secret" disabled />
-              </div>
-              <div className="space-y-2">
-                <Label>Merchant ID</Label>
-                <Input placeholder="ID da sua loja no 99Food" disabled />
-              </div>
-              <div className="pt-4 flex gap-2">
-                <Button disabled>
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Testar Conexão
-                </Button>
-                <Button variant="outline" disabled>Salvar</Button>
-              </div>
-              
-              <div className="mt-4 p-4 bg-amber-50 dark:bg-amber-950/30 rounded-lg">
-                <div className="flex items-start gap-2">
-                  <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-medium text-amber-800 dark:text-amber-200">Em Desenvolvimento</p>
-                    <p className="text-sm text-amber-700 dark:text-amber-300">
-                      Esta integração está em desenvolvimento e será liberada em breve.
-                      Você será notificado quando estiver disponível.
-                    </p>
-                  </div>
+            <CardContent>
+              <form onSubmit={handleSaveCredentials} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="api_key">API Key</Label>
+                  <Input 
+                    id="api_key"
+                    name="api_key"
+                    placeholder="Sua API Key do 99Food" 
+                    defaultValue=""
+                  />
                 </div>
-              </div>
+                <div className="space-y-2">
+                  <Label htmlFor="api_secret">API Secret</Label>
+                  <Input 
+                    id="api_secret"
+                    name="api_secret"
+                    type="password" 
+                    placeholder="Sua API Secret" 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="merchant_id">Merchant ID</Label>
+                  <Input 
+                    id="merchant_id"
+                    name="merchant_id"
+                    placeholder="ID da sua loja no 99Food" 
+                  />
+                </div>
+                <div className="pt-4 flex gap-2">
+                  <Button type="submit" disabled={saveCredentials.isPending}>
+                    {saveCredentials.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                    Salvar Credenciais
+                  </Button>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={handleTestConnection}
+                    disabled={testConnection.isPending}
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Testar
+                  </Button>
+                </div>
+              </form>
             </CardContent>
           </Card>
         </TabsContent>
