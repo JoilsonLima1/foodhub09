@@ -55,10 +55,11 @@ import {
   Calendar,
   Gift,
   CreditCard,
+  CheckCircle,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-
+import { ActivateModuleDialog } from './ActivateModuleDialog';
 // Hook to fetch all tenants for super admin
 function useTenants() {
   return useQuery({
@@ -81,6 +82,7 @@ export function TenantAddonsManager() {
   const { data: tenants, isLoading: tenantsLoading } = useTenants();
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isActivateDialogOpen, setIsActivateDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTenantId, setSelectedTenantId] = useState<string>('');
   const [selectedModuleId, setSelectedModuleId] = useState<string>('');
@@ -168,13 +170,18 @@ export function TenantAddonsManager() {
             Gerencie os módulos atribuídos a cada organização
           </p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) resetForm(); }}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Atribuir Módulo
-            </Button>
-          </DialogTrigger>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setIsActivateDialogOpen(true)}>
+            <CheckCircle className="h-4 w-4 mr-2" />
+            Ativar Pagamento Confirmado
+          </Button>
+          <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) resetForm(); }}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Atribuir Módulo
+              </Button>
+            </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Atribuir Módulo a Tenant</DialogTitle>
@@ -318,6 +325,7 @@ export function TenantAddonsManager() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <div className="flex items-center gap-4">
@@ -452,6 +460,12 @@ export function TenantAddonsManager() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Dialog for activating confirmed payments */}
+      <ActivateModuleDialog
+        open={isActivateDialogOpen}
+        onOpenChange={setIsActivateDialogOpen}
+      />
     </div>
   );
 }
