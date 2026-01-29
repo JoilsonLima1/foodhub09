@@ -8,7 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { PublicSubscriptionPlan } from '@/hooks/usePublicSubscriptionPlans';
 import { CheckoutDialog } from '@/components/checkout/CheckoutDialog';
-
+import { extractPlanFeatures } from '@/lib/planFeatures';
 interface PricingSectionProps {
   plans: PublicSubscriptionPlan[] | undefined;
   isLoading: boolean;
@@ -68,45 +68,10 @@ export function PricingSection({ plans, isLoading, trialDays, trialText }: Prici
 
   /**
    * Generate features dynamically from plan data configured in Super Admin
+   * Uses centralized utility for consistency across all screens
    */
   const getPlanFeatures = (plan: PublicSubscriptionPlan): string[] => {
-    const features: string[] = [];
-    
-    // Limits
-    if (plan.max_users !== undefined && plan.max_users !== null) {
-      features.push(plan.max_users === -1 ? 'Usuários ilimitados' : `Até ${plan.max_users} usuário${plan.max_users > 1 ? 's' : ''}`);
-    }
-    if (plan.max_products !== undefined && plan.max_products !== null) {
-      features.push(plan.max_products === -1 ? 'Produtos ilimitados' : `Até ${plan.max_products} produtos`);
-    }
-    if (plan.max_orders_per_month !== undefined && plan.max_orders_per_month !== null) {
-      features.push(plan.max_orders_per_month === -1 ? 'Pedidos ilimitados' : `Até ${plan.max_orders_per_month} pedidos/mês`);
-    }
-    
-    // Core features
-    if (plan.feature_public_menu) features.push('Cardápio na Internet');
-    if (plan.feature_pos) features.push('PDV completo');
-    if (plan.feature_kitchen_display) features.push('Painel da cozinha');
-    if (plan.feature_delivery_management) features.push('Gestão de entregas');
-    if (plan.feature_stock_control) features.push('Controle de estoque');
-    if (plan.feature_courier_app) features.push('App do entregador');
-    
-    // Reports
-    if (plan.feature_reports_basic) features.push('Relatórios básicos');
-    if (plan.feature_reports_advanced) features.push('Relatórios avançados');
-    if (plan.feature_cmv_reports) features.push('Relatório CMV');
-    if (plan.feature_ai_forecast) features.push('Previsão com IA');
-    if (plan.feature_goal_notifications) features.push('Metas e notificações');
-    
-    // Advanced
-    if (plan.feature_multi_branch) features.push('Multi-lojas (base inclusa)');
-    if (plan.feature_api_access) features.push('Acesso à API');
-    if (plan.feature_api_access) features.push('Acesso à API');
-    if (plan.feature_white_label) features.push('White Label');
-    if (plan.feature_custom_integrations) features.push('Integrações personalizadas');
-    if (plan.feature_priority_support) features.push('Suporte prioritário');
-    
-    return features;
+    return extractPlanFeatures(plan as unknown as Record<string, unknown>);
   };
 
   const getPlanGradient = (slug: string) => {

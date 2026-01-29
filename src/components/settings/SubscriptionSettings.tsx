@@ -18,6 +18,7 @@ import { useTenantModules } from '@/hooks/useTenantModules';
 import { useBillingSettings } from '@/hooks/useBillingSettings';
 import { usePlanAddonModules } from '@/hooks/usePlanAddonModules';
 import { cn } from '@/lib/utils';
+import { extractPlanFeatures } from '@/lib/planFeatures';
 
 interface CheckoutPendingData {
   planId: string;
@@ -401,23 +402,9 @@ export function SubscriptionSettings() {
     return false;
   };
 
+  // Use centralized feature extraction to ensure ALL features are included
   const getPlanFeatures = (plan: SubscriptionPlan): string[] => {
-    const features: string[] = [];
-    
-    if (plan.max_users) {
-      features.push(plan.max_users === -1 ? 'Usuários ilimitados' : `Até ${plan.max_users} usuários`);
-    }
-    if (plan.max_products) {
-      features.push(plan.max_products === -1 ? 'Produtos ilimitados' : `${plan.max_products} produtos`);
-    }
-    if (plan.feature_pos) features.push('PDV e Pedidos');
-    if (plan.feature_reports_basic) features.push('Relatórios básicos');
-    if (plan.feature_reports_advanced) features.push('Relatórios avançados');
-    if (plan.feature_stock_control) features.push('Controle de estoque');
-    if (plan.feature_ai_forecast) features.push('Previsões de IA');
-    if (plan.feature_delivery_management) features.push('Gestão de entregas');
-    
-    return features;
+    return extractPlanFeatures(plan as unknown as Record<string, unknown>);
   };
 
   if (isLoading || loadingPlans) {

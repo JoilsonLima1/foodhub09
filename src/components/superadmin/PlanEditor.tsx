@@ -48,6 +48,7 @@ import { useActivePaymentGateways } from '@/hooks/useActivePaymentGateways';
 import { PasswordConfirmDialog } from './PasswordConfirmDialog';
 import { PlanAddonModulesTab } from './PlanAddonModulesTab';
 import type { SubscriptionPlan } from '@/types/database';
+import { countEnabledBooleanFeatures, PLAN_FEATURE_DEFINITIONS } from '@/lib/planFeatures';
 
 // Asaas minimum charge value constant
 const ASAAS_MIN_VALUE = 5.00;
@@ -64,9 +65,9 @@ function PlanCard({ plan, onEdit, onDelete, onToggleActive }: PlanCardProps) {
     return value === -1 ? <Infinity className="h-4 w-4" /> : value;
   };
 
-  const featureCount = PLAN_FEATURES.filter(
-    (f) => f.type === 'boolean' && plan[f.key as keyof SubscriptionPlan] === true
-  ).length;
+  // Use centralized count for accuracy
+  const featureCount = countEnabledBooleanFeatures(plan as unknown as Record<string, unknown>);
+  const totalBooleanFeatures = PLAN_FEATURE_DEFINITIONS.filter(d => d.type === 'boolean').length;
 
   return (
     <Card className={`relative ${!plan.is_active ? 'opacity-60 border-dashed' : ''}`}>
@@ -149,7 +150,7 @@ function PlanCard({ plan, onEdit, onDelete, onToggleActive }: PlanCardProps) {
 
         <div className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground">Recursos incluídos</span>
-          <Badge variant="secondary">{featureCount} de {PLAN_FEATURES.filter(f => f.type === 'boolean').length}</Badge>
+          <Badge variant="secondary">{featureCount} de {totalBooleanFeatures}</Badge>
         </div>
 
         <div className="flex items-center justify-between text-sm">
