@@ -257,11 +257,11 @@ export default function AuthPage() {
             <TabsContent value="signup">
               <form onSubmit={handleSignup} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="signup-tenant">Restaurante / Organização</Label>
+                  <Label htmlFor="signup-tenant">Nome do seu Negócio</Label>
                   <Input
                     id="signup-tenant"
                     type="text"
-                    placeholder="Nome do seu restaurante"
+                    placeholder="Nome do estabelecimento"
                     value={signupTenantName}
                     onChange={(e) => setSignupTenantName(e.target.value)}
                     required
