@@ -79,9 +79,11 @@ export function useTrialStatus() {
         throw error;
       }
 
-      // Also fetch tenant's subscription info from database for accurate display
+      // SINGLE SOURCE OF TRUTH: Fetch tenant's subscription info from database
+      // This is the primary source for displaying the contracted plan
       let tenantPlanId: string | null = null;
       let tenantPlanName: string | null = null;
+      let tenantSubscriptionStatus: string | null = null;
       let paymentInfo: PaymentInfo | null = null;
 
       const { data: profile } = await supabase
@@ -95,29 +97,33 @@ export function useTrialStatus() {
           .from('tenants')
           .select(`
             subscription_plan_id,
+            subscription_status,
             last_payment_at,
             last_payment_method,
             last_payment_provider,
             last_payment_status,
-            asaas_payment_id
+            asaas_payment_id,
+            asaas_customer_id
           `)
           .eq('id', profile.tenant_id)
           .single();
         
         tenantPlanId = tenant?.subscription_plan_id || null;
+        tenantSubscriptionStatus = tenant?.subscription_status || null;
 
-        // Fetch plan name if tenant has a plan
+        // Fetch plan name if tenant has a plan (this is the single source of truth)
         if (tenantPlanId) {
           const { data: planData } = await supabase
             .from('subscription_plans')
-            .select('name')
+            .select('name, slug')
             .eq('id', tenantPlanId)
             .single();
           
           tenantPlanName = planData?.name || null;
+          console.log('[useTrialStatus] Tenant plan found:', { tenantPlanId, tenantPlanName, status: tenantSubscriptionStatus });
         }
 
-        // Build payment info if available
+        // Build payment info if available (from confirmed payment)
         if (tenant?.last_payment_at) {
           paymentInfo = {
             lastPaymentAt: tenant.last_payment_at,
@@ -128,6 +134,13 @@ export function useTrialStatus() {
           };
         }
       }
+
+      // Determine hasContractedPlan: True if tenant has a subscription_plan_id set
+      // This is independent of the status from edge function (Stripe)
+      const hasContractedPlanFromTenant = !!tenantPlanId;
+      const hasActiveOrTrialStatus = tenantSubscriptionStatus === 'active' || 
+                                      tenantSubscriptionStatus === 'trialing' ||
+                                      data.has_contracted_plan;
 
       return {
         isSubscribed: data.subscribed || false,
@@ -141,9 +154,11 @@ export function useTrialStatus() {
         currentPeriodEnd: data.subscription_end || null,
         planId: data.product_id || null,
         status: data.status || 'none',
-        tenantPlanId: tenantPlanId || data.product_id || null,
+        // SINGLE SOURCE OF TRUTH: Use tenant's plan data directly
+        tenantPlanId: tenantPlanId,
         tenantPlanName: tenantPlanName,
-        hasContractedPlan: data.has_contracted_plan || !!tenantPlanId,
+        // User has contracted a plan if tenant has a plan ID set
+        hasContractedPlan: hasContractedPlanFromTenant,
         hasTrialBenefit: data.has_trial_benefit || false,
         trialBenefitMessage: data.trial_benefit_message || null,
         paymentInfo: paymentInfo,

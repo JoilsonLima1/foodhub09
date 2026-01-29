@@ -196,10 +196,16 @@ export function SubscriptionSettings() {
   };
 
   const isCurrentPlan = (planId: string) => {
+    // SINGLE SOURCE OF TRUTH: Use tenantPlanId directly from the database
     if (subscriptionStatus?.tenantPlanId === planId) {
       return true;
     }
-    return subscriptionStatus?.planId?.includes(planId.replace(/-/g, '_')) || false;
+    // Fallback to check planId from edge function (Stripe product_id)
+    // This handles legacy Stripe subscriptions
+    if (subscriptionStatus?.planId === planId) {
+      return true;
+    }
+    return false;
   };
 
   const getPlanFeatures = (plan: SubscriptionPlan): string[] => {
@@ -279,7 +285,7 @@ export function SubscriptionSettings() {
           </div>
 
           {/* Contracted Plan Display - Single Source of Truth */}
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             <div className={`flex items-center gap-3 p-4 border rounded-lg ${hasContractedPlan ? 'border-green-500/30 bg-green-500/5' : ''}`}>
               <Crown className={`h-5 w-5 ${hasContractedPlan ? 'text-green-600' : 'text-muted-foreground'}`} />
               <div>
@@ -296,6 +302,17 @@ export function SubscriptionSettings() {
                 )}
               </div>
             </div>
+
+            {/* Contracted Date */}
+            {hasContractedPlan && paymentInfo?.lastPaymentAt && (
+              <div className="flex items-center gap-3 p-4 border rounded-lg">
+                <Calendar className="h-5 w-5 text-muted-foreground" />
+                <div>
+                  <p className="text-sm text-muted-foreground">Contratado em</p>
+                  <p className="font-medium">{formatDateTime(paymentInfo.lastPaymentAt)}</p>
+                </div>
+              </div>
+            )}
 
             {/* Next Payment Date */}
             {hasContractedPlan && subscriptionStatus?.currentPeriodEnd && (
