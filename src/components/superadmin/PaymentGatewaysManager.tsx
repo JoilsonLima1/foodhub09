@@ -39,7 +39,6 @@ const gatewayProviders = [
   { value: 'mercadopago', label: 'Mercado Pago' },
   { value: 'pagseguro', label: 'PagSeguro' },
   { value: 'asaas', label: 'Asaas' },
-  { value: 'pix', label: 'PIX Manual' },
   { value: 'stone', label: 'Stone' },
   { value: 'cielo', label: 'Cielo' },
 ];
@@ -55,9 +54,7 @@ export function PaymentGatewaysManager() {
     is_active: false,
     is_default: false,
     config: {
-      pix_key: '',
-      qr_code_url: '',
-      environment: 'sandbox' as 'sandbox' | 'production',
+      checkout_url: '',
     },
   });
 
@@ -72,9 +69,7 @@ export function PaymentGatewaysManager() {
         is_active: gateway.is_active,
         is_default: gateway.is_default,
         config: {
-          pix_key: config.pix_key || '',
-          qr_code_url: config.qr_code_url || '',
-          environment: config.environment || 'sandbox',
+          checkout_url: config.checkout_url || '',
         },
       });
     } else {
@@ -86,9 +81,7 @@ export function PaymentGatewaysManager() {
         is_active: false,
         is_default: false,
         config: {
-          pix_key: '',
-          qr_code_url: '',
-          environment: 'sandbox',
+          checkout_url: '',
         },
       });
     }
@@ -98,11 +91,8 @@ export function PaymentGatewaysManager() {
   const handleSave = () => {
     // Build config based on provider
     const config: Record<string, string> = {};
-    if (formData.provider === 'pix') {
-      if (formData.config.pix_key) config.pix_key = formData.config.pix_key;
-      if (formData.config.qr_code_url) config.qr_code_url = formData.config.qr_code_url;
-    } else if (formData.provider === 'asaas') {
-      config.environment = formData.config.environment;
+    if (formData.provider === 'asaas') {
+      if (formData.config.checkout_url) config.checkout_url = formData.config.checkout_url;
     }
 
     const payload = {
@@ -226,22 +216,14 @@ export function PaymentGatewaysManager() {
                     API Key: {gateway.api_key_masked}
                   </p>
                 )}
-                {/* Show config info for PIX and Asaas */}
-                {gateway.provider === 'pix' && (
-                  <div className="text-xs space-y-1">
-                    {(gateway.config as any)?.pix_key ? (
-                      <p className="text-green-600">✓ Chave PIX configurada</p>
-                    ) : (
-                      <p className="text-destructive">⚠ Chave PIX não configurada</p>
-                    )}
-                  </div>
-                )}
+                {/* Show config info for Asaas */}
                 {gateway.provider === 'asaas' && (
                   <div className="text-xs space-y-1">
-                    <p className="text-muted-foreground">
-                      Ambiente: {(gateway.config as any)?.environment === 'production' ? 'Produção' : 'Sandbox'}
-                    </p>
-                    <p className="text-green-600">✓ API dinâmica (PIX, Cartão, Boleto)</p>
+                    {(gateway.config as any)?.checkout_url ? (
+                      <p className="text-green-600">✓ URL de checkout configurada</p>
+                    ) : (
+                      <p className="text-destructive">⚠ URL de checkout não configurada</p>
+                    )}
                   </div>
                 )}
               </CardContent>
@@ -306,72 +288,29 @@ export function PaymentGatewaysManager() {
               </p>
             </div>
 
-            {/* PIX-specific fields */}
-            {formData.provider === 'pix' && (
-              <>
-                <div className="space-y-2">
-                  <Label htmlFor="pix_key">Chave PIX *</Label>
-                  <Input
-                    id="pix_key"
-                    value={formData.config.pix_key}
-                    onChange={(e) => setFormData({ 
-                      ...formData, 
-                      config: { ...formData.config, pix_key: e.target.value } 
-                    })}
-                    placeholder="email@exemplo.com, CPF, CNPJ ou chave aleatória"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Chave PIX para receber pagamentos
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="qr_code_url">URL do QR Code (opcional)</Label>
-                  <Input
-                    id="qr_code_url"
-                    value={formData.config.qr_code_url}
-                    onChange={(e) => setFormData({ 
-                      ...formData, 
-                      config: { ...formData.config, qr_code_url: e.target.value } 
-                    })}
-                    placeholder="https://..."
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    URL de uma imagem do QR Code estático
-                  </p>
-                </div>
-              </>
-            )}
-
             {/* Asaas-specific fields */}
             {formData.provider === 'asaas' && (
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Ambiente</Label>
-                  <Select
-                    value={formData.config.environment}
-                    onValueChange={(value: 'sandbox' | 'production') => setFormData({ 
+                  <Label htmlFor="checkout_url">URL de Checkout *</Label>
+                  <Input
+                    id="checkout_url"
+                    value={formData.config.checkout_url}
+                    onChange={(e) => setFormData({ 
                       ...formData, 
-                      config: { ...formData.config, environment: value } 
+                      config: { ...formData.config, checkout_url: e.target.value } 
                     })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="sandbox">Sandbox (Testes)</SelectItem>
-                      <SelectItem value="production">Produção</SelectItem>
-                    </SelectContent>
-                  </Select>
+                    placeholder="https://www.asaas.com/c/..."
+                  />
                   <p className="text-xs text-muted-foreground">
-                    Use Sandbox para testes. Mude para Produção quando estiver pronto.
+                    Cole aqui a URL do link de pagamento do Asaas (obtida no painel do Asaas).
                   </p>
                 </div>
                 <div className="p-3 bg-muted rounded-lg text-sm">
-                  <p className="font-medium mb-1">ℹ️ Integração Dinâmica</p>
+                  <p className="font-medium mb-1">ℹ️ Como configurar</p>
                   <p className="text-muted-foreground">
-                    A API Key do Asaas está configurada nos secrets do sistema. 
-                    As cobranças são criadas automaticamente com PIX, Cartão e Boleto disponíveis.
+                    Acesse o Asaas → Links de Pagamento → Criar novo link. 
+                    Copie a URL gerada e cole acima.
                   </p>
                 </div>
               </div>
