@@ -6,6 +6,10 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   ArrowLeft, 
   Ticket,
@@ -13,25 +17,173 @@ import {
   Plus,
   Users,
   BarChart3,
-  Clock,
-  AlertCircle,
   Percent,
-  Calendar,
+  Trash2,
+  Copy,
+  CheckCircle2,
+  XCircle,
+  Loader2,
 } from 'lucide-react';
 import { ModuleStatusBadge } from '../ModuleStatusBadge';
 import type { TenantModuleDetailed } from '@/hooks/useTenantModules';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 interface DiscountCouponsPanelProps {
   module?: TenantModuleDetailed;
   onBack: () => void;
 }
 
+interface Coupon {
+  id: string;
+  code: string;
+  discount_type: string;
+  discount_value: number;
+  min_order_value: number | null;
+  max_uses: number | null;
+  uses_count: number | null;
+  valid_from: string | null;
+  valid_until: string | null;
+  is_active: boolean;
+  description: string | null;
+  customer_limit: number | null;
+  stackable: boolean | null;
+  created_at: string | null;
+}
+
 export function DiscountCouponsPanel({ module, onBack }: DiscountCouponsPanelProps) {
-  const [settings, setSettings] = useState({
-    allowMultiple: false,
-    firstOrderOnly: true,
-    limitPerCustomer: true,
+  const queryClient = useQueryClient();
+  const { tenantId } = useAuth();
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [newCoupon, setNewCoupon] = useState({
+    code: '',
+    discount_type: 'percentage',
+    discount_value: 10,
+    min_order_value: '',
+    max_uses: '',
+    valid_from: '',
+    valid_until: '',
+    description: '',
   });
+
+  // Fetch coupons
+  const { data: coupons = [], isLoading } = useQuery({
+    queryKey: ['coupons', tenantId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('coupons')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data as Coupon[];
+    },
+    enabled: !!tenantId,
+  });
+
+  // Create coupon
+  const createCoupon = useMutation({
+    mutationFn: async (coupon: typeof newCoupon) => {
+      const { data, error } = await supabase
+        .from('coupons')
+        .insert({
+          tenant_id: tenantId,
+          code: coupon.code.toUpperCase(),
+          discount_type: coupon.discount_type,
+          discount_value: coupon.discount_value,
+          min_order_value: coupon.min_order_value ? parseFloat(coupon.min_order_value) : null,
+          max_uses: coupon.max_uses ? parseInt(coupon.max_uses) : null,
+          valid_from: coupon.valid_from || null,
+          valid_until: coupon.valid_until || null,
+          description: coupon.description || null,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['coupons'] });
+      toast.success('Cupom criado com sucesso!');
+      setIsDialogOpen(false);
+      setNewCoupon({
+        code: '',
+        discount_type: 'percentage',
+        discount_value: 10,
+        min_order_value: '',
+        max_uses: '',
+        valid_from: '',
+        valid_until: '',
+        description: '',
+      });
+    },
+    onError: (error: Error) => {
+      toast.error('Erro ao criar cupom: ' + error.message);
+    },
+  });
+
+  // Toggle coupon
+  const toggleCoupon = useMutation({
+    mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => {
+      const { error } = await supabase
+        .from('coupons')
+        .update({ is_active })
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['coupons'] });
+    },
+    onError: (error: Error) => {
+      toast.error('Erro: ' + error.message);
+    },
+  });
+
+  // Delete coupon
+  const deleteCoupon = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('coupons')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['coupons'] });
+      toast.success('Cupom removido');
+    },
+    onError: (error: Error) => {
+      toast.error('Erro: ' + error.message);
+    },
+  });
+
+  // Stats
+  const activeCoupons = coupons.filter(c => c.is_active);
+  const totalUses = coupons.reduce((sum, c) => sum + (c.uses_count || 0), 0);
+  const avgDiscount = coupons.length > 0
+    ? coupons.reduce((sum, c) => sum + c.discount_value, 0) / coupons.length
+    : 0;
+
+  const copyCode = (code: string) => {
+    navigator.clipboard.writeText(code);
+    toast.success('Código copiado!');
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCoupon.code.trim()) {
+      toast.error('Digite um código para o cupom');
+      return;
+    }
+    createCoupon.mutate(newCoupon);
+  };
 
   return (
     <div className="space-y-6">
@@ -43,8 +195,8 @@ export function DiscountCouponsPanel({ module, onBack }: DiscountCouponsPanelPro
         <div className="flex-1">
           <div className="flex items-center gap-2">
             <Ticket className="h-6 w-6 text-purple-600" />
-            <h1 className="text-xl font-bold">Cupons de Desconto Avançado</h1>
-            <ModuleStatusBadge status="coming_soon" />
+            <h1 className="text-xl font-bold">Cupons de Desconto</h1>
+            <ModuleStatusBadge status="ready" />
           </div>
           <p className="text-sm text-muted-foreground">
             Crie cupons personalizados com regras avançadas
@@ -57,29 +209,29 @@ export function DiscountCouponsPanel({ module, onBack }: DiscountCouponsPanelPro
         <Card>
           <CardContent className="p-4 text-center">
             <Ticket className="h-8 w-8 mx-auto text-purple-600 mb-2" />
-            <p className="text-2xl font-bold">-</p>
+            <p className="text-2xl font-bold">{activeCoupons.length}</p>
             <p className="text-sm text-muted-foreground">Cupons Ativos</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4 text-center">
             <Users className="h-8 w-8 mx-auto text-blue-600 mb-2" />
-            <p className="text-2xl font-bold">-</p>
-            <p className="text-sm text-muted-foreground">Usos Hoje</p>
+            <p className="text-2xl font-bold">{totalUses}</p>
+            <p className="text-sm text-muted-foreground">Usos Totais</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4 text-center">
             <Percent className="h-8 w-8 mx-auto text-green-600 mb-2" />
-            <p className="text-2xl font-bold">-</p>
+            <p className="text-2xl font-bold">{avgDiscount.toFixed(0)}%</p>
             <p className="text-sm text-muted-foreground">Desconto Médio</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4 text-center">
             <BarChart3 className="h-8 w-8 mx-auto text-amber-600 mb-2" />
-            <p className="text-2xl font-bold">-</p>
-            <p className="text-sm text-muted-foreground">Conversão</p>
+            <p className="text-2xl font-bold">{coupons.length}</p>
+            <p className="text-sm text-muted-foreground">Total Cupons</p>
           </CardContent>
         </Card>
       </div>
@@ -94,10 +246,6 @@ export function DiscountCouponsPanel({ module, onBack }: DiscountCouponsPanelPro
             <Plus className="h-4 w-4 mr-2" />
             Criar Cupom
           </TabsTrigger>
-          <TabsTrigger value="rules">
-            <Settings2 className="h-4 w-4 mr-2" />
-            Regras Globais
-          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="coupons">
@@ -109,11 +257,78 @@ export function DiscountCouponsPanel({ module, onBack }: DiscountCouponsPanelPro
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="text-center py-8 text-muted-foreground">
-                <Ticket className="h-12 w-12 mx-auto mb-4 opacity-30" />
-                <p>Nenhum cupom cadastrado</p>
-                <p className="text-sm">Crie seu primeiro cupom na aba "Criar Cupom"</p>
-              </div>
+              {isLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : coupons.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Ticket className="h-12 w-12 mx-auto mb-4 opacity-30" />
+                  <p>Nenhum cupom cadastrado</p>
+                  <p className="text-sm">Crie seu primeiro cupom na aba "Criar Cupom"</p>
+                </div>
+              ) : (
+                <ScrollArea className="h-[400px]">
+                  <div className="space-y-3">
+                    {coupons.map((coupon) => (
+                      <div
+                        key={coupon.id}
+                        className="p-4 border rounded-lg flex items-center justify-between"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${
+                            coupon.is_active 
+                              ? 'bg-green-100 dark:bg-green-900' 
+                              : 'bg-muted'
+                          }`}>
+                            <Ticket className={`h-5 w-5 ${
+                              coupon.is_active ? 'text-green-600' : 'text-muted-foreground'
+                            }`} />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-mono font-bold">{coupon.code}</h4>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                onClick={() => copyCode(coupon.code)}
+                              >
+                                <Copy className="h-3 w-3" />
+                              </Button>
+                              <Badge variant={coupon.is_active ? 'default' : 'secondary'}>
+                                {coupon.is_active ? 'Ativo' : 'Inativo'}
+                              </Badge>
+                            </div>
+                            <p className="text-sm text-muted-foreground">
+                              {coupon.discount_type === 'percentage' 
+                                ? `${coupon.discount_value}% de desconto`
+                                : `R$ ${coupon.discount_value.toFixed(2)} de desconto`
+                              }
+                              {coupon.min_order_value && ` • Min: R$ ${coupon.min_order_value}`}
+                              {coupon.uses_count !== null && ` • ${coupon.uses_count} usos`}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={coupon.is_active}
+                            onCheckedChange={(checked) => toggleCoupon.mutate({ id: coupon.id, is_active: checked })}
+                          />
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => deleteCoupon.mutate(coupon.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -126,127 +341,100 @@ export function DiscountCouponsPanel({ module, onBack }: DiscountCouponsPanelPro
                 Configure um novo cupom de desconto
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>Código do Cupom</Label>
-                  <Input placeholder="Ex: PRIMEIRACOMPRA" disabled />
-                </div>
-                <div className="space-y-2">
-                  <Label>Tipo de Desconto</Label>
-                  <Input placeholder="Percentual ou Valor Fixo" disabled />
-                </div>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>Valor do Desconto</Label>
-                  <Input type="number" placeholder="Ex: 10" disabled />
-                </div>
-                <div className="space-y-2">
-                  <Label>Pedido Mínimo</Label>
-                  <Input type="number" placeholder="Valor mínimo para aplicar" disabled />
-                </div>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>Data de Início</Label>
-                  <Input type="date" disabled />
-                </div>
-                <div className="space-y-2">
-                  <Label>Data de Expiração</Label>
-                  <Input type="date" disabled />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Limite de Usos</Label>
-                <Input type="number" placeholder="Deixe vazio para ilimitado" disabled />
-              </div>
-              <div className="pt-4">
-                <Button disabled>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Criar Cupom
-                </Button>
-              </div>
-              
-              <div className="mt-4 p-4 bg-amber-50 dark:bg-amber-950/30 rounded-lg">
-                <div className="flex items-start gap-2">
-                  <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-medium text-amber-800 dark:text-amber-200">Em Desenvolvimento</p>
-                    <p className="text-sm text-amber-700 dark:text-amber-300">
-                      Esta funcionalidade está em desenvolvimento e será liberada em breve.
-                    </p>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Código do Cupom *</Label>
+                    <Input 
+                      placeholder="Ex: PRIMEIRACOMPRA" 
+                      value={newCoupon.code}
+                      onChange={(e) => setNewCoupon(prev => ({ ...prev, code: e.target.value.toUpperCase() }))}
+                      className="font-mono"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Tipo de Desconto</Label>
+                    <Select 
+                      value={newCoupon.discount_type}
+                      onValueChange={(value) => setNewCoupon(prev => ({ ...prev, discount_type: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="percentage">Percentual (%)</SelectItem>
+                        <SelectItem value="fixed">Valor Fixo (R$)</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="rules">
-          <Card>
-            <CardHeader>
-              <CardTitle>Regras Globais de Cupons</CardTitle>
-              <CardDescription>
-                Configure comportamentos padrão para todos os cupons
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Permitir Múltiplos Cupons</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Clientes podem usar mais de um cupom por pedido
-                  </p>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Valor do Desconto *</Label>
+                    <Input 
+                      type="number" 
+                      placeholder={newCoupon.discount_type === 'percentage' ? 'Ex: 10' : 'Ex: 15.00'}
+                      value={newCoupon.discount_value}
+                      onChange={(e) => setNewCoupon(prev => ({ ...prev, discount_value: parseFloat(e.target.value) || 0 }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Pedido Mínimo</Label>
+                    <Input 
+                      type="number" 
+                      placeholder="Valor mínimo (opcional)"
+                      value={newCoupon.min_order_value}
+                      onChange={(e) => setNewCoupon(prev => ({ ...prev, min_order_value: e.target.value }))}
+                    />
+                  </div>
                 </div>
-                <Switch
-                  checked={settings.allowMultiple}
-                  onCheckedChange={(checked) => 
-                    setSettings(prev => ({ ...prev, allowMultiple: checked }))
-                  }
-                  disabled
-                />
-              </div>
-
-              <Separator />
-
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Apenas Primeiro Pedido</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Cupons funcionam apenas para novos clientes
-                  </p>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Data de Início</Label>
+                    <Input 
+                      type="date"
+                      value={newCoupon.valid_from}
+                      onChange={(e) => setNewCoupon(prev => ({ ...prev, valid_from: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Data de Expiração</Label>
+                    <Input 
+                      type="date"
+                      value={newCoupon.valid_until}
+                      onChange={(e) => setNewCoupon(prev => ({ ...prev, valid_until: e.target.value }))}
+                    />
+                  </div>
                 </div>
-                <Switch
-                  checked={settings.firstOrderOnly}
-                  onCheckedChange={(checked) => 
-                    setSettings(prev => ({ ...prev, firstOrderOnly: checked }))
-                  }
-                  disabled
-                />
-              </div>
-
-              <Separator />
-
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Limite por Cliente</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Cada cliente pode usar cada cupom apenas uma vez
-                  </p>
+                <div className="space-y-2">
+                  <Label>Limite de Usos</Label>
+                  <Input 
+                    type="number" 
+                    placeholder="Deixe vazio para ilimitado"
+                    value={newCoupon.max_uses}
+                    onChange={(e) => setNewCoupon(prev => ({ ...prev, max_uses: e.target.value }))}
+                  />
                 </div>
-                <Switch
-                  checked={settings.limitPerCustomer}
-                  onCheckedChange={(checked) => 
-                    setSettings(prev => ({ ...prev, limitPerCustomer: checked }))
-                  }
-                  disabled
-                />
-              </div>
-
-              <div className="pt-4">
-                <Button disabled>Salvar Configurações</Button>
-              </div>
+                <div className="space-y-2">
+                  <Label>Descrição (opcional)</Label>
+                  <Input 
+                    placeholder="Ex: Cupom de boas-vindas"
+                    value={newCoupon.description}
+                    onChange={(e) => setNewCoupon(prev => ({ ...prev, description: e.target.value }))}
+                  />
+                </div>
+                <div className="pt-4">
+                  <Button type="submit" disabled={createCoupon.isPending}>
+                    {createCoupon.isPending ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Plus className="h-4 w-4 mr-2" />
+                    )}
+                    Criar Cupom
+                  </Button>
+                </div>
+              </form>
             </CardContent>
           </Card>
         </TabsContent>

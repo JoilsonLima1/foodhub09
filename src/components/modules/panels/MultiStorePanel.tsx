@@ -6,6 +6,10 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   ArrowLeft, 
   Building2,
@@ -13,12 +17,18 @@ import {
   Plus,
   BarChart3,
   MapPin,
-  AlertCircle,
   Users,
   ShoppingBag,
+  Trash2,
+  Loader2,
+  Phone,
+  Mail,
+  Edit2,
+  Star,
 } from 'lucide-react';
 import { ModuleStatusBadge } from '../ModuleStatusBadge';
 import type { TenantModuleDetailed } from '@/hooks/useTenantModules';
+import { useMultiStore, Store } from '@/hooks/useMultiStore';
 
 interface MultiStorePanelProps {
   module?: TenantModuleDetailed;
@@ -26,11 +36,70 @@ interface MultiStorePanelProps {
 }
 
 export function MultiStorePanel({ module, onBack }: MultiStorePanelProps) {
-  const [settings, setSettings] = useState({
-    shareProducts: true,
-    shareCustomers: true,
-    centralizedReports: true,
+  const {
+    stores,
+    stats,
+    isLoading,
+    createStore,
+    updateStore,
+    deleteStore,
+    toggleStore,
+  } = useMultiStore();
+
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [newStore, setNewStore] = useState({
+    name: '',
+    code: '',
+    type: 'branch' as 'headquarters' | 'branch' | 'franchise',
+    address: '',
+    city: '',
+    state: '',
+    zip_code: '',
+    phone: '',
+    email: '',
+    manager_name: '',
   });
+
+  const handleCreateStore = () => {
+    if (!newStore.name.trim() || !newStore.code.trim()) {
+      return;
+    }
+    createStore.mutate(newStore, {
+      onSuccess: () => {
+        setIsDialogOpen(false);
+        setNewStore({
+          name: '',
+          code: '',
+          type: 'branch',
+          address: '',
+          city: '',
+          state: '',
+          zip_code: '',
+          phone: '',
+          email: '',
+          manager_name: '',
+        });
+      },
+    });
+  };
+
+  const getStoreTypeLabel = (type: string) => {
+    switch (type) {
+      case 'headquarters': return 'Matriz';
+      case 'branch': return 'Filial';
+      case 'franchise': return 'Franquia';
+      default: return type;
+    }
+  };
+
+  const getStoreTypeColor = (type: string) => {
+    switch (type) {
+      case 'headquarters': return 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300';
+      case 'branch': return 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300';
+      case 'franchise': return 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300';
+      default: return '';
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -43,7 +112,7 @@ export function MultiStorePanel({ module, onBack }: MultiStorePanelProps) {
           <div className="flex items-center gap-2">
             <Building2 className="h-6 w-6 text-indigo-600" />
             <h1 className="text-xl font-bold">Multi Lojas</h1>
-            <ModuleStatusBadge status="coming_soon" />
+            <ModuleStatusBadge status="ready" />
           </div>
           <p className="text-sm text-muted-foreground">
             Gerencie múltiplas filiais em uma única conta
@@ -56,27 +125,27 @@ export function MultiStorePanel({ module, onBack }: MultiStorePanelProps) {
         <Card>
           <CardContent className="p-4 text-center">
             <Building2 className="h-8 w-8 mx-auto text-indigo-600 mb-2" />
-            <p className="text-2xl font-bold">1</p>
+            <p className="text-2xl font-bold">{stats.totalStores}</p>
+            <p className="text-sm text-muted-foreground">Lojas Total</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <Star className="h-8 w-8 mx-auto text-yellow-600 mb-2" />
+            <p className="text-2xl font-bold">{stats.activeStores}</p>
             <p className="text-sm text-muted-foreground">Lojas Ativas</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4 text-center">
             <ShoppingBag className="h-8 w-8 mx-auto text-green-600 mb-2" />
-            <p className="text-2xl font-bold">-</p>
-            <p className="text-sm text-muted-foreground">Vendas Totais</p>
+            <p className="text-2xl font-bold">{stats.branches.length}</p>
+            <p className="text-sm text-muted-foreground">Filiais</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4 text-center">
-            <Users className="h-8 w-8 mx-auto text-blue-600 mb-2" />
-            <p className="text-2xl font-bold">-</p>
-            <p className="text-sm text-muted-foreground">Funcionários</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <BarChart3 className="h-8 w-8 mx-auto text-amber-600 mb-2" />
+            <BarChart3 className="h-8 w-8 mx-auto text-blue-600 mb-2" />
             <p className="text-2xl font-bold">-</p>
             <p className="text-sm text-muted-foreground">Faturamento</p>
           </CardContent>
@@ -93,55 +162,228 @@ export function MultiStorePanel({ module, onBack }: MultiStorePanelProps) {
             <BarChart3 className="h-4 w-4 mr-2" />
             Consolidado
           </TabsTrigger>
-          <TabsTrigger value="config">
-            <Settings2 className="h-4 w-4 mr-2" />
-            Configurações
-          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="stores">
           <Card>
-            <CardHeader>
-              <CardTitle>Lojas Cadastradas</CardTitle>
-              <CardDescription>
-                Gerencie suas filiais e unidades
-              </CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Lojas Cadastradas</CardTitle>
+                <CardDescription>
+                  Gerencie suas filiais e unidades
+                </CardDescription>
+              </div>
+              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Nova Loja
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-lg">
+                  <DialogHeader>
+                    <DialogTitle>Adicionar Nova Loja</DialogTitle>
+                    <DialogDescription>
+                      Cadastre uma nova filial ou franquia
+                    </DialogDescription>
+                  </DialogHeader>
+                  <ScrollArea className="max-h-[60vh]">
+                    <div className="space-y-4 pt-4 pr-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Nome da Loja *</Label>
+                          <Input
+                            placeholder="Ex: Filial Centro"
+                            value={newStore.name}
+                            onChange={(e) => setNewStore(prev => ({ ...prev, name: e.target.value }))}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Código *</Label>
+                          <Input
+                            placeholder="Ex: FIL001"
+                            value={newStore.code}
+                            onChange={(e) => setNewStore(prev => ({ ...prev, code: e.target.value.toUpperCase() }))}
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Tipo</Label>
+                        <Select
+                          value={newStore.type}
+                          onValueChange={(value: 'headquarters' | 'branch' | 'franchise') => setNewStore(prev => ({ ...prev, type: value }))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="branch">Filial</SelectItem>
+                            <SelectItem value="franchise">Franquia</SelectItem>
+                            <SelectItem value="headquarters">Matriz</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <Separator />
+                      <div className="space-y-2">
+                        <Label>Endereço</Label>
+                        <Input
+                          placeholder="Rua, número"
+                          value={newStore.address}
+                          onChange={(e) => setNewStore(prev => ({ ...prev, address: e.target.value }))}
+                        />
+                      </div>
+                      <div className="grid grid-cols-3 gap-4">
+                        <div className="space-y-2">
+                          <Label>Cidade</Label>
+                          <Input
+                            placeholder="Cidade"
+                            value={newStore.city}
+                            onChange={(e) => setNewStore(prev => ({ ...prev, city: e.target.value }))}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Estado</Label>
+                          <Input
+                            placeholder="UF"
+                            maxLength={2}
+                            value={newStore.state}
+                            onChange={(e) => setNewStore(prev => ({ ...prev, state: e.target.value.toUpperCase() }))}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>CEP</Label>
+                          <Input
+                            placeholder="00000-000"
+                            value={newStore.zip_code}
+                            onChange={(e) => setNewStore(prev => ({ ...prev, zip_code: e.target.value }))}
+                          />
+                        </div>
+                      </div>
+                      <Separator />
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Telefone</Label>
+                          <Input
+                            placeholder="(00) 00000-0000"
+                            value={newStore.phone}
+                            onChange={(e) => setNewStore(prev => ({ ...prev, phone: e.target.value }))}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>E-mail</Label>
+                          <Input
+                            type="email"
+                            placeholder="loja@email.com"
+                            value={newStore.email}
+                            onChange={(e) => setNewStore(prev => ({ ...prev, email: e.target.value }))}
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Gerente Responsável</Label>
+                        <Input
+                          placeholder="Nome do gerente"
+                          value={newStore.manager_name}
+                          onChange={(e) => setNewStore(prev => ({ ...prev, manager_name: e.target.value }))}
+                        />
+                      </div>
+                      <div className="flex justify-end gap-2 pt-4">
+                        <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                          Cancelar
+                        </Button>
+                        <Button onClick={handleCreateStore} disabled={createStore.isPending}>
+                          {createStore.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                          Criar Loja
+                        </Button>
+                      </div>
+                    </div>
+                  </ScrollArea>
+                </DialogContent>
+              </Dialog>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="p-4 border rounded-lg">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 bg-indigo-100 dark:bg-indigo-900 rounded-lg flex items-center justify-center">
-                      <Building2 className="h-5 w-5 text-indigo-600" />
-                    </div>
-                    <div>
-                      <h4 className="font-medium">Matriz</h4>
-                      <p className="text-sm text-muted-foreground flex items-center gap-1">
-                        <MapPin className="h-3 w-3" />
-                        Loja Principal
-                      </p>
-                    </div>
-                  </div>
-                  <Button variant="outline" size="sm">Gerenciar</Button>
+              {isLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                 </div>
-              </div>
-              
-              <Button variant="outline" className="w-full" disabled>
-                <Plus className="h-4 w-4 mr-2" />
-                Adicionar Nova Loja
-              </Button>
-              
-              <div className="mt-4 p-4 bg-amber-50 dark:bg-amber-950/30 rounded-lg">
-                <div className="flex items-start gap-2">
-                  <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-medium text-amber-800 dark:text-amber-200">Em Desenvolvimento</p>
-                    <p className="text-sm text-amber-700 dark:text-amber-300">
-                      Esta funcionalidade está em desenvolvimento e será liberada em breve.
-                    </p>
-                  </div>
+              ) : stores.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Building2 className="h-12 w-12 mx-auto mb-4 opacity-30" />
+                  <p>Nenhuma loja cadastrada</p>
+                  <p className="text-sm">Adicione sua primeira loja para começar</p>
                 </div>
-              </div>
+              ) : (
+                <div className="space-y-3">
+                  {stores.map((store) => (
+                    <div key={store.id} className="p-4 border rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className={`h-12 w-12 rounded-lg flex items-center justify-center ${
+                            store.is_headquarters 
+                              ? 'bg-indigo-100 dark:bg-indigo-900' 
+                              : 'bg-blue-100 dark:bg-blue-900'
+                          }`}>
+                            <Building2 className={`h-6 w-6 ${
+                              store.is_headquarters ? 'text-indigo-600' : 'text-blue-600'
+                            }`} />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-medium">{store.name}</h4>
+                              <Badge variant="outline" className="font-mono text-xs">
+                                {store.code}
+                              </Badge>
+                              <Badge className={getStoreTypeColor(store.type)}>
+                                {getStoreTypeLabel(store.type)}
+                              </Badge>
+                              {!store.is_active && (
+                                <Badge variant="secondary">Inativa</Badge>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
+                              {store.city && (
+                                <span className="flex items-center gap-1">
+                                  <MapPin className="h-3 w-3" />
+                                  {store.city}{store.state && `, ${store.state}`}
+                                </span>
+                              )}
+                              {store.phone && (
+                                <span className="flex items-center gap-1">
+                                  <Phone className="h-3 w-3" />
+                                  {store.phone}
+                                </span>
+                              )}
+                              {store.manager_name && (
+                                <span className="flex items-center gap-1">
+                                  <Users className="h-3 w-3" />
+                                  {store.manager_name}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={store.is_active}
+                            onCheckedChange={(checked) => toggleStore.mutate({ id: store.id, is_active: checked })}
+                            disabled={store.is_headquarters}
+                          />
+                          {!store.is_headquarters && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-destructive hover:text-destructive"
+                              onClick={() => deleteStore.mutate(store.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -155,78 +397,44 @@ export function MultiStorePanel({ module, onBack }: MultiStorePanelProps) {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="text-center py-8 text-muted-foreground">
-                <BarChart3 className="h-12 w-12 mx-auto mb-4 opacity-30" />
-                <p>Adicione mais lojas para ver o relatório consolidado</p>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="config">
-          <Card>
-            <CardHeader>
-              <CardTitle>Configurações Multi Lojas</CardTitle>
-              <CardDescription>
-                Configure o comportamento entre as lojas
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Compartilhar Produtos</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Usar mesmo catálogo em todas as lojas
-                  </p>
+              {stores.length <= 1 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <BarChart3 className="h-12 w-12 mx-auto mb-4 opacity-30" />
+                  <p>Adicione mais lojas para ver o relatório consolidado</p>
                 </div>
-                <Switch
-                  checked={settings.shareProducts}
-                  onCheckedChange={(checked) => 
-                    setSettings(prev => ({ ...prev, shareProducts: checked }))
-                  }
-                  disabled
-                />
-              </div>
-
-              <Separator />
-
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Compartilhar Clientes</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Base de clientes unificada entre lojas
-                  </p>
+              ) : (
+                <div className="space-y-4">
+                  {stores.map((store) => (
+                    <div key={store.id} className="p-4 border rounded-lg">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-medium">{store.name}</h4>
+                          <Badge variant="outline" className="font-mono text-xs">
+                            {store.code}
+                          </Badge>
+                        </div>
+                        <Badge className={store.is_active ? 'bg-green-600' : 'bg-muted'}>
+                          {store.is_active ? 'Online' : 'Offline'}
+                        </Badge>
+                      </div>
+                      <div className="grid grid-cols-3 gap-4 text-center">
+                        <div>
+                          <p className="text-2xl font-bold">-</p>
+                          <p className="text-xs text-muted-foreground">Pedidos Hoje</p>
+                        </div>
+                        <div>
+                          <p className="text-2xl font-bold">-</p>
+                          <p className="text-xs text-muted-foreground">Faturamento</p>
+                        </div>
+                        <div>
+                          <p className="text-2xl font-bold">-</p>
+                          <p className="text-xs text-muted-foreground">Ticket Médio</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <Switch
-                  checked={settings.shareCustomers}
-                  onCheckedChange={(checked) => 
-                    setSettings(prev => ({ ...prev, shareCustomers: checked }))
-                  }
-                  disabled
-                />
-              </div>
-
-              <Separator />
-
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Relatórios Centralizados</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Dashboard consolidado de todas as lojas
-                  </p>
-                </div>
-                <Switch
-                  checked={settings.centralizedReports}
-                  onCheckedChange={(checked) => 
-                    setSettings(prev => ({ ...prev, centralizedReports: checked }))
-                  }
-                  disabled
-                />
-              </div>
-
-              <div className="pt-4">
-                <Button disabled>Salvar Configurações</Button>
-              </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
