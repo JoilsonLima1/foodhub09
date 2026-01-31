@@ -14,6 +14,7 @@ const logStep = (step: string, details?: any) => {
 
 // Process Stripe checkout for module
 async function processStripeModuleCheckout(
+  supabase: any,
   module: any,
   user: any,
   tenantId: string,
@@ -76,6 +77,29 @@ async function processStripeModuleCheckout(
   });
 
   logStep("Stripe module checkout session created", { sessionId: session.id });
+
+  // Create module_purchases record with Stripe session ID
+  const { error: purchaseError } = await supabase
+    .from('module_purchases')
+    .insert({
+      tenant_id: tenantId,
+      addon_module_id: module.id,
+      user_id: user.id,
+      status: 'pending',
+      gateway: 'stripe',
+      gateway_payment_id: session.id,
+      gateway_customer_id: customerId || null,
+      gateway_invoice_url: session.url,
+      amount: module.monthly_price,
+      currency: module.currency
+    });
+
+  if (purchaseError) {
+    logStep("Failed to create module_purchases record", { error: purchaseError.message });
+    // Don't fail the checkout, just log the error
+  } else {
+    logStep("Module purchase record created", { gateway: 'stripe', sessionId: session.id });
+  }
 
   return new Response(
     JSON.stringify({ url: session.url, sessionId: session.id, gateway: 'stripe' }),
@@ -158,6 +182,7 @@ async function findOrCreateAsaasCustomer(
 
 // Process Asaas checkout for module via API
 async function processAsaasModuleCheckout(
+  supabase: any,
   module: any,
   user: any,
   tenantId: string,
@@ -191,10 +216,9 @@ async function processAsaasModuleCheckout(
   const dueDate = new Date();
   dueDate.setDate(dueDate.getDate() + 3);
 
-  // Asaas externalReference limited to 100 chars
-  // Use a compact JSON format with abbreviated keys
-  const refData = { t: 'mod', m: module.id.slice(0, 8), tn: tenantId.slice(0, 8) };
-  const externalReference = JSON.stringify(refData);
+  // Simpler externalReference - just for backup/debugging
+  // The REAL lookup will be via gateway_payment_id in module_purchases table
+  const externalReference = `mod:${module.id.slice(0, 8)}:${tenantId.slice(0, 8)}`;
 
   const paymentBody = {
     customer: customerId,
@@ -205,7 +229,7 @@ async function processAsaasModuleCheckout(
     externalReference
   };
 
-  logStep("Creating Asaas module payment", { customerId, value: module.monthly_price, billingType, refLength: externalReference.length });
+  logStep("Creating Asaas module payment", { customerId, value: module.monthly_price, billingType });
 
   const paymentResponse = await fetch(`${baseUrl}/payments`, {
     method: 'POST',
@@ -228,6 +252,36 @@ async function processAsaasModuleCheckout(
     invoiceUrl: payment.invoiceUrl,
     status: payment.status 
   });
+
+  // Create module_purchases record with Asaas payment ID
+  // This is the KEY record that the webhook will look up by gateway_payment_id
+  const { error: purchaseError } = await supabase
+    .from('module_purchases')
+    .insert({
+      tenant_id: tenantId,
+      addon_module_id: module.id,
+      user_id: user.id,
+      status: 'pending',
+      gateway: 'asaas',
+      gateway_payment_id: payment.id,
+      gateway_customer_id: customerId,
+      gateway_invoice_url: payment.invoiceUrl,
+      amount: module.monthly_price,
+      currency: module.currency
+    });
+
+  if (purchaseError) {
+    logStep("Failed to create module_purchases record", { error: purchaseError.message });
+    // This is critical - without this record, webhook can't find the purchase
+    // But we still return success so user can pay; we'll handle via unmatched events
+  } else {
+    logStep("Module purchase record created", { 
+      gateway: 'asaas', 
+      paymentId: payment.id,
+      moduleId: module.id,
+      tenantId 
+    });
+  }
 
   return new Response(
     JSON.stringify({
@@ -323,7 +377,7 @@ serve(async (req) => {
       );
     }
 
-    // Check if already subscribed
+    // Check if already subscribed (active module)
     const { data: existingSub } = await supabase
       .from("tenant_addon_subscriptions")
       .select("id, status")
@@ -338,6 +392,41 @@ serve(async (req) => {
         JSON.stringify({ error: "Módulo já está ativo", code: "ALREADY_SUBSCRIBED" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
       );
+    }
+
+    // Check if there's a pending purchase for this module
+    const { data: pendingPurchase } = await supabase
+      .from("module_purchases")
+      .select("id, status, gateway_payment_id, created_at")
+      .eq("tenant_id", tenantId)
+      .eq("addon_module_id", moduleId)
+      .eq("status", "pending")
+      .maybeSingle();
+
+    if (pendingPurchase) {
+      // Check if pending purchase is recent (less than 24 hours)
+      const createdAt = new Date(pendingPurchase.created_at);
+      const now = new Date();
+      const hoursDiff = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
+      
+      if (hoursDiff < 24) {
+        logStep("Pending purchase exists", { purchaseId: pendingPurchase.id, hoursAgo: hoursDiff.toFixed(1) });
+        return new Response(
+          JSON.stringify({ 
+            error: "Já existe um pagamento pendente para este módulo. Aguarde a confirmação ou entre em contato com o suporte.", 
+            code: "PENDING_PURCHASE_EXISTS",
+            pending_purchase_id: pendingPurchase.id
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+        );
+      } else {
+        // Mark old pending purchase as cancelled
+        await supabase
+          .from("module_purchases")
+          .update({ status: 'cancelled' })
+          .eq("id", pendingPurchase.id);
+        logStep("Old pending purchase cancelled", { purchaseId: pendingPurchase.id });
+      }
     }
 
     // Check if module is included in user's current plan (brinde)
@@ -368,7 +457,7 @@ serve(async (req) => {
 
     // Process based on gateway
     if (gateway === 'stripe') {
-      return await processStripeModuleCheckout(module, user, tenantId, origin);
+      return await processStripeModuleCheckout(supabase, module, user, tenantId, origin);
     }
 
     // For Asaas, fetch config with API key
@@ -384,7 +473,7 @@ serve(async (req) => {
         throw new Error("Gateway de pagamento não disponível");
       }
 
-      return await processAsaasModuleCheckout(module, user, tenantId, origin, gatewayConfig, customerCpfCnpj);
+      return await processAsaasModuleCheckout(supabase, module, user, tenantId, origin, gatewayConfig, customerCpfCnpj);
     }
 
     throw new Error("Gateway não suportado");

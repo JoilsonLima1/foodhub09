@@ -12,44 +12,8 @@ const logStep = (step: string, details?: unknown) => {
   console.log(`[RECONCILE-MODULE-PAYMENT] ${step}${detailsStr}`);
 };
 
-type ParsedRef =
-  | { type: 'plan'; plan_id: string; user_id: string }
-  | { type: 'module'; module_id_prefix: string; tenant_id_prefix: string };
-
-function parseExternalReference(ref: string): ParsedRef | null {
-  try {
-    const json = JSON.parse(ref);
-    if (json.t === 'mod' && json.m && json.tn) {
-      return { type: 'module', module_id_prefix: json.m, tenant_id_prefix: json.tn };
-    }
-    if (json.t === 'plan' && json.p && json.u) {
-      return { type: 'plan', plan_id: json.p, user_id: json.u };
-    }
-  } catch {
-    // not JSON
-  }
-
-  const parts = ref
-    .split('|')
-    .map((p) => p.trim())
-    .filter(Boolean);
-  const map: Record<string, string> = {};
-  for (const part of parts) {
-    const idx = part.indexOf(':');
-    if (idx === -1) continue;
-    const k = part.slice(0, idx);
-    const v = part.slice(idx + 1);
-    if (k && v) map[k] = v;
-  }
-
-  if (map.p && map.u) return { type: 'plan', plan_id: map.p, user_id: map.u };
-  if (map.m && map.t) return { type: 'module', module_id_prefix: map.m, tenant_id_prefix: map.t };
-  return null;
-}
-
 function isAsaasPaidStatus(status: string | undefined): boolean {
   const s = (status || '').toUpperCase();
-  // Asaas statuses commonly include: PENDING, RECEIVED, CONFIRMED, OVERDUE, REFUNDED...
   return s === 'RECEIVED' || s === 'CONFIRMED';
 }
 
@@ -59,7 +23,6 @@ function getAsaasBaseUrl(apiKey: string): string {
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
@@ -121,7 +84,52 @@ serve(async (req) => {
     }
     const tenantId = profile.tenant_id as string;
 
-    // Get Asaas gateway config (API key stored in DB)
+    // ============================================================
+    // NEW ARCHITECTURE: First look up in module_purchases by payment_id
+    // ============================================================
+    const { data: modulePurchase, error: purchaseError } = await supabase
+      .from('module_purchases')
+      .select(`
+        id,
+        tenant_id,
+        addon_module_id,
+        user_id,
+        status,
+        gateway,
+        addon_modules:addon_module_id (id, name, slug, monthly_price)
+      `)
+      .eq('gateway_payment_id', paymentId)
+      .maybeSingle();
+
+    if (purchaseError) {
+      logStep('Error looking up module_purchases', { error: purchaseError.message });
+    }
+
+    // Security: ensure purchase belongs to this tenant
+    if (modulePurchase && modulePurchase.tenant_id !== tenantId) {
+      logStep('Tenant mismatch', { purchaseTenantId: modulePurchase.tenant_id, requestTenantId: tenantId });
+      return new Response(JSON.stringify({ success: false, error: 'Pagamento não pertence ao seu tenant' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 403,
+      });
+    }
+
+    // If already paid/active, return success
+    if (modulePurchase?.status === 'paid') {
+      logStep('Already paid', { purchaseId: modulePurchase.id });
+      const moduleData = modulePurchase.addon_modules as any;
+      return new Response(
+        JSON.stringify({
+          success: true,
+          processed: true,
+          alreadyActive: true,
+          module: moduleData ? { id: moduleData.id, name: moduleData.name, slug: moduleData.slug } : null,
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      );
+    }
+
+    // Get Asaas gateway config
     const { data: gatewayConfig, error: gatewayError } = await supabase
       .from('payment_gateways')
       .select('*')
@@ -140,7 +148,7 @@ serve(async (req) => {
     const asaasApiKey = gatewayConfig.api_key_masked as string;
     const baseUrl = getAsaasBaseUrl(asaasApiKey);
 
-    // Fetch payment details
+    // Fetch payment details from Asaas
     const paymentRes = await fetch(`${baseUrl}/payments/${encodeURIComponent(paymentId)}`, {
       headers: { access_token: asaasApiKey },
     });
@@ -161,7 +169,6 @@ serve(async (req) => {
       status: paymentStatus,
       value: payment?.value,
       billingType: payment?.billingType,
-      externalReference: payment?.externalReference,
     });
 
     if (!isAsaasPaidStatus(paymentStatus)) {
@@ -176,144 +183,133 @@ serve(async (req) => {
       );
     }
 
-    if (!payment?.externalReference) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Pagamento sem externalReference (não foi gerado pelo sistema)' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-      );
-    }
+    // If we found a module_purchase record, activate it
+    if (modulePurchase) {
+      const moduleData = modulePurchase.addon_modules as any;
 
-    const parsed = parseExternalReference(String(payment.externalReference));
-    if (!parsed || parsed.type !== 'module') {
-      logStep('Invalid/unsupported externalReference', { externalReference: payment.externalReference });
-      return new Response(
-        JSON.stringify({ success: false, error: 'externalReference inválido para módulo' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-      );
-    }
+      // Check if already active in tenant_addon_subscriptions
+      const { data: existingSub } = await supabase
+        .from('tenant_addon_subscriptions')
+        .select('id, status')
+        .eq('tenant_id', tenantId)
+        .eq('addon_module_id', modulePurchase.addon_module_id)
+        .in('status', ['active', 'trial'])
+        .maybeSingle();
 
-    // Security: ensure payment belongs to this tenant (prefix match)
-    const expectedTenantPrefix = tenantId.slice(0, 8);
-    if (parsed.tenant_id_prefix !== expectedTenantPrefix) {
-      logStep('Tenant prefix mismatch', {
-        expectedTenantPrefix,
-        gotTenantPrefix: parsed.tenant_id_prefix,
-        tenantId,
+      if (existingSub) {
+        logStep('Already active in subscriptions', { subscriptionId: existingSub.id });
+        // Update purchase status to paid
+        await supabase
+          .from('module_purchases')
+          .update({ status: 'paid', paid_at: new Date().toISOString() })
+          .eq('id', modulePurchase.id);
+          
+        return new Response(
+          JSON.stringify({
+            success: true,
+            processed: true,
+            alreadyActive: true,
+            module: moduleData ? { id: moduleData.id, name: moduleData.name, slug: moduleData.slug } : null,
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+        );
+      }
+
+      const now = new Date();
+      const expiresAt = new Date(now);
+      expiresAt.setDate(expiresAt.getDate() + 30);
+      const nextBillingDate = new Date(now);
+      nextBillingDate.setDate(nextBillingDate.getDate() + 30);
+
+      // Update module_purchases to PAID
+      await supabase
+        .from('module_purchases')
+        .update({
+          status: 'paid',
+          billing_type: payment.billingType,
+          invoice_number: payment.invoiceNumber || null,
+          paid_at: now.toISOString()
+        })
+        .eq('id', modulePurchase.id);
+
+      // Create tenant_addon_subscriptions
+      const { data: upserted, error: upsertError } = await supabase
+        .from('tenant_addon_subscriptions')
+        .upsert(
+          {
+            tenant_id: tenantId,
+            addon_module_id: modulePurchase.addon_module_id,
+            status: 'active',
+            source: 'purchase',
+            is_free: false,
+            price_paid: Number(payment?.value ?? moduleData?.monthly_price ?? 0),
+            started_at: now.toISOString(),
+            expires_at: expiresAt.toISOString(),
+            purchased_at: now.toISOString(),
+            next_billing_date: nextBillingDate.toISOString(),
+            asaas_payment_id: payment.id,
+            billing_mode: 'separate',
+          },
+          { onConflict: 'tenant_id,addon_module_id' }
+        )
+        .select('id')
+        .single();
+
+      if (upsertError) {
+        logStep('Failed to upsert tenant_addon_subscriptions', { error: upsertError.message });
+        return new Response(JSON.stringify({ success: false, error: 'Falha ao ativar módulo' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 500,
+        });
+      }
+
+      // Audit log
+      await supabase.from('audit_logs').insert({
+        tenant_id: tenantId,
+        entity_type: 'tenant_addon_subscription',
+        entity_id: upserted?.id ?? null,
+        action: 'module_payment_reconciled',
+        user_id: user.id,
+        new_data: {
+          module_id: modulePurchase.addon_module_id,
+          module_slug: moduleData?.slug,
+          module_name: moduleData?.name,
+          asaas_payment_id: payment.id,
+          asaas_status: paymentStatus,
+          value: payment?.value,
+          billingType: payment?.billingType,
+          method: 'module_purchases_lookup',
+        },
       });
-      return new Response(JSON.stringify({ success: false, error: 'Pagamento não pertence ao seu tenant' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 403,
+
+      logStep('Module activated via module_purchases', { 
+        tenantId, 
+        moduleId: modulePurchase.addon_module_id, 
+        subscriptionId: upserted?.id 
       });
-    }
 
-    // Resolve full module id by prefix
-    const { data: modulesFound, error: moduleError } = await supabase
-      .from('addon_modules')
-      .select('id, name, slug, monthly_price')
-      .like('id', `${parsed.module_id_prefix}%`)
-      .limit(2);
-
-    if (moduleError || !modulesFound || modulesFound.length !== 1) {
-      logStep('Module resolution failed', {
-        prefix: parsed.module_id_prefix,
-        count: modulesFound?.length,
-        error: moduleError?.message,
-      });
-      return new Response(JSON.stringify({ success: false, error: 'Módulo não encontrado' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400,
-      });
-    }
-
-    const moduleData = modulesFound[0];
-
-    // Idempotency: if already active/trial, return success
-    const { data: existingSub } = await supabase
-      .from('tenant_addon_subscriptions')
-      .select('id, status')
-      .eq('tenant_id', tenantId)
-      .eq('addon_module_id', moduleData.id)
-      .in('status', ['active', 'trial'])
-      .maybeSingle();
-
-    if (existingSub) {
-      logStep('Already active', { subscriptionId: existingSub.id, status: existingSub.status });
       return new Response(
         JSON.stringify({
           success: true,
           processed: true,
-          alreadyActive: true,
-          module: { id: moduleData.id, name: moduleData.name, slug: moduleData.slug },
+          activated: true,
+          module: moduleData ? { id: moduleData.id, name: moduleData.name, slug: moduleData.slug } : null,
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       );
     }
 
-    const now = new Date();
-    const expiresAt = new Date(now);
-    expiresAt.setDate(expiresAt.getDate() + 30);
-    const nextBillingDate = new Date(now);
-    nextBillingDate.setDate(nextBillingDate.getDate() + 30);
-
-    const { data: upserted, error: upsertError } = await supabase
-      .from('tenant_addon_subscriptions')
-      .upsert(
-        {
-          tenant_id: tenantId,
-          addon_module_id: moduleData.id,
-          status: 'active',
-          source: 'purchase',
-          is_free: false,
-          price_paid: Number(payment?.value ?? moduleData.monthly_price ?? 0),
-          started_at: now.toISOString(),
-          expires_at: expiresAt.toISOString(),
-          purchased_at: now.toISOString(),
-          next_billing_date: nextBillingDate.toISOString(),
-          asaas_payment_id: payment.id,
-          billing_mode: 'separate',
-        },
-        { onConflict: 'tenant_id,addon_module_id' }
-      )
-      .select('id')
-      .single();
-
-    if (upsertError) {
-      logStep('Failed to upsert tenant_addon_subscriptions', { error: upsertError.message });
-      return new Response(JSON.stringify({ success: false, error: 'Falha ao ativar módulo' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500,
-      });
-    }
-
-    // Audit log
-    await supabase.from('audit_logs').insert({
-      tenant_id: tenantId,
-      entity_type: 'tenant_addon_subscription',
-      entity_id: upserted?.id ?? null,
-      action: 'module_payment_reconciled',
-      user_id: user.id,
-      new_data: {
-        module_id: moduleData.id,
-        module_slug: moduleData.slug,
-        module_name: moduleData.name,
-        asaas_payment_id: payment.id,
-        asaas_status: paymentStatus,
-        value: payment?.value,
-        billingType: payment?.billingType,
-      },
-    });
-
-    logStep('Module activated', { tenantId, moduleId: moduleData.id, subscriptionId: upserted?.id });
-
+    // No module_purchase found - this payment wasn't created by our system
+    logStep('No module_purchase found for this payment', { paymentId });
     return new Response(
-      JSON.stringify({
-        success: true,
-        processed: true,
-        activated: true,
-        module: { id: moduleData.id, name: moduleData.name, slug: moduleData.slug },
+      JSON.stringify({ 
+        success: false, 
+        error: 'Nenhuma compra de módulo encontrada para este pagamento',
+        reason: 'no_purchase_record'
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
     );
+
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logStep('ERROR', { message: errorMessage });
