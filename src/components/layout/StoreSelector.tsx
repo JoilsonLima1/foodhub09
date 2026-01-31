@@ -1,5 +1,4 @@
 import { useActiveStore } from '@/contexts/ActiveStoreContext';
-import { useTenantModules } from '@/hooks/useTenantModules';
 import {
   Select,
   SelectContent,
@@ -11,16 +10,23 @@ import { Building2, Store } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 export function StoreSelector() {
-  const { activeStoreId, activeStore, stores, canSwitchStore, setActiveStoreId, isLoading } = useActiveStore();
-  const { allModules, tenantModules } = useTenantModules();
+  const { 
+    activeStoreId, 
+    activeStore, 
+    stores, 
+    canSwitchStore, 
+    setActiveStoreId, 
+    isLoading,
+    hasMultiStore 
+  } = useActiveStore();
 
-  // Check if multi_store module is active
-  const multiStoreModule = allModules?.find(m => m.slug === 'multi_store');
-  const hasMultiStore = multiStoreModule && tenantModules?.some(
-    tm => tm.addon_module_id === multiStoreModule.id && ['active', 'trial'].includes(tm.status)
-  );
-  
-  if (!hasMultiStore || stores.length <= 1) {
+  // CRITICAL: Only show selector if Multi-Store module is active
+  if (!hasMultiStore) {
+    return null;
+  }
+
+  // Also hide if only one store exists
+  if (stores.length <= 1) {
     return null;
   }
 

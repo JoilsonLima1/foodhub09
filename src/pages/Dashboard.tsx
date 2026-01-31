@@ -116,6 +116,8 @@ export default function Dashboard() {
     return colors[status] || '';
   };
 
+  // Only show "no restaurant" message if user truly has no tenant
+  // This should rarely happen as bootstrap-user creates the HQ store
   if (!tenantId) {
     return (
       <div className="space-y-6">
@@ -124,17 +126,17 @@ export default function Dashboard() {
             Olá, {profile?.full_name || 'Usuário'}! 👋
           </h1>
           <p className="text-muted-foreground mt-1">
-            Bem-vindo ao FoodHub09. Configure seu restaurante para começar.
+            Bem-vindo ao FoodHub09. Aguarde a configuração inicial...
           </p>
         </div>
         
         <Card>
           <CardContent className="py-12 text-center">
             <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Nenhum restaurante configurado</h3>
+            <h3 className="text-lg font-semibold mb-2">Configuração em andamento</h3>
             <p className="text-muted-foreground">
-              Você ainda não está vinculado a nenhum restaurante. 
-              Entre em contato com o administrador.
+              Seu estabelecimento está sendo configurado. 
+              Se este problema persistir, entre em contato com o suporte.
             </p>
           </CardContent>
         </Card>

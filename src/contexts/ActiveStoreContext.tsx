@@ -16,6 +16,7 @@ interface ActiveStoreContextType {
   stores: Store[];
   isLoading: boolean;
   canSwitchStore: boolean;
+  hasMultiStore: boolean;
   setActiveStoreId: (storeId: string) => void;
   refreshStores: () => Promise<void>;
 }
@@ -30,9 +31,39 @@ export function ActiveStoreProvider({ children }: { children: React.ReactNode })
   const [activeStore, setActiveStore] = useState<Store | null>(null);
   const [stores, setStores] = useState<Store[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasMultiStore, setHasMultiStore] = useState(false);
 
   // Only admin/manager can switch stores
   const canSwitchStore = roles.includes('admin') || roles.includes('super_admin');
+
+  // Check if tenant has Multi-Store module
+  const checkMultiStoreModule = useCallback(async () => {
+    if (!tenantId) return false;
+
+    try {
+      const { data, error } = await supabase
+        .from('tenant_addon_subscriptions')
+        .select(`
+          id,
+          status,
+          addon_module:addon_modules!inner(slug)
+        `)
+        .eq('tenant_id', tenantId)
+        .eq('addon_module.slug', 'multi_store')
+        .in('status', ['active', 'trial'])
+        .limit(1);
+
+      if (error) {
+        console.error('[ActiveStoreContext] Error checking multi-store module:', error);
+        return false;
+      }
+
+      return (data?.length || 0) > 0;
+    } catch (err) {
+      console.error('[ActiveStoreContext] Exception checking module:', err);
+      return false;
+    }
+  }, [tenantId]);
 
   const fetchStores = useCallback(async () => {
     if (!tenantId) {
@@ -72,21 +103,35 @@ export function ActiveStoreProvider({ children }: { children: React.ReactNode })
     setIsLoading(true);
 
     try {
-      // 1. Check if user has a store_id in profile (branch manager scenario)
-      const profileStoreId = (profile as any)?.store_id;
-      
-      // 2. Check localStorage for saved preference (admin scenario)
-      const savedStoreId = localStorage.getItem(`${STORAGE_KEY}_${tenantId}`);
-      
-      // 3. Fallback: get from DB function
-      let fallbackStoreId: string | null = null;
-      if (!profileStoreId && !savedStoreId) {
-        const { data: storeIdData } = await supabase
-          .rpc('get_user_active_store', { p_user_id: user.id });
-        fallbackStoreId = storeIdData;
+      // 1. Check if Multi-Store module is active
+      const moduleActive = await checkMultiStoreModule();
+      setHasMultiStore(moduleActive);
+
+      // 2. If NO Multi-Store module, use simple single-store logic
+      if (!moduleActive) {
+        // Just get the headquarters (or first store) for single-store tenants
+        const hq = stores.find(s => s.is_headquarters) || stores[0] || null;
+        
+        if (hq) {
+          setActiveStoreIdState(hq.id);
+          setActiveStore(hq);
+          console.log('[ActiveStoreContext] Single-store mode - using:', hq.name);
+        } else {
+          // No store exists yet - this is OK for new tenants
+          // The bootstrap-user function should create the HQ store
+          setActiveStoreIdState(null);
+          setActiveStore(null);
+          console.log('[ActiveStoreContext] No stores found for tenant');
+        }
+        
+        setIsLoading(false);
+        return;
       }
 
-      // Determine final store ID
+      // 3. Multi-Store mode: Apply full logic
+      const profileStoreId = (profile as any)?.store_id;
+      const savedStoreId = localStorage.getItem(`${STORAGE_KEY}_${tenantId}`);
+
       let finalStoreId: string | null = null;
 
       if (!canSwitchStore && profileStoreId) {
@@ -95,31 +140,25 @@ export function ActiveStoreProvider({ children }: { children: React.ReactNode })
       } else if (savedStoreId && stores.some(s => s.id === savedStoreId)) {
         // Admin has saved preference and it's valid
         finalStoreId = savedStoreId;
-      } else if (profileStoreId) {
-        // Use profile store_id
+      } else if (profileStoreId && stores.some(s => s.id === profileStoreId)) {
+        // Use profile store_id if valid
         finalStoreId = profileStoreId;
-      } else if (fallbackStoreId) {
-        // Use DB fallback (headquarters)
-        finalStoreId = fallbackStoreId;
-      } else if (stores.length > 0) {
-        // Last resort: first store (should be headquarters)
+      } else {
+        // Fallback to headquarters
         const hq = stores.find(s => s.is_headquarters);
-        finalStoreId = hq?.id || stores[0].id;
+        finalStoreId = hq?.id || stores[0]?.id || null;
       }
 
       setActiveStoreIdState(finalStoreId);
-
-      // Find and set the active store object
       const store = stores.find(s => s.id === finalStoreId) || null;
       setActiveStore(store);
 
-      console.log('[ActiveStoreContext] Active store determined:', {
+      console.log('[ActiveStoreContext] Multi-store mode - active store:', {
         storeId: finalStoreId,
         storeName: store?.name,
         source: !canSwitchStore && profileStoreId ? 'locked_profile' : 
                 savedStoreId ? 'localStorage' : 
-                profileStoreId ? 'profile' : 
-                fallbackStoreId ? 'db_fallback' : 'first_store'
+                profileStoreId ? 'profile' : 'headquarters_fallback'
       });
 
     } catch (err) {
@@ -127,7 +166,7 @@ export function ActiveStoreProvider({ children }: { children: React.ReactNode })
     } finally {
       setIsLoading(false);
     }
-  }, [user, tenantId, profile, stores, canSwitchStore]);
+  }, [user, tenantId, profile, stores, canSwitchStore, checkMultiStoreModule]);
 
   // Fetch stores when tenant changes
   useEffect(() => {
@@ -171,6 +210,7 @@ export function ActiveStoreProvider({ children }: { children: React.ReactNode })
         stores,
         isLoading,
         canSwitchStore,
+        hasMultiStore,
         setActiveStoreId,
         refreshStores,
       }}
