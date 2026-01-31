@@ -56,3 +56,6 @@ verify_jwt = false
 
 [functions.backfill-plan-modules]
 verify_jwt = false
+
+[functions.toggle-store-status]
+verify_jwt = false
