@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTenantUserManagement, TenantUser } from '@/hooks/useTenantUserManagement';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -63,10 +63,15 @@ import {
   Edit3,
   Ban,
   CheckCircle2,
+  Building2,
+  Store,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { AppRole } from '@/types/database';
 import { useAuth } from '@/contexts/AuthContext';
+import { StoreAccessSelector } from './StoreAccessSelector';
+import { getUserStoreAccess, updateUserStoreAccess } from '@/hooks/useStoreAccess';
+import { useActiveStore } from '@/contexts/ActiveStoreContext';
 
 const ROLE_LABELS: Record<AppRole, string> = {
   admin: 'Administrador',
@@ -180,6 +185,8 @@ export function UserManagement() {
     toggleUserStatus,
   } = useTenantUserManagement();
 
+  const { hasMultiStore, stores } = useActiveStore();
+  
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -193,6 +200,8 @@ export function UserManagement() {
     full_name: '',
     phone: '',
     roles: [] as AppRole[],
+    storeIds: [] as string[],
+    allStoresAccess: false,
   });
 
   // Edit form state
@@ -200,30 +209,74 @@ export function UserManagement() {
     full_name: '',
     phone: '',
     roles: [] as AppRole[],
+    storeIds: [] as string[],
+    allStoresAccess: false,
   });
 
+  // Load store access when editing a user
+  useEffect(() => {
+    async function loadStoreAccess() {
+      if (selectedUser && showEditDialog) {
+        const storeIds = await getUserStoreAccess(selectedUser.user_id, selectedUser.id);
+        const isAdmin = selectedUser.roles.includes('admin');
+        setEditForm(prev => ({
+          ...prev,
+          storeIds,
+          allStoresAccess: isAdmin && storeIds.length === stores.length,
+        }));
+      }
+    }
+    loadStoreAccess();
+  }, [selectedUser, showEditDialog, stores.length]);
+
   const handleCreateSubmit = async () => {
+    // Validate store selection for non-admins
+    const isAdminRole = createForm.roles.includes('admin');
+    if (!isAdminRole && hasMultiStore && stores.length > 1 && createForm.storeIds.length === 0) {
+      return; // StoreAccessSelector will show error
+    }
+
     const success = await createUser({
       email: createForm.email,
       password: createForm.password,
       full_name: createForm.full_name,
       phone: createForm.phone || undefined,
       roles: createForm.roles,
+      storeIds: isAdminRole && createForm.allStoresAccess 
+        ? stores.map(s => s.id) 
+        : createForm.storeIds,
     });
 
     if (success) {
       setShowCreateDialog(false);
-      setCreateForm({ email: '', password: '', full_name: '', phone: '', roles: [] });
+      setCreateForm({ 
+        email: '', 
+        password: '', 
+        full_name: '', 
+        phone: '', 
+        roles: [],
+        storeIds: [],
+        allStoresAccess: false,
+      });
     }
   };
 
   const handleEditSubmit = async () => {
     if (!selectedUser) return;
 
+    // Validate store selection for non-admins
+    const isAdminRole = editForm.roles.includes('admin');
+    if (!isAdminRole && hasMultiStore && stores.length > 1 && editForm.storeIds.length === 0) {
+      return; // StoreAccessSelector will show error
+    }
+
     const success = await updateUser(selectedUser.user_id, {
       full_name: editForm.full_name,
       phone: editForm.phone || undefined,
       roles: editForm.roles,
+      storeIds: isAdminRole && editForm.allStoresAccess 
+        ? stores.map(s => s.id) 
+        : editForm.storeIds,
     });
 
     if (success) {
@@ -245,10 +298,13 @@ export function UserManagement() {
 
   const openEditDialog = (user: TenantUser) => {
     setSelectedUser(user);
+    const isAdmin = user.roles.includes('admin');
     setEditForm({
       full_name: user.full_name,
       phone: user.phone || '',
       roles: user.roles.filter(r => r !== 'super_admin'),
+      storeIds: [], // Will be loaded by useEffect
+      allStoresAccess: isAdmin,
     });
     setShowEditDialog(true);
   };
@@ -601,6 +657,21 @@ export function UserManagement() {
                   })}
                 </div>
               </div>
+              
+              {/* Store Access Selection - only show if multi-store is enabled */}
+              {hasMultiStore && stores.length > 1 && (
+                <StoreAccessSelector
+                  selectedStoreIds={createForm.storeIds}
+                  onStoreIdsChange={(storeIds) => setCreateForm(prev => ({ ...prev, storeIds }))}
+                  isAdmin={createForm.roles.includes('admin')}
+                  allStoresAccess={createForm.allStoresAccess}
+                  onAllStoresAccessChange={(value) => setCreateForm(prev => ({ 
+                    ...prev, 
+                    allStoresAccess: value,
+                    storeIds: value ? stores.map(s => s.id) : prev.storeIds
+                  }))}
+                />
+              )}
             </div>
           </div>
           <DialogFooter className="border-t px-6 py-4 shrink-0">
@@ -682,6 +753,21 @@ export function UserManagement() {
                   })}
                 </div>
               </div>
+              
+              {/* Store Access Selection - only show if multi-store is enabled */}
+              {hasMultiStore && stores.length > 1 && (
+                <StoreAccessSelector
+                  selectedStoreIds={editForm.storeIds}
+                  onStoreIdsChange={(storeIds) => setEditForm(prev => ({ ...prev, storeIds }))}
+                  isAdmin={editForm.roles.includes('admin')}
+                  allStoresAccess={editForm.allStoresAccess}
+                  onAllStoresAccessChange={(value) => setEditForm(prev => ({ 
+                    ...prev, 
+                    allStoresAccess: value,
+                    storeIds: value ? stores.map(s => s.id) : prev.storeIds
+                  }))}
+                />
+              )}
             </div>
           </div>
           <DialogFooter className="border-t px-6 py-4 shrink-0">

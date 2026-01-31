@@ -3457,6 +3457,51 @@ export type Database = {
           },
         ]
       }
+      store_user_access: {
+        Row: {
+          access_level: string
+          created_at: string
+          id: string
+          store_id: string
+          tenant_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_level?: string
+          created_at?: string
+          id?: string
+          store_id: string
+          tenant_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_level?: string
+          created_at?: string
+          id?: string
+          store_id?: string
+          tenant_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_user_access_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "store_user_access_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stores: {
         Row: {
           address: string | null
@@ -5143,6 +5188,17 @@ export type Database = {
         }[]
       }
       get_user_active_store: { Args: { p_user_id: string }; Returns: string }
+      get_user_allowed_stores: {
+        Args: { _user_id: string }
+        Returns: {
+          access_level: string
+          is_active: boolean
+          is_headquarters: boolean
+          store_code: string
+          store_id: string
+          store_name: string
+        }[]
+      }
       get_user_tenant_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
@@ -5175,6 +5231,10 @@ export type Database = {
       }
       user_belongs_to_tenant: {
         Args: { _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
+      user_has_store_access: {
+        Args: { _store_id: string; _user_id: string }
         Returns: boolean
       }
     }

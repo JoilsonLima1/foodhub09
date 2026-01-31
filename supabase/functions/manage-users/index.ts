@@ -47,7 +47,7 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const { action, tenantId, userId, userData, userIds, roles: newRoles, profileData } = body;
+    const { action, tenantId, userId, userData, userIds, roles: newRoles, profileData, storeIds } = body;
 
     console.log(`[manage-users] Action: ${action}, TenantId: ${tenantId}, UserId: ${userId || 'N/A'}`);
     // Never log raw passwords or sensitive data
@@ -342,7 +342,7 @@ serve(async (req) => {
           );
         }
 
-        const { email, password, full_name, phone, roles: userRolesToAdd } = userData;
+        const { email, password, full_name, phone, roles: userRolesToAdd, storeIds } = userData;
 
         if (!email || !password || !full_name) {
           return new Response(
@@ -407,6 +407,25 @@ serve(async (req) => {
           }
         }
 
+        // Add store access if provided
+        if (storeIds && storeIds.length > 0) {
+          const storeInserts = storeIds.map((store_id: string) => ({
+            user_id: newUserId,
+            tenant_id: effectiveTenantId,
+            store_id,
+            access_level: userRolesToAdd?.includes('admin') ? 'admin' : 
+                          userRolesToAdd?.includes('manager') ? 'manager' : 'standard',
+          }));
+
+          const { error: storeError } = await supabaseAdmin
+            .from('store_user_access')
+            .insert(storeInserts);
+
+          if (storeError) {
+            console.error('[manage-users] Store access error:', storeError);
+          }
+        }
+
         console.log(`[manage-users] User created: ${newUserId}`);
 
         return new Response(
@@ -460,6 +479,70 @@ serve(async (req) => {
         }
 
         console.log(`[manage-users] Roles updated for user: ${userId}`);
+
+        return new Response(
+          JSON.stringify({ success: true }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'update-store-access': {
+        if (!effectiveTenantId || !userId) {
+          return new Response(
+            JSON.stringify({ error: 'tenantId and userId required' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Delete existing store access for this user in this tenant
+        const { error: deleteError } = await supabaseAdmin
+          .from('store_user_access')
+          .delete()
+          .eq('user_id', userId)
+          .eq('tenant_id', effectiveTenantId);
+
+        if (deleteError) {
+          console.error('[manage-users] Delete store access error:', deleteError);
+          return new Response(
+            JSON.stringify({ error: 'Failed to update store access' }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Insert new store access if any stores provided
+        if (storeIds && storeIds.length > 0) {
+          // Get user roles to determine access level
+          const { data: userRolesData } = await supabaseAdmin
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', userId)
+            .eq('tenant_id', effectiveTenantId);
+
+          const userRolesList = (userRolesData || []).map((r: any) => r.role);
+          const accessLevel = userRolesList.includes('admin') ? 'admin' : 
+                              userRolesList.includes('manager') ? 'manager' : 'standard';
+
+          const storeInserts = storeIds.map((store_id: string) => ({
+            user_id: userId,
+            tenant_id: effectiveTenantId,
+            store_id,
+            access_level: accessLevel,
+          }));
+
+          const { error: insertError } = await supabaseAdmin
+            .from('store_user_access')
+            .insert(storeInserts);
+
+          if (insertError) {
+            console.error('[manage-users] Insert store access error:', insertError);
+            return new Response(
+              JSON.stringify({ error: 'Failed to add store access' }),
+              { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+        }
+
+        console.log(`[manage-users] Store access updated for user: ${userId}, stores: ${storeIds?.length || 0}`);
 
         return new Response(
           JSON.stringify({ success: true }),

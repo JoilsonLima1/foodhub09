@@ -10,14 +10,25 @@ interface Store {
   is_active: boolean;
 }
 
+interface AllowedStore {
+  store_id: string;
+  store_name: string;
+  store_code: string;
+  is_headquarters: boolean;
+  is_active: boolean;
+  access_level: string;
+}
+
 interface ActiveStoreContextType {
   activeStoreId: string | null;
   activeStore: Store | null;
   activeStoreName: string | null;
   stores: Store[];
+  allowedStores: Store[];
   isLoading: boolean;
   canSwitchStore: boolean;
   hasMultiStore: boolean;
+  hasNoStoreAccess: boolean;
   setActiveStoreId: (storeId: string) => void;
   refreshStores: () => Promise<void>;
 }
@@ -31,11 +42,14 @@ export function ActiveStoreProvider({ children }: { children: React.ReactNode })
   const [activeStoreId, setActiveStoreIdState] = useState<string | null>(null);
   const [activeStore, setActiveStore] = useState<Store | null>(null);
   const [stores, setStores] = useState<Store[]>([]);
+  const [allowedStores, setAllowedStores] = useState<Store[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [hasMultiStore, setHasMultiStore] = useState(false);
+  const [hasNoStoreAccess, setHasNoStoreAccess] = useState(false);
 
-  // Only admin/manager can switch stores
-  const canSwitchStore = roles.includes('admin') || roles.includes('super_admin');
+  // Admin/super_admin can switch stores
+  const isAdmin = roles.includes('admin') || roles.includes('super_admin');
+  const canSwitchStore = isAdmin;
 
   // Check if tenant has Multi-Store module
   const checkMultiStoreModule = useCallback(async (): Promise<boolean> => {
@@ -71,6 +85,7 @@ export function ActiveStoreProvider({ children }: { children: React.ReactNode })
     }
   }, [tenantId]);
 
+  // Fetch all stores for the tenant
   const fetchStores = useCallback(async () => {
     if (!tenantId) {
       console.log('[ActiveStoreContext] No tenantId, clearing stores');
@@ -104,6 +119,40 @@ export function ActiveStoreProvider({ children }: { children: React.ReactNode })
       setStores([]);
     }
   }, [tenantId]);
+
+  // Fetch allowed stores for the current user
+  const fetchAllowedStores = useCallback(async (): Promise<Store[]> => {
+    if (!user?.id || !tenantId) {
+      return [];
+    }
+
+    try {
+      console.log('[ActiveStoreContext] Fetching allowed stores for user:', user.id);
+      
+      const { data, error } = await supabase.rpc('get_user_allowed_stores', {
+        _user_id: user.id
+      });
+
+      if (error) {
+        console.error('[ActiveStoreContext] Error fetching allowed stores:', error);
+        return [];
+      }
+
+      const allowed: Store[] = (data || []).map((s: AllowedStore) => ({
+        id: s.store_id,
+        name: s.store_name,
+        code: s.store_code,
+        is_headquarters: s.is_headquarters,
+        is_active: s.is_active,
+      }));
+
+      console.log('[ActiveStoreContext] Allowed stores:', allowed.length);
+      return allowed;
+    } catch (err) {
+      console.error('[ActiveStoreContext] Exception fetching allowed stores:', err);
+      return [];
+    }
+  }, [user?.id, tenantId]);
 
   // Ensure headquarters store exists for the tenant
   const ensureHeadquarters = useCallback(async (): Promise<Store | null> => {
@@ -156,6 +205,8 @@ export function ActiveStoreProvider({ children }: { children: React.ReactNode })
       console.log('[ActiveStoreContext] No user or tenant, clearing state');
       setActiveStoreIdState(null);
       setActiveStore(null);
+      setAllowedStores([]);
+      setHasNoStoreAccess(false);
       setIsLoading(false);
       return;
     }
@@ -184,7 +235,30 @@ export function ActiveStoreProvider({ children }: { children: React.ReactNode })
         }
       }
 
-      // 3. Determine the active store
+      // 3. Fetch allowed stores for the user
+      const userAllowedStores = await fetchAllowedStores();
+      setAllowedStores(userAllowedStores);
+
+      console.log('[ActiveStoreContext] User allowed stores:', userAllowedStores.length);
+
+      // 4. Check if user has no store access (non-admin with no explicit access)
+      if (!isAdmin && userAllowedStores.length === 0 && moduleActive) {
+        console.warn('[ActiveStoreContext] User has no store access!');
+        setHasNoStoreAccess(true);
+        setActiveStoreIdState(null);
+        setActiveStore(null);
+        setIsLoading(false);
+        return;
+      }
+
+      setHasNoStoreAccess(false);
+
+      // 5. Determine which stores the user can actually use
+      const effectiveStores = isAdmin 
+        ? availableStores 
+        : (userAllowedStores.length > 0 ? userAllowedStores : availableStores);
+
+      // 6. Determine the active store
       let finalStoreId: string | null = null;
       let source = 'unknown';
 
@@ -204,38 +278,39 @@ export function ActiveStoreProvider({ children }: { children: React.ReactNode })
           console.warn('[ActiveStoreContext] SINGLE-STORE MODE - no store available!');
         }
       } else {
-        // MULTI-STORE MODE: Apply full logic
+        // MULTI-STORE MODE: Apply full logic with allowed stores filter
         const profileStoreId = (profile as any)?.store_id;
         const savedStoreId = localStorage.getItem(`${STORAGE_KEY}_${tenantId}`);
 
         console.log('[ActiveStoreContext] MULTI-STORE MODE - checking sources:', {
           profileStoreId,
           savedStoreId,
-          canSwitchStore
+          canSwitchStore,
+          effectiveStoresCount: effectiveStores.length
         });
 
-        if (!canSwitchStore && profileStoreId) {
-          // Branch managers are locked to their store
+        if (!canSwitchStore && profileStoreId && effectiveStores.some(s => s.id === profileStoreId)) {
+          // Non-admins are locked to their assigned store
           finalStoreId = profileStoreId;
           source = 'locked_profile';
-        } else if (savedStoreId && availableStores.some(s => s.id === savedStoreId)) {
-          // Admin has saved preference and it's valid
+        } else if (savedStoreId && effectiveStores.some(s => s.id === savedStoreId)) {
+          // Use saved preference if valid within allowed stores
           finalStoreId = savedStoreId;
           source = 'localStorage';
-        } else if (profileStoreId && availableStores.some(s => s.id === profileStoreId)) {
+        } else if (profileStoreId && effectiveStores.some(s => s.id === profileStoreId)) {
           // Use profile store_id if valid
           finalStoreId = profileStoreId;
           source = 'profile';
-        } else {
-          // Fallback to headquarters
-          const hq = availableStores.find(s => s.is_headquarters);
-          finalStoreId = hq?.id || availableStores[0]?.id || null;
+        } else if (effectiveStores.length > 0) {
+          // Fallback to headquarters or first allowed store
+          const hq = effectiveStores.find(s => s.is_headquarters);
+          finalStoreId = hq?.id || effectiveStores[0]?.id || null;
           source = 'headquarters_fallback';
         }
       }
 
       setActiveStoreIdState(finalStoreId);
-      const store = availableStores.find(s => s.id === finalStoreId) || null;
+      const store = effectiveStores.find(s => s.id === finalStoreId) || null;
       setActiveStore(store);
 
       console.log('[ActiveStoreContext] === FINAL RESULT ===');
@@ -245,7 +320,8 @@ export function ActiveStoreProvider({ children }: { children: React.ReactNode })
         isHeadquarters: store?.is_headquarters,
         isActive: store?.is_active,
         source,
-        hasMultiStore: moduleActive
+        hasMultiStore: moduleActive,
+        allowedStoresCount: userAllowedStores.length
       });
 
     } catch (err) {
@@ -253,7 +329,7 @@ export function ActiveStoreProvider({ children }: { children: React.ReactNode })
     } finally {
       setIsLoading(false);
     }
-  }, [user, tenantId, profile, stores, canSwitchStore, checkMultiStoreModule, ensureHeadquarters, roles]);
+  }, [user, tenantId, profile, stores, canSwitchStore, isAdmin, checkMultiStoreModule, ensureHeadquarters, fetchAllowedStores, roles]);
 
   // Fetch stores when tenant changes
   useEffect(() => {
@@ -274,8 +350,15 @@ export function ActiveStoreProvider({ children }: { children: React.ReactNode })
       return;
     }
 
+    // Validate the store is in allowed stores (or all stores for admins)
+    const effectiveStores = isAdmin ? stores : allowedStores;
+    if (!effectiveStores.some(s => s.id === storeId)) {
+      console.warn('[ActiveStoreContext] Store not in allowed list:', storeId);
+      return;
+    }
+
     setActiveStoreIdState(storeId);
-    const store = stores.find(s => s.id === storeId) || null;
+    const store = effectiveStores.find(s => s.id === storeId) || null;
     setActiveStore(store);
 
     // Save to localStorage for persistence
@@ -284,7 +367,7 @@ export function ActiveStoreProvider({ children }: { children: React.ReactNode })
     }
 
     console.log('[ActiveStoreContext] Store switched to:', store?.name);
-  }, [canSwitchStore, stores, tenantId]);
+  }, [canSwitchStore, isAdmin, stores, allowedStores, tenantId]);
 
   const refreshStores = useCallback(async () => {
     await fetchStores();
@@ -297,9 +380,11 @@ export function ActiveStoreProvider({ children }: { children: React.ReactNode })
         activeStore,
         activeStoreName: activeStore?.name || null,
         stores,
+        allowedStores,
         isLoading,
         canSwitchStore,
         hasMultiStore,
+        hasNoStoreAccess,
         setActiveStoreId,
         refreshStores,
       }}

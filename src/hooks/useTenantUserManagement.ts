@@ -22,6 +22,7 @@ interface CreateUserData {
   full_name: string;
   phone?: string;
   roles: AppRole[];
+  storeIds?: string[];
 }
 
 interface UpdateUserData {
@@ -29,6 +30,7 @@ interface UpdateUserData {
   phone?: string;
   is_active?: boolean;
   roles?: AppRole[];
+  storeIds?: string[];
 }
 
 // Removed getAuthHeaders - supabase.functions.invoke auto-includes auth
@@ -122,7 +124,14 @@ export function useTenantUserManagement() {
       if (!session) throw new Error("Sessão não encontrada. Faça login novamente.");
 
       const res = await supabase.functions.invoke("manage-users", {
-        body: { action: "create", tenantId, userData: data },
+        body: { 
+          action: "create", 
+          tenantId, 
+          userData: {
+            ...data,
+            storeIds: data.storeIds || [],
+          }
+        },
       });
 
       if (res.error) throw res.error;
@@ -191,6 +200,16 @@ export function useTenantUserManagement() {
 
         if (resRoles.error) throw resRoles.error;
         if (resRoles.data?.error) throw new Error(resRoles.data.error);
+      }
+
+      // Update store access if provided
+      if (data.storeIds !== undefined) {
+        const resStores = await supabase.functions.invoke("manage-users", {
+          body: { action: "update-store-access", tenantId, userId, storeIds: data.storeIds },
+        });
+
+        if (resStores.error) throw resStores.error;
+        if (resStores.data?.error) throw new Error(resStores.data.error);
       }
 
       toast({ title: "Sucesso", description: "Usuário atualizado com sucesso" });
