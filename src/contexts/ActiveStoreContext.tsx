@@ -13,6 +13,7 @@ interface Store {
 interface ActiveStoreContextType {
   activeStoreId: string | null;
   activeStore: Store | null;
+  activeStoreName: string | null;
   stores: Store[];
   isLoading: boolean;
   canSwitchStore: boolean;
@@ -294,6 +295,7 @@ export function ActiveStoreProvider({ children }: { children: React.ReactNode })
       value={{
         activeStoreId,
         activeStore,
+        activeStoreName: activeStore?.name || null,
         stores,
         isLoading,
         canSwitchStore,

@@ -28,6 +28,7 @@ import NotFound from "./pages/NotFound";
 import Tables from "./pages/Tables";
 import PublicMenu from "./pages/PublicMenu";
 import TrackOrder from "./pages/TrackOrder";
+import Stores from "./pages/Stores";
 
 const queryClient = new QueryClient();
 
@@ -70,6 +71,7 @@ const App = () => (
                   <Route path="/stock" element={<Stock />} />
                   <Route path="/reports" element={<Reports />} />
                   <Route path="/settings" element={<Settings />} />
+                  <Route path="/stores" element={<Stores />} />
                   <Route path="/courier-dashboard" element={<CourierDashboard />} />
                   <Route path="/super-admin" element={<SuperAdmin />} />
                 </Route>
