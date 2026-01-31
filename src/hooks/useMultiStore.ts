@@ -220,46 +220,35 @@ export function useMultiStore() {
     return { success: true };
   };
 
-  // Toggle store status with validations
+  // Toggle store status via Edge Function
   const toggleStore = useMutation({
     mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => {
-      // If trying to deactivate, run validations
-      if (!is_active) {
-        const validation = await checkStoreToggleAllowed(id);
-        if (!validation.success) {
-          throw new Error(validation.message);
-        }
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+
+      if (!token) {
+        throw new Error('Sessão expirada. Faça login novamente.');
       }
 
-      // Perform the update
-      const { error } = await supabase
-        .from('stores')
-        .update({ 
-          is_active, 
-          updated_at: new Date().toISOString() 
-        })
-        .eq('id', id);
+      const response = await supabase.functions.invoke('toggle-store-status', {
+        body: { store_id: id, is_active },
+      });
 
-      if (error) throw error;
+      if (response.error) {
+        throw new Error(response.error.message || 'Erro ao alterar status da loja');
+      }
 
-      // Log the action to audit_logs
-      const store = stores.find(s => s.id === id);
-      await supabase
-        .from('audit_logs')
-        .insert({
-          tenant_id: tenantId!,
-          entity_type: 'store',
-          entity_id: id,
-          action: is_active ? 'store_activated' : 'store_deactivated',
-          old_data: { is_active: !is_active, store_name: store?.name },
-          new_data: { is_active, store_name: store?.name },
-        });
+      const result = response.data as ToggleResult;
 
-      return { id, is_active };
+      if (!result.success) {
+        throw new Error(result.message || 'Erro ao alterar status da loja');
+      }
+
+      return { id, is_active, message: result.message };
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['stores'] });
-      toast.success(data.is_active ? 'Loja ativada com sucesso' : 'Loja desativada com sucesso');
+      toast.success(data.message || (data.is_active ? 'Loja ativada com sucesso' : 'Loja desativada com sucesso'));
     },
     onError: (error: Error) => {
       toast.error(error.message);
