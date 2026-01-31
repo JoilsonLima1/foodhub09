@@ -10,6 +10,8 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { 
   ArrowLeft, 
   Building2,
@@ -25,10 +27,13 @@ import {
   Mail,
   Edit2,
   Star,
+  AlertCircle,
+  Shield,
 } from 'lucide-react';
 import { ModuleStatusBadge } from '../ModuleStatusBadge';
 import type { TenantModuleDetailed } from '@/hooks/useTenantModules';
 import { useMultiStore, Store } from '@/hooks/useMultiStore';
+import { toast } from 'sonner';
 
 interface MultiStorePanelProps {
   module?: TenantModuleDetailed;
@@ -40,13 +45,16 @@ export function MultiStorePanel({ module, onBack }: MultiStorePanelProps) {
     stores,
     stats,
     isLoading,
+    canManageStores,
     createStore,
     updateStore,
     deleteStore,
     toggleStore,
+    checkStoreToggleAllowed,
   } = useMultiStore();
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [togglingStoreId, setTogglingStoreId] = useState<string | null>(null);
   const [newStore, setNewStore] = useState({
     name: '',
     code: '',
@@ -81,6 +89,44 @@ export function MultiStorePanel({ module, onBack }: MultiStorePanelProps) {
         });
       },
     });
+  };
+
+  const handleToggleStore = async (store: Store, newStatus: boolean) => {
+    // Don't allow deactivating headquarters
+    if (store.is_headquarters && !newStatus) {
+      toast.error('A loja matriz não pode ser desativada.');
+      return;
+    }
+
+    // Check permissions
+    if (!canManageStores) {
+      toast.error('Você não tem permissão para alterar o status da loja.');
+      return;
+    }
+
+    setTogglingStoreId(store.id);
+    
+    try {
+      await toggleStore.mutateAsync({ id: store.id, is_active: newStatus });
+    } finally {
+      setTogglingStoreId(null);
+    }
+  };
+
+  const isToggleDisabled = (store: Store) => {
+    // Headquarters cannot be toggled
+    if (store.is_headquarters) return true;
+    // Currently toggling this store
+    if (togglingStoreId === store.id) return true;
+    // User doesn't have permission
+    if (!canManageStores) return true;
+    return false;
+  };
+
+  const getToggleTooltip = (store: Store) => {
+    if (store.is_headquarters) return 'A loja matriz não pode ser desativada';
+    if (!canManageStores) return 'Você não tem permissão para alterar o status';
+    return store.is_active ? 'Clique para desativar' : 'Clique para ativar';
   };
 
   const getStoreTypeLabel = (type: string) => {
@@ -119,6 +165,17 @@ export function MultiStorePanel({ module, onBack }: MultiStorePanelProps) {
           </p>
         </div>
       </div>
+
+      {/* Permission Warning */}
+      {!canManageStores && (
+        <Alert>
+          <Shield className="h-4 w-4" />
+          <AlertDescription>
+            Você está visualizando as lojas em modo somente leitura. 
+            Para gerenciar lojas, é necessário ter permissão de Administrador ou Gerente.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Quick Stats */}
       <div className="grid gap-4 sm:grid-cols-4">
@@ -363,12 +420,28 @@ export function MultiStorePanel({ module, onBack }: MultiStorePanelProps) {
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Switch
-                            checked={store.is_active}
-                            onCheckedChange={(checked) => toggleStore.mutate({ id: store.id, is_active: checked })}
-                            disabled={store.is_headquarters}
-                          />
-                          {!store.is_headquarters && (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="relative">
+                                  {togglingStoreId === store.id && (
+                                    <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-full z-10">
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                    </div>
+                                  )}
+                                  <Switch
+                                    checked={store.is_active}
+                                    onCheckedChange={(checked) => handleToggleStore(store, checked)}
+                                    disabled={isToggleDisabled(store)}
+                                  />
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>{getToggleTooltip(store)}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                          {!store.is_headquarters && canManageStores && (
                             <Button
                               variant="ghost"
                               size="icon"
