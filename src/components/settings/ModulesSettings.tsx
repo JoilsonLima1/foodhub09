@@ -24,6 +24,8 @@ import {
   Construction,
   Loader2,
   ExternalLink,
+  Building2,
+  Plus,
 } from 'lucide-react';
 import { 
   useAddonModules, 
@@ -35,6 +37,7 @@ import {
 import { useTenantModules } from '@/hooks/useTenantModules';
 import { useBillingSettings } from '@/hooks/useBillingSettings';
 import { useModulePurchases } from '@/hooks/useModulePurchases';
+import { useMultiStoreQuota } from '@/hooks/useMultiStoreQuota';
 import { cn } from '@/lib/utils';
 import { ModulePurchaseDialog } from './ModulePurchaseDialog';
 import { ModuleStatusBadge } from '@/components/modules/ModuleStatusBadge';
@@ -59,15 +62,20 @@ const getModuleIcon = (iconName: string) => {
     Truck,
     ShoppingCart,
     MessageSquare,
+    Building2,
   };
   return icons[iconName] || Package;
 };
+
+// Modules that support quota-based purchasing (can buy multiple units)
+const QUOTA_BASED_MODULES = ['multi_store'];
 
 export function ModulesSettings() {
   const { modules, isLoading: modulesLoading } = useAddonModules();
   const { tenantModules, tenantInfo, isLoading: tenantLoading, getModulesBreakdown, refetch } = useTenantModules();
   const { settings: billingSettings } = useBillingSettings();
   const { pendingPurchases, hasPendingPurchase, getPendingPurchase, refreshPurchases } = useModulePurchases();
+  const multiStoreQuota = useMultiStoreQuota();
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [purchaseDialogOpen, setPurchaseDialogOpen] = useState(false);
   const [selectedModule, setSelectedModule] = useState<AddonModule | null>(null);
@@ -259,6 +267,9 @@ export function ModulesSettings() {
             <div className="space-y-3">
               {breakdown.purchasedModules.map(sub => {
                 const ModuleIcon = getModuleIcon(sub.addon_module?.icon || 'Package');
+                const isMultiStore = sub.addon_module?.slug === 'multi_store';
+                const isPending = hasPendingPurchase(sub.addon_module_id);
+                
                 return (
                   <div
                     key={sub.id}
@@ -277,15 +288,45 @@ export function ModulesSettings() {
                         {sub.purchased_at && (
                           <span>Contratado em {formatDate(sub.purchased_at)}</span>
                         )}
+                        {/* Show quota info for multi_store */}
+                        {isMultiStore && (
+                          <span className="flex items-center gap-1 text-primary">
+                            <Building2 className="h-3 w-3" />
+                            {multiStoreQuota.quota} unidades ({multiStoreQuota.available} disponíveis)
+                          </span>
+                        )}
                       </div>
                     </div>
-                    <div className="text-right">
-                      <Badge variant="default">Ativo</Badge>
-                      {sub.next_billing_date && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Próx: {formatDate(sub.next_billing_date)}
-                        </p>
+                    <div className="flex items-center gap-2">
+                      {/* Allow buying more units for quota-based modules */}
+                      {isMultiStore && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={isPending}
+                          onClick={() => {
+                            if (sub.addon_module) {
+                              setSelectedModule(sub.addon_module);
+                              setPurchaseDialogOpen(true);
+                            }
+                          }}
+                        >
+                          {isPending ? (
+                            <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                          ) : (
+                            <Plus className="h-4 w-4 mr-1" />
+                          )}
+                          +1 unidade
+                        </Button>
                       )}
+                      <div className="text-right">
+                        <Badge variant="default">Ativo</Badge>
+                        {sub.next_billing_date && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Próx: {formatDate(sub.next_billing_date)}
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );

@@ -2885,6 +2885,7 @@ export type Database = {
           id: string
           is_active: boolean | null
           phone: string | null
+          store_id: string | null
           tenant_id: string | null
           updated_at: string | null
           user_id: string
@@ -2897,6 +2898,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           phone?: string | null
+          store_id?: string | null
           tenant_id?: string | null
           updated_at?: string | null
           user_id: string
@@ -2909,11 +2911,19 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           phone?: string | null
+          store_id?: string | null
           tenant_id?: string | null
           updated_at?: string | null
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "profiles_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "profiles_tenant_id_fkey"
             columns: ["tenant_id"]
@@ -4176,6 +4186,7 @@ export type Database = {
           notes: string | null
           price_paid: number | null
           purchased_at: string | null
+          quota: number | null
           source: string | null
           started_at: string
           status: Database["public"]["Enums"]["addon_subscription_status"]
@@ -4202,6 +4213,7 @@ export type Database = {
           notes?: string | null
           price_paid?: number | null
           purchased_at?: string | null
+          quota?: number | null
           source?: string | null
           started_at?: string
           status?: Database["public"]["Enums"]["addon_subscription_status"]
@@ -4228,6 +4240,7 @@ export type Database = {
           notes?: string | null
           price_paid?: number | null
           purchased_at?: string | null
+          quota?: number | null
           source?: string | null
           started_at?: string
           status?: Database["public"]["Enums"]["addon_subscription_status"]
@@ -4943,6 +4956,7 @@ export type Database = {
       }
     }
     Functions: {
+      can_create_branch: { Args: { p_tenant_id: string }; Returns: boolean }
       force_sync_tenant_modules: {
         Args: { p_tenant_id: string }
         Returns: {
@@ -4982,6 +4996,14 @@ export type Database = {
           sync_menu: boolean
           tenant_id: string
           updated_at: string
+        }[]
+      }
+      get_multi_store_quota: {
+        Args: { p_tenant_id: string }
+        Returns: {
+          available: number
+          quota: number
+          used: number
         }[]
       }
       get_plan_addon_modules: {

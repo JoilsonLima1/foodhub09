@@ -377,21 +377,29 @@ serve(async (req) => {
       );
     }
 
-    // Check if already subscribed (active module)
-    const { data: existingSub } = await supabase
-      .from("tenant_addon_subscriptions")
-      .select("id, status")
-      .eq("tenant_id", tenantId)
-      .eq("addon_module_id", moduleId)
-      .in("status", ["active", "trial"])
-      .maybeSingle();
+    // Modules that support quota-based purchasing (can buy multiple units)
+    const quotaBasedModules = ['multi_store'];
+    const isQuotaBased = quotaBasedModules.includes(module.slug);
 
-    if (existingSub) {
-      logStep("Module already subscribed", { subscriptionId: existingSub.id });
-      return new Response(
-        JSON.stringify({ error: "Módulo já está ativo", code: "ALREADY_SUBSCRIBED" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
-      );
+    // Check if already subscribed (active module) - skip for quota-based modules
+    if (!isQuotaBased) {
+      const { data: existingSub } = await supabase
+        .from("tenant_addon_subscriptions")
+        .select("id, status")
+        .eq("tenant_id", tenantId)
+        .eq("addon_module_id", moduleId)
+        .in("status", ["active", "trial"])
+        .maybeSingle();
+
+      if (existingSub) {
+        logStep("Module already subscribed", { subscriptionId: existingSub.id });
+        return new Response(
+          JSON.stringify({ error: "Módulo já está ativo", code: "ALREADY_SUBSCRIBED" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+        );
+      }
+    } else {
+      logStep("Quota-based module - allowing re-purchase", { slug: module.slug });
     }
 
     // Check if there's a pending purchase for this module

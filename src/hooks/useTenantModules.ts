@@ -164,10 +164,24 @@ export function useTenantModules() {
     // Plan included module details (brinde) from catalog
     const planIncludedModules = allModules?.filter(m => planIncludedIds.has(m.id)) || [];
 
+    // Modules that support quota-based purchasing (can buy multiple units)
+    const quotaBasedModuleSlugs = ['multi_store'];
+    
     // Available = all active modules that are not already subscribed AND not included in plan
-    const availableModules = allModules?.filter(m => 
-      !activeModuleIds.has(m.id) && !planIncludedIds.has(m.id)
-    ) || [];
+    // Exception: quota-based modules remain available for re-purchase even if already owned
+    const availableModules = allModules?.filter(m => {
+      // Always exclude plan-included modules
+      if (planIncludedIds.has(m.id)) return false;
+      
+      // For quota-based modules, always show as available for re-purchase
+      if (quotaBasedModuleSlugs.includes(m.slug)) {
+        // Don't show in available if already purchased - it will show in purchased section with +1 button
+        return !activeModuleIds.has(m.id);
+      }
+      
+      // For regular modules, hide if already subscribed
+      return !activeModuleIds.has(m.id);
+    }) || [];
 
     // Calculate totals
     const planPrice = (tenantInfo?.subscription_plans as any)?.monthly_price || 0;
