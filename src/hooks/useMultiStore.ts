@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
+import { useMultiStoreQuota } from './useMultiStoreQuota';
 
 export interface Store {
   id: string;
@@ -47,9 +48,26 @@ export interface ToggleResult {
   blockReason?: 'headquarters' | 'open_cash_register' | 'active_orders' | 'no_permission';
 }
 
+export interface CreateStoreInput {
+  name: string;
+  code: string;
+  type?: 'headquarters' | 'branch' | 'franchise';
+  address?: string;
+  city?: string;
+  state?: string;
+  zip_code?: string;
+  phone?: string;
+  email?: string;
+  manager_name?: string;
+  manager_user_id?: string;
+}
+
 export function useMultiStore() {
   const queryClient = useQueryClient();
   const { tenantId, hasRole } = useAuth();
+  
+  // Quota management
+  const quotaInfo = useMultiStoreQuota();
 
   // Check if user has permission to manage stores
   const canManageStores = hasRole('admin') || hasRole('manager');
@@ -70,29 +88,32 @@ export function useMultiStore() {
     enabled: !!tenantId,
   });
 
-  // Stats summary
+  // Stats summary including quota
   const stats = {
     totalStores: stores.length,
     activeStores: stores.filter(s => s.is_active).length,
     headquarters: stores.find(s => s.is_headquarters),
     branches: stores.filter(s => !s.is_headquarters),
+    quota: quotaInfo.quota,
+    used: quotaInfo.used,
+    available: quotaInfo.available,
+    canCreateBranch: quotaInfo.canCreateBranch,
+    hasModulePurchased: quotaInfo.hasModulePurchased,
   };
 
-  // Create store
+  // Create store with quota check
   const createStore = useMutation({
-    mutationFn: async (store: {
-      name: string;
-      code: string;
-      type?: 'headquarters' | 'branch' | 'franchise';
-      address?: string;
-      city?: string;
-      state?: string;
-      zip_code?: string;
-      phone?: string;
-      email?: string;
-      manager_name?: string;
-    }) => {
+    mutationFn: async (store: CreateStoreInput) => {
       const isFirst = stores.length === 0;
+      const isBranch = !isFirst && store.type !== 'headquarters';
+      
+      // Check quota for branches
+      if (isBranch && !quotaInfo.canCreateBranch) {
+        throw new Error(
+          'Você não possui cotas disponíveis para criar novas filiais. ' +
+          'Adquira mais unidades do módulo Multi Lojas para expandir.'
+        );
+      }
       
       const { data, error } = await supabase
         .from('stores')
@@ -106,10 +127,20 @@ export function useMultiStore() {
         .single();
 
       if (error) throw error;
+      
+      // If manager_user_id is provided, link the user to this store
+      if (store.manager_user_id && data) {
+        await supabase
+          .from('profiles')
+          .update({ store_id: data.id })
+          .eq('user_id', store.manager_user_id);
+      }
+      
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['stores'] });
+      queryClient.invalidateQueries({ queryKey: ['multi-store-quota'] });
       toast.success('Loja criada com sucesso');
     },
     onError: (error: Error) => {
@@ -295,7 +326,7 @@ export function useMultiStore() {
   return {
     stores,
     stats,
-    isLoading: storesLoading,
+    isLoading: storesLoading || quotaInfo.isLoading,
     canManageStores,
     createStore,
     updateStore,
@@ -304,5 +335,12 @@ export function useMultiStore() {
     checkStoreToggleAllowed,
     getStoreProducts,
     updateStoreProduct,
+    // Quota-related exports
+    quota: quotaInfo.quota,
+    used: quotaInfo.used,
+    available: quotaInfo.available,
+    canCreateBranch: quotaInfo.canCreateBranch,
+    hasModulePurchased: quotaInfo.hasModulePurchased,
+    refetchQuota: quotaInfo.refetch,
   };
 }

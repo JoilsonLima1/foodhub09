@@ -249,7 +249,8 @@ async function activateModuleFromPurchase(
     purchaseId,
     moduleId: addon_module_id, 
     tenantId: tenant_id,
-    moduleName: moduleData?.name
+    moduleName: moduleData?.name,
+    moduleSlug: moduleData?.slug
   });
 
   const now = new Date();
@@ -273,7 +274,50 @@ async function activateModuleFromPurchase(
     logStep("Failed to update module_purchases", { error: updatePurchaseError.message });
   }
 
-  // 2. Create or update tenant_addon_subscriptions (activate the module)
+  // 2. Check if this is a quota-based module (like multi_store)
+  const quotaBasedModules = ['multi_store'];
+  const isQuotaBased = moduleData?.slug && quotaBasedModules.includes(moduleData.slug);
+
+  if (isQuotaBased) {
+    // For quota-based modules, check if subscription already exists
+    const { data: existingSub, error: existingError } = await supabase
+      .from('tenant_addon_subscriptions')
+      .select('id, quota')
+      .eq('tenant_id', tenant_id)
+      .eq('addon_module_id', addon_module_id)
+      .in('status', ['active', 'trial'])
+      .maybeSingle();
+
+    if (existingSub) {
+      // Increment quota by 1
+      const newQuota = (existingSub.quota || 1) + 1;
+      const { error: updateError } = await supabase
+        .from('tenant_addon_subscriptions')
+        .update({
+          quota: newQuota,
+          price_paid: (existingSub.price_paid || 0) + (payment.value || moduleData?.monthly_price || 0),
+          next_billing_date: nextBillingDate.toISOString(),
+          updated_at: now.toISOString()
+        })
+        .eq('id', existingSub.id);
+
+      if (updateError) {
+        logStep("Failed to increment quota", { error: updateError.message });
+        throw new Error("Failed to increment module quota");
+      }
+
+      logStep("Quota incremented for module", { 
+        tenantId: tenant_id, 
+        moduleSlug: moduleData.slug,
+        oldQuota: existingSub.quota || 1,
+        newQuota
+      });
+      return;
+    }
+    // If no existing subscription, fall through to create new one with quota=1
+  }
+
+  // 3. Create or update tenant_addon_subscriptions (activate the module)
   const { error: upsertError } = await supabase
     .from('tenant_addon_subscriptions')
     .upsert({
@@ -288,7 +332,8 @@ async function activateModuleFromPurchase(
       purchased_at: now.toISOString(),
       next_billing_date: nextBillingDate.toISOString(),
       asaas_payment_id: payment.id,
-      billing_mode: 'separate'
+      billing_mode: 'separate',
+      quota: isQuotaBased ? 1 : 1 // Default quota is 1
     }, {
       onConflict: 'tenant_id,addon_module_id'
     });
@@ -302,8 +347,10 @@ async function activateModuleFromPurchase(
     tenantId: tenant_id, 
     moduleId: addon_module_id,
     moduleName: moduleData?.name,
+    moduleSlug: moduleData?.slug,
     pricePaid: payment.value,
-    nextBilling: nextBillingDate.toISOString()
+    nextBilling: nextBillingDate.toISOString(),
+    isQuotaBased
   });
 }
 
