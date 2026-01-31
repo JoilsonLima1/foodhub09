@@ -11,24 +11,31 @@ const logStep = (step: string, details?: any) => {
   console.log(`[ASAAS-WEBHOOK] ${step}${detailsStr}`);
 };
 
+// Legacy parser for backward compatibility with old externalReference format
 type ParsedRef =
   | { type: 'plan'; plan_id: string; user_id: string }
   | { type: 'module'; module_id_prefix: string; tenant_id_prefix: string };
 
 function parseExternalReference(ref: string): ParsedRef | null {
-  // Try JSON format first (new compact format)
+  // Try JSON format first (old compact format)
   try {
     const json = JSON.parse(ref);
-    // New compact format: { t: 'mod', m: 'first8chars', tn: 'first8chars' }
     if (json.t === 'mod' && json.m && json.tn) {
       return { type: 'module', module_id_prefix: json.m, tenant_id_prefix: json.tn };
     }
-    // Plan format: { t: 'plan', p: 'first8chars', u: 'first8chars' }
     if (json.t === 'plan' && json.p && json.u) {
       return { type: 'plan', plan_id: json.p, user_id: json.u };
     }
   } catch {
-    // Not JSON, try legacy pipe format
+    // Not JSON
+  }
+
+  // Try new simple format: mod:modulePrefix:tenantPrefix
+  if (ref.startsWith('mod:')) {
+    const parts = ref.split(':');
+    if (parts.length >= 3) {
+      return { type: 'module', module_id_prefix: parts[1], tenant_id_prefix: parts[2] };
+    }
   }
 
   // Legacy formats:
@@ -53,6 +60,21 @@ function parseExternalReference(ref: string): ParsedRef | null {
   return null;
 }
 
+function getPaymentMethodFromAsaas(billingType: string | undefined): string {
+  switch (billingType) {
+    case 'PIX':
+      return 'pix';
+    case 'CREDIT_CARD':
+      return 'credit_card';
+    case 'BOLETO':
+      return 'boleto';
+    case 'UNDEFINED':
+      return 'multiple';
+    default:
+      return billingType?.toLowerCase() || 'unknown';
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -66,7 +88,8 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const body = await req.json();
-    logStep("Event received", { event: body.event, paymentId: body.payment?.id });
+    const paymentId = body.payment?.id;
+    logStep("Event received", { event: body.event, paymentId });
 
     // Only process confirmed payments
     if (body.event !== "PAYMENT_RECEIVED" && body.event !== "PAYMENT_CONFIRMED") {
@@ -78,37 +101,95 @@ serve(async (req) => {
     }
 
     const payment = body.payment;
-    if (!payment?.externalReference) {
-      logStep("No externalReference found, skipping");
+    if (!paymentId) {
+      logStep("No payment ID found, skipping");
       return new Response(
-        JSON.stringify({ received: true, processed: false, reason: "no_external_reference" }),
+        JSON.stringify({ received: true, processed: false, reason: "no_payment_id" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // ============================================================
+    // NEW ARCHITECTURE: First try to find module purchase by payment_id
+    // This is the PRIMARY lookup method
+    // ============================================================
+    const { data: modulePurchase, error: purchaseError } = await supabase
+      .from('module_purchases')
+      .select(`
+        id,
+        tenant_id,
+        addon_module_id,
+        user_id,
+        status,
+        gateway,
+        addon_modules:addon_module_id (id, name, slug, monthly_price)
+      `)
+      .eq('gateway_payment_id', paymentId)
+      .eq('status', 'pending')
+      .maybeSingle();
+
+    if (modulePurchase) {
+      logStep("Module purchase found by payment_id", { 
+        purchaseId: modulePurchase.id,
+        moduleId: modulePurchase.addon_module_id,
+        tenantId: modulePurchase.tenant_id
+      });
+
+      // Activate the module
+      await activateModuleFromPurchase(supabase, modulePurchase, payment);
+      
+      return new Response(
+        JSON.stringify({ received: true, processed: true, type: 'module', method: 'payment_id' }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    logStep("No module purchase found by payment_id, trying legacy methods", { paymentId });
+
+    // ============================================================
+    // LEGACY FALLBACK: Try externalReference for backward compatibility
+    // ============================================================
+    if (!payment?.externalReference) {
+      // Store as unmatched event for later processing
+      await storeUnmatchedEvent(supabase, 'asaas', body.event, payment);
+      logStep("No externalReference and no module_purchase match, stored as unmatched");
+      return new Response(
+        JSON.stringify({ received: true, processed: false, reason: "no_match", stored: true }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     const metadata = parseExternalReference(String(payment.externalReference));
     if (!metadata) {
-      logStep("Invalid externalReference", { externalReference: payment.externalReference });
+      await storeUnmatchedEvent(supabase, 'asaas', body.event, payment);
+      logStep("Invalid externalReference, stored as unmatched", { externalReference: payment.externalReference });
       return new Response(
-        JSON.stringify({ received: true, processed: false, reason: "invalid_external_reference" }),
+        JSON.stringify({ received: true, processed: false, reason: "invalid_external_reference", stored: true }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    logStep("Metadata parsed", metadata);
+    logStep("Metadata parsed from externalReference (legacy)", metadata);
 
     if (metadata.type === 'plan') {
-      // Activate subscription plan
       await activatePlanSubscription(supabase, metadata, payment);
+      return new Response(
+        JSON.stringify({ received: true, processed: true, type: 'plan', method: 'external_reference' }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     if (metadata.type === 'module') {
-      // Activate addon module - need to find full IDs from prefixes
-      await activateModuleSubscription(supabase, metadata, payment);
+      // Legacy module activation via prefix matching
+      await activateModuleSubscriptionLegacy(supabase, metadata, payment);
+      return new Response(
+        JSON.stringify({ received: true, processed: true, type: 'module', method: 'external_reference_legacy' }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     return new Response(
-      JSON.stringify({ received: true, processed: true }),
+      JSON.stringify({ received: true, processed: false, reason: "unknown_type" }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 
@@ -124,6 +205,109 @@ serve(async (req) => {
   }
 });
 
+// Store unmatched webhook events for later processing
+async function storeUnmatchedEvent(
+  supabase: any,
+  gateway: string,
+  eventType: string,
+  payment: any
+) {
+  try {
+    const { error } = await supabase
+      .from('webhook_unmatched_events')
+      .upsert({
+        gateway,
+        event_type: eventType,
+        gateway_payment_id: payment?.id || null,
+        gateway_customer_id: payment?.customer || null,
+        payload: { payment, timestamp: new Date().toISOString() },
+        status: 'pending'
+      }, {
+        onConflict: 'gateway,gateway_payment_id'
+      });
+    
+    if (error) {
+      logStep("Failed to store unmatched event", { error: error.message });
+    } else {
+      logStep("Unmatched event stored", { paymentId: payment?.id });
+    }
+  } catch (e) {
+    logStep("Exception storing unmatched event", { error: String(e) });
+  }
+}
+
+// NEW: Activate module from module_purchases record
+async function activateModuleFromPurchase(
+  supabase: any,
+  purchase: any,
+  payment: any
+) {
+  const { tenant_id, addon_module_id, user_id, id: purchaseId } = purchase;
+  const moduleData = purchase.addon_modules;
+
+  logStep("Activating module from purchase", { 
+    purchaseId,
+    moduleId: addon_module_id, 
+    tenantId: tenant_id,
+    moduleName: moduleData?.name
+  });
+
+  const now = new Date();
+  const expiresAt = new Date(now);
+  expiresAt.setDate(expiresAt.getDate() + 30);
+  const nextBillingDate = new Date(now);
+  nextBillingDate.setDate(nextBillingDate.getDate() + 30);
+
+  // 1. Update module_purchases to PAID
+  const { error: updatePurchaseError } = await supabase
+    .from('module_purchases')
+    .update({
+      status: 'paid',
+      billing_type: payment.billingType,
+      invoice_number: payment.invoiceNumber || null,
+      paid_at: now.toISOString()
+    })
+    .eq('id', purchaseId);
+
+  if (updatePurchaseError) {
+    logStep("Failed to update module_purchases", { error: updatePurchaseError.message });
+  }
+
+  // 2. Create or update tenant_addon_subscriptions (activate the module)
+  const { error: upsertError } = await supabase
+    .from('tenant_addon_subscriptions')
+    .upsert({
+      tenant_id,
+      addon_module_id,
+      status: 'active',
+      source: 'purchase',
+      is_free: false,
+      price_paid: payment.value || moduleData?.monthly_price || 0,
+      started_at: now.toISOString(),
+      expires_at: expiresAt.toISOString(),
+      purchased_at: now.toISOString(),
+      next_billing_date: nextBillingDate.toISOString(),
+      asaas_payment_id: payment.id,
+      billing_mode: 'separate'
+    }, {
+      onConflict: 'tenant_id,addon_module_id'
+    });
+
+  if (upsertError) {
+    logStep("Failed to upsert tenant_addon_subscriptions", { error: upsertError.message });
+    throw new Error("Failed to activate module");
+  }
+
+  logStep("Module activated successfully via purchase record", { 
+    tenantId: tenant_id, 
+    moduleId: addon_module_id,
+    moduleName: moduleData?.name,
+    pricePaid: payment.value,
+    nextBilling: nextBillingDate.toISOString()
+  });
+}
+
+// Legacy: Activate plan subscription (unchanged)
 async function activatePlanSubscription(
   supabase: any,
   metadata: { plan_id: string; user_id: string },
@@ -165,7 +349,7 @@ async function activatePlanSubscription(
   // Determine payment method from Asaas billing type
   const paymentMethod = getPaymentMethodFromAsaas(payment.billingType);
 
-  // Update tenant with new subscription - including Asaas tracking fields and payment info
+  // Update tenant with new subscription
   const { error: updateError } = await supabase
     .from('tenants')
     .update({
@@ -175,7 +359,6 @@ async function activatePlanSubscription(
       subscription_current_period_end: periodEnd.toISOString(),
       asaas_customer_id: payment.customer,
       asaas_payment_id: payment.id,
-      // Payment tracking fields
       last_payment_at: now.toISOString(),
       last_payment_method: paymentMethod,
       last_payment_provider: 'asaas',
@@ -192,35 +375,20 @@ async function activatePlanSubscription(
     tenantId: profile.tenant_id, 
     planId: metadata.plan_id,
     planName: plan.name,
-    periodStart: now.toISOString(),
-    periodEnd: periodEnd.toISOString(),
-    asaasCustomerId: payment.customer,
-    asaasPaymentId: payment.id,
-    paymentMethod: paymentMethod
+    paymentMethod
   });
 }
 
-function getPaymentMethodFromAsaas(billingType: string | undefined): string {
-  switch (billingType) {
-    case 'PIX':
-      return 'pix';
-    case 'CREDIT_CARD':
-      return 'credit_card';
-    case 'BOLETO':
-      return 'boleto';
-    case 'UNDEFINED':
-      return 'multiple';
-    default:
-      return billingType?.toLowerCase() || 'unknown';
-  }
-}
-
-async function activateModuleSubscription(
+// Legacy: Activate module via prefix matching (backward compatibility)
+async function activateModuleSubscriptionLegacy(
   supabase: any,
   metadata: { module_id_prefix: string; tenant_id_prefix: string },
   payment: any
 ) {
-  logStep("Activating module subscription", { modulePrefix: metadata.module_id_prefix, tenantPrefix: metadata.tenant_id_prefix });
+  logStep("Activating module subscription (legacy)", { 
+    modulePrefix: metadata.module_id_prefix, 
+    tenantPrefix: metadata.tenant_id_prefix 
+  });
 
   // Find full module ID from prefix
   const { data: modulesFound, error: moduleError } = await supabase
@@ -261,16 +429,15 @@ async function activateModuleSubscription(
   const moduleId = moduleData.id;
   const tenantId = tenantData.id;
 
-  logStep("Found full IDs", { moduleId, tenantId, moduleName: moduleData.name });
+  logStep("Found full IDs (legacy)", { moduleId, tenantId, moduleName: moduleData.name });
 
   const now = new Date();
   const expiresAt = new Date(now);
   expiresAt.setDate(expiresAt.getDate() + 30);
-
   const nextBillingDate = new Date(now);
   nextBillingDate.setDate(nextBillingDate.getDate() + 30);
 
-  // Create or update module subscription with full payment tracking
+  // Create or update module subscription
   const { error: upsertError } = await supabase
     .from('tenant_addon_subscriptions')
     .upsert({
@@ -291,15 +458,14 @@ async function activateModuleSubscription(
     });
 
   if (upsertError) {
-    logStep("Failed to upsert module subscription", { error: upsertError.message });
+    logStep("Failed to upsert module subscription (legacy)", { error: upsertError.message });
     throw new Error("Failed to activate module");
   }
 
-  logStep("Module activated successfully", { 
+  logStep("Module activated successfully (legacy)", { 
     tenantId, 
     moduleId,
     moduleName: moduleData.name,
-    pricePaid: payment.value,
-    nextBilling: nextBillingDate.toISOString()
+    pricePaid: payment.value
   });
 }

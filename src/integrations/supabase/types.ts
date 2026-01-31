@@ -1990,6 +1990,78 @@ export type Database = {
           },
         ]
       }
+      module_purchases: {
+        Row: {
+          addon_module_id: string
+          amount: number
+          billing_type: string | null
+          created_at: string
+          currency: string
+          gateway: string
+          gateway_customer_id: string | null
+          gateway_invoice_url: string | null
+          gateway_payment_id: string | null
+          id: string
+          invoice_number: string | null
+          paid_at: string | null
+          status: string
+          tenant_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          addon_module_id: string
+          amount: number
+          billing_type?: string | null
+          created_at?: string
+          currency?: string
+          gateway: string
+          gateway_customer_id?: string | null
+          gateway_invoice_url?: string | null
+          gateway_payment_id?: string | null
+          id?: string
+          invoice_number?: string | null
+          paid_at?: string | null
+          status?: string
+          tenant_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          addon_module_id?: string
+          amount?: number
+          billing_type?: string | null
+          created_at?: string
+          currency?: string
+          gateway?: string
+          gateway_customer_id?: string | null
+          gateway_invoice_url?: string | null
+          gateway_payment_id?: string | null
+          id?: string
+          invoice_number?: string | null
+          paid_at?: string | null
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "module_purchases_addon_module_id_fkey"
+            columns: ["addon_module_id"]
+            isOneToOne: false
+            referencedRelation: "addon_modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "module_purchases_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_item_addons: {
         Row: {
           addon_id: string | null
@@ -4346,6 +4418,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      webhook_unmatched_events: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          event_type: string
+          gateway: string
+          gateway_customer_id: string | null
+          gateway_payment_id: string | null
+          id: string
+          payload: Json
+          processed_at: string | null
+          retry_count: number
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          event_type: string
+          gateway: string
+          gateway_customer_id?: string | null
+          gateway_payment_id?: string | null
+          id?: string
+          payload: Json
+          processed_at?: string | null
+          retry_count?: number
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          event_type?: string
+          gateway?: string
+          gateway_customer_id?: string | null
+          gateway_payment_id?: string | null
+          id?: string
+          payload?: Json
+          processed_at?: string | null
+          retry_count?: number
+          status?: string
+        }
+        Relationships: []
       }
     }
     Views: {

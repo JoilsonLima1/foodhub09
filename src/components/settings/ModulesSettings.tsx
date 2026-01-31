@@ -22,6 +22,8 @@ import {
   RefreshCw,
   Wallet,
   Construction,
+  Loader2,
+  ExternalLink,
 } from 'lucide-react';
 import { 
   useAddonModules, 
@@ -32,6 +34,7 @@ import {
 } from '@/hooks/useAddonModules';
 import { useTenantModules } from '@/hooks/useTenantModules';
 import { useBillingSettings } from '@/hooks/useBillingSettings';
+import { useModulePurchases } from '@/hooks/useModulePurchases';
 import { cn } from '@/lib/utils';
 import { ModulePurchaseDialog } from './ModulePurchaseDialog';
 import { ModuleStatusBadge } from '@/components/modules/ModuleStatusBadge';
@@ -64,6 +67,7 @@ export function ModulesSettings() {
   const { modules, isLoading: modulesLoading } = useAddonModules();
   const { tenantModules, tenantInfo, isLoading: tenantLoading, getModulesBreakdown, refetch } = useTenantModules();
   const { settings: billingSettings } = useBillingSettings();
+  const { pendingPurchases, hasPendingPurchase, getPendingPurchase, refreshPurchases } = useModulePurchases();
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [purchaseDialogOpen, setPurchaseDialogOpen] = useState(false);
   const [selectedModule, setSelectedModule] = useState<AddonModule | null>(null);
@@ -103,12 +107,21 @@ export function ModulesSettings() {
   };
 
   const handlePurchaseModule = (module: AddonModule) => {
+    // Block if there's already a pending purchase
+    if (hasPendingPurchase(module.id)) {
+      return;
+    }
     setSelectedModule(module);
     setPurchaseDialogOpen(true);
   };
 
   const handlePurchaseSuccess = () => {
     refetch();
+    refreshPurchases();
+  };
+
+  const handleOpenPaymentUrl = (url: string) => {
+    window.open(url, '_blank');
   };
 
   // Filter available modules by category
@@ -282,6 +295,66 @@ export function ModulesSettings() {
         </Card>
       )}
 
+      {/* Pending Purchases */}
+      {pendingPurchases.length > 0 && (
+        <Card className="border-amber-500/30 bg-amber-50/50 dark:bg-amber-950/20">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Loader2 className="h-4 w-4 text-amber-600 animate-spin" />
+              Pagamentos Pendentes ({pendingPurchases.length})
+            </CardTitle>
+            <CardDescription>
+              Aguardando confirmação de pagamento
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {pendingPurchases.map(purchase => {
+                const ModuleIcon = getModuleIcon(purchase.addon_module?.slug || 'Package');
+                return (
+                  <div
+                    key={purchase.id}
+                    className="flex items-center gap-3 p-4 rounded-lg border bg-amber-50 dark:bg-amber-950/30"
+                  >
+                    <div className="h-10 w-10 rounded-lg bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center">
+                      <ModuleIcon className="h-5 w-5 text-amber-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium">{purchase.addon_module?.name || 'Módulo'}</p>
+                      <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          Aguardando pagamento
+                        </span>
+                        <span>
+                          {formatPrice(purchase.amount)}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="bg-amber-100 text-amber-700 border-amber-300">
+                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                        Pendente
+                      </Badge>
+                      {purchase.gateway_invoice_url && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleOpenPaymentUrl(purchase.gateway_invoice_url!)}
+                        >
+                          <ExternalLink className="h-4 w-4 mr-1" />
+                          Pagar
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Separator />
 
       {/* Available Modules */}
@@ -340,22 +413,38 @@ export function ModulesSettings() {
                 const ModuleIcon = getModuleIcon(module.icon);
                 const implStatus = module.implementation_status || 'coming_soon';
                 const isAvailableForPurchase = ['ready', 'beta'].includes(implStatus);
+                const isPending = hasPendingPurchase(module.id);
+                const pendingPurchase = getPendingPurchase(module.id);
                 
                 return (
                   <Card 
                     key={module.id}
                     className={cn(
                       "flex flex-col transition-all",
-                      isAvailableForPurchase ? "hover:shadow-md" : "opacity-80"
+                      isPending && "border-amber-500/50",
+                      isAvailableForPurchase && !isPending ? "hover:shadow-md" : "opacity-80"
                     )}
                   >
                     <CardHeader className="pb-3">
                       <div className="flex items-start justify-between">
-                        <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                          <ModuleIcon className="h-5 w-5 text-primary" />
+                        <div className={cn(
+                          "h-10 w-10 rounded-lg flex items-center justify-center",
+                          isPending ? "bg-amber-100 dark:bg-amber-900/50" : "bg-primary/10"
+                        )}>
+                          <ModuleIcon className={cn(
+                            "h-5 w-5",
+                            isPending ? "text-amber-600" : "text-primary"
+                          )} />
                         </div>
                         <div className="flex flex-col items-end gap-1">
-                          <ModuleStatusBadge status={implStatus} />
+                          {isPending ? (
+                            <Badge variant="outline" className="bg-amber-100 text-amber-700 border-amber-300">
+                              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                              Pendente
+                            </Badge>
+                          ) : (
+                            <ModuleStatusBadge status={implStatus} />
+                          )}
                           <Badge variant="outline" className="text-xs">
                             {ADDON_CATEGORY_LABELS[module.category]}
                           </Badge>
@@ -402,7 +491,26 @@ export function ModulesSettings() {
                         </div>
                       </div>
                       
-                      {isAvailableForPurchase ? (
+                      {isPending ? (
+                        <div className="w-full space-y-2">
+                          <div className="w-full text-center py-2 px-3 rounded-md bg-amber-100 dark:bg-amber-900/30">
+                            <div className="flex items-center justify-center gap-2 text-sm text-amber-700 dark:text-amber-400">
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              <span>Pagamento em processamento</span>
+                            </div>
+                          </div>
+                          {pendingPurchase?.gateway_invoice_url && (
+                            <Button 
+                              variant="outline"
+                              onClick={() => handleOpenPaymentUrl(pendingPurchase.gateway_invoice_url!)}
+                              className="w-full"
+                            >
+                              <ExternalLink className="h-4 w-4 mr-2" />
+                              Ir para Pagamento
+                            </Button>
+                          )}
+                        </div>
+                      ) : isAvailableForPurchase ? (
                         <Button 
                           onClick={() => handlePurchaseModule(module)}
                           className="w-full"
