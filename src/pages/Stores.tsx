@@ -31,6 +31,8 @@ import {
   Settings,
   Trash2,
   Loader2,
+  Pencil,
+  Ban,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -49,6 +51,8 @@ export default function Stores() {
     canCreateBranch,
     hasModulePurchased,
   } = useMultiStore();
+
+  const [editingStore, setEditingStore] = useState<Store | null>(null);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [togglingStoreId, setTogglingStoreId] = useState<string | null>(null);
@@ -435,46 +439,76 @@ export default function Stores() {
                     </div>
                   </div>
                   
-                  <div className="flex items-center gap-3">
-                    {canManageStores && !store.is_headquarters && (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <div onClick={(e) => e.stopPropagation()}>
-                              <Switch
-                                checked={store.is_active}
-                                onCheckedChange={(checked) => handleToggleStore(store, checked)}
-                                disabled={togglingStoreId === store.id}
-                              />
-                            </div>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            {store.is_active ? 'Desativar loja' : 'Ativar loja'}
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    )}
-                    
-                    {canManageStores && !store.is_headquarters && (
+                  <div className="flex items-center gap-2">
+                    {/* Toggle Ativar/Desativar */}
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div onClick={(e) => e.stopPropagation()}>
+                            <Switch
+                              checked={store.is_active}
+                              onCheckedChange={(checked) => handleToggleStore(store, checked)}
+                              disabled={store.is_headquarters || togglingStoreId === store.id || !canManageStores}
+                            />
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {store.is_headquarters 
+                            ? 'Matriz não pode ser desativada' 
+                            : !canManageStores 
+                              ? 'Sem permissão para alterar status'
+                              : store.is_active ? 'Desativar loja' : 'Ativar loja'}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+
+                    {/* Botão Editar - SEMPRE visível para admins */}
+                    {canManageStores && (
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 text-destructive hover:text-destructive"
+                              className="h-8 w-8"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                if (confirm(`Tem certeza que deseja excluir a loja "${store.name}"?`)) {
-                                  deleteStore.mutate(store.id);
-                                }
+                                setEditingStore(store);
                               }}
-                              disabled={deleteStore.isPending}
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <Pencil className="h-4 w-4" />
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent>Excluir loja</TooltipContent>
+                          <TooltipContent>Editar loja</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
+                    
+                    {/* Botão Excluir - apenas para filiais */}
+                    {canManageStores && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-destructive hover:text-destructive"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (confirm(`Tem certeza que deseja excluir a loja "${store.name}"?`)) {
+                                    deleteStore.mutate(store.id);
+                                  }
+                                }}
+                                disabled={store.is_headquarters || deleteStore.isPending}
+                              >
+                                {store.is_headquarters ? <Ban className="h-4 w-4" /> : <Trash2 className="h-4 w-4" />}
+                              </Button>
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {store.is_headquarters ? 'Matriz não pode ser excluída' : 'Excluir loja'}
+                          </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
                     )}
@@ -492,6 +526,139 @@ export default function Stores() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Modal Editar Loja */}
+      <Dialog open={!!editingStore} onOpenChange={(open) => !open && setEditingStore(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Editar Loja</DialogTitle>
+            <DialogDescription>
+              {editingStore?.is_headquarters ? 'Editando a Matriz' : 'Editando Filial'}
+            </DialogDescription>
+          </DialogHeader>
+          {editingStore && (
+            <EditStoreForm 
+              store={editingStore} 
+              onClose={() => setEditingStore(null)} 
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
+  );
+}
+
+// Componente separado para o formulário de edição
+function EditStoreForm({ store, onClose }: { store: Store; onClose: () => void }) {
+  const { updateStore } = useMultiStore();
+  const [formData, setFormData] = useState({
+    name: store.name,
+    code: store.code,
+    address: store.address || '',
+    city: store.city || '',
+    state: store.state || '',
+    zip_code: store.zip_code || '',
+    phone: store.phone || '',
+    email: store.email || '',
+    manager_name: store.manager_name || '',
+  });
+
+  const handleSave = () => {
+    if (!formData.name.trim() || !formData.code.trim()) {
+      toast.error('Nome e código são obrigatórios');
+      return;
+    }
+    updateStore.mutate({ id: store.id, ...formData }, {
+      onSuccess: onClose,
+    });
+  };
+
+  return (
+    <ScrollArea className="max-h-[60vh]">
+      <div className="space-y-4 pt-4 pr-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label>Nome da Loja *</Label>
+            <Input
+              value={formData.name}
+              onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Código *</Label>
+            <Input
+              value={formData.code}
+              onChange={(e) => setFormData(prev => ({ ...prev, code: e.target.value.toUpperCase() }))}
+            />
+          </div>
+        </div>
+        <Separator />
+        <div className="space-y-2">
+          <Label>Endereço</Label>
+          <Input
+            value={formData.address}
+            onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
+          />
+        </div>
+        <div className="grid grid-cols-3 gap-4">
+          <div className="space-y-2">
+            <Label>Cidade</Label>
+            <Input
+              value={formData.city}
+              onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Estado</Label>
+            <Input
+              maxLength={2}
+              value={formData.state}
+              onChange={(e) => setFormData(prev => ({ ...prev, state: e.target.value.toUpperCase() }))}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>CEP</Label>
+            <Input
+              value={formData.zip_code}
+              onChange={(e) => setFormData(prev => ({ ...prev, zip_code: e.target.value }))}
+            />
+          </div>
+        </div>
+        <Separator />
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label>Telefone</Label>
+            <Input
+              value={formData.phone}
+              onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>E-mail</Label>
+            <Input
+              type="email"
+              value={formData.email}
+              onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+            />
+          </div>
+        </div>
+        <div className="space-y-2">
+          <Label>Gerente Responsável</Label>
+          <Input
+            value={formData.manager_name}
+            onChange={(e) => setFormData(prev => ({ ...prev, manager_name: e.target.value }))}
+          />
+        </div>
+        <div className="flex justify-end gap-2 pt-4">
+          <Button variant="outline" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button onClick={handleSave} disabled={updateStore.isPending}>
+            {updateStore.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            Salvar
+          </Button>
+        </div>
+      </div>
+    </ScrollArea>
   );
 }
