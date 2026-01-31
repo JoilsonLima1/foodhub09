@@ -192,6 +192,40 @@ export function useTenantModules() {
     ) || false;
   };
 
+  /**
+   * Check if a module is included in the current plan (even if not yet provisioned)
+   */
+  const isModuleIncludedInPlan = (moduleId: string): boolean => {
+    const planId = tenantInfo?.subscription_plan_id;
+    if (!planId || !allPlanAddons) return false;
+    return allPlanAddons.some(
+      pa => pa.plan_id === planId && pa.addon_module_id === moduleId
+    );
+  };
+
+  /**
+   * Check if a module is already active (purchased, plan_included, or manual)
+   */
+  const isModuleActive = (moduleId: string): boolean => {
+    return tenantModules?.some(
+      m => m.addon_module_id === moduleId && ['active', 'trial'].includes(m.status)
+    ) || false;
+  };
+
+  /**
+   * Check if purchase should be blocked for a module
+   * Returns reason string if blocked, null if can purchase
+   */
+  const getPurchaseBlockReason = (moduleId: string): string | null => {
+    if (isModuleIncludedInPlan(moduleId)) {
+      return 'Este módulo já está incluído no seu plano';
+    }
+    if (isModuleActive(moduleId)) {
+      return 'Você já possui este módulo ativo';
+    }
+    return null;
+  };
+
   return {
     tenantModules,
     allModules,
@@ -200,6 +234,9 @@ export function useTenantModules() {
     error: modulesError,
     getModulesBreakdown,
     hasModule,
+    isModuleIncludedInPlan,
+    isModuleActive,
+    getPurchaseBlockReason,
     syncModulesFromPlan,
     refetch,
   };

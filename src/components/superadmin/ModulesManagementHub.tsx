@@ -255,6 +255,8 @@ export function ModulesManagementHub() {
   const [isUninstallDialogOpen, setIsUninstallDialogOpen] = useState(false);
   const [isActivatePaymentOpen, setIsActivatePaymentOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [isBackfillDialogOpen, setIsBackfillDialogOpen] = useState(false);
+  const [backfillResult, setBackfillResult] = useState<any>(null);
   
   const [selectedModuleToInstall, setSelectedModuleToInstall] = useState<string | null>(null);
   const [selectedSubscriptionToUninstall, setSelectedSubscriptionToUninstall] = useState<TenantModuleSubscription | null>(null);
@@ -421,6 +423,34 @@ export function ModulesManagementHub() {
     },
   });
   
+  // Global backfill mutation
+  const globalBackfill = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke('backfill-plan-modules', {
+        method: 'POST',
+        body: {},
+      });
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      setBackfillResult(data);
+      queryClient.invalidateQueries({ queryKey: ['all-tenants-detailed'] });
+      toast({
+        title: 'Backfill concluído',
+        description: `${data?.summary?.processed || 0} organização(ões) processada(s).`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Erro no backfill',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+  
   const resetInstallForm = () => {
     setIsInstallDialogOpen(false);
     setSelectedModuleToInstall(null);
@@ -467,6 +497,34 @@ export function ModulesManagementHub() {
   
   return (
     <div className="space-y-6">
+      {/* Global Backfill Button */}
+      <Card className="border-amber-500/30 bg-amber-50/50 dark:bg-amber-950/20">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <RefreshCw className="h-4 w-4 text-amber-600" />
+            Manutenção Global de Módulos
+          </CardTitle>
+          <CardDescription>
+            Corrija módulos brinde não provisionados em todas as organizações
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-muted-foreground">
+              <p>Execute o backfill para sincronizar módulos incluídos nos planos que não foram ativados automaticamente.</p>
+            </div>
+            <Button 
+              variant="default"
+              onClick={() => setIsBackfillDialogOpen(true)}
+              className="shrink-0 ml-4"
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Executar Backfill Global
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+      
       {/* Tenant Selector */}
       <Card>
         <CardHeader>
@@ -1128,6 +1186,66 @@ export function ModulesManagementHub() {
         open={isActivatePaymentOpen}
         onOpenChange={setIsActivatePaymentOpen}
       />
+      
+      {/* Backfill Confirmation Dialog */}
+      <AlertDialog open={isBackfillDialogOpen} onOpenChange={setIsBackfillDialogOpen}>
+        <AlertDialogContent className="max-w-lg">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <RefreshCw className="h-5 w-5 text-amber-600" />
+              Confirmar Backfill Global
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação irá verificar todas as organizações com planos ativos e provisionar os módulos brinde que estão faltando.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          
+          {backfillResult && (
+            <div className="p-4 bg-muted rounded-lg space-y-2">
+              <p className="text-sm font-medium">Resultado do último backfill:</p>
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="p-2 bg-background rounded">
+                  <p className="text-lg font-bold text-green-600">{backfillResult.summary?.modules_added || 0}</p>
+                  <p className="text-xs text-muted-foreground">Adicionados</p>
+                </div>
+                <div className="p-2 bg-background rounded">
+                  <p className="text-lg font-bold text-blue-600">{backfillResult.summary?.modules_reactivated || 0}</p>
+                  <p className="text-xs text-muted-foreground">Reativados</p>
+                </div>
+                <div className="p-2 bg-background rounded">
+                  <p className="text-lg font-bold text-amber-600">{backfillResult.summary?.modules_removed || 0}</p>
+                  <p className="text-xs text-muted-foreground">Removidos</p>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground text-center">
+                {backfillResult.summary?.processed || 0} de {backfillResult.summary?.total || 0} organizações processadas
+              </p>
+            </div>
+          )}
+          
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setBackfillResult(null)}>
+              Fechar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => globalBackfill.mutate()}
+              disabled={globalBackfill.isPending}
+            >
+              {globalBackfill.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Processando...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  {backfillResult ? 'Executar Novamente' : 'Executar Backfill'}
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

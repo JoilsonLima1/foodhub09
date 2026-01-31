@@ -199,6 +199,22 @@ Deno.serve(async (req) => {
       console.log('Role assigned: admin')
     }
 
+    // Sync modules included in the tenant's plan (provision "brinde" modules)
+    // This ensures any modules bundled with the plan are automatically activated
+    try {
+      const { error: syncError } = await supabaseAdmin.rpc('sync_tenant_modules_from_plan', {
+        p_tenant_id: tenantId,
+      })
+      if (syncError) {
+        console.error('[bootstrap-user] Module sync error (non-fatal):', syncError)
+        // Continue - module sync failure shouldn't block user creation
+      } else {
+        console.log('[bootstrap-user] Plan modules synced successfully for tenant:', tenantId)
+      }
+    } catch (syncErr) {
+      console.error('[bootstrap-user] Module sync exception (non-fatal):', syncErr)
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
