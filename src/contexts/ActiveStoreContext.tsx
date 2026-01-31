@@ -37,8 +37,11 @@ export function ActiveStoreProvider({ children }: { children: React.ReactNode })
   const canSwitchStore = roles.includes('admin') || roles.includes('super_admin');
 
   // Check if tenant has Multi-Store module
-  const checkMultiStoreModule = useCallback(async () => {
-    if (!tenantId) return false;
+  const checkMultiStoreModule = useCallback(async (): Promise<boolean> => {
+    if (!tenantId) {
+      console.log('[ActiveStoreContext] No tenantId, skipping module check');
+      return false;
+    }
 
     try {
       const { data, error } = await supabase
@@ -58,7 +61,9 @@ export function ActiveStoreProvider({ children }: { children: React.ReactNode })
         return false;
       }
 
-      return (data?.length || 0) > 0;
+      const hasModule = (data?.length || 0) > 0;
+      console.log('[ActiveStoreContext] Multi-store module check:', { tenantId, hasModule });
+      return hasModule;
     } catch (err) {
       console.error('[ActiveStoreContext] Exception checking module:', err);
       return false;
@@ -67,23 +72,30 @@ export function ActiveStoreProvider({ children }: { children: React.ReactNode })
 
   const fetchStores = useCallback(async () => {
     if (!tenantId) {
+      console.log('[ActiveStoreContext] No tenantId, clearing stores');
       setStores([]);
       setIsLoading(false);
       return;
     }
 
     try {
+      console.log('[ActiveStoreContext] Fetching stores for tenant:', tenantId);
+      
       const { data, error } = await supabase
         .from('stores')
         .select('id, name, code, is_headquarters, is_active')
         .eq('tenant_id', tenantId)
         .order('is_headquarters', { ascending: false })
-        .order('name');
+        .order('created_at', { ascending: true });
 
       if (error) {
         console.error('[ActiveStoreContext] Error fetching stores:', error);
         setStores([]);
       } else {
+        console.log('[ActiveStoreContext] Stores fetched:', {
+          count: data?.length || 0,
+          stores: data?.map(s => ({ id: s.id, name: s.name, isHQ: s.is_headquarters }))
+        });
         setStores(data || []);
       }
     } catch (err) {
@@ -92,8 +104,55 @@ export function ActiveStoreProvider({ children }: { children: React.ReactNode })
     }
   }, [tenantId]);
 
+  // Ensure headquarters store exists for the tenant
+  const ensureHeadquarters = useCallback(async (): Promise<Store | null> => {
+    if (!tenantId) return null;
+
+    try {
+      console.log('[ActiveStoreContext] Ensuring headquarters exists for tenant:', tenantId);
+      
+      // Call the database function to ensure HQ exists
+      const { data: storeId, error } = await supabase.rpc('ensure_headquarters_store', {
+        p_tenant_id: tenantId
+      });
+
+      if (error) {
+        console.error('[ActiveStoreContext] Error ensuring headquarters:', error);
+        return null;
+      }
+
+      console.log('[ActiveStoreContext] Headquarters store ID:', storeId);
+
+      // Fetch the store details
+      const { data: store, error: fetchError } = await supabase
+        .from('stores')
+        .select('id, name, code, is_headquarters, is_active')
+        .eq('id', storeId)
+        .single();
+
+      if (fetchError) {
+        console.error('[ActiveStoreContext] Error fetching headquarters:', fetchError);
+        return null;
+      }
+
+      return store;
+    } catch (err) {
+      console.error('[ActiveStoreContext] Exception ensuring headquarters:', err);
+      return null;
+    }
+  }, [tenantId]);
+
   const determineActiveStore = useCallback(async () => {
+    console.log('[ActiveStoreContext] === DETERMINING ACTIVE STORE ===');
+    console.log('[ActiveStoreContext] Context:', { 
+      user: user?.id, 
+      tenantId, 
+      storesCount: stores.length,
+      roles 
+    });
+
     if (!user || !tenantId) {
+      console.log('[ActiveStoreContext] No user or tenant, clearing state');
       setActiveStoreIdState(null);
       setActiveStore(null);
       setIsLoading(false);
@@ -107,58 +166,85 @@ export function ActiveStoreProvider({ children }: { children: React.ReactNode })
       const moduleActive = await checkMultiStoreModule();
       setHasMultiStore(moduleActive);
 
-      // 2. If NO Multi-Store module, use simple single-store logic
-      if (!moduleActive) {
-        // Just get the headquarters (or first store) for single-store tenants
-        const hq = stores.find(s => s.is_headquarters) || stores[0] || null;
-        
-        if (hq) {
-          setActiveStoreIdState(hq.id);
-          setActiveStore(hq);
-          console.log('[ActiveStoreContext] Single-store mode - using:', hq.name);
-        } else {
-          // No store exists yet - this is OK for new tenants
-          // The bootstrap-user function should create the HQ store
-          setActiveStoreIdState(null);
-          setActiveStore(null);
-          console.log('[ActiveStoreContext] No stores found for tenant');
+      console.log('[ActiveStoreContext] Module status:', { 
+        hasMultiStore: moduleActive,
+        storesAvailable: stores.length 
+      });
+
+      // 2. If no stores exist, ensure headquarters is created
+      let availableStores = stores;
+      if (stores.length === 0) {
+        console.log('[ActiveStoreContext] No stores found, ensuring headquarters...');
+        const hqStore = await ensureHeadquarters();
+        if (hqStore) {
+          availableStores = [hqStore];
+          setStores([hqStore]);
+          console.log('[ActiveStoreContext] Headquarters created:', hqStore.name);
         }
-        
-        setIsLoading(false);
-        return;
       }
 
-      // 3. Multi-Store mode: Apply full logic
-      const profileStoreId = (profile as any)?.store_id;
-      const savedStoreId = localStorage.getItem(`${STORAGE_KEY}_${tenantId}`);
-
+      // 3. Determine the active store
       let finalStoreId: string | null = null;
+      let source = 'unknown';
 
-      if (!canSwitchStore && profileStoreId) {
-        // Branch managers are locked to their store
-        finalStoreId = profileStoreId;
-      } else if (savedStoreId && stores.some(s => s.id === savedStoreId)) {
-        // Admin has saved preference and it's valid
-        finalStoreId = savedStoreId;
-      } else if (profileStoreId && stores.some(s => s.id === profileStoreId)) {
-        // Use profile store_id if valid
-        finalStoreId = profileStoreId;
+      if (!moduleActive) {
+        // SINGLE-STORE MODE: Just use the first store (headquarters)
+        const hq = availableStores.find(s => s.is_headquarters) || availableStores[0] || null;
+        
+        if (hq) {
+          finalStoreId = hq.id;
+          source = 'single_store_hq';
+          console.log('[ActiveStoreContext] SINGLE-STORE MODE - using:', { 
+            id: hq.id, 
+            name: hq.name,
+            isHQ: hq.is_headquarters 
+          });
+        } else {
+          console.warn('[ActiveStoreContext] SINGLE-STORE MODE - no store available!');
+        }
       } else {
-        // Fallback to headquarters
-        const hq = stores.find(s => s.is_headquarters);
-        finalStoreId = hq?.id || stores[0]?.id || null;
+        // MULTI-STORE MODE: Apply full logic
+        const profileStoreId = (profile as any)?.store_id;
+        const savedStoreId = localStorage.getItem(`${STORAGE_KEY}_${tenantId}`);
+
+        console.log('[ActiveStoreContext] MULTI-STORE MODE - checking sources:', {
+          profileStoreId,
+          savedStoreId,
+          canSwitchStore
+        });
+
+        if (!canSwitchStore && profileStoreId) {
+          // Branch managers are locked to their store
+          finalStoreId = profileStoreId;
+          source = 'locked_profile';
+        } else if (savedStoreId && availableStores.some(s => s.id === savedStoreId)) {
+          // Admin has saved preference and it's valid
+          finalStoreId = savedStoreId;
+          source = 'localStorage';
+        } else if (profileStoreId && availableStores.some(s => s.id === profileStoreId)) {
+          // Use profile store_id if valid
+          finalStoreId = profileStoreId;
+          source = 'profile';
+        } else {
+          // Fallback to headquarters
+          const hq = availableStores.find(s => s.is_headquarters);
+          finalStoreId = hq?.id || availableStores[0]?.id || null;
+          source = 'headquarters_fallback';
+        }
       }
 
       setActiveStoreIdState(finalStoreId);
-      const store = stores.find(s => s.id === finalStoreId) || null;
+      const store = availableStores.find(s => s.id === finalStoreId) || null;
       setActiveStore(store);
 
-      console.log('[ActiveStoreContext] Multi-store mode - active store:', {
-        storeId: finalStoreId,
-        storeName: store?.name,
-        source: !canSwitchStore && profileStoreId ? 'locked_profile' : 
-                savedStoreId ? 'localStorage' : 
-                profileStoreId ? 'profile' : 'headquarters_fallback'
+      console.log('[ActiveStoreContext] === FINAL RESULT ===');
+      console.log('[ActiveStoreContext] Active store determined:', {
+        activeStoreId: finalStoreId,
+        storeName: store?.name || 'NONE',
+        isHeadquarters: store?.is_headquarters,
+        isActive: store?.is_active,
+        source,
+        hasMultiStore: moduleActive
       });
 
     } catch (err) {
@@ -166,7 +252,7 @@ export function ActiveStoreProvider({ children }: { children: React.ReactNode })
     } finally {
       setIsLoading(false);
     }
-  }, [user, tenantId, profile, stores, canSwitchStore, checkMultiStoreModule]);
+  }, [user, tenantId, profile, stores, canSwitchStore, checkMultiStoreModule, ensureHeadquarters, roles]);
 
   // Fetch stores when tenant changes
   useEffect(() => {
@@ -175,7 +261,8 @@ export function ActiveStoreProvider({ children }: { children: React.ReactNode })
 
   // Determine active store when stores or profile changes
   useEffect(() => {
-    if (stores.length > 0 || !tenantId) {
+    // Run determination even if stores is empty - we'll create HQ if needed
+    if (tenantId) {
       determineActiveStore();
     }
   }, [stores, determineActiveStore, tenantId]);
