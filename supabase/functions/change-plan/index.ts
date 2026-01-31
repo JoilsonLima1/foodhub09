@@ -188,6 +188,23 @@ serve(async (req) => {
       changeType: actualChangeType,
     });
 
+    // Sync modules included in the new plan (provision "brinde" modules)
+    // This handles upgrade/downgrade: activates new plan modules, deactivates removed ones
+    let modulesSynced = false;
+    try {
+      const { error: syncError } = await supabaseAdmin.rpc('sync_tenant_modules_from_plan', {
+        p_tenant_id: tenantId,
+      });
+      if (syncError) {
+        console.error("[change-plan] Module sync error (non-fatal):", syncError);
+      } else {
+        modulesSynced = true;
+        console.log("[change-plan] Plan modules synced successfully for tenant:", tenantId);
+      }
+    } catch (syncErr) {
+      console.error("[change-plan] Module sync exception (non-fatal):", syncErr);
+    }
+
     // Log the plan change for audit
     try {
       await supabaseAdmin.from("audit_logs").insert({
@@ -197,7 +214,11 @@ serve(async (req) => {
         entity_id: tenantId,
         action: changeType === "upgrade" ? "plan_upgrade" : "plan_downgrade",
         old_data: { plan_id: tenant.subscription_plan_id },
-        new_data: { plan_id: targetPlanId, plan_name: targetPlan.name },
+        new_data: { 
+          plan_id: targetPlanId, 
+          plan_name: targetPlan.name,
+          modules_synced: modulesSynced,
+        },
       });
     } catch (auditError) {
       // Don't fail the request if audit logging fails
@@ -210,6 +231,7 @@ serve(async (req) => {
         message: `Plan ${changeType === "upgrade" ? "upgraded" : "changed"} successfully`,
         newPlanId: targetPlanId,
         newPlanName: targetPlan.name,
+        modulesSynced,
       }),
       { 
         status: 200, 

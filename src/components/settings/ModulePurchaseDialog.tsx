@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Loader2, Package, CreditCard, Info } from 'lucide-react';
+import { Loader2, Package, CreditCard, Info, AlertTriangle, Gift } from 'lucide-react';
 import { useBillingSettings } from '@/hooks/useBillingSettings';
 import { useTenantModules } from '@/hooks/useTenantModules';
 import type { AddonModule } from '@/hooks/useAddonModules';
@@ -30,7 +30,7 @@ export function ModulePurchaseDialog({
   onSuccess,
 }: ModulePurchaseDialogProps) {
   const { settings } = useBillingSettings();
-  const { tenantInfo, getModulesBreakdown } = useTenantModules();
+  const { tenantInfo, getModulesBreakdown, getPurchaseBlockReason } = useTenantModules();
   const [showCheckout, setShowCheckout] = useState(false);
 
   const breakdown = getModulesBreakdown();
@@ -46,9 +46,13 @@ export function ModulePurchaseDialog({
 
   if (!module) return null;
 
+  // Check if purchase is blocked
+  const blockReason = getPurchaseBlockReason(module.id);
+
   const newTotal = breakdown.totalMonthly + module.monthly_price;
 
   const handleConfirm = () => {
+    if (blockReason) return;
     setShowCheckout(true);
   };
 
@@ -73,6 +77,21 @@ export function ModulePurchaseDialog({
           </DialogHeader>
 
           <div className="space-y-4">
+            {/* Block Reason Alert */}
+            {blockReason && (
+              <div className="flex items-start gap-3 p-4 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-700">
+                <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-medium text-amber-800 dark:text-amber-300">
+                    Contratação não disponível
+                  </p>
+                  <p className="text-sm text-amber-700 dark:text-amber-400 mt-1">
+                    {blockReason}
+                  </p>
+                </div>
+              </div>
+            )}
+            
             {/* Current Plan */}
             <div className="p-4 rounded-lg bg-muted/50">
               <div className="flex items-center justify-between">
@@ -166,18 +185,20 @@ export function ModulePurchaseDialog({
 
           <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Cancelar
+              {blockReason ? 'Fechar' : 'Cancelar'}
             </Button>
-            <Button onClick={handleConfirm}>
-              <CreditCard className="h-4 w-4 mr-2" />
-              Confirmar Contratação
-            </Button>
+            {!blockReason && (
+              <Button onClick={handleConfirm}>
+                <CreditCard className="h-4 w-4 mr-2" />
+                Confirmar Contratação
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Checkout Dialog */}
-      {module && (
+      {module && !blockReason && (
         <CheckoutDialog
           open={showCheckout}
           onOpenChange={setShowCheckout}
