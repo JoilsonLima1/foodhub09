@@ -4160,6 +4160,7 @@ export type Database = {
       tenant_addon_subscriptions: {
         Row: {
           addon_module_id: string
+          admin_notes: string | null
           asaas_payment_id: string | null
           asaas_subscription_id: string | null
           billing_mode: string | null
@@ -4167,7 +4168,9 @@ export type Database = {
           created_at: string
           created_by: string | null
           expires_at: string | null
+          grant_type: string | null
           id: string
+          installed_by: string | null
           is_free: boolean | null
           next_billing_date: string | null
           notes: string | null
@@ -4183,6 +4186,7 @@ export type Database = {
         }
         Insert: {
           addon_module_id: string
+          admin_notes?: string | null
           asaas_payment_id?: string | null
           asaas_subscription_id?: string | null
           billing_mode?: string | null
@@ -4190,7 +4194,9 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           expires_at?: string | null
+          grant_type?: string | null
           id?: string
+          installed_by?: string | null
           is_free?: boolean | null
           next_billing_date?: string | null
           notes?: string | null
@@ -4206,6 +4212,7 @@ export type Database = {
         }
         Update: {
           addon_module_id?: string
+          admin_notes?: string | null
           asaas_payment_id?: string | null
           asaas_subscription_id?: string | null
           billing_mode?: string | null
@@ -4213,7 +4220,9 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           expires_at?: string | null
+          grant_type?: string | null
           id?: string
+          installed_by?: string | null
           is_free?: boolean | null
           next_billing_date?: string | null
           notes?: string | null
@@ -4237,6 +4246,66 @@ export type Database = {
           },
           {
             foreignKeyName: "tenant_addon_subscriptions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenant_module_audit: {
+        Row: {
+          action: string
+          addon_module_id: string
+          grant_type: string | null
+          id: string
+          metadata: Json | null
+          new_status: string | null
+          notes: string | null
+          performed_at: string
+          performed_by: string | null
+          previous_status: string | null
+          source: string | null
+          tenant_id: string
+        }
+        Insert: {
+          action: string
+          addon_module_id: string
+          grant_type?: string | null
+          id?: string
+          metadata?: Json | null
+          new_status?: string | null
+          notes?: string | null
+          performed_at?: string
+          performed_by?: string | null
+          previous_status?: string | null
+          source?: string | null
+          tenant_id: string
+        }
+        Update: {
+          action?: string
+          addon_module_id?: string
+          grant_type?: string | null
+          id?: string
+          metadata?: Json | null
+          new_status?: string | null
+          notes?: string | null
+          performed_at?: string
+          performed_by?: string | null
+          previous_status?: string | null
+          source?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_module_audit_addon_module_id_fkey"
+            columns: ["addon_module_id"]
+            isOneToOne: false
+            referencedRelation: "addon_modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_module_audit_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -4874,6 +4943,14 @@ export type Database = {
       }
     }
     Functions: {
+      force_sync_tenant_modules: {
+        Args: { p_tenant_id: string }
+        Returns: {
+          action_taken: string
+          details: string
+          module_name: string
+        }[]
+      }
       get_active_payment_gateways: {
         Args: never
         Returns: {

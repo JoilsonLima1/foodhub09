@@ -32,7 +32,7 @@ import { UsersManager } from '@/components/superadmin/UsersManager';
 import { OrphanDataManager } from '@/components/superadmin/OrphanDataManager';
 import { SuggestionsManager } from '@/components/superadmin/SuggestionsManager';
 import { AddonModulesManager } from '@/components/superadmin/AddonModulesManager';
-import { TenantAddonsManager } from '@/components/superadmin/TenantAddonsManager';
+import { ModulesManagementHub } from '@/components/superadmin/ModulesManagementHub';
 import { useSubscribers } from '@/hooks/useSubscribers';
 import { useOrganizations } from '@/hooks/useOrganizations';
 
@@ -244,16 +244,16 @@ export default function SuperAdmin() {
         </TabsContent>
 
         <TabsContent value="addons">
-          <Tabs defaultValue="catalog" className="space-y-4">
+          <Tabs defaultValue="management" className="space-y-4">
             <TabsList>
+              <TabsTrigger value="management">Instalar por Organização</TabsTrigger>
               <TabsTrigger value="catalog">Catálogo de Módulos</TabsTrigger>
-              <TabsTrigger value="assignments">Módulos por Tenant</TabsTrigger>
             </TabsList>
+            <TabsContent value="management">
+              <ModulesManagementHub />
+            </TabsContent>
             <TabsContent value="catalog">
               <AddonModulesManager />
-            </TabsContent>
-            <TabsContent value="assignments">
-              <TenantAddonsManager />
             </TabsContent>
           </Tabs>
         </TabsContent>
