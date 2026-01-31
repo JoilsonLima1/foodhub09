@@ -33,10 +33,21 @@ interface RecentOrder {
 
 export default function Dashboard() {
   const { profile, tenantId } = useAuth();
-  const { activeStore, activeStoreId, isLoading: isLoadingStore } = useActiveStore();
+  const { activeStore, activeStoreId, isLoading: isLoadingStore, hasMultiStore } = useActiveStore();
   const { t } = useBusinessCategoryContext();
   const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Debug logging for store resolution
+  useEffect(() => {
+    console.log('[Dashboard] Store context:', {
+      tenantId,
+      activeStoreId,
+      activeStoreName: activeStore?.name,
+      hasMultiStore,
+      isLoadingStore
+    });
+  }, [tenantId, activeStoreId, activeStore, hasMultiStore, isLoadingStore]);
 
   useEffect(() => {
     const fetchRecentOrders = async () => {
