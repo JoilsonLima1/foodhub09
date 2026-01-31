@@ -5,8 +5,10 @@ import { useLowStockAlerts } from '@/hooks/useLowStockAlerts';
 import { usePreparingAlerts } from '@/hooks/usePreparingAlerts';
 import { TrialExpirationBanner } from '@/components/trial/TrialExpirationBanner';
 import { TrialExpiredOverlay } from '@/components/trial/TrialExpiredOverlay';
+import { NoStoreAccessAlert } from './NoStoreAccessAlert';
 import { useFeatureAccess } from '@/hooks/useFeatureAccess';
 import { useAuth } from '@/contexts/AuthContext';
+import { useActiveStore } from '@/contexts/ActiveStoreContext';
 import { useAppearance } from '@/hooks/useAppearance';
 import { cn } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
@@ -16,7 +18,8 @@ const ALWAYS_ACCESSIBLE_PAGES = ['/dashboard', '/settings', '/super-admin'];
 
 export function AppLayout() {
   const location = useLocation();
-  const { roles } = useAuth();
+  const { roles, profile } = useAuth();
+  const { hasNoStoreAccess, hasMultiStore } = useActiveStore();
   const { sidebarCollapsed } = useAppearance();
   const { hasAccess, isTrialExpired, reason, isLoading } = useFeatureAccess();
   const [loadingTimeout, setLoadingTimeout] = useState(false);
@@ -94,7 +97,12 @@ export function AppLayout() {
           {showTrialExpiredOverlay && (
             <TrialExpiredOverlay featureName={getFeatureNameFromPath(currentPath)} />
           )}
-          <Outlet />
+          {/* Show no store access alert for multi-store tenants when user has no access */}
+          {hasNoStoreAccess && hasMultiStore && !isSuperAdmin && (
+            <NoStoreAccessAlert userName={profile?.full_name} />
+          )}
+          {/* Only render outlet if user has store access or it's a single-store tenant */}
+          {(!hasNoStoreAccess || !hasMultiStore || isSuperAdmin) && <Outlet />}
         </div>
       </main>
     </div>

@@ -13,7 +13,8 @@ export function StoreSelector() {
   const { 
     activeStoreId, 
     activeStore, 
-    stores, 
+    stores,
+    allowedStores,
     canSwitchStore, 
     setActiveStoreId, 
     isLoading,
@@ -25,12 +26,28 @@ export function StoreSelector() {
     return null;
   }
 
-  // Also hide if only one store exists
-  if (stores.length <= 1) {
+  // Determine which stores to show in the selector
+  // Admins see all stores, non-admins see only allowed stores
+  const effectiveStores = canSwitchStore ? stores : allowedStores;
+
+  // Hide if only one store available
+  if (effectiveStores.length <= 1) {
+    // Show locked badge if user has only one store
+    if (effectiveStores.length === 1 && activeStore) {
+      return (
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/50 rounded-md">
+          <Store className="h-4 w-4 text-muted-foreground" />
+          <span className="text-sm font-medium">{activeStore.name}</span>
+          {activeStore.is_headquarters && (
+            <Badge variant="secondary" className="text-[10px] px-1.5">Matriz</Badge>
+          )}
+        </div>
+      );
+    }
     return null;
   }
 
-  // For non-admin users, show locked badge
+  // For non-admin users with limited stores, show locked badge
   if (!canSwitchStore && activeStore) {
     return (
       <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/50 rounded-md">
@@ -56,7 +73,7 @@ export function StoreSelector() {
         </div>
       </SelectTrigger>
       <SelectContent>
-        {stores.map((store) => (
+        {effectiveStores.map((store) => (
           <SelectItem key={store.id} value={store.id}>
             <div className="flex items-center gap-2">
               <span>{store.name}</span>
