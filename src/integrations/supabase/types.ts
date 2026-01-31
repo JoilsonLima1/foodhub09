@@ -4957,6 +4957,10 @@ export type Database = {
     }
     Functions: {
       can_create_branch: { Args: { p_tenant_id: string }; Returns: boolean }
+      ensure_headquarters_store: {
+        Args: { p_tenant_id: string }
+        Returns: string
+      }
       force_sync_tenant_modules: {
         Args: { p_tenant_id: string }
         Returns: {
@@ -5138,6 +5142,7 @@ export type Database = {
           slug: string
         }[]
       }
+      get_user_active_store: { Args: { p_user_id: string }; Returns: string }
       get_user_tenant_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useActiveStore } from '@/contexts/ActiveStoreContext';
 import { useBusinessCategoryContext } from '@/contexts/BusinessCategoryContext';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,6 +10,7 @@ import {
   Package,
   ShoppingCart,
   LayoutDashboard,
+  Building2,
 } from 'lucide-react';
 import { ORDER_STATUS_LABELS, ORDER_ORIGIN_LABELS } from '@/lib/constants';
 import type { OrderStatus, OrderOrigin } from '@/types/database';
@@ -31,6 +33,7 @@ interface RecentOrder {
 
 export default function Dashboard() {
   const { profile, tenantId } = useAuth();
+  const { activeStore, activeStoreId, isLoading: isLoadingStore } = useActiveStore();
   const { t } = useBusinessCategoryContext();
   const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -148,8 +151,18 @@ export default function Dashboard() {
             <LayoutDashboard className="h-5 w-5" />
             Dashboard
           </h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Olá, {profile?.full_name?.split(' ')[0] || 'Usuário'}! Resumo em tempo real.
+          <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+            Olá, {profile?.full_name?.split(' ')[0] || 'Usuário'}! 
+            {activeStore && (
+              <>
+                <span className="mx-1">•</span>
+                <Building2 className="h-3 w-3" />
+                <span>{activeStore.name}</span>
+                {activeStore.is_headquarters && (
+                  <Badge variant="secondary" className="text-[9px] px-1 py-0 ml-1">Matriz</Badge>
+                )}
+              </>
+            )}
           </p>
         </div>
       </div>

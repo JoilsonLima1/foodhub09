@@ -37,6 +37,7 @@ import {
 import { useState, useMemo } from 'react';
 import fallbackLogo from '@/assets/logo.png';
 import { TrialStatusBadge } from '@/components/trial/TrialStatusBadge';
+import { StoreSelector } from './StoreSelector';
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   LayoutDashboard,
@@ -203,8 +204,9 @@ export function AppSidebar() {
 
         {/* Trial Status Badge - Compact */}
         {!sidebarCollapsed && (
-          <div className="px-3 py-2 border-b border-sidebar-border">
+          <div className="px-3 py-2 border-b border-sidebar-border space-y-2">
             <TrialStatusBadge />
+            <StoreSelector />
           </div>
         )}
 

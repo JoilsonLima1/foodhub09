@@ -112,6 +112,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log('[AuthContext] Profile found:', { 
           id: profileData.id, 
           tenant_id: profileData.tenant_id,
+          store_id: profileData.store_id,
           full_name: profileData.full_name 
         });
         
@@ -121,6 +122,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           avatar_url: profileData.avatar_url,
           phone: profileData.phone,
           tenant_id: profileData.tenant_id,
+          store_id: profileData.store_id,
           is_active: profileData.is_active ?? true,
         });
         setTenantId(profileData.tenant_id);
