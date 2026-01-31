@@ -38,6 +38,7 @@ export interface UserWithProfile {
     avatar_url: string | null;
     phone: string | null;
     tenant_id: string | null;
+    store_id: string | null;
     is_active: boolean;
   } | null;
   roles: AppRole[];

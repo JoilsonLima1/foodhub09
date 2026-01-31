@@ -136,12 +136,45 @@ Deno.serve(async (req) => {
 
     console.log(`Created tenant: ${tenantId} for user: ${userId}`)
 
-    // Upsert profile with tenant_id (create if missing)
+    // Create headquarters store for this tenant
+    let storeId: string | null = null
+    try {
+      const { data: storeData, error: storeError } = await supabaseAdmin
+        .rpc('ensure_headquarters_store', { p_tenant_id: tenantId })
+
+      if (storeError) {
+        console.error('[bootstrap-user] Store creation error (non-fatal):', storeError)
+        // Try direct insert as fallback
+        const { data: directStore, error: directError } = await supabaseAdmin
+          .from('stores')
+          .insert({
+            tenant_id: tenantId,
+            name: baseName || 'Matriz',
+            code: 'MATRIZ',
+            is_headquarters: true,
+            is_active: true,
+            type: 'headquarters'
+          })
+          .select('id')
+          .single()
+
+        if (!directError && directStore) {
+          storeId = directStore.id
+        }
+      } else {
+        storeId = storeData
+      }
+      console.log('[bootstrap-user] Store created/ensured:', storeId)
+    } catch (storeErr) {
+      console.error('[bootstrap-user] Store exception (non-fatal):', storeErr)
+    }
+
+    // Upsert profile with tenant_id and store_id (create if missing)
     const fullName = (userMetadata?.full_name || baseName || userEmail)?.toString().trim().slice(0, 120) || 'Usuário'
     if (existingProfile?.id) {
       const { error: profileError } = await supabaseAdmin
         .from('profiles')
-        .update({ tenant_id: tenantId })
+        .update({ tenant_id: tenantId, store_id: storeId })
         .eq('user_id', userId)
 
       if (profileError) {
@@ -158,6 +191,7 @@ Deno.serve(async (req) => {
           user_id: userId,
           full_name: fullName,
           tenant_id: tenantId,
+          store_id: storeId,
           is_active: true,
         })
 
@@ -170,7 +204,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    console.log('Profile ensured with tenant_id')
+    console.log('Profile ensured with tenant_id and store_id')
 
     // First user in this tenant becomes admin
     const { data: existingRoleInTenant } = await supabaseAdmin
