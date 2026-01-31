@@ -18,9 +18,25 @@ import {
   ChevronDown,
   ChevronUp,
   Building2,
+  Phone,
+  Gift,
+  Zap,
+  CreditCard,
+  Users,
 } from 'lucide-react';
-import { useAddonModules, ADDON_CATEGORY_LABELS, type AddonModuleCategory } from '@/hooks/useAddonModules';
+import { usePublicAddonModules, type PublicAddonModule } from '@/hooks/usePublicAddonModules';
 import { Skeleton } from '@/components/ui/skeleton';
+
+type AddonModuleCategory = PublicAddonModule['category'];
+
+// Category labels for display
+const ADDON_CATEGORY_LABELS: Record<AddonModuleCategory, string> = {
+  integrations: 'Integrações',
+  operations: 'Operações',
+  marketing: 'Marketing',
+  hardware: 'Hardware',
+  logistics: 'Logística',
+};
 
 
 // Icon mapping for module categories
@@ -58,7 +74,7 @@ const CATEGORY_GRADIENTS: Record<AddonModuleCategory, string> = {
 };
 
 export function AddonModulesSection() {
-  const { modules, isLoading } = useAddonModules();
+  const { modules, isLoading } = usePublicAddonModules();
   const [showAllModules, setShowAllModules] = useState(false);
 
   const formatPrice = (price: number, currency: string = 'BRL') => {
@@ -75,8 +91,8 @@ export function AddonModulesSection() {
     window.open(`https://wa.me/5511999999999?text=${message}`, '_blank');
   };
 
-  // Only show active modules
-  const activeModules = modules?.filter(m => m.is_active) || [];
+  // Modules already filtered by is_active and implementation_status='ready' in the public function
+  const activeModules = modules || [];
 
   // Group modules by category for display
   const modulesByCategory = activeModules.reduce((acc, module) => {

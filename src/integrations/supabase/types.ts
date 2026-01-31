@@ -4915,6 +4915,21 @@ export type Database = {
           addon_slug: string
         }[]
       }
+      get_public_addon_modules: {
+        Args: never
+        Returns: {
+          category: string
+          currency: string
+          description: string
+          display_order: number
+          features: Json
+          icon: string
+          id: string
+          monthly_price: number
+          name: string
+          slug: string
+        }[]
+      }
       get_public_business_categories: {
         Args: never
         Returns: {
