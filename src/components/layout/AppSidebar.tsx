@@ -5,6 +5,9 @@ import { useTheme } from '@/hooks/useTheme';
 import { useAppearance } from '@/hooks/useAppearance';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { useBusinessCategoryContext } from '@/contexts/BusinessCategoryContext';
+import { useSidebarModules } from '@/hooks/useSidebarModules';
+import { useActiveStore } from '@/contexts/ActiveStoreContext';
+import { MODULE_CATEGORY_LABELS } from '@/lib/moduleRoutes';
 import {
   LayoutDashboard,
   ClipboardList,
@@ -25,6 +28,9 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Building2,
+  Puzzle,
+  LucideIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -34,6 +40,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 import { useState, useMemo } from 'react';
 import fallbackLogo from '@/assets/logo.png';
 import { TrialStatusBadge } from '@/components/trial/TrialStatusBadge';
@@ -51,16 +59,20 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Settings,
   Crown,
   Grid3X3,
+  Building2,
+  Puzzle,
 };
 
 interface NavItem {
   path: string;
   label: string;
-  icon: string;
+  icon: string | LucideIcon;
   feature?: string;
+  badge?: string;
 }
 
-const allNavItems: NavItem[] = [
+// Core navigation items (always available based on plan features)
+const coreNavItems: NavItem[] = [
   { path: '/dashboard', label: 'Dashboard', icon: 'LayoutDashboard' },
   { path: '/orders', label: 'Pedidos', icon: 'ClipboardList' },
   { path: '/pos', label: 'PDV/Caixa', icon: 'Calculator', feature: 'pos' },
@@ -71,6 +83,10 @@ const allNavItems: NavItem[] = [
   { path: '/products', label: 'Produtos', icon: 'Package' },
   { path: '/stock', label: 'Estoque', icon: 'Warehouse' },
   { path: '/reports', label: 'Relatórios', icon: 'BarChart3' },
+];
+
+// Admin-only items
+const adminNavItems: NavItem[] = [
   { path: '/settings', label: 'Configurações', icon: 'Settings' },
   { path: '/super-admin', label: 'Super Admin', icon: 'Crown' },
 ];
@@ -82,10 +98,16 @@ export function AppSidebar() {
   const { sidebarCollapsed, toggleSidebar } = useAppearance();
   const { branding } = useSystemSettings();
   const { t, hasFeature } = useBusinessCategoryContext();
+  const { sidebarModules, hasMultiStore, isLoading: modulesLoading } = useSidebarModules();
+  const { activeStoreName } = useActiveStore();
   const [isOpen, setIsOpen] = useState(false);
 
   const logoUrl = branding?.logo_url || fallbackLogo;
   const companyName = branding?.company_name || 'FoodHub09';
+
+  const isAdmin = roles.includes('admin') || roles.includes('super_admin');
+  const isSuperAdmin = roles.includes('super_admin');
+  const isManager = roles.includes('manager');
 
   const getLocalizedLabel = (path: string, defaultLabel: string): string => {
     const labelMap: Record<string, string> = {
@@ -97,46 +119,64 @@ export function AppSidebar() {
     return labelMap[path] || defaultLabel;
   };
 
-  const getNavItems = useMemo((): NavItem[] => {
-    const featureFiltered = allNavItems.filter(item => {
+  // Filter core nav items based on role and features
+  const filteredCoreItems = useMemo((): NavItem[] => {
+    let items = coreNavItems.filter(item => {
       if (!item.feature) return true;
       return hasFeature(item.feature as any);
     });
 
-    if (roles.includes('super_admin')) {
-      return featureFiltered.filter(item => item.path !== '/courier-dashboard');
-    }
-    
-    if (roles.includes('admin')) {
-      return featureFiltered.filter(item => 
-        item.path !== '/courier-dashboard' && item.path !== '/super-admin'
-      );
-    }
-    if (roles.includes('manager')) {
-      return featureFiltered.filter(item => 
-        !['pos', 'kitchen', 'courier-dashboard', 'super-admin'].includes(item.path.replace('/', ''))
-      );
-    }
+    // Role-based filtering
     if (roles.includes('cashier')) {
-      return featureFiltered.filter(item => 
-        ['/pos', '/orders'].includes(item.path)
-      );
+      return items.filter(item => ['/pos', '/orders'].includes(item.path));
     }
     if (roles.includes('kitchen')) {
-      return featureFiltered.filter(item => item.path === '/kitchen');
+      return items.filter(item => item.path === '/kitchen');
     }
     if (roles.includes('stock')) {
-      return featureFiltered.filter(item => 
-        ['/stock', '/products'].includes(item.path)
-      );
+      return items.filter(item => ['/stock', '/products'].includes(item.path));
     }
     if (roles.includes('delivery')) {
-      return featureFiltered.filter(item => item.path === '/courier-dashboard');
+      return items.filter(item => item.path === '/courier-dashboard');
     }
-    return [{ path: '/dashboard', label: 'Dashboard', icon: 'LayoutDashboard' }];
+    
+    // Remove courier-dashboard for non-delivery roles
+    items = items.filter(item => 
+      item.path !== '/courier-dashboard' || roles.includes('delivery')
+    );
+
+    return items;
   }, [roles, hasFeature]);
 
-  const navItems = getNavItems;
+  // Get module nav items (grouped by category)
+  const moduleNavItems = useMemo(() => {
+    if (!isAdmin && !isManager) return [];
+    
+    // Filter modules based on role
+    const visibleModules = sidebarModules.filter(mod => {
+      // Managers can only see operational modules
+      if (isManager && !isAdmin) {
+        return mod.category === 'operations';
+      }
+      return true;
+    });
+
+    return visibleModules.map(mod => ({
+      path: mod.route,
+      label: mod.label,
+      icon: mod.icon,
+      badge: mod.badge,
+    }));
+  }, [sidebarModules, isAdmin, isManager]);
+
+  // Get admin items
+  const visibleAdminItems = useMemo(() => {
+    if (!isAdmin) return [];
+    return adminNavItems.filter(item => {
+      if (item.path === '/super-admin') return isSuperAdmin;
+      return true;
+    });
+  }, [isAdmin, isSuperAdmin]);
 
   const getUserInitials = () => {
     if (!profile?.full_name) return 'U';
@@ -158,6 +198,42 @@ export function AppSidebar() {
       delivery: 'Entregador',
     };
     return roleLabels[roles[0]] || 'Usuário';
+  };
+
+  const renderNavItem = (item: NavItem, key: string) => {
+    const isLucideIcon = typeof item.icon !== 'string';
+    const Icon = isLucideIcon ? item.icon : iconMap[item.icon as string];
+    const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + '?');
+    const label = typeof item.icon === 'string' ? getLocalizedLabel(item.path, item.label) : item.label;
+
+    return (
+      <li key={key}>
+        <Link
+          to={item.path}
+          onClick={() => setIsOpen(false)}
+          title={sidebarCollapsed ? label : undefined}
+          className={cn(
+            'flex items-center rounded-md text-xs font-medium transition-colors',
+            sidebarCollapsed ? 'justify-center p-2.5' : 'gap-2.5 px-2.5 py-2',
+            isActive
+              ? 'bg-sidebar-primary text-sidebar-primary-foreground'
+              : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+          )}
+        >
+          {Icon && <Icon className="h-4 w-4 shrink-0" />}
+          {!sidebarCollapsed && (
+            <>
+              <span className="truncate flex-1">{label}</span>
+              {item.badge && (
+                <Badge variant="secondary" className="text-[9px] px-1.5 py-0">
+                  {item.badge}
+                </Badge>
+              )}
+            </>
+          )}
+        </Link>
+      </li>
+    );
   };
 
   return (
@@ -202,43 +278,84 @@ export function AppSidebar() {
           )}
         </div>
 
-        {/* Trial Status Badge - Compact */}
+        {/* Trial Status Badge + Store Selector - Compact */}
         {!sidebarCollapsed && (
           <div className="px-3 py-2 border-b border-sidebar-border space-y-2">
             <TrialStatusBadge />
             <StoreSelector />
+            {/* Show current store name for managers */}
+            {isManager && !isAdmin && activeStoreName && (
+              <div className="text-[10px] text-muted-foreground px-1 truncate">
+                📍 {activeStoreName}
+              </div>
+            )}
           </div>
         )}
 
         {/* Navigation - Compact */}
         <nav className="flex-1 overflow-y-auto py-2 px-2">
+          {/* Core Items */}
           <ul className="space-y-0.5">
-            {navItems.map((item) => {
-              const Icon = iconMap[item.icon];
-              const isActive = location.pathname === item.path;
-              const label = getLocalizedLabel(item.path, item.label);
-
-              return (
-                <li key={item.path}>
-                  <Link
-                    to={item.path}
-                    onClick={() => setIsOpen(false)}
-                    title={sidebarCollapsed ? label : undefined}
-                    className={cn(
-                      'flex items-center rounded-md text-xs font-medium transition-colors',
-                      sidebarCollapsed ? 'justify-center p-2.5' : 'gap-2.5 px-2.5 py-2',
-                      isActive
-                        ? 'bg-sidebar-primary text-sidebar-primary-foreground'
-                        : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
-                    )}
-                  >
-                    {Icon && <Icon className="h-4 w-4 shrink-0" />}
-                    {!sidebarCollapsed && <span className="truncate">{label}</span>}
-                  </Link>
-                </li>
-              );
-            })}
+            {filteredCoreItems.map((item) => renderNavItem(item, item.path))}
           </ul>
+
+          {/* Modules Section */}
+          {moduleNavItems.length > 0 && (
+            <>
+              {!sidebarCollapsed && (
+                <div className="mt-4 mb-2">
+                  <div className="flex items-center gap-1.5 px-2.5 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+                    <Puzzle className="h-3 w-3" />
+                    <span>Módulos</span>
+                  </div>
+                </div>
+              )}
+              {sidebarCollapsed && <Separator className="my-2" />}
+              <ul className="space-y-0.5">
+                {moduleNavItems.map((item, index) => renderNavItem(item, `module-${index}`))}
+              </ul>
+            </>
+          )}
+
+          {/* Multi Lojas - Only if module is active */}
+          {hasMultiStore && isAdmin && (
+            <>
+              {!sidebarCollapsed && (
+                <div className="mt-4 mb-2">
+                  <div className="flex items-center gap-1.5 px-2.5 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+                    <Building2 className="h-3 w-3" />
+                    <span>Gestão</span>
+                  </div>
+                </div>
+              )}
+              {sidebarCollapsed && <Separator className="my-2" />}
+              <ul className="space-y-0.5">
+                {renderNavItem({
+                  path: '/stores',
+                  label: 'Multi Lojas',
+                  icon: Building2,
+                }, 'stores')}
+              </ul>
+            </>
+          )}
+
+          {/* Admin Items */}
+          {visibleAdminItems.length > 0 && (
+            <>
+              {!sidebarCollapsed && (
+                <div className="mt-4 mb-2">
+                  <div className="flex items-center gap-1.5 px-2.5 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+                    <Settings className="h-3 w-3" />
+                    <span>Admin</span>
+                  </div>
+                </div>
+              )}
+              {sidebarCollapsed && <Separator className="my-2" />}
+              <ul className="space-y-0.5">
+                {visibleAdminItems.map((item) => renderNavItem(item, item.path))}
+              </ul>
+            </>
+          )}
         </nav>
 
         {/* Collapse Toggle Button - Desktop Only */}
