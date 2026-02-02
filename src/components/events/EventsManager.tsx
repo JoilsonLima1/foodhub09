@@ -5,26 +5,25 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Search, Calendar, Ticket, QrCode, Users, DollarSign } from 'lucide-react';
-import { useEvents, useCreateEvent, useEventTickets, useSellTicket, useValidateTicket } from '@/hooks/useEvents';
+import { Plus, Search, Calendar, Ticket, ScanBarcode, Users } from 'lucide-react';
+import { useEvents, useCreateEvent, useEventTickets } from '@/hooks/useEvents';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { TICKET_STATUS_LABELS, type TicketStatus } from '@/types/digitalService';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import { TicketValidationDialog } from './TicketValidationDialog';
 
 export function EventsManager() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isValidationDialogOpen, setIsValidationDialogOpen] = useState(false);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
-  const [validateCode, setValidateCode] = useState('');
 
   const { data: events, isLoading } = useEvents();
   const { data: tickets } = useEventTickets(selectedEventId || undefined);
   const createEvent = useCreateEvent();
-  const validateTicket = useValidateTicket();
 
   const [newEvent, setNewEvent] = useState({
     name: '',
@@ -59,14 +58,6 @@ export function EventsManager() {
     });
   };
 
-  const handleValidateTicket = () => {
-    if (validateCode) {
-      validateTicket.mutate(validateCode, {
-        onSuccess: () => setValidateCode(''),
-      });
-    }
-  };
-
   const filteredEvents = events?.filter((e) =>
     e.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -96,37 +87,11 @@ export function EventsManager() {
         </div>
 
         <div className="flex gap-2">
-          {/* Validate Ticket Dialog */}
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button variant="outline">
-                <QrCode className="h-4 w-4 mr-2" />
-                Validar Ingresso
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Validar Ingresso</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label>Código do Ingresso</Label>
-                  <Input
-                    placeholder="TKT-XXXXX-XXXX"
-                    value={validateCode}
-                    onChange={(e) => setValidateCode(e.target.value.toUpperCase())}
-                  />
-                </div>
-                <Button
-                  onClick={handleValidateTicket}
-                  disabled={!validateCode || validateTicket.isPending}
-                  className="w-full"
-                >
-                  {validateTicket.isPending ? 'Validando...' : 'Validar'}
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+          {/* Validate Ticket Button */}
+          <Button variant="outline" onClick={() => setIsValidationDialogOpen(true)}>
+            <ScanBarcode className="h-4 w-4 mr-2" />
+            Validar Ingresso
+          </Button>
 
           {/* Create Event Dialog */}
           <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
@@ -383,6 +348,12 @@ export function EventsManager() {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Ticket Validation Dialog with Scanner Support */}
+      <TicketValidationDialog
+        open={isValidationDialogOpen}
+        onOpenChange={setIsValidationDialogOpen}
+      />
     </div>
   );
 }
