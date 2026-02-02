@@ -6852,6 +6852,9 @@ export type Database = {
         | "marketing"
         | "hardware"
         | "logistics"
+        | "digital_service"
+        | "payment"
+        | "access_control"
       addon_subscription_status: "active" | "trial" | "suspended" | "cancelled"
       app_role:
         | "admin"
@@ -7066,6 +7069,9 @@ export const Constants = {
         "marketing",
         "hardware",
         "logistics",
+        "digital_service",
+        "payment",
+        "access_control",
       ],
       addon_subscription_status: ["active", "trial", "suspended", "cancelled"],
       app_role: [

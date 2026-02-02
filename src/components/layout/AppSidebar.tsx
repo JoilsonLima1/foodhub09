@@ -74,15 +74,16 @@ interface NavItem {
 }
 
 // Core navigation items (always available based on plan features)
-const coreNavItems: NavItem[] = [
+// Items with moduleSlug are controlled by addon modules
+const coreNavItems: (NavItem & { moduleSlug?: string })[] = [
   { path: '/dashboard', label: 'Dashboard', icon: 'LayoutDashboard' },
   { path: '/orders', label: 'Pedidos', icon: 'ClipboardList' },
   { path: '/pos', label: 'PDV/Caixa', icon: 'Calculator', feature: 'pos' },
   { path: '/tables', label: 'Mesas', icon: 'Grid3X3', feature: 'tables' },
-  { path: '/comandas', label: 'Comandas', icon: Receipt, feature: 'tables' },
-  { path: '/events', label: 'Eventos', icon: CalendarDays },
-  { path: '/kitchen', label: 'Cozinha', icon: 'ChefHat', feature: 'kitchen_display' },
-  { path: '/deliveries', label: 'Entregas', icon: 'Truck', feature: 'delivery' },
+  { path: '/comandas', label: 'Comandas', icon: Receipt, feature: 'tables', moduleSlug: 'comandas' },
+  { path: '/events', label: 'Eventos', icon: CalendarDays, moduleSlug: 'events_tickets' },
+  { path: '/kitchen', label: 'Cozinha', icon: 'ChefHat', feature: 'kitchen_display', moduleSlug: 'kitchen_monitor' },
+  { path: '/deliveries', label: 'Entregas', icon: 'Truck', feature: 'delivery', moduleSlug: 'smart_delivery' },
   { path: '/courier-dashboard', label: 'Minhas Entregas', icon: 'Truck', feature: 'delivery' },
   { path: '/products', label: 'Produtos', icon: 'Package' },
   { path: '/stock', label: 'Estoque', icon: 'Warehouse' },
@@ -102,7 +103,7 @@ export function AppSidebar() {
   const { sidebarCollapsed, toggleSidebar } = useAppearance();
   const { branding } = useSystemSettings();
   const { t, hasFeature } = useBusinessCategoryContext();
-  const { sidebarModules, hasMultiStore, isLoading: modulesLoading } = useSidebarModules();
+  const { sidebarModules, hasMultiStore, hasModuleActive, isLoading: modulesLoading } = useSidebarModules();
   const { activeStoreName } = useActiveStore();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -123,11 +124,18 @@ export function AppSidebar() {
     return labelMap[path] || defaultLabel;
   };
 
-  // Filter core nav items based on role and features
+  // Filter core nav items based on role, features, and module activation
   const filteredCoreItems = useMemo((): NavItem[] => {
     let items = coreNavItems.filter(item => {
-      if (!item.feature) return true;
-      return hasFeature(item.feature as any);
+      // Check plan features
+      if (item.feature && !hasFeature(item.feature as any)) {
+        return false;
+      }
+      // Check module activation (only if moduleSlug is specified)
+      if (item.moduleSlug && !hasModuleActive(item.moduleSlug)) {
+        return false;
+      }
+      return true;
     });
 
     // Role-based filtering
@@ -150,7 +158,7 @@ export function AppSidebar() {
     );
 
     return items;
-  }, [roles, hasFeature]);
+  }, [roles, hasFeature, hasModuleActive]);
 
   // Get module nav items (grouped by category)
   const moduleNavItems = useMemo(() => {

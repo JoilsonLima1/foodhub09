@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useTenantModules } from './useTenantModules';
-import { MODULE_ROUTES, ModuleRouteConfig } from '@/lib/moduleRoutes';
+import { MODULE_ROUTES, ModuleRouteConfig, getModuleForRoute } from '@/lib/moduleRoutes';
 import type { TenantModuleDetailed } from './useTenantModules';
 
 export type ModuleStatus = 'active' | 'pending_setup' | 'inactive';
@@ -74,15 +74,33 @@ export function useSidebarModules() {
   };
 
   /**
+   * Check if a route is accessible (module is enabled)
+   */
+  const isRouteAccessible = (route: string): boolean => {
+    const moduleConfig = getModuleForRoute(route);
+    if (!moduleConfig) return true; // No module controls this route
+    return hasModule(moduleConfig.slug);
+  };
+
+  /**
    * Check if Multi Lojas is active (commonly needed check)
    */
   const hasMultiStore = hasModule('multi_store');
+
+  /**
+   * Check common modules
+   */
+  const hasComandas = hasModule('comandas');
+  const hasEvents = hasModule('events_tickets');
 
   return {
     sidebarModules,
     isLoading,
     getModulesByCategory,
     hasModuleActive,
+    isRouteAccessible,
     hasMultiStore,
+    hasComandas,
+    hasEvents,
   };
 }
