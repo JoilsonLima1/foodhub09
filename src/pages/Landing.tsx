@@ -9,6 +9,7 @@ import PartnersCarousel from '@/components/landing/PartnersCarousel';
 import { LandingHeader } from '@/components/landing/LandingHeader';
 import { AnnouncementBanner } from '@/components/landing/AnnouncementBanner';
 import { HeroSection } from '@/components/landing/HeroSection';
+import { HowItWorksSection } from '@/components/landing/HowItWorksSection';
 import { CategoriesSection } from '@/components/landing/CategoriesSection';
 import { FeaturesSection } from '@/components/landing/FeaturesSection';
 import { AdvantagesSection } from '@/components/landing/AdvantagesSection';
@@ -87,6 +88,9 @@ export default function Landing() {
 
       {/* Partners Carousel */}
       <PartnersCarousel />
+
+      {/* How It Works Section */}
+      <HowItWorksSection />
 
       {/* Features Section */}
       <FeaturesSection />
