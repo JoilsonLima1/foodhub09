@@ -8,6 +8,7 @@ import { BusinessCategoryProvider } from "@/contexts/BusinessCategoryContext";
 import { ActiveStoreProvider } from "@/contexts/ActiveStoreContext";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { ModuleRouteGuard } from "@/components/auth/ModuleRouteGuard";
 import { useDynamicFavicon } from "@/hooks/useDynamicFavicon";
 
 import Auth from "./pages/Auth";
@@ -67,15 +68,17 @@ const App = () => (
                   <Route path="/orders" element={<Orders />} />
                   <Route path="/pos" element={<POS />} />
                   <Route path="/tables" element={<Tables />} />
-                  <Route path="/kitchen" element={<Kitchen />} />
-                  <Route path="/deliveries" element={<Deliveries />} />
+                  {/* Module-gated routes */}
+                  <Route path="/comandas" element={<ModuleRouteGuard><Comandas /></ModuleRouteGuard>} />
+                  <Route path="/events" element={<ModuleRouteGuard><Events /></ModuleRouteGuard>} />
+                  <Route path="/kitchen" element={<ModuleRouteGuard><Kitchen /></ModuleRouteGuard>} />
+                  <Route path="/deliveries" element={<ModuleRouteGuard><Deliveries /></ModuleRouteGuard>} />
+                  <Route path="/stores" element={<ModuleRouteGuard><Stores /></ModuleRouteGuard>} />
+                  {/* Standard routes */}
                   <Route path="/products" element={<Products />} />
                   <Route path="/stock" element={<Stock />} />
                   <Route path="/reports" element={<Reports />} />
                   <Route path="/settings" element={<Settings />} />
-                  <Route path="/stores" element={<Stores />} />
-                  <Route path="/comandas" element={<Comandas />} />
-                  <Route path="/events" element={<Events />} />
                   <Route path="/courier-dashboard" element={<CourierDashboard />} />
                   <Route path="/super-admin" element={<SuperAdmin />} />
                 </Route>
