@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
+import { useHasMultiStore } from '@/hooks/useHasMultiStore';
 
 interface Store {
   id: string;
@@ -39,51 +40,19 @@ const STORAGE_KEY = 'foodhub_active_store';
 
 export function ActiveStoreProvider({ children }: { children: React.ReactNode }) {
   const { user, tenantId, roles, profile } = useAuth();
+  // Use centralized hook for multi-store module check (SSOT with 5min cache)
+  const { hasMultiStore: moduleActive, isLoading: moduleLoading } = useHasMultiStore();
+  
   const [activeStoreId, setActiveStoreIdState] = useState<string | null>(null);
   const [activeStore, setActiveStore] = useState<Store | null>(null);
   const [stores, setStores] = useState<Store[]>([]);
   const [allowedStores, setAllowedStores] = useState<Store[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [hasMultiStore, setHasMultiStore] = useState(false);
   const [hasNoStoreAccess, setHasNoStoreAccess] = useState(false);
 
   // Admin/super_admin can switch stores
   const isAdmin = roles.includes('admin') || roles.includes('super_admin');
   const canSwitchStore = isAdmin;
-
-  // Check if tenant has Multi-Store module
-  const checkMultiStoreModule = useCallback(async (): Promise<boolean> => {
-    if (!tenantId) {
-      console.log('[ActiveStoreContext] No tenantId, skipping module check');
-      return false;
-    }
-
-    try {
-      const { data, error } = await supabase
-        .from('tenant_addon_subscriptions')
-        .select(`
-          id,
-          status,
-          addon_module:addon_modules!inner(slug)
-        `)
-        .eq('tenant_id', tenantId)
-        .eq('addon_module.slug', 'multi_store')
-        .in('status', ['active', 'trial'])
-        .limit(1);
-
-      if (error) {
-        console.error('[ActiveStoreContext] Error checking multi-store module:', error);
-        return false;
-      }
-
-      const hasModule = (data?.length || 0) > 0;
-      console.log('[ActiveStoreContext] Multi-store module check:', { tenantId, hasModule });
-      return hasModule;
-    } catch (err) {
-      console.error('[ActiveStoreContext] Exception checking module:', err);
-      return false;
-    }
-  }, [tenantId]);
 
   // Fetch all stores for the tenant
   const fetchStores = useCallback(async () => {
@@ -198,8 +167,16 @@ export function ActiveStoreProvider({ children }: { children: React.ReactNode })
       user: user?.id, 
       tenantId, 
       storesCount: stores.length,
-      roles 
+      roles,
+      moduleActive,
+      moduleLoading
     });
+
+    // Wait for module check to complete
+    if (moduleLoading) {
+      console.log('[ActiveStoreContext] Waiting for module check...');
+      return;
+    }
 
     if (!user || !tenantId) {
       console.log('[ActiveStoreContext] No user or tenant, clearing state');
@@ -214,10 +191,6 @@ export function ActiveStoreProvider({ children }: { children: React.ReactNode })
     setIsLoading(true);
 
     try {
-      // 1. Check if Multi-Store module is active
-      const moduleActive = await checkMultiStoreModule();
-      setHasMultiStore(moduleActive);
-
       console.log('[ActiveStoreContext] Module status:', { 
         hasMultiStore: moduleActive,
         storesAvailable: stores.length 
@@ -329,20 +302,21 @@ export function ActiveStoreProvider({ children }: { children: React.ReactNode })
     } finally {
       setIsLoading(false);
     }
-  }, [user, tenantId, profile, stores, canSwitchStore, isAdmin, checkMultiStoreModule, ensureHeadquarters, fetchAllowedStores, roles]);
+  }, [user, tenantId, profile, stores, canSwitchStore, isAdmin, moduleActive, moduleLoading, ensureHeadquarters, fetchAllowedStores, roles]);
 
   // Fetch stores when tenant changes
   useEffect(() => {
     fetchStores();
   }, [fetchStores]);
 
-  // Determine active store when stores or profile changes
+  // Determine active store when stores, profile, or module status changes
   useEffect(() => {
     // Run determination even if stores is empty - we'll create HQ if needed
-    if (tenantId) {
+    // Wait for module check to complete before determining store
+    if (tenantId && !moduleLoading) {
       determineActiveStore();
     }
-  }, [stores, determineActiveStore, tenantId]);
+  }, [stores, determineActiveStore, tenantId, moduleLoading]);
 
   const setActiveStoreId = useCallback((storeId: string) => {
     if (!canSwitchStore) {
@@ -381,9 +355,9 @@ export function ActiveStoreProvider({ children }: { children: React.ReactNode })
         activeStoreName: activeStore?.name || null,
         stores,
         allowedStores,
-        isLoading,
+        isLoading: isLoading || moduleLoading,
         canSwitchStore,
-        hasMultiStore,
+        hasMultiStore: moduleActive,
         hasNoStoreAccess,
         setActiveStoreId,
         refreshStores,
