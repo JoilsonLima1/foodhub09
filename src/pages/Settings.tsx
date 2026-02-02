@@ -21,6 +21,7 @@ import {
   Package,
   User,
   ShoppingCart,
+  DollarSign,
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PAYMENT_PROVIDER_LABELS } from '@/lib/constants';
@@ -37,6 +38,7 @@ import { StoreSettingsForm } from '@/components/settings/StoreSettingsForm';
 import { ModulesSettings } from '@/components/settings/ModulesSettings';
 import { ProfileSettings } from '@/components/settings/ProfileSettings';
 import { MyModulesHub } from '@/components/modules/MyModulesHub';
+import { TenantFeesView } from '@/components/settings/TenantFeesView';
 
 export default function Settings() {
   const { user, profile, roles } = useAuth();
@@ -96,6 +98,10 @@ export default function Settings() {
           <TabsTrigger value="payments" className="shrink-0 flex items-center gap-2 whitespace-nowrap">
             <CreditCard className="h-4 w-4" />
             Pagamentos
+          </TabsTrigger>
+          <TabsTrigger value="fees" className="shrink-0 flex items-center gap-2 whitespace-nowrap">
+            <DollarSign className="h-4 w-4" />
+            Taxas
           </TabsTrigger>
           <TabsTrigger value="integrations" className="shrink-0 flex items-center gap-2 whitespace-nowrap">
             <Plug2 className="h-4 w-4" />
@@ -250,6 +256,11 @@ export default function Settings() {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        {/* Fees View */}
+        <TabsContent value="fees">
+          <TenantFeesView />
         </TabsContent>
 
         {/* Integrations */}
