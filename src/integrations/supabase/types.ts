@@ -976,6 +976,42 @@ export type Database = {
           },
         ]
       }
+      fee_audit_logs: {
+        Row: {
+          action: string
+          created_at: string
+          entity_id: string | null
+          entity_type: string
+          id: string
+          ip_address: string | null
+          new_values: Json | null
+          old_values: Json | null
+          performed_by: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          entity_id?: string | null
+          entity_type: string
+          id?: string
+          ip_address?: string | null
+          new_values?: Json | null
+          old_values?: Json | null
+          performed_by?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string
+          id?: string
+          ip_address?: string | null
+          new_values?: Json | null
+          old_values?: Json | null
+          performed_by?: string | null
+        }
+        Relationships: []
+      }
       goal_notifications_sent: {
         Row: {
           goal_id: string
@@ -1488,6 +1524,70 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "kitchen_stations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ledger_entries: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          entry_type: string
+          gateway_provider: string | null
+          id: string
+          metadata: Json | null
+          order_id: string | null
+          payment_method: string | null
+          tenant_id: string
+          transaction_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency?: string
+          entry_type: string
+          gateway_provider?: string | null
+          id?: string
+          metadata?: Json | null
+          order_id?: string | null
+          payment_method?: string | null
+          tenant_id: string
+          transaction_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          entry_type?: string
+          gateway_provider?: string | null
+          id?: string
+          metadata?: Json | null
+          order_id?: string | null
+          payment_method?: string | null
+          tenant_id?: string
+          transaction_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ledger_entries_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ledger_entries_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ledger_entries_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -2575,6 +2675,90 @@ export type Database = {
           },
         ]
       }
+      payment_terms: {
+        Row: {
+          clauses: Json
+          content: string
+          created_at: string
+          id: string
+          is_active: boolean
+          published_at: string | null
+          title: string
+          updated_at: string
+          version: string
+        }
+        Insert: {
+          clauses?: Json
+          content: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          published_at?: string | null
+          title?: string
+          updated_at?: string
+          version: string
+        }
+        Update: {
+          clauses?: Json
+          content?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          published_at?: string | null
+          title?: string
+          updated_at?: string
+          version?: string
+        }
+        Relationships: []
+      }
+      payment_terms_acceptance: {
+        Row: {
+          accepted_at: string
+          accepted_by: string
+          id: string
+          ip_address: string | null
+          tenant_id: string
+          terms_id: string
+          terms_version: string
+          user_agent: string | null
+        }
+        Insert: {
+          accepted_at?: string
+          accepted_by: string
+          id?: string
+          ip_address?: string | null
+          tenant_id: string
+          terms_id: string
+          terms_version: string
+          user_agent?: string | null
+        }
+        Update: {
+          accepted_at?: string
+          accepted_by?: string
+          id?: string
+          ip_address?: string | null
+          tenant_id?: string
+          terms_id?: string
+          terms_version?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_terms_acceptance_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_terms_acceptance_terms_id_fkey"
+            columns: ["terms_id"]
+            isOneToOne: false
+            referencedRelation: "payment_terms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payments: {
         Row: {
           amount: number
@@ -2683,6 +2867,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      platform_fee_config: {
+        Row: {
+          created_at: string
+          default_fixed: number
+          default_percent: number
+          enabled: boolean
+          id: string
+          mode: string
+          per_method_config: Json
+          per_plan_config: Json
+          split_account_id: string | null
+          split_destination: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          default_fixed?: number
+          default_percent?: number
+          enabled?: boolean
+          id?: string
+          mode?: string
+          per_method_config?: Json
+          per_plan_config?: Json
+          split_account_id?: string | null
+          split_destination?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          default_fixed?: number
+          default_percent?: number
+          enabled?: boolean
+          id?: string
+          mode?: string
+          per_method_config?: Json
+          per_plan_config?: Json
+          split_account_id?: string | null
+          split_destination?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       product_addon_mapping: {
         Row: {
@@ -4311,6 +4537,50 @@ export type Database = {
           },
         ]
       }
+      tenant_fee_overrides: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          override_fixed: number | null
+          override_percent: number | null
+          per_method_override: Json | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          override_fixed?: number | null
+          override_percent?: number | null
+          per_method_override?: Json | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          override_fixed?: number | null
+          override_percent?: number | null
+          per_method_override?: Json | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_fee_overrides_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_module_audit: {
         Row: {
           action: string
@@ -5001,6 +5271,14 @@ export type Database = {
       }
     }
     Functions: {
+      calculate_platform_fee: {
+        Args: {
+          p_amount: number
+          p_payment_method: string
+          p_tenant_id: string
+        }
+        Returns: Json
+      }
       can_create_branch: { Args: { p_tenant_id: string }; Returns: boolean }
       ensure_headquarters_store: {
         Args: { p_tenant_id: string }
@@ -5200,6 +5478,10 @@ export type Database = {
         }[]
       }
       get_user_tenant_id: { Args: { _user_id: string }; Returns: string }
+      has_accepted_current_terms: {
+        Args: { p_tenant_id: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -5220,6 +5502,19 @@ export type Database = {
           p_p256dh?: string
         }
         Returns: Json
+      }
+      record_ledger_entry: {
+        Args: {
+          p_amount: number
+          p_entry_type: string
+          p_gateway_provider?: string
+          p_metadata?: Json
+          p_order_id: string
+          p_payment_method?: string
+          p_tenant_id: string
+          p_transaction_id: string
+        }
+        Returns: string
       }
       sync_tenant_modules_from_plan: {
         Args: { p_tenant_id: string }

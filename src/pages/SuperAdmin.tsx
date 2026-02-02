@@ -19,6 +19,8 @@ import {
   Trash2,
   MessageSquarePlus,
   Puzzle,
+  DollarSign,
+  FileText,
 } from 'lucide-react';
 import { PlanEditor } from '@/components/superadmin/PlanEditor';
 import { FeatureComparison } from '@/components/superadmin/FeatureComparison';
@@ -33,6 +35,8 @@ import { OrphanDataManager } from '@/components/superadmin/OrphanDataManager';
 import { SuggestionsManager } from '@/components/superadmin/SuggestionsManager';
 import { AddonModulesManager } from '@/components/superadmin/AddonModulesManager';
 import { ModulesManagementHub } from '@/components/superadmin/ModulesManagementHub';
+import { MonetizationManager } from '@/components/superadmin/MonetizationManager';
+import { PaymentTermsManager } from '@/components/superadmin/PaymentTermsManager';
 import { useSubscribers } from '@/hooks/useSubscribers';
 import { useOrganizations } from '@/hooks/useOrganizations';
 
@@ -177,6 +181,14 @@ export default function SuperAdmin() {
             <CreditCard className="h-4 w-4" />
             Pagamentos
           </TabsTrigger>
+          <TabsTrigger value="monetization" className="flex items-center gap-2">
+            <DollarSign className="h-4 w-4" />
+            Monetização
+          </TabsTrigger>
+          <TabsTrigger value="terms" className="flex items-center gap-2">
+            <FileText className="h-4 w-4" />
+            Termos
+          </TabsTrigger>
           <TabsTrigger value="branding" className="flex items-center gap-2">
             <Palette className="h-4 w-4" />
             Branding
@@ -225,6 +237,14 @@ export default function SuperAdmin() {
 
         <TabsContent value="gateways">
           <PaymentGatewaysManager />
+        </TabsContent>
+
+        <TabsContent value="monetization">
+          <MonetizationManager />
+        </TabsContent>
+
+        <TabsContent value="terms">
+          <PaymentTermsManager />
         </TabsContent>
 
         <TabsContent value="branding">
