@@ -31,6 +31,8 @@ import {
   Building2,
   Puzzle,
   LucideIcon,
+  Receipt,
+  CalendarDays,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -77,6 +79,8 @@ const coreNavItems: NavItem[] = [
   { path: '/orders', label: 'Pedidos', icon: 'ClipboardList' },
   { path: '/pos', label: 'PDV/Caixa', icon: 'Calculator', feature: 'pos' },
   { path: '/tables', label: 'Mesas', icon: 'Grid3X3', feature: 'tables' },
+  { path: '/comandas', label: 'Comandas', icon: Receipt, feature: 'tables' },
+  { path: '/events', label: 'Eventos', icon: CalendarDays },
   { path: '/kitchen', label: 'Cozinha', icon: 'ChefHat', feature: 'kitchen_display' },
   { path: '/deliveries', label: 'Entregas', icon: 'Truck', feature: 'delivery' },
   { path: '/courier-dashboard', label: 'Minhas Entregas', icon: 'Truck', feature: 'delivery' },

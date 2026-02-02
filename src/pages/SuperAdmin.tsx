@@ -21,6 +21,7 @@ import {
   Puzzle,
   DollarSign,
   FileText,
+  Smartphone,
 } from 'lucide-react';
 import { PlanEditor } from '@/components/superadmin/PlanEditor';
 import { FeatureComparison } from '@/components/superadmin/FeatureComparison';
@@ -37,6 +38,7 @@ import { AddonModulesManager } from '@/components/superadmin/AddonModulesManager
 import { ModulesManagementHub } from '@/components/superadmin/ModulesManagementHub';
 import { MonetizationManager } from '@/components/superadmin/MonetizationManager';
 import { PaymentTermsManager } from '@/components/superadmin/PaymentTermsManager';
+import { DigitalServiceGlobalSettings } from '@/components/superadmin/DigitalServiceGlobalSettings';
 import { useSubscribers } from '@/hooks/useSubscribers';
 import { useOrganizations } from '@/hooks/useOrganizations';
 
@@ -213,6 +215,10 @@ export default function SuperAdmin() {
             <Trash2 className="h-4 w-4" />
             Limpeza
           </TabsTrigger>
+          <TabsTrigger value="digital-service" className="flex items-center gap-2">
+            <Smartphone className="h-4 w-4" />
+            Atendimento Digital
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="organizations">
@@ -280,6 +286,10 @@ export default function SuperAdmin() {
 
         <TabsContent value="cleanup">
           <OrphanDataManager />
+        </TabsContent>
+
+        <TabsContent value="digital-service">
+          <DigitalServiceGlobalSettings />
         </TabsContent>
       </Tabs>
     </div>

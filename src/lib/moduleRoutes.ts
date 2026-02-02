@@ -20,6 +20,8 @@ import {
   UtensilsCrossed,
   Store,
   LucideIcon,
+  Receipt,
+  CalendarDays,
 } from 'lucide-react';
 
 export interface ModuleRouteConfig {
@@ -159,6 +161,22 @@ export const MODULE_ROUTES: Record<string, ModuleRouteConfig> = {
     routeUse: '/stores',
     routeConfig: '/settings?tab=modules&panel=multi_store',
     category: 'management',
+  },
+  comandas: {
+    slug: 'comandas',
+    label: 'Comandas',
+    icon: Receipt,
+    routeUse: '/comandas',
+    routeConfig: '/settings?tab=service',
+    category: 'operations',
+  },
+  events_tickets: {
+    slug: 'events_tickets',
+    label: 'Eventos & Ingressos',
+    icon: CalendarDays,
+    routeUse: '/events',
+    routeConfig: '/settings?tab=modules&panel=events_tickets',
+    category: 'operations',
   },
 };
 
