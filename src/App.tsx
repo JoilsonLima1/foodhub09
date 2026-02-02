@@ -29,6 +29,8 @@ import Tables from "./pages/Tables";
 import PublicMenu from "./pages/PublicMenu";
 import TrackOrder from "./pages/TrackOrder";
 import Stores from "./pages/Stores";
+import Comandas from "./pages/Comandas";
+import Events from "./pages/Events";
 
 const queryClient = new QueryClient();
 
@@ -72,6 +74,8 @@ const App = () => (
                   <Route path="/reports" element={<Reports />} />
                   <Route path="/settings" element={<Settings />} />
                   <Route path="/stores" element={<Stores />} />
+                  <Route path="/comandas" element={<Comandas />} />
+                  <Route path="/events" element={<Events />} />
                   <Route path="/courier-dashboard" element={<CourierDashboard />} />
                   <Route path="/super-admin" element={<SuperAdmin />} />
                 </Route>

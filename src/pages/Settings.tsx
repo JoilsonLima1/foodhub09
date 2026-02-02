@@ -22,6 +22,8 @@ import {
   User,
   ShoppingCart,
   DollarSign,
+  Smartphone,
+  UserCheck,
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PAYMENT_PROVIDER_LABELS } from '@/lib/constants';
@@ -39,6 +41,8 @@ import { ModulesSettings } from '@/components/settings/ModulesSettings';
 import { ProfileSettings } from '@/components/settings/ProfileSettings';
 import { MyModulesHub } from '@/components/modules/MyModulesHub';
 import { TenantFeesView } from '@/components/settings/TenantFeesView';
+import { TenantServiceSettings } from '@/components/settings/TenantServiceSettings';
+import { WaiterCommissionsManager } from '@/components/settings/WaiterCommissionsManager';
 
 export default function Settings() {
   const { user, profile, roles } = useAuth();
@@ -102,6 +106,14 @@ export default function Settings() {
           <TabsTrigger value="fees" className="shrink-0 flex items-center gap-2 whitespace-nowrap">
             <DollarSign className="h-4 w-4" />
             Taxas
+          </TabsTrigger>
+          <TabsTrigger value="service" className="shrink-0 flex items-center gap-2 whitespace-nowrap">
+            <Smartphone className="h-4 w-4" />
+            Atendimento
+          </TabsTrigger>
+          <TabsTrigger value="waiters" className="shrink-0 flex items-center gap-2 whitespace-nowrap">
+            <UserCheck className="h-4 w-4" />
+            Garçons
           </TabsTrigger>
           <TabsTrigger value="integrations" className="shrink-0 flex items-center gap-2 whitespace-nowrap">
             <Plug2 className="h-4 w-4" />
@@ -261,6 +273,16 @@ export default function Settings() {
         {/* Fees View */}
         <TabsContent value="fees">
           <TenantFeesView />
+        </TabsContent>
+
+        {/* Service Settings */}
+        <TabsContent value="service">
+          <TenantServiceSettings />
+        </TabsContent>
+
+        {/* Waiters & Commissions */}
+        <TabsContent value="waiters">
+          <WaiterCommissionsManager />
         </TabsContent>
 
         {/* Integrations */}
