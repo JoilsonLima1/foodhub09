@@ -445,6 +445,483 @@ export type Database = {
           },
         ]
       }
+      comanda_history: {
+        Row: {
+          action: string
+          actor_id: string | null
+          actor_name: string | null
+          actor_type: string
+          comanda_id: string
+          created_at: string | null
+          details: Json | null
+          id: string
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          actor_name?: string | null
+          actor_type: string
+          comanda_id: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          actor_name?: string | null
+          actor_type?: string
+          comanda_id?: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comanda_history_comanda_id_fkey"
+            columns: ["comanda_id"]
+            isOneToOne: false
+            referencedRelation: "comandas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      comanda_orders: {
+        Row: {
+          can_cancel: boolean | null
+          can_modify: boolean | null
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          comanda_id: string
+          confirmed_at: string | null
+          confirmed_by_customer: boolean | null
+          created_at: string | null
+          delivered_at: string | null
+          delivered_by: string | null
+          id: string
+          modified_at: string | null
+          notes: string | null
+          order_id: string | null
+          ordered_by_customer_id: string | null
+          ordered_by_waiter_id: string | null
+          participant_id: string | null
+          requires_waiter_approval: boolean | null
+          waiter_approved: boolean | null
+          waiter_approved_at: string | null
+          waiter_approved_by: string | null
+        }
+        Insert: {
+          can_cancel?: boolean | null
+          can_modify?: boolean | null
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          comanda_id: string
+          confirmed_at?: string | null
+          confirmed_by_customer?: boolean | null
+          created_at?: string | null
+          delivered_at?: string | null
+          delivered_by?: string | null
+          id?: string
+          modified_at?: string | null
+          notes?: string | null
+          order_id?: string | null
+          ordered_by_customer_id?: string | null
+          ordered_by_waiter_id?: string | null
+          participant_id?: string | null
+          requires_waiter_approval?: boolean | null
+          waiter_approved?: boolean | null
+          waiter_approved_at?: string | null
+          waiter_approved_by?: string | null
+        }
+        Update: {
+          can_cancel?: boolean | null
+          can_modify?: boolean | null
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          comanda_id?: string
+          confirmed_at?: string | null
+          confirmed_by_customer?: boolean | null
+          created_at?: string | null
+          delivered_at?: string | null
+          delivered_by?: string | null
+          id?: string
+          modified_at?: string | null
+          notes?: string | null
+          order_id?: string | null
+          ordered_by_customer_id?: string | null
+          ordered_by_waiter_id?: string | null
+          participant_id?: string | null
+          requires_waiter_approval?: boolean | null
+          waiter_approved?: boolean | null
+          waiter_approved_at?: string | null
+          waiter_approved_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comanda_orders_comanda_id_fkey"
+            columns: ["comanda_id"]
+            isOneToOne: false
+            referencedRelation: "comandas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comanda_orders_delivered_by_fkey"
+            columns: ["delivered_by"]
+            isOneToOne: false
+            referencedRelation: "couriers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comanda_orders_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comanda_orders_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comanda_orders_ordered_by_customer_id_fkey"
+            columns: ["ordered_by_customer_id"]
+            isOneToOne: false
+            referencedRelation: "customer_registrations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comanda_orders_ordered_by_waiter_id_fkey"
+            columns: ["ordered_by_waiter_id"]
+            isOneToOne: false
+            referencedRelation: "couriers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comanda_orders_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "comanda_participants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comanda_orders_waiter_approved_by_fkey"
+            columns: ["waiter_approved_by"]
+            isOneToOne: false
+            referencedRelation: "couriers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      comanda_participants: {
+        Row: {
+          authorized_at: string | null
+          authorized_by: string | null
+          can_order: boolean | null
+          can_pay: boolean | null
+          can_view_total: boolean | null
+          comanda_id: string
+          created_at: string | null
+          customer_id: string | null
+          exit_at: string | null
+          exit_authorized: boolean | null
+          exit_qr_code: string | null
+          id: string
+          individual_paid: number | null
+          individual_subtotal: number | null
+          invite_code: string | null
+          invite_expires_at: string | null
+          requires_approval: boolean | null
+          role: Database["public"]["Enums"]["participant_role"] | null
+          updated_at: string | null
+        }
+        Insert: {
+          authorized_at?: string | null
+          authorized_by?: string | null
+          can_order?: boolean | null
+          can_pay?: boolean | null
+          can_view_total?: boolean | null
+          comanda_id: string
+          created_at?: string | null
+          customer_id?: string | null
+          exit_at?: string | null
+          exit_authorized?: boolean | null
+          exit_qr_code?: string | null
+          id?: string
+          individual_paid?: number | null
+          individual_subtotal?: number | null
+          invite_code?: string | null
+          invite_expires_at?: string | null
+          requires_approval?: boolean | null
+          role?: Database["public"]["Enums"]["participant_role"] | null
+          updated_at?: string | null
+        }
+        Update: {
+          authorized_at?: string | null
+          authorized_by?: string | null
+          can_order?: boolean | null
+          can_pay?: boolean | null
+          can_view_total?: boolean | null
+          comanda_id?: string
+          created_at?: string | null
+          customer_id?: string | null
+          exit_at?: string | null
+          exit_authorized?: boolean | null
+          exit_qr_code?: string | null
+          id?: string
+          individual_paid?: number | null
+          individual_subtotal?: number | null
+          invite_code?: string | null
+          invite_expires_at?: string | null
+          requires_approval?: boolean | null
+          role?: Database["public"]["Enums"]["participant_role"] | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comanda_participants_authorized_by_fkey"
+            columns: ["authorized_by"]
+            isOneToOne: false
+            referencedRelation: "customer_registrations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comanda_participants_comanda_id_fkey"
+            columns: ["comanda_id"]
+            isOneToOne: false
+            referencedRelation: "comandas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comanda_participants_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customer_registrations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      comanda_payments: {
+        Row: {
+          amount: number
+          comanda_id: string
+          completed_at: string | null
+          created_at: string | null
+          id: string
+          notes: string | null
+          participant_id: string | null
+          payment_id: string | null
+          payment_method: string
+          payment_type: string | null
+          requires_waiter_approval: boolean | null
+          split_amounts: Json | null
+          split_participants: string[] | null
+          status: string | null
+          waiter_approved: boolean | null
+          waiter_approved_at: string | null
+          waiter_approved_by: string | null
+        }
+        Insert: {
+          amount: number
+          comanda_id: string
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          participant_id?: string | null
+          payment_id?: string | null
+          payment_method: string
+          payment_type?: string | null
+          requires_waiter_approval?: boolean | null
+          split_amounts?: Json | null
+          split_participants?: string[] | null
+          status?: string | null
+          waiter_approved?: boolean | null
+          waiter_approved_at?: string | null
+          waiter_approved_by?: string | null
+        }
+        Update: {
+          amount?: number
+          comanda_id?: string
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          participant_id?: string | null
+          payment_id?: string | null
+          payment_method?: string
+          payment_type?: string | null
+          requires_waiter_approval?: boolean | null
+          split_amounts?: Json | null
+          split_participants?: string[] | null
+          status?: string | null
+          waiter_approved?: boolean | null
+          waiter_approved_at?: string | null
+          waiter_approved_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comanda_payments_comanda_id_fkey"
+            columns: ["comanda_id"]
+            isOneToOne: false
+            referencedRelation: "comandas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comanda_payments_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "comanda_participants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comanda_payments_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comanda_payments_waiter_approved_by_fkey"
+            columns: ["waiter_approved_by"]
+            isOneToOne: false
+            referencedRelation: "couriers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      comandas: {
+        Row: {
+          actual_guests: number | null
+          closed_at: string | null
+          comanda_number: number
+          created_at: string | null
+          current_waiter_id: string | null
+          discount: number | null
+          exit_validated: boolean | null
+          exit_validated_at: string | null
+          exit_validated_by: string | null
+          expected_guests: number | null
+          id: string
+          initial_waiter_id: string | null
+          notes: string | null
+          opened_at: string | null
+          paid_amount: number | null
+          pending_amount: number | null
+          service_fee: number | null
+          service_fee_percent: number | null
+          status: Database["public"]["Enums"]["comanda_status"] | null
+          store_id: string | null
+          subtotal: number | null
+          table_id: string | null
+          tenant_id: string
+          titular_customer_id: string | null
+          total: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          actual_guests?: number | null
+          closed_at?: string | null
+          comanda_number?: number
+          created_at?: string | null
+          current_waiter_id?: string | null
+          discount?: number | null
+          exit_validated?: boolean | null
+          exit_validated_at?: string | null
+          exit_validated_by?: string | null
+          expected_guests?: number | null
+          id?: string
+          initial_waiter_id?: string | null
+          notes?: string | null
+          opened_at?: string | null
+          paid_amount?: number | null
+          pending_amount?: number | null
+          service_fee?: number | null
+          service_fee_percent?: number | null
+          status?: Database["public"]["Enums"]["comanda_status"] | null
+          store_id?: string | null
+          subtotal?: number | null
+          table_id?: string | null
+          tenant_id: string
+          titular_customer_id?: string | null
+          total?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          actual_guests?: number | null
+          closed_at?: string | null
+          comanda_number?: number
+          created_at?: string | null
+          current_waiter_id?: string | null
+          discount?: number | null
+          exit_validated?: boolean | null
+          exit_validated_at?: string | null
+          exit_validated_by?: string | null
+          expected_guests?: number | null
+          id?: string
+          initial_waiter_id?: string | null
+          notes?: string | null
+          opened_at?: string | null
+          paid_amount?: number | null
+          pending_amount?: number | null
+          service_fee?: number | null
+          service_fee_percent?: number | null
+          status?: Database["public"]["Enums"]["comanda_status"] | null
+          store_id?: string | null
+          subtotal?: number | null
+          table_id?: string | null
+          tenant_id?: string
+          titular_customer_id?: string | null
+          total?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comandas_current_waiter_id_fkey"
+            columns: ["current_waiter_id"]
+            isOneToOne: false
+            referencedRelation: "couriers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comandas_initial_waiter_id_fkey"
+            columns: ["initial_waiter_id"]
+            isOneToOne: false
+            referencedRelation: "couriers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comandas_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comandas_table_id_fkey"
+            columns: ["table_id"]
+            isOneToOne: false
+            referencedRelation: "tables"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comandas_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comandas_titular_customer_id_fkey"
+            columns: ["titular_customer_id"]
+            isOneToOne: false
+            referencedRelation: "customer_registrations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       coupons: {
         Row: {
           applies_to: string | null
@@ -617,6 +1094,86 @@ export type Database = {
           },
         ]
       }
+      customer_registrations: {
+        Row: {
+          cpf: string | null
+          created_at: string | null
+          device_id: string | null
+          document_type: string | null
+          document_url: string | null
+          email: string | null
+          full_name: string
+          id: string
+          ip_address: string | null
+          is_verified: boolean | null
+          phone: string
+          registration_type:
+            | Database["public"]["Enums"]["customer_registration_type"]
+            | null
+          selfie_url: string | null
+          tenant_id: string
+          updated_at: string | null
+          user_id: string | null
+          verification_notes: string | null
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          cpf?: string | null
+          created_at?: string | null
+          device_id?: string | null
+          document_type?: string | null
+          document_url?: string | null
+          email?: string | null
+          full_name: string
+          id?: string
+          ip_address?: string | null
+          is_verified?: boolean | null
+          phone: string
+          registration_type?:
+            | Database["public"]["Enums"]["customer_registration_type"]
+            | null
+          selfie_url?: string | null
+          tenant_id: string
+          updated_at?: string | null
+          user_id?: string | null
+          verification_notes?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          cpf?: string | null
+          created_at?: string | null
+          device_id?: string | null
+          document_type?: string | null
+          document_url?: string | null
+          email?: string | null
+          full_name?: string
+          id?: string
+          ip_address?: string | null
+          is_verified?: boolean | null
+          phone?: string
+          registration_type?:
+            | Database["public"]["Enums"]["customer_registration_type"]
+            | null
+          selfie_url?: string | null
+          tenant_id?: string
+          updated_at?: string | null
+          user_id?: string | null
+          verification_notes?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_registrations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deliveries: {
         Row: {
           courier_id: string | null
@@ -731,6 +1288,60 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      digital_service_global_config: {
+        Row: {
+          created_at: string | null
+          default_call_timeout_minutes: number | null
+          default_escalation_levels: number | null
+          default_exit_requires_cashier: boolean | null
+          default_exit_requires_waiter: boolean | null
+          default_order_requires_waiter: boolean | null
+          default_payment_requires_waiter: boolean | null
+          id: string
+          kyc_require_document: boolean | null
+          kyc_require_selfie: boolean | null
+          kyc_required_for_exit: boolean | null
+          kyc_required_for_modification: boolean | null
+          kyc_required_for_ordering: boolean | null
+          kyc_required_for_payment: boolean | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          default_call_timeout_minutes?: number | null
+          default_escalation_levels?: number | null
+          default_exit_requires_cashier?: boolean | null
+          default_exit_requires_waiter?: boolean | null
+          default_order_requires_waiter?: boolean | null
+          default_payment_requires_waiter?: boolean | null
+          id?: string
+          kyc_require_document?: boolean | null
+          kyc_require_selfie?: boolean | null
+          kyc_required_for_exit?: boolean | null
+          kyc_required_for_modification?: boolean | null
+          kyc_required_for_ordering?: boolean | null
+          kyc_required_for_payment?: boolean | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          default_call_timeout_minutes?: number | null
+          default_escalation_levels?: number | null
+          default_exit_requires_cashier?: boolean | null
+          default_exit_requires_waiter?: boolean | null
+          default_order_requires_waiter?: boolean | null
+          default_payment_requires_waiter?: boolean | null
+          id?: string
+          kyc_require_document?: boolean | null
+          kyc_require_selfie?: boolean | null
+          kyc_required_for_exit?: boolean | null
+          kyc_required_for_modification?: boolean | null
+          kyc_required_for_ordering?: boolean | null
+          kyc_required_for_payment?: boolean | null
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       dispatcher_config: {
         Row: {
@@ -969,6 +1580,166 @@ export type Database = {
           },
           {
             foreignKeyName: "duplicate_alerts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      events: {
+        Row: {
+          allow_refunds: boolean | null
+          couvert_price: number | null
+          created_at: string | null
+          description: string | null
+          end_time: string | null
+          event_date: string
+          id: string
+          image_url: string | null
+          is_active: boolean | null
+          name: string
+          refund_deadline_hours: number | null
+          requires_full_registration: boolean | null
+          start_time: string | null
+          store_id: string | null
+          tenant_id: string
+          ticket_price: number
+          tickets_available: number | null
+          tickets_sold: number | null
+          total_capacity: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          allow_refunds?: boolean | null
+          couvert_price?: number | null
+          created_at?: string | null
+          description?: string | null
+          end_time?: string | null
+          event_date: string
+          id?: string
+          image_url?: string | null
+          is_active?: boolean | null
+          name: string
+          refund_deadline_hours?: number | null
+          requires_full_registration?: boolean | null
+          start_time?: string | null
+          store_id?: string | null
+          tenant_id: string
+          ticket_price: number
+          tickets_available?: number | null
+          tickets_sold?: number | null
+          total_capacity?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          allow_refunds?: boolean | null
+          couvert_price?: number | null
+          created_at?: string | null
+          description?: string | null
+          end_time?: string | null
+          event_date?: string
+          id?: string
+          image_url?: string | null
+          is_active?: boolean | null
+          name?: string
+          refund_deadline_hours?: number | null
+          requires_full_registration?: boolean | null
+          start_time?: string | null
+          store_id?: string | null
+          tenant_id?: string
+          ticket_price?: number
+          tickets_available?: number | null
+          tickets_sold?: number | null
+          total_capacity?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "events_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "events_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      exit_validations: {
+        Row: {
+          admin_override: boolean | null
+          cashier_confirmed: boolean | null
+          comanda_id: string
+          created_at: string | null
+          denial_reason: string | null
+          id: string
+          participant_id: string | null
+          payment_verified: boolean | null
+          qr_code: string
+          status: Database["public"]["Enums"]["exit_status"] | null
+          tenant_id: string
+          validated_at: string | null
+          validated_by: string | null
+          validation_method: string | null
+          waiter_confirmed: boolean | null
+        }
+        Insert: {
+          admin_override?: boolean | null
+          cashier_confirmed?: boolean | null
+          comanda_id: string
+          created_at?: string | null
+          denial_reason?: string | null
+          id?: string
+          participant_id?: string | null
+          payment_verified?: boolean | null
+          qr_code: string
+          status?: Database["public"]["Enums"]["exit_status"] | null
+          tenant_id: string
+          validated_at?: string | null
+          validated_by?: string | null
+          validation_method?: string | null
+          waiter_confirmed?: boolean | null
+        }
+        Update: {
+          admin_override?: boolean | null
+          cashier_confirmed?: boolean | null
+          comanda_id?: string
+          created_at?: string | null
+          denial_reason?: string | null
+          id?: string
+          participant_id?: string | null
+          payment_verified?: boolean | null
+          qr_code?: string
+          status?: Database["public"]["Enums"]["exit_status"] | null
+          tenant_id?: string
+          validated_at?: string | null
+          validated_by?: string | null
+          validation_method?: string | null
+          waiter_confirmed?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exit_validations_comanda_id_fkey"
+            columns: ["comanda_id"]
+            isOneToOne: false
+            referencedRelation: "comandas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exit_validations_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "comanda_participants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exit_validations_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -3335,6 +4106,105 @@ export type Database = {
           },
         ]
       }
+      service_calls: {
+        Row: {
+          acknowledged_at: string | null
+          assigned_waiter_id: string | null
+          call_type: Database["public"]["Enums"]["service_call_type"]
+          comanda_id: string | null
+          created_at: string | null
+          customer_id: string | null
+          escalated_at: string | null
+          escalation_level: number | null
+          escalation_timeout_minutes: number | null
+          id: string
+          notes: string | null
+          priority: number | null
+          resolved_at: string | null
+          resolved_by: string | null
+          response_time_seconds: number | null
+          status: Database["public"]["Enums"]["service_call_status"] | null
+          table_id: string | null
+          tenant_id: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          assigned_waiter_id?: string | null
+          call_type: Database["public"]["Enums"]["service_call_type"]
+          comanda_id?: string | null
+          created_at?: string | null
+          customer_id?: string | null
+          escalated_at?: string | null
+          escalation_level?: number | null
+          escalation_timeout_minutes?: number | null
+          id?: string
+          notes?: string | null
+          priority?: number | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          response_time_seconds?: number | null
+          status?: Database["public"]["Enums"]["service_call_status"] | null
+          table_id?: string | null
+          tenant_id: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          assigned_waiter_id?: string | null
+          call_type?: Database["public"]["Enums"]["service_call_type"]
+          comanda_id?: string | null
+          created_at?: string | null
+          customer_id?: string | null
+          escalated_at?: string | null
+          escalation_level?: number | null
+          escalation_timeout_minutes?: number | null
+          id?: string
+          notes?: string | null
+          priority?: number | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          response_time_seconds?: number | null
+          status?: Database["public"]["Enums"]["service_call_status"] | null
+          table_id?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_calls_assigned_waiter_id_fkey"
+            columns: ["assigned_waiter_id"]
+            isOneToOne: false
+            referencedRelation: "couriers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_calls_comanda_id_fkey"
+            columns: ["comanda_id"]
+            isOneToOne: false
+            referencedRelation: "comandas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_calls_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customer_registrations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_calls_table_id_fkey"
+            columns: ["table_id"]
+            isOneToOne: false
+            referencedRelation: "tables"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_calls_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sms_campaigns: {
         Row: {
           created_at: string | null
@@ -4641,6 +5511,107 @@ export type Database = {
           },
         ]
       }
+      tenant_service_config: {
+        Row: {
+          allow_customer_ordering: boolean | null
+          allow_customer_payment: boolean | null
+          allow_order_cancellation: boolean | null
+          allow_order_modification: boolean | null
+          allow_partial_payment: boolean | null
+          allow_split_payment: boolean | null
+          allow_subcomanda: boolean | null
+          allow_waiter_change: boolean | null
+          block_payment_until_orders_complete: boolean | null
+          created_at: string | null
+          exit_control_enabled: boolean | null
+          exit_requires_full_payment: boolean | null
+          exit_validation_method: string | null
+          id: string
+          modification_deadline_minutes: number | null
+          notify_bar: boolean | null
+          notify_cashier: boolean | null
+          notify_kitchen: boolean | null
+          notify_waiter: boolean | null
+          order_requires_waiter_approval: boolean | null
+          payment_requires_waiter_approval: boolean | null
+          service_fee_optional: boolean | null
+          service_fee_percent: number | null
+          subcomanda_requires_titular_approval: boolean | null
+          subcomanda_requires_waiter_approval: boolean | null
+          tenant_id: string
+          updated_at: string | null
+          waiter_change_requires_approval: boolean | null
+        }
+        Insert: {
+          allow_customer_ordering?: boolean | null
+          allow_customer_payment?: boolean | null
+          allow_order_cancellation?: boolean | null
+          allow_order_modification?: boolean | null
+          allow_partial_payment?: boolean | null
+          allow_split_payment?: boolean | null
+          allow_subcomanda?: boolean | null
+          allow_waiter_change?: boolean | null
+          block_payment_until_orders_complete?: boolean | null
+          created_at?: string | null
+          exit_control_enabled?: boolean | null
+          exit_requires_full_payment?: boolean | null
+          exit_validation_method?: string | null
+          id?: string
+          modification_deadline_minutes?: number | null
+          notify_bar?: boolean | null
+          notify_cashier?: boolean | null
+          notify_kitchen?: boolean | null
+          notify_waiter?: boolean | null
+          order_requires_waiter_approval?: boolean | null
+          payment_requires_waiter_approval?: boolean | null
+          service_fee_optional?: boolean | null
+          service_fee_percent?: number | null
+          subcomanda_requires_titular_approval?: boolean | null
+          subcomanda_requires_waiter_approval?: boolean | null
+          tenant_id: string
+          updated_at?: string | null
+          waiter_change_requires_approval?: boolean | null
+        }
+        Update: {
+          allow_customer_ordering?: boolean | null
+          allow_customer_payment?: boolean | null
+          allow_order_cancellation?: boolean | null
+          allow_order_modification?: boolean | null
+          allow_partial_payment?: boolean | null
+          allow_split_payment?: boolean | null
+          allow_subcomanda?: boolean | null
+          allow_waiter_change?: boolean | null
+          block_payment_until_orders_complete?: boolean | null
+          created_at?: string | null
+          exit_control_enabled?: boolean | null
+          exit_requires_full_payment?: boolean | null
+          exit_validation_method?: string | null
+          id?: string
+          modification_deadline_minutes?: number | null
+          notify_bar?: boolean | null
+          notify_cashier?: boolean | null
+          notify_kitchen?: boolean | null
+          notify_waiter?: boolean | null
+          order_requires_waiter_approval?: boolean | null
+          payment_requires_waiter_approval?: boolean | null
+          service_fee_optional?: boolean | null
+          service_fee_percent?: number | null
+          subcomanda_requires_titular_approval?: boolean | null
+          subcomanda_requires_waiter_approval?: boolean | null
+          tenant_id?: string
+          updated_at?: string | null
+          waiter_change_requires_approval?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_service_config_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenants: {
         Row: {
           address: string | null
@@ -4763,6 +5734,86 @@ export type Database = {
           },
         ]
       }
+      tickets: {
+        Row: {
+          created_at: string | null
+          customer_id: string | null
+          event_id: string
+          id: string
+          payment_id: string | null
+          price_paid: number
+          refund_amount: number | null
+          refunded_at: string | null
+          status: Database["public"]["Enums"]["ticket_status"] | null
+          tenant_id: string
+          ticket_code: string
+          ticket_type: string | null
+          validated_at: string | null
+          validated_by: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          customer_id?: string | null
+          event_id: string
+          id?: string
+          payment_id?: string | null
+          price_paid: number
+          refund_amount?: number | null
+          refunded_at?: string | null
+          status?: Database["public"]["Enums"]["ticket_status"] | null
+          tenant_id: string
+          ticket_code: string
+          ticket_type?: string | null
+          validated_at?: string | null
+          validated_by?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          customer_id?: string | null
+          event_id?: string
+          id?: string
+          payment_id?: string | null
+          price_paid?: number
+          refund_amount?: number | null
+          refunded_at?: string | null
+          status?: Database["public"]["Enums"]["ticket_status"] | null
+          tenant_id?: string
+          ticket_code?: string
+          ticket_type?: string | null
+          validated_at?: string | null
+          validated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tickets_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customer_registrations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tickets_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tickets_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tickets_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trial_notification_dismissals: {
         Row: {
           dismissed_at: string
@@ -4812,6 +5863,255 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      waiter_commission_config: {
+        Row: {
+          base_percent: number | null
+          category_rates: Json | null
+          commission_trigger:
+            | Database["public"]["Enums"]["commission_trigger"]
+            | null
+          created_at: string | null
+          fixed_amount: number | null
+          id: string
+          is_enabled: boolean | null
+          split_mode: string | null
+          store_id: string | null
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          base_percent?: number | null
+          category_rates?: Json | null
+          commission_trigger?:
+            | Database["public"]["Enums"]["commission_trigger"]
+            | null
+          created_at?: string | null
+          fixed_amount?: number | null
+          id?: string
+          is_enabled?: boolean | null
+          split_mode?: string | null
+          store_id?: string | null
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          base_percent?: number | null
+          category_rates?: Json | null
+          commission_trigger?:
+            | Database["public"]["Enums"]["commission_trigger"]
+            | null
+          created_at?: string | null
+          fixed_amount?: number | null
+          id?: string
+          is_enabled?: boolean | null
+          split_mode?: string | null
+          store_id?: string | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "waiter_commission_config_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "waiter_commission_config_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      waiter_commissions: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          base_amount: number
+          comanda_id: string | null
+          commission_amount: number
+          commission_percent: number | null
+          created_at: string | null
+          id: string
+          is_split: boolean | null
+          order_id: string | null
+          paid_at: string | null
+          period_end: string | null
+          period_start: string | null
+          split_percent: number | null
+          split_with: string[] | null
+          status: string | null
+          tenant_id: string
+          trigger_type: Database["public"]["Enums"]["commission_trigger"]
+          waiter_id: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          base_amount: number
+          comanda_id?: string | null
+          commission_amount: number
+          commission_percent?: number | null
+          created_at?: string | null
+          id?: string
+          is_split?: boolean | null
+          order_id?: string | null
+          paid_at?: string | null
+          period_end?: string | null
+          period_start?: string | null
+          split_percent?: number | null
+          split_with?: string[] | null
+          status?: string | null
+          tenant_id: string
+          trigger_type: Database["public"]["Enums"]["commission_trigger"]
+          waiter_id: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          base_amount?: number
+          comanda_id?: string | null
+          commission_amount?: number
+          commission_percent?: number | null
+          created_at?: string | null
+          id?: string
+          is_split?: boolean | null
+          order_id?: string | null
+          paid_at?: string | null
+          period_end?: string | null
+          period_start?: string | null
+          split_percent?: number | null
+          split_with?: string[] | null
+          status?: string | null
+          tenant_id?: string
+          trigger_type?: Database["public"]["Enums"]["commission_trigger"]
+          waiter_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "waiter_commissions_comanda_id_fkey"
+            columns: ["comanda_id"]
+            isOneToOne: false
+            referencedRelation: "comandas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "waiter_commissions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "waiter_commissions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "waiter_commissions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "waiter_commissions_waiter_id_fkey"
+            columns: ["waiter_id"]
+            isOneToOne: false
+            referencedRelation: "couriers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      waiter_performance: {
+        Row: {
+          avg_delivery_time: number | null
+          avg_response_time: number | null
+          bills_closed: number | null
+          calls_escalated: number | null
+          calls_ignored: number | null
+          calls_received: number | null
+          calls_resolved: number | null
+          created_at: string | null
+          id: string
+          orders_delivered: number | null
+          orders_taken: number | null
+          payments_received: number | null
+          performance_score: number | null
+          period_date: string
+          period_type: string | null
+          tenant_id: string
+          total_commissions: number | null
+          total_sales: number | null
+          updated_at: string | null
+          waiter_id: string
+        }
+        Insert: {
+          avg_delivery_time?: number | null
+          avg_response_time?: number | null
+          bills_closed?: number | null
+          calls_escalated?: number | null
+          calls_ignored?: number | null
+          calls_received?: number | null
+          calls_resolved?: number | null
+          created_at?: string | null
+          id?: string
+          orders_delivered?: number | null
+          orders_taken?: number | null
+          payments_received?: number | null
+          performance_score?: number | null
+          period_date: string
+          period_type?: string | null
+          tenant_id: string
+          total_commissions?: number | null
+          total_sales?: number | null
+          updated_at?: string | null
+          waiter_id: string
+        }
+        Update: {
+          avg_delivery_time?: number | null
+          avg_response_time?: number | null
+          bills_closed?: number | null
+          calls_escalated?: number | null
+          calls_ignored?: number | null
+          calls_received?: number | null
+          calls_resolved?: number | null
+          created_at?: string | null
+          id?: string
+          orders_delivered?: number | null
+          orders_taken?: number | null
+          payments_received?: number | null
+          performance_score?: number | null
+          period_date?: string
+          period_type?: string | null
+          tenant_id?: string
+          total_commissions?: number | null
+          total_sales?: number | null
+          updated_at?: string | null
+          waiter_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "waiter_performance_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "waiter_performance_waiter_id_fkey"
+            columns: ["waiter_id"]
+            isOneToOne: false
+            referencedRelation: "couriers"
             referencedColumns: ["id"]
           },
         ]
@@ -5292,6 +6592,7 @@ export type Database = {
           module_name: string
         }[]
       }
+      generate_unique_code: { Args: { prefix?: string }; Returns: string }
       get_active_payment_gateways: {
         Args: never
         Returns: {
@@ -5493,6 +6794,17 @@ export type Database = {
         Args: { _order_id: string; _user_id: string }
         Returns: boolean
       }
+      log_comanda_action: {
+        Args: {
+          p_action: string
+          p_actor_id?: string
+          p_actor_name?: string
+          p_actor_type: string
+          p_comanda_id: string
+          p_details?: Json
+        }
+        Returns: string
+      }
       manage_push_subscription: {
         Args: {
           p_action: string
@@ -5549,6 +6861,18 @@ export type Database = {
         | "stock"
         | "delivery"
         | "super_admin"
+      comanda_status:
+        | "open"
+        | "pending_payment"
+        | "paid"
+        | "closed"
+        | "cancelled"
+      commission_trigger:
+        | "order_placed"
+        | "order_delivered"
+        | "bill_closed"
+        | "payment_received"
+      customer_registration_type: "simple" | "complete"
       delivery_status:
         | "pending"
         | "assigned"
@@ -5556,6 +6880,7 @@ export type Database = {
         | "in_route"
         | "delivered"
         | "failed"
+      exit_status: "pending" | "approved" | "denied"
       fraud_alert_level: "low" | "medium" | "high" | "blocked"
       ifood_order_status:
         | "PLACED"
@@ -5577,6 +6902,7 @@ export type Database = {
         | "out_for_delivery"
         | "delivered"
         | "cancelled"
+      participant_role: "titular" | "guest"
       payment_method:
         | "cash"
         | "pix"
@@ -5597,8 +6923,16 @@ export type Database = {
         | "rejected"
         | "refunded"
         | "cancelled"
+      service_call_status:
+        | "pending"
+        | "acknowledged"
+        | "in_progress"
+        | "resolved"
+        | "escalated"
+      service_call_type: "waiter" | "bill" | "cash_payment" | "assistance"
       stock_movement_type: "entry" | "exit" | "adjustment" | "reversal" | "loss"
       suggestion_status: "pending" | "read" | "responded" | "archived"
+      ticket_status: "available" | "sold" | "used" | "cancelled" | "expired"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -5743,6 +7077,20 @@ export const Constants = {
         "delivery",
         "super_admin",
       ],
+      comanda_status: [
+        "open",
+        "pending_payment",
+        "paid",
+        "closed",
+        "cancelled",
+      ],
+      commission_trigger: [
+        "order_placed",
+        "order_delivered",
+        "bill_closed",
+        "payment_received",
+      ],
+      customer_registration_type: ["simple", "complete"],
       delivery_status: [
         "pending",
         "assigned",
@@ -5751,6 +7099,7 @@ export const Constants = {
         "delivered",
         "failed",
       ],
+      exit_status: ["pending", "approved", "denied"],
       fraud_alert_level: ["low", "medium", "high", "blocked"],
       ifood_order_status: [
         "PLACED",
@@ -5774,6 +7123,7 @@ export const Constants = {
         "delivered",
         "cancelled",
       ],
+      participant_role: ["titular", "guest"],
       payment_method: [
         "cash",
         "pix",
@@ -5797,8 +7147,17 @@ export const Constants = {
         "refunded",
         "cancelled",
       ],
+      service_call_status: [
+        "pending",
+        "acknowledged",
+        "in_progress",
+        "resolved",
+        "escalated",
+      ],
+      service_call_type: ["waiter", "bill", "cash_payment", "assistance"],
       stock_movement_type: ["entry", "exit", "adjustment", "reversal", "loss"],
       suggestion_status: ["pending", "read", "responded", "archived"],
+      ticket_status: ["available", "sold", "used", "cancelled", "expired"],
     },
   },
 } as const
