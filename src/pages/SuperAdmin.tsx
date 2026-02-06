@@ -43,7 +43,7 @@ import { PaymentTermsManager } from '@/components/superadmin/PaymentTermsManager
 import { DigitalServiceGlobalSettings } from '@/components/superadmin/DigitalServiceGlobalSettings';
 import { DomainsManager } from '@/components/superadmin/DomainsManager';
 import { ModuleLimitsManager } from '@/components/superadmin/ModuleLimitsManager';
-import { MarketingCEOPanel } from '@/components/marketing';
+import { SuperAdminMarketingPanel } from '@/components/superadmin/SuperAdminMarketingPanel';
 import { useSubscribers } from '@/hooks/useSubscribers';
 import { useOrganizations } from '@/hooks/useOrganizations';
 
@@ -314,7 +314,7 @@ export default function SuperAdmin() {
         </TabsContent>
 
         <TabsContent value="marketing">
-          <MarketingCEOPanel />
+          <SuperAdminMarketingPanel />
         </TabsContent>
       </Tabs>
     </div>

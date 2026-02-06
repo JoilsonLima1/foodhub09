@@ -1,6 +1,4 @@
-import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { 
@@ -22,10 +20,19 @@ import { SearchConsoleGuideTab } from './SearchConsoleGuideTab';
 import { SEOPagesTab } from './SEOPagesTab';
 import { SEOReportsTab } from './SEOReportsTab';
 
-export function MarketingCEOPanel() {
-  const { tenantId } = useAuth();
-  const { domains, isLoading: domainsLoading } = useOrganizationDomains(tenantId || undefined);
-  const { settings, isLoading: seoLoading } = useMarketingSEO(tenantId || undefined);
+interface MarketingCEOPanelProps {
+  /** Override tenant ID (used by Super Admin) */
+  tenantId?: string;
+  /** If true, bypasses module limits (Super Admin mode) */
+  isSuperAdmin?: boolean;
+}
+
+export function MarketingCEOPanel({ tenantId: propTenantId, isSuperAdmin = false }: MarketingCEOPanelProps) {
+  const { tenantId: authTenantId } = useAuth();
+  const effectiveTenantId = propTenantId || authTenantId;
+  
+  const { domains, isLoading: domainsLoading } = useOrganizationDomains(effectiveTenantId || undefined);
+  const { settings, isLoading: seoLoading } = useMarketingSEO(effectiveTenantId || undefined);
   
   // Domain validation - consider valid if at least 1 verified domain exists for this tenant
   const verifiedDomains = domains.filter(d => d.is_verified);
@@ -146,7 +153,9 @@ export function MarketingCEOPanel() {
           <SEOOverviewTab 
             domain={activeDomain} 
             settings={settings} 
-            hasVerifiedDomain={hasVerifiedDomain} 
+            hasVerifiedDomain={hasVerifiedDomain}
+            isSuperAdmin={isSuperAdmin}
+            tenantId={effectiveTenantId}
           />
         </TabsContent>
 
