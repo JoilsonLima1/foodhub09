@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -26,6 +27,7 @@ import {
   ExternalLink,
   Building2,
   Plus,
+  Star,
 } from 'lucide-react';
 import { 
   useAddonModules, 
@@ -41,6 +43,7 @@ import { useMultiStoreQuota } from '@/hooks/useMultiStoreQuota';
 import { cn } from '@/lib/utils';
 import { ModulePurchaseDialog } from './ModulePurchaseDialog';
 import { ModuleStatusBadge } from '@/components/modules/ModuleStatusBadge';
+import { ModuleDetailCard } from '@/components/modules/ModuleDetailCard';
 
 // Icon mapping for module categories
 const CATEGORY_ICONS: Record<AddonModuleCategory, React.ComponentType<{ className?: string }>> = {
@@ -70,9 +73,15 @@ const getModuleIcon = (iconName: string) => {
 // Modules that support quota-based purchasing (can buy multiple units)
 const QUOTA_BASED_MODULES = ['multi_store'];
 
+// Featured modules that should show detailed cards
+const FEATURED_MODULES = ['marketing_ceo'];
+
 export function ModulesSettings() {
+  const [searchParams] = useSearchParams();
+  const highlightedModule = searchParams.get('module');
+  
   const { modules, isLoading: modulesLoading } = useAddonModules();
-  const { tenantModules, tenantInfo, isLoading: tenantLoading, getModulesBreakdown, refetch } = useTenantModules();
+  const { tenantModules, tenantInfo, isLoading: tenantLoading, getModulesBreakdown, refetch, isModuleActive, isModuleIncludedInPlan } = useTenantModules();
   const { settings: billingSettings } = useBillingSettings();
   const { pendingPurchases, hasPendingPurchase, getPendingPurchase, refreshPurchases } = useModulePurchases();
   const multiStoreQuota = useMultiStoreQuota();
@@ -132,8 +141,21 @@ export function ModulesSettings() {
     window.open(url, '_blank');
   };
 
-  // Filter available modules by category
+  // Find featured modules from all modules
+  const featuredModulesData = useMemo(() => {
+    return modules?.filter(m => FEATURED_MODULES.includes(m.slug)) || [];
+  }, [modules]);
+
+  // Get highlighted module if specified in URL
+  const highlightedModuleData = useMemo(() => {
+    if (!highlightedModule) return null;
+    return modules?.find(m => m.slug === highlightedModule) || null;
+  }, [modules, highlightedModule]);
+
+  // Filter available modules by category, excluding featured ones already shown
   const filteredAvailable = breakdown.availableModules.filter(mod => {
+    // Don't show featured modules in the regular grid
+    if (FEATURED_MODULES.includes(mod.slug)) return false;
     if (selectedCategory === 'all') return true;
     return mod.category === selectedCategory;
   });
@@ -391,6 +413,52 @@ export function ModulesSettings() {
                   </div>
                 );
               })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <Separator />
+
+      {/* Featured Module Section (e.g., when navigating from upsell card) */}
+      {highlightedModuleData && (
+        <div className="space-y-4" id={`module-${highlightedModuleData.slug}`}>
+          <div className="flex items-center gap-2">
+            <Star className="h-5 w-5 text-amber-500" />
+            <h2 className="text-lg font-semibold">Módulo Selecionado</h2>
+          </div>
+          <ModuleDetailCard
+            module={highlightedModuleData}
+            onPurchase={handlePurchaseModule}
+            isPending={hasPendingPurchase(highlightedModuleData.id)}
+            pendingPaymentUrl={getPendingPurchase(highlightedModuleData.id)?.gateway_invoice_url}
+          />
+        </div>
+      )}
+
+      {/* Featured Modules - Premium modules with detailed cards */}
+      {featuredModulesData.length > 0 && !highlightedModuleData && (
+        <Card className="border-2 border-primary/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Star className="h-5 w-5 text-amber-500" />
+              Módulos em Destaque
+            </CardTitle>
+            <CardDescription>
+              Recursos premium para potencializar seu negócio
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-6 lg:grid-cols-2">
+              {featuredModulesData.map((module) => (
+                <ModuleDetailCard
+                  key={module.id}
+                  module={module}
+                  onPurchase={handlePurchaseModule}
+                  isPending={hasPendingPurchase(module.id)}
+                  pendingPaymentUrl={getPendingPurchase(module.id)?.gateway_invoice_url}
+                />
+              ))}
             </div>
           </CardContent>
         </Card>

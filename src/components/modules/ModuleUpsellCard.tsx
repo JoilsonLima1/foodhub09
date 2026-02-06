@@ -114,10 +114,10 @@ export function ModuleUpsellCard({
 
           {/* CTA */}
           <div className="flex flex-col sm:flex-row gap-3 pt-4">
-            <Link to="/settings?tab=modules" className="flex-1">
+            <Link to={`/settings?tab=modules&module=${moduleSlug}`} className="flex-1">
               <Button className="w-full" size="lg" onClick={onActivate}>
                 <ShoppingCart className="h-4 w-4 mr-2" />
-                Ativar Agora
+                Ver na Loja de Módulos
               </Button>
             </Link>
             <Link to="/settings?tab=subscription" className="flex-1">
