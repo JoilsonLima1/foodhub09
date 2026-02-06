@@ -22,6 +22,7 @@ import {
   DollarSign,
   FileText,
   Smartphone,
+  Globe,
 } from 'lucide-react';
 import { PlanEditor } from '@/components/superadmin/PlanEditor';
 import { FeatureComparison } from '@/components/superadmin/FeatureComparison';
@@ -39,6 +40,7 @@ import { ModulesManagementHub } from '@/components/superadmin/ModulesManagementH
 import { MonetizationManager } from '@/components/superadmin/MonetizationManager';
 import { PaymentTermsManager } from '@/components/superadmin/PaymentTermsManager';
 import { DigitalServiceGlobalSettings } from '@/components/superadmin/DigitalServiceGlobalSettings';
+import { DomainsManager } from '@/components/superadmin/DomainsManager';
 import { useSubscribers } from '@/hooks/useSubscribers';
 import { useOrganizations } from '@/hooks/useOrganizations';
 
@@ -175,6 +177,10 @@ export default function SuperAdmin() {
             <Package className="h-4 w-4" />
             Planos
           </TabsTrigger>
+          <TabsTrigger value="domains" className="flex items-center gap-2">
+            <Globe className="h-4 w-4" />
+            Domínios
+          </TabsTrigger>
           <TabsTrigger value="categories" className="flex items-center gap-2">
             <Store className="h-4 w-4" />
             Categorias
@@ -235,6 +241,10 @@ export default function SuperAdmin() {
 
         <TabsContent value="plans">
           <PlanEditor />
+        </TabsContent>
+
+        <TabsContent value="domains">
+          <DomainsManager />
         </TabsContent>
 
         <TabsContent value="categories">

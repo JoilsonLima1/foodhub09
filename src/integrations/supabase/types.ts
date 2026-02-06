@@ -3235,6 +3235,65 @@ export type Database = {
           },
         ]
       }
+      organization_domains: {
+        Row: {
+          created_at: string | null
+          dns_configured: boolean | null
+          domain: string
+          domain_type: string
+          id: string
+          is_primary: boolean | null
+          is_verified: boolean | null
+          last_checked_at: string | null
+          ssl_status: string | null
+          tenant_id: string
+          updated_at: string | null
+          verification_method: string | null
+          verification_token: string | null
+          verified_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          dns_configured?: boolean | null
+          domain: string
+          domain_type?: string
+          id?: string
+          is_primary?: boolean | null
+          is_verified?: boolean | null
+          last_checked_at?: string | null
+          ssl_status?: string | null
+          tenant_id: string
+          updated_at?: string | null
+          verification_method?: string | null
+          verification_token?: string | null
+          verified_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          dns_configured?: boolean | null
+          domain?: string
+          domain_type?: string
+          id?: string
+          is_primary?: boolean | null
+          is_verified?: boolean | null
+          last_checked_at?: string | null
+          ssl_status?: string | null
+          tenant_id?: string
+          updated_at?: string | null
+          verification_method?: string | null
+          verification_token?: string | null
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_domains_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       password_panel_config: {
         Row: {
           config: Json | null
