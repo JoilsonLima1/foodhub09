@@ -42,6 +42,7 @@ import { MonetizationManager } from '@/components/superadmin/MonetizationManager
 import { PaymentTermsManager } from '@/components/superadmin/PaymentTermsManager';
 import { DigitalServiceGlobalSettings } from '@/components/superadmin/DigitalServiceGlobalSettings';
 import { DomainsManager } from '@/components/superadmin/DomainsManager';
+import { ModuleLimitsManager } from '@/components/superadmin/ModuleLimitsManager';
 import { MarketingCEOPanel } from '@/components/marketing';
 import { useSubscribers } from '@/hooks/useSubscribers';
 import { useOrganizations } from '@/hooks/useOrganizations';
@@ -290,12 +291,16 @@ export default function SuperAdmin() {
             <TabsList>
               <TabsTrigger value="management">Instalar por Organização</TabsTrigger>
               <TabsTrigger value="catalog">Catálogo de Módulos</TabsTrigger>
+              <TabsTrigger value="limits">Limites de Uso</TabsTrigger>
             </TabsList>
             <TabsContent value="management">
               <ModulesManagementHub />
             </TabsContent>
             <TabsContent value="catalog">
               <AddonModulesManager />
+            </TabsContent>
+            <TabsContent value="limits">
+              <ModuleLimitsManager />
             </TabsContent>
           </Tabs>
         </TabsContent>

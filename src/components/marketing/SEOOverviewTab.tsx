@@ -10,10 +10,14 @@ import {
   Globe,
   FileCode,
   Search,
-  Sparkles
+  Sparkles,
+  Loader2,
 } from 'lucide-react';
 import { useMarketingSEO, MarketingSEOSettings } from '@/hooks/useMarketingSEO';
 import { OrganizationDomain } from '@/hooks/useOrganizationDomains';
+import { useModuleUsage } from '@/hooks/useModuleUsage';
+import { UsageLimitBanner, UsageLimitIndicator } from '@/components/modules/UsageLimitBanner';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface SEOOverviewTabProps {
   domain: OrganizationDomain | undefined;
@@ -22,7 +26,15 @@ interface SEOOverviewTabProps {
 }
 
 export function SEOOverviewTab({ domain, settings, hasVerifiedDomain }: SEOOverviewTabProps) {
-  const { runAudit } = useMarketingSEO();
+  const { tenantId } = useAuth();
+  const { runAudit } = useMarketingSEO(tenantId || undefined);
+  const { 
+    canPerformAction, 
+    getUsed, 
+    getLimit, 
+    tryPerformAction,
+    isLoading: usageLoading,
+  } = useModuleUsage('marketing_ceo', ['audits_per_month', 'pages_per_month']);
 
   const checklistItems = [
     {
@@ -146,18 +158,50 @@ export function SEOOverviewTab({ domain, settings, hasVerifiedDomain }: SEOOverv
       {hasVerifiedDomain && (
         <Card>
           <CardHeader>
-            <CardTitle>Ações Rápidas</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle>Ações Rápidas</CardTitle>
+              <UsageLimitIndicator 
+                used={getUsed('audits_per_month')} 
+                limit={getLimit('audits_per_month')} 
+                label="auditorias restantes"
+              />
+            </div>
           </CardHeader>
-          <CardContent className="flex gap-4">
-            <Button 
-              onClick={() => runAudit.mutate()}
-              disabled={runAudit.isPending}
-            >
-              {runAudit.isPending ? 'Analisando...' : 'Executar Auditoria SEO'}
-            </Button>
-            <Button variant="outline">
-              Ver Relatório Completo
-            </Button>
+          <CardContent className="space-y-4">
+            {/* Usage limit banner if near limit */}
+            {getLimit('audits_per_month') > 0 && (
+              <UsageLimitBanner
+                featureName="auditorias"
+                used={getUsed('audits_per_month')}
+                limit={getLimit('audits_per_month')}
+                isBlocked={!canPerformAction('audits_per_month')}
+              />
+            )}
+            
+            <div className="flex gap-4">
+              <Button 
+                onClick={async () => {
+                  // Check and increment usage before running audit
+                  const allowed = await tryPerformAction('audits_per_month');
+                  if (allowed) {
+                    runAudit.mutate();
+                  }
+                }}
+                disabled={runAudit.isPending || !canPerformAction('audits_per_month') || usageLoading}
+              >
+                {runAudit.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Analisando...
+                  </>
+                ) : (
+                  'Executar Auditoria SEO'
+                )}
+              </Button>
+              <Button variant="outline">
+                Ver Relatório Completo
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}
