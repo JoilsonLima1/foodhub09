@@ -32,6 +32,7 @@ import {
   BellRing,
   Award,
   Ticket,
+  TrendingUp,
 } from 'lucide-react';
 
 export interface ModuleRouteConfig {
@@ -170,6 +171,16 @@ export const MODULE_ROUTES: Record<string, ModuleRouteConfig> = {
     category: 'marketing',
     requiresSetup: true,
     controlledFeatures: ['automated_messages', 'whatsapp_integration'],
+  },
+  marketing_ceo: {
+    slug: 'marketing_ceo',
+    label: 'CEO de Marketing',
+    icon: TrendingUp,
+    routeUse: '/marketing',
+    routeConfig: '/settings?tab=modules&panel=marketing_ceo',
+    category: 'marketing',
+    controlledRoutes: ['/marketing'],
+    controlledFeatures: ['seo_management', 'sitemap', 'robots_txt', 'search_console'],
   },
 
   // =====================================================

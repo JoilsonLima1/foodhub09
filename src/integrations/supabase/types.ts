@@ -2586,6 +2586,57 @@ export type Database = {
           },
         ]
       }
+      marketing_seo_audit_history: {
+        Row: {
+          audit_type: string
+          created_at: string
+          current_score: number
+          id: string
+          notes: string | null
+          previous_score: number
+          score_delta: number | null
+          settings_id: string | null
+          tenant_id: string
+        }
+        Insert: {
+          audit_type?: string
+          created_at?: string
+          current_score?: number
+          id?: string
+          notes?: string | null
+          previous_score?: number
+          score_delta?: number | null
+          settings_id?: string | null
+          tenant_id: string
+        }
+        Update: {
+          audit_type?: string
+          created_at?: string
+          current_score?: number
+          id?: string
+          notes?: string | null
+          previous_score?: number
+          score_delta?: number | null
+          settings_id?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketing_seo_audit_history_settings_id_fkey"
+            columns: ["settings_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_seo_settings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketing_seo_audit_history_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       marketing_seo_pages: {
         Row: {
           canonical_url: string | null

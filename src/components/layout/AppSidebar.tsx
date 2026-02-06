@@ -33,6 +33,7 @@ import {
   LucideIcon,
   Receipt,
   CalendarDays,
+  TrendingUp,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -82,6 +83,7 @@ const coreNavItems: (NavItem & { moduleSlug?: string })[] = [
   { path: '/tables', label: 'Mesas', icon: 'Grid3X3', feature: 'tables' },
   { path: '/comandas', label: 'Comandas', icon: Receipt, feature: 'tables', moduleSlug: 'comandas' },
   { path: '/events', label: 'Eventos', icon: CalendarDays, moduleSlug: 'events_tickets' },
+  { path: '/marketing', label: 'Marketing', icon: TrendingUp, moduleSlug: 'marketing_ceo' },
   { path: '/kitchen', label: 'Cozinha', icon: 'ChefHat', feature: 'kitchen_display', moduleSlug: 'kitchen_monitor' },
   { path: '/deliveries', label: 'Entregas', icon: 'Truck', feature: 'delivery', moduleSlug: 'smart_delivery' },
   { path: '/courier-dashboard', label: 'Minhas Entregas', icon: 'Truck', feature: 'delivery' },

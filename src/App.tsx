@@ -32,6 +32,7 @@ import TrackOrder from "./pages/TrackOrder";
 import Stores from "./pages/Stores";
 import Comandas from "./pages/Comandas";
 import Events from "./pages/Events";
+import Marketing from "./pages/Marketing";
 
 const queryClient = new QueryClient();
 
@@ -74,6 +75,7 @@ const App = () => (
                   <Route path="/kitchen" element={<ModuleRouteGuard><Kitchen /></ModuleRouteGuard>} />
                   <Route path="/deliveries" element={<ModuleRouteGuard><Deliveries /></ModuleRouteGuard>} />
                   <Route path="/stores" element={<ModuleRouteGuard><Stores /></ModuleRouteGuard>} />
+                  <Route path="/marketing" element={<ModuleRouteGuard><Marketing /></ModuleRouteGuard>} />
                   {/* Standard routes */}
                   <Route path="/products" element={<Products />} />
                   <Route path="/stock" element={<Stock />} />
