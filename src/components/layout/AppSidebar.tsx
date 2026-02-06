@@ -34,6 +34,7 @@ import {
   Receipt,
   CalendarDays,
   TrendingUp,
+  Lock,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -72,6 +73,8 @@ interface NavItem {
   icon: string | LucideIcon;
   feature?: string;
   badge?: string;
+  /** If true, shows lock icon and links to upsell page */
+  isLocked?: boolean;
 }
 
 // Core navigation items (always available based on plan features)
@@ -128,19 +131,16 @@ export function AppSidebar() {
 
   // Filter core nav items based on role, features, and module activation
   const filteredCoreItems = useMemo((): NavItem[] => {
+    // First pass: filter by plan features (hard filter)
     let items = coreNavItems.filter(item => {
-      // Check plan features
+      // Check plan features - these are hard requirements
       if (item.feature && !hasFeature(item.feature as any)) {
-        return false;
-      }
-      // Check module activation (only if moduleSlug is specified)
-      if (item.moduleSlug && !hasModuleActive(item.moduleSlug)) {
         return false;
       }
       return true;
     });
 
-    // Role-based filtering
+    // Role-based filtering (hard filter)
     if (roles.includes('cashier')) {
       return items.filter(item => ['/pos', '/orders'].includes(item.path));
     }
@@ -159,7 +159,20 @@ export function AppSidebar() {
       item.path !== '/courier-dashboard' || roles.includes('delivery')
     );
 
-    return items;
+    // Second pass: mark module items as locked if not active (soft filter - show with upsell)
+    // Only for admin/manager roles who can purchase modules
+    const processedItems = items.map(item => {
+      if (item.moduleSlug && !hasModuleActive(item.moduleSlug)) {
+        // Show item but mark as locked for upsell
+        return {
+          ...item,
+          isLocked: true,
+        };
+      }
+      return item;
+    });
+
+    return processedItems;
   }, [roles, hasFeature, hasModuleActive]);
 
   // Get module nav items (grouped by category)
@@ -219,30 +232,35 @@ export function AppSidebar() {
     const Icon = isLucideIcon ? item.icon : iconMap[item.icon as string];
     const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + '?');
     const label = typeof item.icon === 'string' ? getLocalizedLabel(item.path, item.label) : item.label;
+    const isLocked = item.isLocked === true;
 
     return (
       <li key={key}>
         <Link
           to={item.path}
           onClick={() => setIsOpen(false)}
-          title={sidebarCollapsed ? label : undefined}
+          title={sidebarCollapsed ? (isLocked ? `${label} (Adquirir)` : label) : undefined}
           className={cn(
             'flex items-center rounded-md text-xs font-medium transition-colors',
             sidebarCollapsed ? 'justify-center p-2.5' : 'gap-2.5 px-2.5 py-2',
-            isActive
-              ? 'bg-sidebar-primary text-sidebar-primary-foreground'
-              : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+            isLocked
+              ? 'text-sidebar-foreground/50 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground/70'
+              : isActive
+                ? 'bg-sidebar-primary text-sidebar-primary-foreground'
+                : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
           )}
         >
-          {Icon && <Icon className="h-4 w-4 shrink-0" />}
+          {Icon && <Icon className={cn("h-4 w-4 shrink-0", isLocked && "opacity-50")} />}
           {!sidebarCollapsed && (
             <>
-              <span className="truncate flex-1">{label}</span>
-              {item.badge && (
+              <span className={cn("truncate flex-1", isLocked && "opacity-70")}>{label}</span>
+              {isLocked ? (
+                <Lock className="h-3 w-3 text-muted-foreground" />
+              ) : item.badge ? (
                 <Badge variant="secondary" className="text-[9px] px-1.5 py-0">
                   {item.badge}
                 </Badge>
-              )}
+              ) : null}
             </>
           )}
         </Link>
