@@ -593,6 +593,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "comanda_orders_ordered_by_customer_id_fkey"
+            columns: ["ordered_by_customer_id"]
+            isOneToOne: false
+            referencedRelation: "customer_registrations_safe"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "comanda_orders_ordered_by_waiter_id_fkey"
             columns: ["ordered_by_waiter_id"]
             isOneToOne: false
@@ -688,6 +695,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "comanda_participants_authorized_by_fkey"
+            columns: ["authorized_by"]
+            isOneToOne: false
+            referencedRelation: "customer_registrations_safe"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "comanda_participants_comanda_id_fkey"
             columns: ["comanda_id"]
             isOneToOne: false
@@ -699,6 +713,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customer_registrations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comanda_participants_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customer_registrations_safe"
             referencedColumns: ["id"]
           },
         ]
@@ -918,6 +939,13 @@ export type Database = {
             columns: ["titular_customer_id"]
             isOneToOne: false
             referencedRelation: "customer_registrations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comandas_titular_customer_id_fkey"
+            columns: ["titular_customer_id"]
+            isOneToOne: false
+            referencedRelation: "customer_registrations_safe"
             referencedColumns: ["id"]
           },
         ]
@@ -4190,6 +4218,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "service_calls_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customer_registrations_safe"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "service_calls_table_id_fkey"
             columns: ["table_id"]
             isOneToOne: false
@@ -5792,6 +5827,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "tickets_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customer_registrations_safe"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "tickets_event_id_fkey"
             columns: ["event_id"]
             isOneToOne: false
@@ -6160,6 +6202,47 @@ export type Database = {
       }
     }
     Views: {
+      customer_registrations_safe: {
+        Row: {
+          created_at: string | null
+          full_name: string | null
+          id: string | null
+          is_verified: boolean | null
+          registration_type:
+            | Database["public"]["Enums"]["customer_registration_type"]
+            | null
+          tenant_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          full_name?: string | null
+          id?: string | null
+          is_verified?: boolean | null
+          registration_type?:
+            | Database["public"]["Enums"]["customer_registration_type"]
+            | null
+          tenant_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          full_name?: string | null
+          id?: string | null
+          is_verified?: boolean | null
+          registration_type?:
+            | Database["public"]["Enums"]["customer_registration_type"]
+            | null
+          tenant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_registrations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ifood_orders_kitchen: {
         Row: {
           created_at: string | null
