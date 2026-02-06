@@ -201,9 +201,26 @@ export function useTenantModules() {
   };
 
   const hasModule = (slug: string): boolean => {
-    return tenantModules?.some(
-      m => m.addon_module?.slug === slug && ['active', 'trial'].includes(m.status)
-    ) || false;
+    return tenantModules?.some(m => {
+      if (m.addon_module?.slug !== slug) return false;
+      if (!['active', 'trial'].includes(m.status)) return false;
+      
+      // Check trial expiration
+      if (m.status === 'trial' && m.expires_at) {
+        const expiresAt = new Date(m.expires_at);
+        if (expiresAt < new Date()) return false;
+      }
+      // Also check trial_ends_at for trial status
+      if (m.status === 'trial') {
+        const sub = m as any;
+        if (sub.trial_ends_at) {
+          const trialEndsAt = new Date(sub.trial_ends_at);
+          if (trialEndsAt < new Date()) return false;
+        }
+      }
+      
+      return true;
+    }) || false;
   };
 
   /**
@@ -219,11 +236,29 @@ export function useTenantModules() {
 
   /**
    * Check if a module is already active (purchased, plan_included, or manual)
+   * Also checks trial expiration
    */
   const isModuleActive = (moduleId: string): boolean => {
-    return tenantModules?.some(
-      m => m.addon_module_id === moduleId && ['active', 'trial'].includes(m.status)
-    ) || false;
+    return tenantModules?.some(m => {
+      if (m.addon_module_id !== moduleId) return false;
+      if (!['active', 'trial'].includes(m.status)) return false;
+      
+      // Check trial expiration
+      if (m.status === 'trial' && m.expires_at) {
+        const expiresAt = new Date(m.expires_at);
+        if (expiresAt < new Date()) return false;
+      }
+      // Also check trial_ends_at for trial status
+      if (m.status === 'trial') {
+        const sub = m as any;
+        if (sub.trial_ends_at) {
+          const trialEndsAt = new Date(sub.trial_ends_at);
+          if (trialEndsAt < new Date()) return false;
+        }
+      }
+      
+      return true;
+    }) || false;
   };
 
   /**
