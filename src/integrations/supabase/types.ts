@@ -3183,6 +3183,44 @@ export type Database = {
           },
         ]
       }
+      module_plan_limits: {
+        Row: {
+          created_at: string
+          id: string
+          limit_key: string
+          limit_value: number
+          module_slug: string
+          plan_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          limit_key: string
+          limit_value?: number
+          module_slug: string
+          plan_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          limit_key?: string
+          limit_value?: number
+          module_slug?: string
+          plan_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "module_plan_limits_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       module_purchases: {
         Row: {
           addon_module_id: string
@@ -5899,6 +5937,50 @@ export type Database = {
           },
         ]
       }
+      tenant_module_usage: {
+        Row: {
+          created_at: string
+          id: string
+          module_slug: string
+          period_end: string
+          period_start: string
+          tenant_id: string
+          updated_at: string
+          usage_count: number
+          usage_key: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          module_slug: string
+          period_end: string
+          period_start: string
+          tenant_id: string
+          updated_at?: string
+          usage_count?: number
+          usage_key: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          module_slug?: string
+          period_end?: string
+          period_start?: string
+          tenant_id?: string
+          updated_at?: string
+          usage_count?: number
+          usage_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_module_usage_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_service_config: {
         Row: {
           allow_customer_ordering: boolean | null
@@ -7016,6 +7098,14 @@ export type Database = {
         Returns: Json
       }
       can_create_branch: { Args: { p_tenant_id: string }; Returns: boolean }
+      check_module_limit: {
+        Args: {
+          p_limit_key: string
+          p_module_slug: string
+          p_tenant_id: string
+        }
+        Returns: Json
+      }
       ensure_headquarters_store: {
         Args: { p_tenant_id: string }
         Returns: string
@@ -7225,6 +7315,14 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      increment_module_usage: {
+        Args: {
+          p_module_slug: string
+          p_tenant_id: string
+          p_usage_key: string
+        }
+        Returns: Json
       }
       initialize_tenant_seo_settings: {
         Args: { p_domain_id?: string; p_tenant_id: string }
