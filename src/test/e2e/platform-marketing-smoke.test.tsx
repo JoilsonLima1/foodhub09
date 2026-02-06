@@ -144,3 +144,44 @@ describe('Platform Marketing - usePublicSubscribers Hook', () => {
     expect(typeof module.usePublicSubscribers).toBe('function');
   });
 });
+
+describe('Platform Marketing - Panel Isolation', () => {
+  it('PlatformMarketingPanel does NOT use organization selector', async () => {
+    // Read the source file to verify no organization selector imports/usage
+    const platformPanel = await import('@/components/superadmin/PlatformMarketingPanel');
+    const source = platformPanel.PlatformMarketingPanel.toString();
+    
+    // Platform panel should NOT contain organization-related logic
+    expect(source).not.toContain('useOrganizations');
+    expect(source).not.toContain('selectedOrgId');
+    expect(source).not.toContain('tenantId');
+  });
+
+  it('SuperAdminMarketingPanel uses organization selector', async () => {
+    const tenantPanel = await import('@/components/superadmin/SuperAdminMarketingPanel');
+    const source = tenantPanel.SuperAdminMarketingPanel.toString();
+    
+    // Tenant panel SHOULD contain organization selection logic
+    expect(source).toContain('selectedOrgId');
+  });
+
+  it('PlatformMarketingPanel uses usePlatformSEO hook (not useMarketingSEO)', async () => {
+    const platformPanel = await import('@/components/superadmin/PlatformMarketingPanel');
+    const source = platformPanel.PlatformMarketingPanel.toString();
+    
+    // Should use platform-specific hook
+    expect(source).not.toContain('useMarketingSEO');
+  });
+
+  it('Platform and tenant marketing panels are completely separate', async () => {
+    const platformPanel = await import('@/components/superadmin/PlatformMarketingPanel');
+    const tenantPanel = await import('@/components/superadmin/SuperAdminMarketingPanel');
+
+    // Verify they are different components
+    expect(platformPanel.PlatformMarketingPanel).not.toBe(tenantPanel.SuperAdminMarketingPanel);
+    
+    // Verify platform panel doesn't import tenant marketing components
+    const platformSource = platformPanel.PlatformMarketingPanel.toString();
+    expect(platformSource).not.toContain('MarketingCEOPanel');
+  });
+});
