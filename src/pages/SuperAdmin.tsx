@@ -23,6 +23,7 @@ import {
   FileText,
   Smartphone,
   Globe,
+  TrendingUp,
 } from 'lucide-react';
 import { PlanEditor } from '@/components/superadmin/PlanEditor';
 import { FeatureComparison } from '@/components/superadmin/FeatureComparison';
@@ -41,6 +42,7 @@ import { MonetizationManager } from '@/components/superadmin/MonetizationManager
 import { PaymentTermsManager } from '@/components/superadmin/PaymentTermsManager';
 import { DigitalServiceGlobalSettings } from '@/components/superadmin/DigitalServiceGlobalSettings';
 import { DomainsManager } from '@/components/superadmin/DomainsManager';
+import { MarketingCEOPanel } from '@/components/marketing';
 import { useSubscribers } from '@/hooks/useSubscribers';
 import { useOrganizations } from '@/hooks/useOrganizations';
 
@@ -76,14 +78,14 @@ export default function SuperAdmin() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Crown className="h-6 w-6 text-yellow-500" />
+            <Crown className="h-6 w-6 text-primary" />
             Painel Super Admin
           </h1>
           <p className="text-muted-foreground">
             Gestão global de planos, preços e funcionalidades do SaaS
           </p>
         </div>
-        <Badge variant="outline" className="text-yellow-600 border-yellow-600">
+        <Badge variant="outline" className="text-primary border-primary">
           Super Admin
         </Badge>
       </div>
@@ -225,6 +227,10 @@ export default function SuperAdmin() {
             <Smartphone className="h-4 w-4" />
             Atendimento Digital
           </TabsTrigger>
+          <TabsTrigger value="marketing" className="flex items-center gap-2">
+            <TrendingUp className="h-4 w-4" />
+            Marketing
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="organizations">
@@ -300,6 +306,10 @@ export default function SuperAdmin() {
 
         <TabsContent value="digital-service">
           <DigitalServiceGlobalSettings />
+        </TabsContent>
+
+        <TabsContent value="marketing">
+          <MarketingCEOPanel />
         </TabsContent>
       </Tabs>
     </div>

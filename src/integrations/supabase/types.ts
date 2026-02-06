@@ -2586,6 +2586,246 @@ export type Database = {
           },
         ]
       }
+      marketing_seo_pages: {
+        Row: {
+          canonical_url: string | null
+          content_score: number | null
+          created_at: string | null
+          description_score: number | null
+          id: string
+          is_indexed: boolean | null
+          issues: Json | null
+          last_crawled_at: string | null
+          meta_description: string | null
+          meta_keywords: string[] | null
+          og_description: string | null
+          og_image_url: string | null
+          og_title: string | null
+          overall_score: number | null
+          page_path: string
+          page_title: string | null
+          settings_id: string | null
+          suggestions: Json | null
+          tenant_id: string
+          title_score: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          canonical_url?: string | null
+          content_score?: number | null
+          created_at?: string | null
+          description_score?: number | null
+          id?: string
+          is_indexed?: boolean | null
+          issues?: Json | null
+          last_crawled_at?: string | null
+          meta_description?: string | null
+          meta_keywords?: string[] | null
+          og_description?: string | null
+          og_image_url?: string | null
+          og_title?: string | null
+          overall_score?: number | null
+          page_path: string
+          page_title?: string | null
+          settings_id?: string | null
+          suggestions?: Json | null
+          tenant_id: string
+          title_score?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          canonical_url?: string | null
+          content_score?: number | null
+          created_at?: string | null
+          description_score?: number | null
+          id?: string
+          is_indexed?: boolean | null
+          issues?: Json | null
+          last_crawled_at?: string | null
+          meta_description?: string | null
+          meta_keywords?: string[] | null
+          og_description?: string | null
+          og_image_url?: string | null
+          og_title?: string | null
+          overall_score?: number | null
+          page_path?: string
+          page_title?: string | null
+          settings_id?: string | null
+          suggestions?: Json | null
+          tenant_id?: string
+          title_score?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketing_seo_pages_settings_id_fkey"
+            columns: ["settings_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_seo_settings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketing_seo_pages_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      marketing_seo_reports: {
+        Row: {
+          content_score: number | null
+          created_at: string | null
+          critical_issues: number | null
+          id: string
+          issues: Json | null
+          meta_score: number | null
+          overall_score: number | null
+          recommendations: number | null
+          recommendations_list: Json | null
+          report_type: string
+          settings_id: string | null
+          technical_score: number | null
+          tenant_id: string
+          warnings: number | null
+        }
+        Insert: {
+          content_score?: number | null
+          created_at?: string | null
+          critical_issues?: number | null
+          id?: string
+          issues?: Json | null
+          meta_score?: number | null
+          overall_score?: number | null
+          recommendations?: number | null
+          recommendations_list?: Json | null
+          report_type: string
+          settings_id?: string | null
+          technical_score?: number | null
+          tenant_id: string
+          warnings?: number | null
+        }
+        Update: {
+          content_score?: number | null
+          created_at?: string | null
+          critical_issues?: number | null
+          id?: string
+          issues?: Json | null
+          meta_score?: number | null
+          overall_score?: number | null
+          recommendations?: number | null
+          recommendations_list?: Json | null
+          report_type?: string
+          settings_id?: string | null
+          technical_score?: number | null
+          tenant_id?: string
+          warnings?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketing_seo_reports_settings_id_fkey"
+            columns: ["settings_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_seo_settings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketing_seo_reports_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      marketing_seo_settings: {
+        Row: {
+          bing_webmaster_verified: boolean | null
+          bing_webmaster_verified_at: string | null
+          created_at: string | null
+          default_description: string | null
+          default_keywords: string[] | null
+          default_title_suffix: string | null
+          domain_id: string | null
+          google_search_console_verified: boolean | null
+          google_search_console_verified_at: string | null
+          id: string
+          last_audit_at: string | null
+          robots_allow_all: boolean | null
+          robots_txt_custom: string | null
+          schema_org_data: Json | null
+          schema_org_type: string | null
+          seo_score: number | null
+          sitemap_change_freq: string | null
+          sitemap_enabled: boolean | null
+          sitemap_priority: number | null
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          bing_webmaster_verified?: boolean | null
+          bing_webmaster_verified_at?: string | null
+          created_at?: string | null
+          default_description?: string | null
+          default_keywords?: string[] | null
+          default_title_suffix?: string | null
+          domain_id?: string | null
+          google_search_console_verified?: boolean | null
+          google_search_console_verified_at?: string | null
+          id?: string
+          last_audit_at?: string | null
+          robots_allow_all?: boolean | null
+          robots_txt_custom?: string | null
+          schema_org_data?: Json | null
+          schema_org_type?: string | null
+          seo_score?: number | null
+          sitemap_change_freq?: string | null
+          sitemap_enabled?: boolean | null
+          sitemap_priority?: number | null
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          bing_webmaster_verified?: boolean | null
+          bing_webmaster_verified_at?: string | null
+          created_at?: string | null
+          default_description?: string | null
+          default_keywords?: string[] | null
+          default_title_suffix?: string | null
+          domain_id?: string | null
+          google_search_console_verified?: boolean | null
+          google_search_console_verified_at?: string | null
+          id?: string
+          last_audit_at?: string | null
+          robots_allow_all?: boolean | null
+          robots_txt_custom?: string | null
+          schema_org_data?: Json | null
+          schema_org_type?: string | null
+          seo_score?: number | null
+          sitemap_change_freq?: string | null
+          sitemap_enabled?: boolean | null
+          sitemap_priority?: number | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketing_seo_settings_domain_id_fkey"
+            columns: ["domain_id"]
+            isOneToOne: false
+            referencedRelation: "organization_domains"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketing_seo_settings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       marketplace_integrations: {
         Row: {
           access_token: string | null
