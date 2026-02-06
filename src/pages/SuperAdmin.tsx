@@ -24,6 +24,7 @@ import {
   Smartphone,
   Globe,
   TrendingUp,
+  Megaphone,
 } from 'lucide-react';
 import { PlanEditor } from '@/components/superadmin/PlanEditor';
 import { FeatureComparison } from '@/components/superadmin/FeatureComparison';
@@ -44,6 +45,7 @@ import { DigitalServiceGlobalSettings } from '@/components/superadmin/DigitalSer
 import { DomainsManager } from '@/components/superadmin/DomainsManager';
 import { ModuleLimitsManager } from '@/components/superadmin/ModuleLimitsManager';
 import { SuperAdminMarketingPanel } from '@/components/superadmin/SuperAdminMarketingPanel';
+import { PlatformMarketingPanel } from '@/components/superadmin/PlatformMarketingPanel';
 import { useSubscribers } from '@/hooks/useSubscribers';
 import { useOrganizations } from '@/hooks/useOrganizations';
 
@@ -230,7 +232,11 @@ export default function SuperAdmin() {
           </TabsTrigger>
           <TabsTrigger value="marketing" className="flex items-center gap-2">
             <TrendingUp className="h-4 w-4" />
-            Marketing
+            Marketing Lojistas
+          </TabsTrigger>
+          <TabsTrigger value="platform-marketing" className="flex items-center gap-2">
+            <Megaphone className="h-4 w-4" />
+            Marketing Plataforma
           </TabsTrigger>
         </TabsList>
 
@@ -315,6 +321,10 @@ export default function SuperAdmin() {
 
         <TabsContent value="marketing">
           <SuperAdminMarketingPanel />
+        </TabsContent>
+
+        <TabsContent value="platform-marketing">
+          <PlatformMarketingPanel />
         </TabsContent>
       </Tabs>
     </div>

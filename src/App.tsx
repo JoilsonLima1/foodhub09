@@ -33,6 +33,9 @@ import Stores from "./pages/Stores";
 import Comandas from "./pages/Comandas";
 import Events from "./pages/Events";
 import Marketing from "./pages/Marketing";
+import PublicClientes from "./pages/PublicClientes";
+import PublicRecursos from "./pages/PublicRecursos";
+import PublicPlanos from "./pages/PublicPlanos";
 
 const queryClient = new QueryClient();
 
@@ -54,7 +57,11 @@ const App = () => (
             <ActiveStoreProvider>
               <Routes>
                 <Route path="/" element={<Landing />} />
+                <Route path="/recursos" element={<PublicRecursos />} />
+                <Route path="/planos" element={<PublicPlanos />} />
+                <Route path="/clientes" element={<PublicClientes />} />
                 <Route path="/auth" element={<Auth />} />
+                <Route path="/checkout/success" element={<CheckoutSuccess />} />
                 <Route path="/checkout/success" element={<CheckoutSuccess />} />
                 
                 {/* Public Menu - accessible without auth */}

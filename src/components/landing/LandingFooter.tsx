@@ -1,4 +1,5 @@
-import { MessageCircle, Mail, MapPin, Phone } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { MessageCircle, Mail, MapPin } from 'lucide-react';
 import { WhatsAppButton } from './WhatsAppButton';
 
 interface LandingFooterProps {
@@ -8,10 +9,6 @@ interface LandingFooterProps {
 }
 
 export function LandingFooter({ logoUrl, companyName, whatsappNumber }: LandingFooterProps) {
-  const scrollTo = (id: string) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
-  };
-
   return (
     <footer className="py-16 px-4 bg-card border-t border-border">
       <div className="container mx-auto max-w-7xl">
@@ -40,29 +37,29 @@ export function LandingFooter({ logoUrl, companyName, whatsappNumber }: LandingF
             <h4 className="font-bold text-lg mb-6">Navegação</h4>
             <ul className="space-y-3">
               <li>
-                <button onClick={() => scrollTo('features')} className="text-muted-foreground hover:text-primary transition-colors">
+                <Link to="/recursos" className="text-muted-foreground hover:text-primary transition-colors">
                   Recursos
-                </button>
+                </Link>
               </li>
               <li>
-                <button onClick={() => scrollTo('categories')} className="text-muted-foreground hover:text-primary transition-colors">
-                  Categorias
-                </button>
-              </li>
-              <li>
-                <button onClick={() => scrollTo('advantages')} className="text-muted-foreground hover:text-primary transition-colors">
-                  Vantagens
-                </button>
-              </li>
-              <li>
-                <button onClick={() => scrollTo('pricing')} className="text-muted-foreground hover:text-primary transition-colors">
+                <Link to="/planos" className="text-muted-foreground hover:text-primary transition-colors">
                   Planos e Preços
-                </button>
+                </Link>
               </li>
               <li>
-                <button onClick={() => scrollTo('faq')} className="text-muted-foreground hover:text-primary transition-colors">
-                  Perguntas Frequentes
-                </button>
+                <Link to="/clientes" className="text-muted-foreground hover:text-primary transition-colors">
+                  Nossos Clientes
+                </Link>
+              </li>
+              <li>
+                <Link to="/auth?tab=signup" className="text-muted-foreground hover:text-primary transition-colors">
+                  Criar Loja Grátis
+                </Link>
+              </li>
+              <li>
+                <Link to="/auth?intent=login" className="text-muted-foreground hover:text-primary transition-colors">
+                  Entrar
+                </Link>
               </li>
             </ul>
           </div>

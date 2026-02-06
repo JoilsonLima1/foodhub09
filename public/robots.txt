@@ -1,3 +1,31 @@
+# FoodHub09 - Platform Robots.txt
+# https://start-a-new-quest.lovable.app
+
+User-agent: *
+Allow: /
+Allow: /recursos
+Allow: /planos
+Allow: /clientes
+
+# Disallow admin and authenticated areas
+Disallow: /dashboard
+Disallow: /orders
+Disallow: /pos
+Disallow: /kitchen
+Disallow: /deliveries
+Disallow: /products
+Disallow: /stock
+Disallow: /reports
+Disallow: /settings
+Disallow: /super-admin
+Disallow: /courier-dashboard
+Disallow: /stores
+Disallow: /comandas
+Disallow: /events
+Disallow: /marketing
+Disallow: /tables
+
+# Allow specific crawlers
 User-agent: Googlebot
 Allow: /
 
@@ -10,5 +38,5 @@ Allow: /
 User-agent: facebookexternalhit
 Allow: /
 
-User-agent: *
-Allow: /
+# Sitemap location
+Sitemap: https://start-a-new-quest.lovable.app/sitemap.xml
