@@ -48,17 +48,14 @@ export function LandingHeader({ logoUrl, companyName, whatsappNumber, onOpenChat
 
         {/* Desktop Navigation */}
         <nav className="hidden lg:flex items-center gap-8">
-          <button onClick={() => scrollTo('features')} className="text-foreground/80 hover:text-primary transition-colors font-medium">
+          <button onClick={() => navigate('/recursos')} className="text-foreground/80 hover:text-primary transition-colors font-medium">
             Recursos
           </button>
-          <button onClick={() => scrollTo('categories')} className="text-foreground/80 hover:text-primary transition-colors font-medium">
-            Categorias
-          </button>
-          <button onClick={() => scrollTo('advantages')} className="text-foreground/80 hover:text-primary transition-colors font-medium">
-            Vantagens
-          </button>
-          <button onClick={() => scrollTo('pricing')} className="text-foreground/80 hover:text-primary transition-colors font-medium">
+          <button onClick={() => navigate('/planos')} className="text-foreground/80 hover:text-primary transition-colors font-medium">
             Planos
+          </button>
+          <button onClick={() => navigate('/clientes')} className="text-foreground/80 hover:text-primary transition-colors font-medium">
+            Clientes
           </button>
           <button onClick={() => scrollTo('faq')} className="text-foreground/80 hover:text-primary transition-colors font-medium">
             FAQ
@@ -110,17 +107,14 @@ export function LandingHeader({ logoUrl, companyName, whatsappNumber, onOpenChat
       {isMobileMenuOpen && (
         <div className="lg:hidden bg-background/98 backdrop-blur-md border-t border-border animate-fade-in">
           <div className="container mx-auto px-4 py-6 flex flex-col gap-4">
-            <button onClick={() => scrollTo('features')} className="text-left py-2 text-foreground/80 hover:text-primary transition-colors font-medium">
+            <button onClick={() => { navigate('/recursos'); setIsMobileMenuOpen(false); }} className="text-left py-2 text-foreground/80 hover:text-primary transition-colors font-medium">
               Recursos
             </button>
-            <button onClick={() => scrollTo('categories')} className="text-left py-2 text-foreground/80 hover:text-primary transition-colors font-medium">
-              Categorias
-            </button>
-            <button onClick={() => scrollTo('advantages')} className="text-left py-2 text-foreground/80 hover:text-primary transition-colors font-medium">
-              Vantagens
-            </button>
-            <button onClick={() => scrollTo('pricing')} className="text-left py-2 text-foreground/80 hover:text-primary transition-colors font-medium">
+            <button onClick={() => { navigate('/planos'); setIsMobileMenuOpen(false); }} className="text-left py-2 text-foreground/80 hover:text-primary transition-colors font-medium">
               Planos
+            </button>
+            <button onClick={() => { navigate('/clientes'); setIsMobileMenuOpen(false); }} className="text-left py-2 text-foreground/80 hover:text-primary transition-colors font-medium">
+              Clientes
             </button>
             <button onClick={() => scrollTo('faq')} className="text-left py-2 text-foreground/80 hover:text-primary transition-colors font-medium">
               FAQ

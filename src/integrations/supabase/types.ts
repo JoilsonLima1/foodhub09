@@ -6092,6 +6092,7 @@ export type Database = {
           created_at: string | null
           email: string | null
           fallback_to_manual: boolean | null
+          hide_from_public_listing: boolean | null
           id: string
           in_person_provider:
             | Database["public"]["Enums"]["payment_provider"]
@@ -6129,6 +6130,7 @@ export type Database = {
           created_at?: string | null
           email?: string | null
           fallback_to_manual?: boolean | null
+          hide_from_public_listing?: boolean | null
           id?: string
           in_person_provider?:
             | Database["public"]["Enums"]["payment_provider"]
@@ -6166,6 +6168,7 @@ export type Database = {
           created_at?: string | null
           email?: string | null
           fallback_to_manual?: boolean | null
+          hide_from_public_listing?: boolean | null
           id?: string
           in_person_provider?:
             | Database["public"]["Enums"]["payment_provider"]
@@ -7259,6 +7262,17 @@ export type Database = {
         Returns: {
           setting_key: string
           setting_value: Json
+        }[]
+      }
+      get_public_subscribers: {
+        Args: never
+        Returns: {
+          category_name: string
+          city: string
+          id: string
+          logo_url: string
+          name: string
+          state: string
         }[]
       }
       get_public_subscription_plans: {
