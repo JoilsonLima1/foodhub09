@@ -3,6 +3,7 @@
  * 
  * Shows an attractive upsell card when a user tries to access
  * a module they haven't purchased/activated.
+ * Supports free activation and trial flows.
  */
 
 import { Link } from 'react-router-dom';
@@ -14,12 +15,14 @@ import {
   CheckCircle2, 
   ShoppingCart,
   Sparkles,
-  BarChart3,
-  Globe,
-  FileCode,
-  Search,
+  Gift,
+  Play,
+  Zap,
+  Loader2,
 } from 'lucide-react';
-import type { AddonModule } from '@/hooks/useAddonModules';
+import { useTenantModules } from '@/hooks/useTenantModules';
+import { useSubscriptionPlans } from '@/hooks/useSubscriptionPlans';
+import { useModuleTrial, TRIAL_DURATION_DAYS } from '@/hooks/useModuleTrial';
 
 interface ModuleUpsellCardProps {
   moduleSlug: string;
@@ -46,6 +49,9 @@ const MODULE_ICONS: Record<string, React.ComponentType<{ className?: string }>> 
   marketing_ceo: TrendingUp,
 };
 
+// Plans that get free access (with limits)
+const FREE_PLAN_SLUGS = ['free', 'starter'];
+
 export function ModuleUpsellCard({
   moduleSlug,
   moduleName = 'Módulo Premium',
@@ -56,12 +62,31 @@ export function ModuleUpsellCard({
 }: ModuleUpsellCardProps) {
   const Icon = MODULE_ICONS[moduleSlug] || Sparkles;
   const displayFeatures = features.length > 0 ? features : MODULE_FEATURES[moduleSlug] || [];
+  
+  const { tenantInfo } = useTenantModules();
+  const { plans } = useSubscriptionPlans();
+  const { trialInfo, activateTrial, activateFree } = useModuleTrial(moduleSlug);
+
+  // Check if user is on a free/starter plan
+  const currentPlanId = tenantInfo?.subscription_plan_id;
+  const currentPlanSlug = plans?.find(p => p.id === currentPlanId)?.slug || '';
+  const isOnFreePlan = FREE_PLAN_SLUGS.includes(currentPlanSlug);
+
+  const isActivating = activateTrial.isPending || activateFree.isPending;
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL',
     }).format(price);
+  };
+
+  const handleActivateTrial = () => {
+    activateTrial.mutate();
+  };
+
+  const handleActivateFree = () => {
+    activateFree.mutate();
   };
 
   return (
@@ -72,10 +97,17 @@ export function ModuleUpsellCard({
             <Icon className="h-12 w-12 text-primary" />
           </div>
           <div className="space-y-2">
-            <Badge variant="secondary" className="text-xs">
-              <Sparkles className="h-3 w-3 mr-1" />
-              Módulo Premium
-            </Badge>
+            {isOnFreePlan ? (
+              <Badge variant="secondary" className="text-xs bg-emerald-100 text-emerald-700">
+                <Zap className="h-3 w-3 mr-1" />
+                Grátis no seu plano
+              </Badge>
+            ) : (
+              <Badge variant="secondary" className="text-xs">
+                <Gift className="h-3 w-3 mr-1" />
+                Teste Grátis Disponível
+              </Badge>
+            )}
             <CardTitle className="text-2xl">{moduleName}</CardTitle>
             <CardDescription className="text-base max-w-md mx-auto">
               {moduleDescription}
@@ -84,18 +116,52 @@ export function ModuleUpsellCard({
         </CardHeader>
 
         <CardContent className="space-y-6">
-          {/* Price */}
-          <div className="text-center py-4 bg-muted/50 rounded-lg">
-            <div className="flex items-baseline justify-center gap-1">
-              <span className="text-4xl font-bold text-primary">
-                {formatPrice(modulePrice)}
-              </span>
-              <span className="text-muted-foreground">/mês</span>
+          {/* Free/Trial Banner */}
+          <div className="p-4 rounded-lg bg-gradient-to-r from-emerald-50 to-blue-50 dark:from-emerald-950/30 dark:to-blue-950/30 border border-emerald-200 dark:border-emerald-800">
+            <div className="flex items-start gap-3">
+              <Gift className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <p className="font-medium text-emerald-800 dark:text-emerald-300">
+                  {isOnFreePlan ? 'Instalação Grátis!' : `Teste Grátis por ${TRIAL_DURATION_DAYS} Dias!`}
+                </p>
+                <p className="text-sm text-emerald-700 dark:text-emerald-400">
+                  {isOnFreePlan 
+                    ? 'No plano grátis você usa este módulo sem pagar (com limites de uso mensal).'
+                    : 'Experimente todas as funcionalidades sem compromisso. Sem cartão de crédito.'
+                  }
+                </p>
+              </div>
             </div>
-            <p className="text-sm text-muted-foreground mt-1">
-              Cancele quando quiser • Sem taxa de adesão
-            </p>
           </div>
+
+          {/* Price */}
+          {isOnFreePlan ? (
+            <div className="text-center py-4 bg-emerald-50 dark:bg-emerald-950/30 rounded-lg">
+              <div className="flex items-baseline justify-center gap-2">
+                <span className="text-4xl font-bold text-emerald-600">
+                  Grátis
+                </span>
+                <span className="text-muted-foreground line-through">
+                  {formatPrice(modulePrice)}/mês
+                </span>
+              </div>
+              <p className="text-sm text-emerald-700 dark:text-emerald-400 mt-1">
+                Uso gratuito com limites no seu plano atual
+              </p>
+            </div>
+          ) : (
+            <div className="text-center py-4 bg-muted/50 rounded-lg">
+              <div className="flex items-baseline justify-center gap-1">
+                <span className="text-4xl font-bold text-primary">
+                  {formatPrice(modulePrice)}
+                </span>
+                <span className="text-muted-foreground">/mês</span>
+              </div>
+              <p className="text-sm text-muted-foreground mt-1">
+                Após o teste • Cancele quando quiser
+              </p>
+            </div>
+          )}
 
           {/* Features */}
           {displayFeatures.length > 0 && (
@@ -113,25 +179,59 @@ export function ModuleUpsellCard({
           )}
 
           {/* CTA */}
-          <div className="flex flex-col sm:flex-row gap-3 pt-4">
-            <Link to={`/settings?tab=modules&module=${moduleSlug}`} className="flex-1">
-              <Button className="w-full" size="lg" onClick={onActivate}>
-                <ShoppingCart className="h-4 w-4 mr-2" />
-                Ver na Loja de Módulos
+          <div className="flex flex-col gap-3 pt-4">
+            {isOnFreePlan ? (
+              /* Free activation for free plan users */
+              <Button 
+                className="w-full bg-emerald-600 hover:bg-emerald-700" 
+                size="lg" 
+                onClick={handleActivateFree}
+                disabled={isActivating}
+              >
+                {isActivating ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Zap className="h-4 w-4 mr-2" />
+                )}
+                Ativar Grátis Agora
               </Button>
-            </Link>
-            <Link to="/settings?tab=subscription" className="flex-1">
-              <Button variant="outline" className="w-full" size="lg">
-                Ver Planos
+            ) : trialInfo.canStartTrial ? (
+              /* Trial activation */
+              <Button 
+                className="w-full bg-blue-600 hover:bg-blue-700" 
+                size="lg" 
+                onClick={handleActivateTrial}
+                disabled={isActivating}
+              >
+                {isActivating ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Play className="h-4 w-4 mr-2" />
+                )}
+                Iniciar Teste Grátis ({TRIAL_DURATION_DAYS} dias)
               </Button>
-            </Link>
+            ) : null}
+
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Link to={`/settings?tab=modules&module=${moduleSlug}`} className="flex-1">
+                <Button variant="outline" className="w-full" size="lg" onClick={onActivate}>
+                  <ShoppingCart className="h-4 w-4 mr-2" />
+                  Ver na Loja de Módulos
+                </Button>
+              </Link>
+              <Link to="/settings?tab=subscription" className="flex-1">
+                <Button variant="ghost" className="w-full" size="lg">
+                  Ver Planos
+                </Button>
+              </Link>
+            </div>
           </div>
 
           {/* Trust badges */}
           <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground pt-2">
             <span className="flex items-center gap-1">
               <CheckCircle2 className="h-3 w-3" />
-              Pagamento seguro
+              Sem cartão de crédito
             </span>
             <span className="flex items-center gap-1">
               <CheckCircle2 className="h-3 w-3" />
