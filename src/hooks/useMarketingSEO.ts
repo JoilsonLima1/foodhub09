@@ -288,8 +288,11 @@ export function useMarketingSEO(tenantId?: string) {
 
       if (error) throw error;
 
-      // Update last audit date
+      // Update settings and create audit history entry
       if (settings?.id) {
+        const previousScore = settings.seo_score || 0;
+        
+        // Update settings with new score
         await supabase
           .from('marketing_seo_settings')
           .update({ 
@@ -297,6 +300,18 @@ export function useMarketingSEO(tenantId?: string) {
             last_audit_at: new Date().toISOString() 
           })
           .eq('id', settings.id);
+
+        // Create audit history entry
+        await supabase
+          .from('marketing_seo_audit_history')
+          .insert({
+            tenant_id: effectiveTenantId,
+            settings_id: settings.id,
+            previous_score: previousScore,
+            current_score: overallScore,
+            audit_type: 'manual',
+            notes: `Auditoria completa: ${issues.length} problema(s), ${recommendations.length} recomendação(ões)`,
+          });
       }
 
       return data;
