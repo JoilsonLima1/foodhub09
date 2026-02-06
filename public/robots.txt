@@ -1,5 +1,5 @@
 # FoodHub09 - Platform Robots.txt
-# https://start-a-new-quest.lovable.app
+# https://foodhub09.com.br
 
 User-agent: *
 Allow: /
@@ -38,5 +38,5 @@ Allow: /
 User-agent: facebookexternalhit
 Allow: /
 
-# Sitemap location
-Sitemap: https://start-a-new-quest.lovable.app/sitemap.xml
+# Sitemap location - canonical production domain
+Sitemap: https://foodhub09.com.br/sitemap.xml

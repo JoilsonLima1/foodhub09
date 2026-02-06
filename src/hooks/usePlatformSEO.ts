@@ -61,11 +61,29 @@ export function usePlatformSEO() {
     ],
   };
 
-  // Get base URL from environment or window
-  const baseUrl = typeof window !== 'undefined' 
-    ? window.location.origin 
-    : 'https://start-a-new-quest.lovable.app';
+  // Get canonical base URL - prioritize custom domain in production
+  const getCanonicalBaseUrl = (): string => {
+    if (typeof window === 'undefined') {
+      return 'https://foodhub09.com.br';
+    }
+    
+    const host = window.location.host;
+    
+    // Production custom domain
+    if (host.includes('foodhub09.com.br')) {
+      return 'https://foodhub09.com.br';
+    }
+    
+    // Lovable preview/editor environments
+    if (host.includes('lovable.app') || host.includes('lovable.dev')) {
+      return window.location.origin;
+    }
+    
+    // Default to production domain
+    return 'https://foodhub09.com.br';
+  };
 
+  const baseUrl = getCanonicalBaseUrl();
   const sitemapUrl = `${baseUrl}/sitemap.xml`;
   const robotsTxtUrl = `${baseUrl}/robots.txt`;
 
