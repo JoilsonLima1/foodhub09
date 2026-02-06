@@ -4,8 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { 
   CheckCircle2, 
-  XCircle, 
-  AlertTriangle, 
   ArrowRight,
   Globe,
   FileCode,
@@ -17,24 +15,34 @@ import { useMarketingSEO, MarketingSEOSettings } from '@/hooks/useMarketingSEO';
 import { OrganizationDomain } from '@/hooks/useOrganizationDomains';
 import { useModuleUsage } from '@/hooks/useModuleUsage';
 import { UsageLimitBanner, UsageLimitIndicator } from '@/components/modules/UsageLimitBanner';
-import { useAuth } from '@/contexts/AuthContext';
 
 interface SEOOverviewTabProps {
   domain: OrganizationDomain | undefined;
   settings: MarketingSEOSettings | null | undefined;
   hasVerifiedDomain: boolean;
+  /** If true, bypasses module limits (Super Admin mode) */
+  isSuperAdmin?: boolean;
+  /** Tenant ID to use (overrides auth context) */
+  tenantId?: string | null;
 }
 
-export function SEOOverviewTab({ domain, settings, hasVerifiedDomain }: SEOOverviewTabProps) {
-  const { tenantId } = useAuth();
+export function SEOOverviewTab({ 
+  domain, 
+  settings, 
+  hasVerifiedDomain, 
+  isSuperAdmin = false,
+  tenantId,
+}: SEOOverviewTabProps) {
   const { runAudit } = useMarketingSEO(tenantId || undefined);
+  
+  // Only check limits if not Super Admin
   const { 
     canPerformAction, 
     getUsed, 
     getLimit, 
     tryPerformAction,
     isLoading: usageLoading,
-  } = useModuleUsage('marketing_ceo', ['audits_per_month', 'pages_per_month']);
+  } = useModuleUsage('marketing_ceo', isSuperAdmin ? [] : ['audits_per_month', 'pages_per_month']);
 
   const checklistItems = [
     {
@@ -160,16 +168,19 @@ export function SEOOverviewTab({ domain, settings, hasVerifiedDomain }: SEOOverv
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>Ações Rápidas</CardTitle>
-              <UsageLimitIndicator 
-                used={getUsed('audits_per_month')} 
-                limit={getLimit('audits_per_month')} 
-                label="auditorias restantes"
-              />
+              {/* Hide usage indicator in Super Admin mode */}
+              {!isSuperAdmin && (
+                <UsageLimitIndicator 
+                  used={getUsed('audits_per_month')} 
+                  limit={getLimit('audits_per_month')} 
+                  label="auditorias restantes"
+                />
+              )}
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Usage limit banner if near limit */}
-            {getLimit('audits_per_month') > 0 && (
+            {/* Usage limit banner if near limit - hide in Super Admin mode */}
+            {!isSuperAdmin && getLimit('audits_per_month') > 0 && (
               <UsageLimitBanner
                 featureName="auditorias"
                 used={getUsed('audits_per_month')}
@@ -181,13 +192,18 @@ export function SEOOverviewTab({ domain, settings, hasVerifiedDomain }: SEOOverv
             <div className="flex gap-4">
               <Button 
                 onClick={async () => {
+                  // Super Admin bypasses limits
+                  if (isSuperAdmin) {
+                    runAudit.mutate();
+                    return;
+                  }
                   // Check and increment usage before running audit
                   const allowed = await tryPerformAction('audits_per_month');
                   if (allowed) {
                     runAudit.mutate();
                   }
                 }}
-                disabled={runAudit.isPending || !canPerformAction('audits_per_month') || usageLoading}
+                disabled={runAudit.isPending || (!isSuperAdmin && !canPerformAction('audits_per_month')) || (!isSuperAdmin && usageLoading)}
               >
                 {runAudit.isPending ? (
                   <>
