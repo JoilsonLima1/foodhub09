@@ -22,6 +22,7 @@ export interface MarketingSEOSettings {
   bing_webmaster_verified: boolean;
   bing_webmaster_verified_at: string | null;
   seo_score: number;
+  seo_init_status: 'pending_domain' | 'initialized' | 'ready';
   last_audit_at: string | null;
   created_at: string;
   updated_at: string;

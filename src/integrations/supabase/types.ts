@@ -2807,6 +2807,7 @@ export type Database = {
           robots_txt_custom: string | null
           schema_org_data: Json | null
           schema_org_type: string | null
+          seo_init_status: string
           seo_score: number | null
           sitemap_change_freq: string | null
           sitemap_enabled: boolean | null
@@ -2830,6 +2831,7 @@ export type Database = {
           robots_txt_custom?: string | null
           schema_org_data?: Json | null
           schema_org_type?: string | null
+          seo_init_status?: string
           seo_score?: number | null
           sitemap_change_freq?: string | null
           sitemap_enabled?: boolean | null
@@ -2853,6 +2855,7 @@ export type Database = {
           robots_txt_custom?: string | null
           schema_org_data?: Json | null
           schema_org_type?: string | null
+          seo_init_status?: string
           seo_score?: number | null
           sitemap_change_freq?: string | null
           sitemap_enabled?: boolean | null
@@ -7222,6 +7225,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      initialize_tenant_seo_settings: {
+        Args: { p_domain_id?: string; p_tenant_id: string }
+        Returns: string
       }
       is_assigned_courier: {
         Args: { _order_id: string; _user_id: string }
