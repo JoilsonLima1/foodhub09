@@ -27,8 +27,13 @@ export function MarketingCEOPanel() {
   const { domains, isLoading: domainsLoading } = useOrganizationDomains(tenantId || undefined);
   const { settings, isLoading: seoLoading } = useMarketingSEO(tenantId || undefined);
   
-  const activeDomain = domains.find(d => d.is_verified && d.is_primary) || domains.find(d => d.is_verified);
-  const hasVerifiedDomain = !!activeDomain;
+  // Domain validation - consider valid if at least 1 verified domain exists for this tenant
+  const verifiedDomains = domains.filter(d => d.is_verified);
+  const pendingDomains = domains.filter(d => !d.is_verified);
+  const activeDomain = verifiedDomains.find(d => d.is_primary) || verifiedDomains[0];
+  const hasVerifiedDomain = verifiedDomains.length > 0;
+  const hasPendingDomains = pendingDomains.length > 0;
+  const hasAnyDomain = domains.length > 0;
 
   if (domainsLoading || seoLoading) {
     return (
@@ -37,6 +42,36 @@ export function MarketingCEOPanel() {
       </div>
     );
   }
+
+  // Determine domain status message
+  const getDomainStatusInfo = () => {
+    if (hasVerifiedDomain) {
+      return {
+        type: 'success' as const,
+        title: 'Domínio ativo',
+        description: `Seu SEO está configurado para: ${activeDomain?.domain}`,
+        showPrimaryBadge: activeDomain?.is_primary,
+      };
+    }
+    
+    if (hasPendingDomains) {
+      return {
+        type: 'warning' as const,
+        title: 'Verificação pendente',
+        description: `Você possui ${pendingDomains.length} domínio(s) aguardando verificação DNS. Complete a configuração em Configurações → Domínios.`,
+        showPrimaryBadge: false,
+      };
+    }
+    
+    return {
+      type: 'error' as const,
+      title: 'Domínio não configurado',
+      description: 'Para usar as funcionalidades de SEO, você precisa ter um domínio verificado. Acesse Configurações → Domínios para configurar seu domínio.',
+      showPrimaryBadge: false,
+    };
+  };
+
+  const domainStatus = getDomainStatusInfo();
 
   return (
     <div className="space-y-6">
@@ -58,23 +93,26 @@ export function MarketingCEOPanel() {
         )}
       </div>
 
-      {/* Domain Status Alert */}
-      {!hasVerifiedDomain ? (
+      {/* Domain Status Alert - with specific feedback based on actual state */}
+      {domainStatus.type === 'error' ? (
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>Domínio não configurado</AlertTitle>
-          <AlertDescription>
-            Para usar as funcionalidades de SEO, você precisa ter um domínio verificado.
-            Acesse <strong>Configurações → Domínios</strong> para configurar seu domínio.
-          </AlertDescription>
+          <AlertTitle>{domainStatus.title}</AlertTitle>
+          <AlertDescription>{domainStatus.description}</AlertDescription>
+        </Alert>
+      ) : domainStatus.type === 'warning' ? (
+        <Alert className="border-amber-500/50 bg-amber-500/10">
+          <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+          <AlertTitle>{domainStatus.title}</AlertTitle>
+          <AlertDescription>{domainStatus.description}</AlertDescription>
         </Alert>
       ) : (
         <Alert>
           <CheckCircle2 className="h-4 w-4" />
-          <AlertTitle>Domínio ativo</AlertTitle>
+          <AlertTitle>{domainStatus.title}</AlertTitle>
           <AlertDescription>
-            Seu SEO está configurado para: <strong>{activeDomain.domain}</strong>
-            {activeDomain.is_primary && <Badge variant="outline" className="ml-2">Principal</Badge>}
+            {domainStatus.description}
+            {domainStatus.showPrimaryBadge && <Badge variant="outline" className="ml-2">Principal</Badge>}
           </AlertDescription>
         </Alert>
       )}
