@@ -109,6 +109,7 @@ const App = () => (
                     {/* Friendly redirect routes for SEO */}
                     <Route path="/cadastro" element={<Navigate to="/auth?plan=free&intent=signup" replace />} />
                     <Route path="/entrar" element={<Navigate to="/auth?intent=login" replace />} />
+                    <Route path="/sistema-gratis-para-restaurante" element={<Landing />} />
                     <Route path="/checkout/success" element={<CheckoutSuccess />} />
                     
                     {/* Public Menu - accessible without auth */}
