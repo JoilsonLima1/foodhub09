@@ -363,12 +363,13 @@ export default function SuperAdmin() {
 
         <TabsContent value="ops">
           <Tabs defaultValue="alerts" className="space-y-4">
-            <TabsList>
+            <TabsList className="flex flex-wrap h-auto gap-1">
               <TabsTrigger value="alerts">Alertas</TabsTrigger>
               <TabsTrigger value="reconciliation">Reconciliação</TabsTrigger>
               <TabsTrigger value="recommendations">Recomendações</TabsTrigger>
               <TabsTrigger value="disputes">Disputas</TabsTrigger>
               <TabsTrigger value="payments">Pagamentos</TabsTrigger>
+              <TabsTrigger value="partners-payments">Parceiros</TabsTrigger>
               <TabsTrigger value="settings">Configurações</TabsTrigger>
             </TabsList>
             <TabsContent value="alerts">
@@ -385,6 +386,9 @@ export default function SuperAdmin() {
             </TabsContent>
             <TabsContent value="payments">
               <OpsPaymentsPanel />
+            </TabsContent>
+            <TabsContent value="partners-payments">
+              <OpsPartnersPaymentsPanel />
             </TabsContent>
             <TabsContent value="settings">
               <OpsSettingsPanel />
