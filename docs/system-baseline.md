@@ -1,6 +1,19 @@
 # System Baseline v1.0 - Production Ready
-**Data: 2026-02-07**
-**Versão: production-baseline-v1**
+**Data: 2026-02-07**  
+**Versão: release/production-baseline-v1**  
+**Status: 🔒 SNAPSHOT CONGELADO**
+
+---
+
+## 📦 ARQUIVOS DO SNAPSHOT
+
+| Arquivo | Descrição |
+|---------|-----------|
+| [`docs/snapshot/SNAPSHOT_MANIFEST.md`](./snapshot/SNAPSHOT_MANIFEST.md) | Manifesto principal |
+| [`docs/snapshot/migrations-applied.json`](./snapshot/migrations-applied.json) | 112 migrations listadas |
+| [`docs/snapshot/feature-flags.json`](./snapshot/feature-flags.json) | Feature flags e env vars |
+| [`docs/snapshot/seed-data.json`](./snapshot/seed-data.json) | Dados de seed essenciais |
+| [`docs/snapshot/restore-procedure.md`](./snapshot/restore-procedure.md) | Procedimento de restauração |
 
 ---
 

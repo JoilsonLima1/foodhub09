@@ -1,0 +1,64 @@
+{
+  "snapshot_version": "release/production-baseline-v1",
+  "snapshot_date": "2026-02-07T21:10:00Z",
+  "feature_flags": {
+    "archive_ledger_enabled": {
+      "enabled": true,
+      "description": "When enabled, housekeeping job archives old ledger entries",
+      "risk_level": "low",
+      "can_disable": true
+    },
+    "async_apply_queue": {
+      "enabled": false,
+      "description": "When enabled, webhook enqueues events for async processing",
+      "risk_level": "medium",
+      "can_disable": true,
+      "note": "Habilitar apenas após validar apply_queue processing"
+    },
+    "async_payout_jobs": {
+      "enabled": true,
+      "description": "Habilita processamento assíncrono de jobs de repasse",
+      "risk_level": "low",
+      "can_disable": true
+    },
+    "materialized_views_enabled": {
+      "enabled": false,
+      "description": "When enabled, dashboard uses materialized views",
+      "risk_level": "low",
+      "can_disable": true,
+      "note": "Requer criação de MVs primeiro"
+    },
+    "partner_onboarding_auto_sync": {
+      "enabled": true,
+      "description": "Sincroniza automaticamente status de onboarding do parceiro",
+      "risk_level": "low",
+      "can_disable": false,
+      "note": "Crítico para experiência do parceiro"
+    },
+    "split_payments_enabled": {
+      "enabled": true,
+      "description": "Habilita pagamentos com split quando disponível",
+      "risk_level": "high",
+      "can_disable": false,
+      "note": "Desabilitar impacta fluxo financeiro"
+    }
+  },
+  "environment_variables": {
+    "documented": [
+      "VITE_SUPABASE_URL",
+      "VITE_SUPABASE_PUBLISHABLE_KEY",
+      "VITE_SUPABASE_PROJECT_ID"
+    ],
+    "secrets_required": [
+      "ASAAS_API_KEY (para webhooks de pagamento)",
+      "SMTP_* (para envio de emails)",
+      "WHATSAPP_* (para notificações WhatsApp)"
+    ],
+    "note": "Secrets NÃO são exportados por segurança"
+  },
+  "providers_configured": {
+    "payment": ["asaas"],
+    "notification": ["email (templates prontos)", "whatsapp (templates prontos)"],
+    "storage": ["supabase_storage"]
+  }
+}
