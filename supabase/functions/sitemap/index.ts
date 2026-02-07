@@ -78,15 +78,20 @@ interface PlatformPage {
   path: string;
   sitemap_priority: number | null;
   sitemap_changefreq: string | null;
+  robots?: string | null;
 }
 
 async function fetchPlatformPages(
   supabase: ReturnType<typeof createClient>
 ): Promise<PlatformPage[]> {
   try {
+    // Only include pages where:
+    // 1. is_active = true (page is enabled)
+    // 2. is_indexable = true (robots allow indexing)
+    // 3. include_in_sitemap = true (explicitly marked for sitemap)
     const { data, error } = await supabase
       .from("platform_seo_pages")
-      .select("path, sitemap_priority, sitemap_changefreq")
+      .select("path, sitemap_priority, sitemap_changefreq, robots")
       .eq("is_active", true)
       .eq("include_in_sitemap", true)
       .eq("is_indexable", true)
@@ -102,8 +107,25 @@ async function fetchPlatformPages(
       return getDefaultPlatformPages();
     }
 
-    console.log(`[sitemap] Loaded ${data.length} platform pages from database`);
-    return data as PlatformPage[];
+    // Filter out any pages with noindex in robots directive
+    const validPages = data.filter((page: any) => {
+      const robots = (page.robots || '').toLowerCase();
+      // Exclude if robots contains 'noindex'
+      if (robots.includes('noindex')) {
+        console.log(`[sitemap] Excluding ${page.path} due to noindex directive`);
+        return false;
+      }
+      // Exclude technical routes that shouldn't be indexed
+      const excludedPaths = ['/auth', '/super-admin', '/dashboard', '/partner', '/pos', '/kitchen', '/settings'];
+      if (excludedPaths.some(excluded => page.path.startsWith(excluded))) {
+        console.log(`[sitemap] Excluding ${page.path} - technical route`);
+        return false;
+      }
+      return true;
+    });
+
+    console.log(`[sitemap] Loaded ${validPages.length} platform pages from database (filtered from ${data.length})`);
+    return validPages as PlatformPage[];
   } catch (err) {
     console.error("[sitemap] Exception fetching platform pages:", err);
     return getDefaultPlatformPages();

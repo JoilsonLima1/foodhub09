@@ -556,25 +556,45 @@ export function PlatformMarketingAndSEOPanel() {
                 </div>
               </div>
 
+              {/* Webmaster Verification */}
+              <div className="space-y-2">
+                <h4 className="font-medium text-sm text-muted-foreground">Verificação de Webmasters</h4>
+              </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="google_site_verification">Google Site Verification</Label>
+                  <Label htmlFor="google_site_verification">Google Search Console</Label>
                   <Input
                     id="google_site_verification"
                     value={globalForm.google_site_verification ?? settings?.google_site_verification ?? ''}
                     onChange={(e) => setGlobalForm({ ...globalForm, google_site_verification: e.target.value })}
-                    placeholder="Código de verificação Google"
+                    placeholder="Código de verificação (content do meta tag)"
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Cole apenas o valor do atributo content da meta tag fornecida pelo Google.
+                  </p>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="default_robots">Diretiva Robots Padrão</Label>
+                  <Label htmlFor="bing_site_verification">Bing Webmaster Tools</Label>
                   <Input
-                    id="default_robots"
-                    value={globalForm.default_robots ?? settings?.default_robots ?? ''}
-                    onChange={(e) => setGlobalForm({ ...globalForm, default_robots: e.target.value })}
-                    placeholder="index, follow"
+                    id="bing_site_verification"
+                    value={globalForm.bing_site_verification ?? settings?.bing_site_verification ?? ''}
+                    onChange={(e) => setGlobalForm({ ...globalForm, bing_site_verification: e.target.value })}
+                    placeholder="Código de verificação Bing (meta HTML)"
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Cole o valor do atributo content da meta tag msvalidate.01 fornecida pelo Bing.
+                  </p>
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="default_robots">Diretiva Robots Padrão</Label>
+                <Input
+                  id="default_robots"
+                  value={globalForm.default_robots ?? settings?.default_robots ?? ''}
+                  onChange={(e) => setGlobalForm({ ...globalForm, default_robots: e.target.value })}
+                  placeholder="index, follow"
+                />
               </div>
 
               <Button onClick={handleSaveGlobalSettings} disabled={isSaving}>
@@ -735,6 +755,14 @@ export function PlatformMarketingAndSEOPanel() {
                   label="Mobile Friendly"
                   status={seoStatus.isMobileFriendly}
                 />
+                <SEOCheckItem
+                  label="Google Site Verification"
+                  status={!!settings?.google_site_verification}
+                />
+                <SEOCheckItem
+                  label="Bing Webmaster Verification"
+                  status={!!settings?.bing_site_verification}
+                />
               </div>
             </CardContent>
           </Card>
@@ -743,34 +771,62 @@ export function PlatformMarketingAndSEOPanel() {
             <CardHeader>
               <CardTitle>Páginas Públicas</CardTitle>
               <CardDescription>
-                Status de indexação das páginas públicas
+                Status de indexação das páginas públicas. Apenas páginas com <strong>Ativo = Sim</strong>, <strong>Indexar = Sim</strong> e <strong>Incluir no Sitemap = Sim</strong> são incluídas no sitemap.xml
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {statusPages.map((page, index) => (
-                  <div 
-                    key={index}
-                    className="flex items-center justify-between p-3 border rounded-lg"
-                  >
-                    <div className="flex items-center gap-3">
-                      <FileText className="h-4 w-4 text-muted-foreground" />
-                      <div>
-                        <div className="font-medium">{page.title}</div>
-                        <div className="text-sm text-muted-foreground">{page.path}</div>
+                {pages.map((page) => {
+                  const isInSitemap = page.is_active && page.is_indexable && page.include_in_sitemap;
+                  const canonicalUrl = `${settings?.canonical_domain || 'https://foodhub09.com.br'}${page.path === '/' ? '' : page.path}`;
+                  
+                  return (
+                    <div 
+                      key={page.id}
+                      className="flex items-center justify-between p-3 border rounded-lg"
+                    >
+                      <div className="flex items-center gap-3">
+                        <FileText className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <div className="font-medium">{page.title}</div>
+                          <div className="text-sm text-muted-foreground font-mono">{page.path}</div>
+                          <div className="text-xs text-muted-foreground truncate max-w-[300px]">
+                            Canonical: {canonicalUrl}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {!page.is_active && (
+                          <Badge variant="secondary">Inativo</Badge>
+                        )}
+                        {page.is_active && !page.is_indexable && (
+                          <Badge variant="secondary">noindex</Badge>
+                        )}
+                        {page.is_active && page.is_indexable && !page.include_in_sitemap && (
+                          <Badge variant="outline">Fora do Sitemap</Badge>
+                        )}
+                        {isInSitemap && (
+                          <Badge variant="default">No Sitemap</Badge>
+                        )}
+                        <Badge variant="outline">
+                          Prioridade: {page.sitemap_priority ?? 0.5}
+                        </Badge>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant={page.indexed ? 'default' : 'secondary'}>
-                        {page.indexed ? 'Indexada' : 'Pendente'}
-                      </Badge>
-                      <Badge variant="outline">{page.score}%</Badge>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
+
+          {/* Warning for pages not in sitemap */}
+          <Alert>
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Páginas Técnicas Excluídas</AlertTitle>
+            <AlertDescription>
+              Rotas técnicas como <code>/auth</code>, <code>/super-admin</code>, <code>/dashboard</code> devem ser configuradas com <strong>Indexar = Não</strong> e <strong>Incluir no Sitemap = Não</strong> para evitar indexação indesejada.
+            </AlertDescription>
+          </Alert>
         </TabsContent>
       </Tabs>
     </div>
