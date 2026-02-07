@@ -1838,6 +1838,51 @@ export type Database = {
         }
         Relationships: []
       }
+      financial_audit_log: {
+        Row: {
+          action: string
+          actor_id: string | null
+          actor_type: string
+          after_state: Json | null
+          before_state: Json | null
+          correlation_id: string | null
+          created_at: string
+          entity_id: string | null
+          entity_type: string
+          id: string
+          ip_address: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          actor_type: string
+          after_state?: Json | null
+          before_state?: Json | null
+          correlation_id?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type: string
+          id?: string
+          ip_address?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          actor_type?: string
+          after_state?: Json | null
+          before_state?: Json | null
+          correlation_id?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string
+          id?: string
+          ip_address?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       financial_reconciliation: {
         Row: {
           checked_at: string | null
@@ -1890,6 +1935,66 @@ export type Database = {
             columns: ["internal_event_id"]
             isOneToOne: false
             referencedRelation: "payment_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fraud_flags: {
+        Row: {
+          created_at: string
+          details: Json
+          id: string
+          partner_id: string | null
+          resolution_notes: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          severity: string
+          source_event_id: string | null
+          status: string
+          tenant_id: string | null
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          details?: Json
+          id?: string
+          partner_id?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity: string
+          source_event_id?: string | null
+          status?: string
+          tenant_id?: string | null
+          type: string
+        }
+        Update: {
+          created_at?: string
+          details?: Json
+          id?: string
+          partner_id?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+          source_event_id?: string | null
+          status?: string
+          tenant_id?: string | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fraud_flags_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fraud_flags_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -3375,6 +3480,123 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      operational_alerts: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          created_at: string
+          details: Json
+          id: string
+          idempotency_key: string | null
+          partner_id: string | null
+          resolution_notes: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          severity: string
+          status: string
+          tenant_id: string | null
+          title: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          created_at?: string
+          details?: Json
+          id?: string
+          idempotency_key?: string | null
+          partner_id?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity: string
+          status?: string
+          tenant_id?: string | null
+          title: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          created_at?: string
+          details?: Json
+          id?: string
+          idempotency_key?: string | null
+          partner_id?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+          status?: string
+          tenant_id?: string | null
+          title?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operational_alerts_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_alerts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      operational_logs: {
+        Row: {
+          correlation_id: string | null
+          created_at: string
+          duration_ms: number | null
+          event_id: string | null
+          id: string
+          level: string
+          message: string
+          metadata: Json | null
+          partner_id: string | null
+          provider_payment_id: string | null
+          scope: string
+          tenant_id: string | null
+        }
+        Insert: {
+          correlation_id?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          event_id?: string | null
+          id?: string
+          level: string
+          message: string
+          metadata?: Json | null
+          partner_id?: string | null
+          provider_payment_id?: string | null
+          scope: string
+          tenant_id?: string | null
+        }
+        Update: {
+          correlation_id?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          event_id?: string | null
+          id?: string
+          level?: string
+          message?: string
+          metadata?: Json | null
+          partner_id?: string | null
+          provider_payment_id?: string | null
+          scope?: string
+          tenant_id?: string | null
+        }
+        Relationships: []
       }
       order_item_addons: {
         Row: {
@@ -5827,6 +6049,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      rate_limits: {
+        Row: {
+          key: string
+          request_count: number
+          updated_at: string
+          window_start: string
+        }
+        Insert: {
+          key: string
+          request_count?: number
+          updated_at?: string
+          window_start?: string
+        }
+        Update: {
+          key?: string
+          request_count?: number
+          updated_at?: string
+          window_start?: string
+        }
+        Relationships: []
       }
       recipe_items: {
         Row: {
@@ -8921,8 +9164,20 @@ export type Database = {
         }
         Returns: Json
       }
+      check_rate_limit: {
+        Args: {
+          p_key: string
+          p_max_requests: number
+          p_window_seconds: number
+        }
+        Returns: Json
+      }
       check_tenant_subscription_access: {
         Args: { p_tenant_id: string; p_user_id: string }
+        Returns: Json
+      }
+      detect_fraud_signals: {
+        Args: { p_lookback_days?: number; p_partner_id: string }
         Returns: Json
       }
       ensure_headquarters_store: {
@@ -8945,6 +9200,7 @@ export type Database = {
           module_name: string
         }[]
       }
+      generate_operational_alerts: { Args: never; Returns: Json }
       generate_partner_settlement: {
         Args: {
           p_partner_id: string
@@ -9404,6 +9660,44 @@ export type Database = {
       user_has_store_access: {
         Args: { _store_id: string; _user_id: string }
         Returns: boolean
+      }
+      validate_financial_integrity: {
+        Args: {
+          p_partner_id: string
+          p_period_end: string
+          p_period_start: string
+        }
+        Returns: Json
+      }
+      write_financial_audit: {
+        Args: {
+          p_action: string
+          p_actor_id?: string
+          p_actor_type: string
+          p_after_state?: Json
+          p_before_state?: Json
+          p_correlation_id?: string
+          p_entity_id?: string
+          p_entity_type: string
+          p_ip_address?: string
+          p_user_agent?: string
+        }
+        Returns: string
+      }
+      write_operational_log: {
+        Args: {
+          p_correlation_id?: string
+          p_duration_ms?: number
+          p_event_id?: string
+          p_level: string
+          p_message: string
+          p_metadata?: Json
+          p_partner_id?: string
+          p_provider_payment_id?: string
+          p_scope: string
+          p_tenant_id?: string
+        }
+        Returns: string
       }
     }
     Enums: {
