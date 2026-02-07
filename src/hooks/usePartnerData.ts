@@ -114,8 +114,11 @@ export interface PartnerPlanData {
   max_products: number | null;
   max_orders_per_month: number | null;
   included_modules: string[] | null;
+  included_features: string[] | null;
   is_active: boolean;
   display_order: number;
+  trial_days: number;
+  is_free: boolean;
 }
 
 export function usePartnerPlansData() {
