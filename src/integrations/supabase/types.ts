@@ -4732,6 +4732,180 @@ export type Database = {
         }
         Relationships: []
       }
+      platform_seo_pages: {
+        Row: {
+          created_at: string
+          description: string | null
+          display_order: number | null
+          id: string
+          include_in_sitemap: boolean
+          is_active: boolean
+          is_indexable: boolean
+          keywords: string[] | null
+          og_description: string | null
+          og_image_url: string | null
+          og_title: string | null
+          og_type: string | null
+          page_schema_data: Json | null
+          page_schema_type: string | null
+          path: string
+          robots: string | null
+          sitemap_changefreq: string | null
+          sitemap_priority: number | null
+          slug: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          include_in_sitemap?: boolean
+          is_active?: boolean
+          is_indexable?: boolean
+          keywords?: string[] | null
+          og_description?: string | null
+          og_image_url?: string | null
+          og_title?: string | null
+          og_type?: string | null
+          page_schema_data?: Json | null
+          page_schema_type?: string | null
+          path: string
+          robots?: string | null
+          sitemap_changefreq?: string | null
+          sitemap_priority?: number | null
+          slug?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          include_in_sitemap?: boolean
+          is_active?: boolean
+          is_indexable?: boolean
+          keywords?: string[] | null
+          og_description?: string | null
+          og_image_url?: string | null
+          og_title?: string | null
+          og_type?: string | null
+          page_schema_data?: Json | null
+          page_schema_type?: string | null
+          path?: string
+          robots?: string | null
+          sitemap_changefreq?: string | null
+          sitemap_priority?: number | null
+          slug?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      platform_seo_settings: {
+        Row: {
+          app_category: string | null
+          app_features: string[] | null
+          app_operating_system: string | null
+          app_price: string | null
+          app_price_currency: string | null
+          app_rating_count: number | null
+          app_rating_value: number | null
+          bing_site_verification: string | null
+          canonical_domain: string
+          created_at: string
+          default_description: string | null
+          default_keywords: string[] | null
+          default_robots: string | null
+          default_title: string
+          google_site_verification: string | null
+          id: string
+          logo_url: string | null
+          og_image_url: string | null
+          og_locale: string | null
+          og_type: string | null
+          organization_address: Json | null
+          organization_email: string | null
+          organization_name: string | null
+          organization_phone: string | null
+          site_name: string
+          social_links: string[] | null
+          theme_color: string | null
+          twitter_card: string | null
+          twitter_creator: string | null
+          twitter_site: string | null
+          updated_at: string
+        }
+        Insert: {
+          app_category?: string | null
+          app_features?: string[] | null
+          app_operating_system?: string | null
+          app_price?: string | null
+          app_price_currency?: string | null
+          app_rating_count?: number | null
+          app_rating_value?: number | null
+          bing_site_verification?: string | null
+          canonical_domain?: string
+          created_at?: string
+          default_description?: string | null
+          default_keywords?: string[] | null
+          default_robots?: string | null
+          default_title?: string
+          google_site_verification?: string | null
+          id?: string
+          logo_url?: string | null
+          og_image_url?: string | null
+          og_locale?: string | null
+          og_type?: string | null
+          organization_address?: Json | null
+          organization_email?: string | null
+          organization_name?: string | null
+          organization_phone?: string | null
+          site_name?: string
+          social_links?: string[] | null
+          theme_color?: string | null
+          twitter_card?: string | null
+          twitter_creator?: string | null
+          twitter_site?: string | null
+          updated_at?: string
+        }
+        Update: {
+          app_category?: string | null
+          app_features?: string[] | null
+          app_operating_system?: string | null
+          app_price?: string | null
+          app_price_currency?: string | null
+          app_rating_count?: number | null
+          app_rating_value?: number | null
+          bing_site_verification?: string | null
+          canonical_domain?: string
+          created_at?: string
+          default_description?: string | null
+          default_keywords?: string[] | null
+          default_robots?: string | null
+          default_title?: string
+          google_site_verification?: string | null
+          id?: string
+          logo_url?: string | null
+          og_image_url?: string | null
+          og_locale?: string | null
+          og_type?: string | null
+          organization_address?: Json | null
+          organization_email?: string | null
+          organization_name?: string | null
+          organization_phone?: string | null
+          site_name?: string
+          social_links?: string[] | null
+          theme_color?: string | null
+          twitter_card?: string | null
+          twitter_creator?: string | null
+          twitter_site?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       product_addon_mapping: {
         Row: {
           addon_id: string

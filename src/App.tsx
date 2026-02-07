@@ -13,6 +13,7 @@ import { ModuleRouteGuard } from "@/components/auth/ModuleRouteGuard";
 import { PartnerRouteGuard } from "@/components/auth/PartnerRouteGuard";
 import { PartnerLayout } from "@/components/partner/PartnerLayout";
 import { useDynamicFavicon } from "@/hooks/useDynamicFavicon";
+import { PlatformSEOHead } from "@/components/seo/PlatformSEOHead";
 
 import Auth from "./pages/Auth";
 import Landing from "./pages/Landing";
@@ -71,6 +72,7 @@ const App = () => (
           <PartnerProvider>
             <BusinessCategoryProvider>
               <ActiveStoreProvider>
+                <PlatformSEOHead />
                 <Routes>
                   <Route path="/" element={<Landing />} />
                   <Route path="/recursos" element={<PublicRecursos />} />
