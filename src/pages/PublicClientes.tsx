@@ -62,19 +62,19 @@ export default function PublicClientes() {
             Empresas que <span className="text-primary">confiam</span> no {companyName}
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
-            Conheça alguns dos estabelecimentos que utilizam nossa plataforma para gerenciar seus negócios com eficiência.
+          Conheça alguns dos estabelecimentos que utilizam nossa plataforma para gerenciar seus negócios com eficiência.
           </p>
           
-          {/* Stats */}
-          <div className="flex items-center justify-center gap-8 mb-8">
-            <div className="text-center">
-              <div className="text-3xl font-bold text-primary">{totalCount}+</div>
-              <div className="text-sm text-muted-foreground">Lojas Ativas</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-primary">{categories.length}</div>
-              <div className="text-sm text-muted-foreground">Categorias</div>
-            </div>
+          {/* 
+            IMPORTANTE: Esta seção NÃO deve exibir métricas reais do banco por padrão.
+            Métricas reais só devem ser exibidas quando explicitamente habilitadas via config
+            (ex: após atingir um número mínimo de clientes reais).
+            Enquanto isso, exibir apenas texto institucional de prova social.
+          */}
+          <div className="bg-primary/5 rounded-xl px-6 py-4 max-w-2xl mx-auto mb-8">
+            <p className="text-muted-foreground text-center">
+              Plataforma em crescimento, desenvolvida para atender <span className="text-foreground font-medium">restaurantes, pizzarias, lanchonetes</span> e operações food service em todo o Brasil.
+            </p>
           </div>
         </div>
       </section>
