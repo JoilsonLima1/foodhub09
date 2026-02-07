@@ -93,16 +93,16 @@ export function HeroSection({
   companyName, 
   trialDays, 
   trialText,
-  heroBadge = 'Plataforma #1 para Gestão de Negócios Grátis',
+  heroBadge = 'Sistema Grátis para Restaurante — Comece Hoje',
   heroTitlePart1 = 'Transforme seu',
   heroTitlePart2 = 'restaurante',
   heroTitlePart3 = 'em uma',
   heroTitlePart4 = 'máquina de vendas',
-  heroSubtitle = 'Unifique pedidos de múltiplas origens, gerencie entregas, controle estoque e tome decisões inteligentes com relatórios em tempo real e previsões com IA.',
-  trustBadge1 = 'Sem cartão de crédito',
+  heroSubtitle = 'Sistema grátis completo para restaurantes. Gerencie pedidos, entregas, estoque e tome decisões inteligentes com relatórios em tempo real.',
+  trustBadge1 = 'Comece 100% grátis',
   trustBadge2 = 'Cancele quando quiser',
   trustBadge3 = 'Suporte em português',
-  socialProofText = 'Mais de 500+ restaurantes já confiam no',
+  socialProofText = 'Desenvolvido para restaurantes que querem crescer com o',
   heroTitleParts,
 }: HeroSectionProps) {
   const navigate = useNavigate();
@@ -198,7 +198,7 @@ export function HeroSection({
           </div>
           
           <p className="text-sm text-muted-foreground mt-4">
-            Grátis • Acesso completo por 30 dias
+            Plano grátis disponível • Teste todos os recursos por 30 dias • Continue grátis após o período
           </p>
           
           <p className="text-sm text-muted-foreground mt-6">

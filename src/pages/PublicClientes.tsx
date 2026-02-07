@@ -1,18 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { usePublicSettings } from '@/hooks/usePublicSettings';
 import { usePublicTheme } from '@/hooks/usePublicTheme';
-import { usePublicSubscribers, PublicSubscriber } from '@/hooks/usePublicSubscribers';
 import { resetThemeToDefault } from '@/hooks/useBusinessCategory';
 import { LandingHeader } from '@/components/landing/LandingHeader';
 import { LandingFooter } from '@/components/landing/LandingFooter';
 import { WhatsAppButton } from '@/components/landing/WhatsAppButton';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Building2, MapPin, Search, Store, Users } from 'lucide-react';
+import { Building2, Users, ArrowRight, Sparkles } from 'lucide-react';
+import { partnerExamples } from '@/components/landing/PartnersCarousel';
 import fallbackLogo from '@/assets/logo.png';
 
 export default function PublicClientes() {
@@ -23,25 +20,9 @@ export default function PublicClientes() {
   usePublicTheme();
   
   const { branding } = usePublicSettings();
-  const { subscribers, byCategory, isLoading, totalCount } = usePublicSubscribers();
-  
-  const [search, setSearch] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState<string>('all');
   
   const logoUrl = branding.logo_url || fallbackLogo;
   const companyName = branding.company_name || 'FoodHub09';
-  
-  // Get unique categories
-  const categories = Object.keys(byCategory).sort();
-  
-  // Filter subscribers
-  const filteredSubscribers = subscribers.filter(sub => {
-    const matchesSearch = search === '' || 
-      sub.name.toLowerCase().includes(search.toLowerCase()) ||
-      sub.city?.toLowerCase().includes(search.toLowerCase());
-    const matchesCategory = categoryFilter === 'all' || sub.category_name === categoryFilter;
-    return matchesSearch && matchesCategory;
-  });
 
   return (
     <div className="min-h-screen bg-background">
@@ -56,22 +37,17 @@ export default function PublicClientes() {
         <div className="container px-4 mx-auto text-center">
           <Badge variant="outline" className="mb-4">
             <Users className="h-3 w-3 mr-1" />
-            Nossos Clientes
+            Tipos de Negócios
           </Badge>
           <h1 className="text-4xl md:text-5xl font-bold mb-4">
-            Empresas que <span className="text-primary">confiam</span> no {companyName}
+            Empresas que <span className="text-primary">crescem</span> com o {companyName}
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
-          Conheça alguns dos estabelecimentos que utilizam nossa plataforma para gerenciar seus negócios com eficiência.
+            Exemplos de modelos de negócios que utilizam nossa plataforma para organizar e escalar suas operações.
           </p>
           
-          {/* 
-            IMPORTANTE: Esta seção NÃO deve exibir métricas reais do banco por padrão.
-            Métricas reais só devem ser exibidas quando explicitamente habilitadas via config
-            (ex: após atingir um número mínimo de clientes reais).
-            Enquanto isso, exibir apenas texto institucional de prova social.
-          */}
-          <div className="bg-primary/5 rounded-xl px-6 py-4 max-w-2xl mx-auto mb-8">
+          {/* Institutional Text - No fake metrics */}
+          <div className="bg-primary/5 rounded-xl px-6 py-4 max-w-2xl mx-auto">
             <p className="text-muted-foreground text-center">
               Plataforma em crescimento, desenvolvida para atender <span className="text-foreground font-medium">restaurantes, pizzarias, lanchonetes</span> e operações food service em todo o Brasil.
             </p>
@@ -79,64 +55,81 @@ export default function PublicClientes() {
         </div>
       </section>
 
-      {/* Filters */}
-      <section className="py-8 border-b">
+      {/* Illustrative Examples Grid */}
+      <section className="py-16">
         <div className="container px-4 mx-auto">
-          <div className="flex flex-col md:flex-row gap-4 max-w-2xl mx-auto">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por nome ou cidade..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="w-full md:w-[200px]">
-                <SelectValue placeholder="Categoria" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas as categorias</SelectItem>
-                {categories.map(cat => (
-                  <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="text-center mb-12">
+            <h2 className="text-2xl md:text-3xl font-bold mb-3">
+              Segmentos Atendidos
+            </h2>
+            <p className="text-muted-foreground max-w-xl mx-auto">
+              Nossa plataforma é flexível e adaptável para diversos tipos de estabelecimentos food service.
+            </p>
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {partnerExamples.map((partner) => (
+              <Card key={partner.name} className="hover:shadow-lg transition-shadow group">
+                <CardContent className="p-6">
+                  <div className="flex items-start gap-4">
+                    <div className={`h-14 w-14 rounded-xl ${partner.color} flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform`}>
+                      <span className="text-xl font-bold text-white">
+                        {partner.initials}
+                      </span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold truncate">{partner.name}</h3>
+                      <Badge variant="secondary" className="mt-1 text-xs">
+                        {partner.category}
+                      </Badge>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Exemplo ilustrativo
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {/* Transparency Disclaimer */}
+          <div className="mt-8 text-center">
+            <p className="text-xs text-muted-foreground max-w-lg mx-auto">
+              Os exemplos acima representam modelos de negócios que podem operar com o {companyName}. 
+              São ilustrações de segmentos atendidos pela plataforma.
+            </p>
           </div>
         </div>
       </section>
 
-      {/* Subscribers Grid */}
-      <section className="py-16">
+      {/* Authority Section */}
+      <section className="py-16 bg-card/30 border-y border-border">
         <div className="container px-4 mx-auto">
-          {isLoading ? (
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {[...Array(8)].map((_, i) => (
-                <Card key={i}>
-                  <CardContent className="p-6">
-                    <Skeleton className="h-12 w-12 rounded-full mb-4" />
-                    <Skeleton className="h-5 w-3/4 mb-2" />
-                    <Skeleton className="h-4 w-1/2" />
-                  </CardContent>
-                </Card>
-              ))}
+          <div className="max-w-3xl mx-auto text-center">
+            <Sparkles className="h-10 w-10 text-primary mx-auto mb-4" />
+            <h2 className="text-2xl md:text-3xl font-bold mb-4">
+              Sistema grátis para restaurantes
+            </h2>
+            <p className="text-muted-foreground mb-6">
+              Desenvolvido para atender restaurantes, pizzarias, lanchonetes e operações food service 
+              que buscam organização, eficiência e crescimento. Comece grátis e descubra como podemos 
+              transformar a gestão do seu negócio.
+            </p>
+            <div className="flex flex-wrap justify-center gap-3">
+              <Badge variant="outline" className="px-4 py-2">
+                PDV Completo
+              </Badge>
+              <Badge variant="outline" className="px-4 py-2">
+                Gestão de Pedidos
+              </Badge>
+              <Badge variant="outline" className="px-4 py-2">
+                Controle de Estoque
+              </Badge>
+              <Badge variant="outline" className="px-4 py-2">
+                Relatórios em Tempo Real
+              </Badge>
             </div>
-          ) : filteredSubscribers.length === 0 ? (
-            <div className="text-center py-16">
-              <Store className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-lg font-medium mb-2">Nenhum estabelecimento encontrado</h3>
-              <p className="text-muted-foreground">
-                Tente ajustar os filtros de busca.
-              </p>
-            </div>
-          ) : (
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {filteredSubscribers.map((sub) => (
-                <SubscriberCard key={sub.id} subscriber={sub} />
-              ))}
-            </div>
-          )}
+          </div>
         </div>
       </section>
 
@@ -144,17 +137,22 @@ export default function PublicClientes() {
       <section className="py-16 bg-primary/5">
         <div className="container px-4 mx-auto text-center">
           <h2 className="text-2xl md:text-3xl font-bold mb-4">
-            Quer fazer parte dessa lista?
+            Quer usar o {companyName} no seu negócio?
           </h2>
           <p className="text-muted-foreground mb-6 max-w-xl mx-auto">
-            Crie sua loja gratuitamente e comece a gerenciar seu negócio de forma profissional.
+            Crie sua conta grátis e tenha acesso completo por 30 dias. 
+            Após o período, continue grátis com recursos essenciais.
           </p>
           <Link 
             to="/auth?tab=signup"
-            className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-6 py-3 rounded-lg font-medium hover:bg-primary/90 transition-colors"
+            className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-6 py-3 rounded-full font-medium hover:bg-primary/90 transition-colors group"
           >
-            Criar Loja Grátis
+            Começar Grátis
+            <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
           </Link>
+          <p className="text-sm text-muted-foreground mt-4">
+            Sem cartão de crédito • Cancele quando quiser
+          </p>
         </div>
       </section>
 
@@ -171,43 +169,5 @@ export default function PublicClientes() {
         variant="floating"
       />
     </div>
-  );
-}
-
-function SubscriberCard({ subscriber }: { subscriber: PublicSubscriber }) {
-  return (
-    <Card className="hover:shadow-lg transition-shadow">
-      <CardContent className="p-6">
-        <div className="flex items-start gap-4">
-          {subscriber.logo_url ? (
-            <img 
-              src={subscriber.logo_url} 
-              alt={subscriber.name}
-              className="h-12 w-12 rounded-full object-cover bg-muted"
-            />
-          ) : (
-            <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-              <Building2 className="h-6 w-6 text-primary" />
-            </div>
-          )}
-          <div className="flex-1 min-w-0">
-            <h3 className="font-semibold truncate">{subscriber.name}</h3>
-            {subscriber.category_name && (
-              <Badge variant="secondary" className="mt-1 text-xs">
-                {subscriber.category_name}
-              </Badge>
-            )}
-            {(subscriber.city || subscriber.state) && (
-              <div className="flex items-center gap-1 mt-2 text-sm text-muted-foreground">
-                <MapPin className="h-3 w-3" />
-                <span className="truncate">
-                  {[subscriber.city, subscriber.state].filter(Boolean).join(', ')}
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
-      </CardContent>
-    </Card>
   );
 }
