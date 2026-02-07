@@ -28,6 +28,8 @@ import {
   Handshake,
   Shield,
   Wrench,
+  Gauge,
+  Lock,
 } from 'lucide-react';
 import { PlanEditor } from '@/components/superadmin/PlanEditor';
 import { FeatureComparison } from '@/components/superadmin/FeatureComparison';
@@ -51,6 +53,9 @@ import { SuperAdminMarketingPanel } from '@/components/superadmin/SuperAdminMark
 import { PlatformMarketingAndSEOPanel } from '@/components/superadmin/PlatformMarketingAndSEOPanel';
 import { PartnersManager } from '@/components/superadmin/PartnersManager';
 import { PartnerPoliciesManager } from '@/components/superadmin/PartnerPoliciesManager';
+import { BusinessKPIsPanel } from '@/components/superadmin/BusinessKPIsPanel';
+import { SecurityAuditPanel } from '@/components/superadmin/SecurityAuditPanel';
+import { GrowthRulesPanel } from '@/components/superadmin/GrowthRulesPanel';
 import { 
   OpsAlertsPanel, 
   OpsReconciliationPanel, 
@@ -262,6 +267,18 @@ export default function SuperAdmin() {
             <Shield className="h-4 w-4" />
             Políticas Parceiros
           </TabsTrigger>
+          <TabsTrigger value="business-kpis" className="flex items-center gap-2">
+            <Gauge className="h-4 w-4" />
+            KPIs de Negócio
+          </TabsTrigger>
+          <TabsTrigger value="security-audit" className="flex items-center gap-2">
+            <Lock className="h-4 w-4" />
+            Segurança
+          </TabsTrigger>
+          <TabsTrigger value="growth-rules" className="flex items-center gap-2">
+            <TrendingUp className="h-4 w-4" />
+            Growth
+          </TabsTrigger>
           <TabsTrigger value="ops" className="flex items-center gap-2">
             <Wrench className="h-4 w-4" />
             Backoffice Ops
@@ -361,6 +378,18 @@ export default function SuperAdmin() {
 
         <TabsContent value="partner-policies">
           <PartnerPoliciesManager />
+        </TabsContent>
+
+        <TabsContent value="business-kpis">
+          <BusinessKPIsPanel />
+        </TabsContent>
+
+        <TabsContent value="security-audit">
+          <SecurityAuditPanel />
+        </TabsContent>
+
+        <TabsContent value="growth-rules">
+          <GrowthRulesPanel />
         </TabsContent>
 
         <TabsContent value="ops">
