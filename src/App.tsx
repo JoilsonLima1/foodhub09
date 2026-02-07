@@ -58,6 +58,7 @@ import {
   PartnerInvoicesPage,
   PartnerPublicationPage,
   PartnerEarningsPage,
+  PartnerSettlementsPage,
 } from "./pages/partner";
 import PartnerAuth from "./pages/PartnerAuth";
 
@@ -121,6 +122,7 @@ const App = () => (
                       <Route path="invoices" element={<PartnerInvoicesPage />} />
                       <Route path="fees" element={<PartnerFeesPage />} />
                       <Route path="earnings" element={<PartnerEarningsPage />} />
+                      <Route path="settlements" element={<PartnerSettlementsPage />} />
                       <Route path="users" element={<PartnerUsersPage />} />
                     </Route>
                     
