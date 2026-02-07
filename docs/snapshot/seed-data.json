@@ -1,0 +1,72 @@
+{
+  "snapshot_version": "release/production-baseline-v1",
+  "snapshot_date": "2026-02-07T21:10:00Z",
+  
+  "billing_settings": {
+    "modules_billing_mode": "bundle",
+    "proration_enabled": false,
+    "invoice_show_breakdown": true
+  },
+  
+  "dunning_policy_default": {
+    "grace_days": 3,
+    "suspend_after_days": 14,
+    "block_after_days": 30,
+    "auto_cancel_after_days": 60,
+    "auto_cancel_enabled": false,
+    "notify_schedule": [1, 3, 7, 14]
+  },
+  
+  "business_categories": [
+    { "key": "pizzaria", "name": "Pizzaria", "icon": "UtensilsCrossed" },
+    { "key": "restaurant", "name": "Restaurante", "icon": "UtensilsCrossed" },
+    { "key": "ice_cream", "name": "Sorveteria/Açaiteria", "icon": "IceCream" },
+    { "key": "lanchonete", "name": "Lanchonete", "icon": "Croissant" },
+    { "key": "bakery", "name": "Padaria/Confeitaria", "icon": "Croissant" },
+    { "key": "cafe", "name": "Cafeteria/Juice Bar", "icon": "Coffee" },
+    { "key": "food_truck", "name": "Food Truck/Delivery Only", "icon": "Truck" }
+  ],
+  
+  "partner_guides": [
+    { "key": "how_to_sell", "title": "Como vender o sistema", "category": "sales" },
+    { "key": "how_to_register_clients", "title": "Como cadastrar clientes", "category": "operations" },
+    { "key": "how_billing_works", "title": "Como funciona a cobrança", "category": "billing" },
+    { "key": "handle_delinquency", "title": "O que fazer se o cliente não pagar", "category": "billing" },
+    { "key": "how_to_receive_payouts", "title": "Como receber seus repasses", "category": "payouts" }
+  ],
+  
+  "notification_templates_production": [
+    { "key": "invoice_created", "channel": "email", "subject": "Sua fatura foi gerada" },
+    { "key": "invoice_overdue", "channel": "email", "subject": "Fatura em atraso - Ação necessária" },
+    { "key": "payment_confirmed", "channel": "email", "subject": "Pagamento confirmado" },
+    { "key": "subscription_suspended", "channel": "email", "subject": "Conta suspensa" },
+    { "key": "subscription_reactivated", "channel": "email", "subject": "Conta reativada" },
+    { "key": "dunning_warning", "channel": "email", "subject": "Aviso: Suspensão iminente" },
+    { "key": "chargeback_alert", "channel": "email", "subject": "ALERTA: Chargeback recebido" },
+    { "key": "addon_subscribed", "channel": "email", "subject": "Módulo ativado" },
+    { "key": "addon_cancelled", "channel": "email", "subject": "Módulo cancelado" },
+    { "key": "coupon_applied", "channel": "email", "subject": "Cupom aplicado" }
+  ],
+  
+  "addon_modules": {
+    "total": 26,
+    "categories": {
+      "integrations": ["99Food", "Keeta", "Bina Telefônica"],
+      "operations": ["Multi Lojas", "Comanda Mobile", "Comissões de Garçom", "Comandas Digitais", "Eventos & Ingressos"],
+      "marketing": ["SMS Marketing", "Programa de Fidelidade", "Cupons de Desconto Avançado", "Disparador Inteligente", "CEO de Marketing"],
+      "hardware": ["Painel de Senha", "TEF PINPAD", "Monitor de Preparos"],
+      "logistics": ["Smart Delivery", "Confirmação de Entrega"],
+      "digital_service": ["App Cliente Básico", "Pedido pelo App", "Subcomanda & Divisão", "Chamar Garçom & Fechar Conta"],
+      "payment": ["PIX QR Garçom"],
+      "access_control": ["Verificação Avançada (KYC)", "Controle de Saída (QR Gate)", "Ingressos & Couvert"]
+    }
+  },
+  
+  "data_retention_policies": [
+    { "table": "access_audit_log", "retention_days": 90, "archive": true },
+    { "table": "call_logs", "retention_days": 365, "archive": true },
+    { "table": "dispatcher_messages", "retention_days": 180, "archive": true },
+    { "table": "notification_outbox", "retention_days": 90, "archive": true },
+    { "table": "sensitive_actions_log", "retention_days": 730, "archive": true }
+  ]
+}
