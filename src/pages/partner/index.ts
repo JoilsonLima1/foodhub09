@@ -13,3 +13,6 @@ export { default as PartnerEarningsPage } from './PartnerEarningsPage';
 export { default as PartnerSettlementsPage } from './PartnerSettlementsPage';
 export { default as PartnerPaymentsPage } from './PartnerPaymentsPage';
 export { default as PartnerTenantBillingPage } from './PartnerTenantBillingPage';
+// Phase 12 - Add-ons and Coupons
+export { default as PartnerAddonsPage } from './PartnerAddonsPage';
+export { default as PartnerCouponsPage } from './PartnerCouponsPage';
