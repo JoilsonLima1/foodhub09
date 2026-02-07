@@ -48,8 +48,7 @@ import { DigitalServiceGlobalSettings } from '@/components/superadmin/DigitalSer
 import { DomainsManager } from '@/components/superadmin/DomainsManager';
 import { ModuleLimitsManager } from '@/components/superadmin/ModuleLimitsManager';
 import { SuperAdminMarketingPanel } from '@/components/superadmin/SuperAdminMarketingPanel';
-import { PlatformMarketingPanel } from '@/components/superadmin/PlatformMarketingPanel';
-import { PlatformSEOManager } from '@/components/superadmin/PlatformSEOManager';
+import { PlatformMarketingAndSEOPanel } from '@/components/superadmin/PlatformMarketingAndSEOPanel';
 import { PartnersManager } from '@/components/superadmin/PartnersManager';
 import { PartnerPoliciesManager } from '@/components/superadmin/PartnerPoliciesManager';
 import { 
@@ -248,13 +247,9 @@ export default function SuperAdmin() {
             <TrendingUp className="h-4 w-4" />
             Marketing Lojistas
           </TabsTrigger>
-          <TabsTrigger value="platform-marketing" className="flex items-center gap-2">
+          <TabsTrigger value="platform-marketing-seo" className="flex items-center gap-2">
             <Megaphone className="h-4 w-4" />
-            Marketing Plataforma
-          </TabsTrigger>
-          <TabsTrigger value="platform-seo" className="flex items-center gap-2">
-            <Globe className="h-4 w-4" />
-            SEO Plataforma
+            Marketing & SEO Plataforma
           </TabsTrigger>
           <TabsTrigger value="partners" className="flex items-center gap-2">
             <Handshake className="h-4 w-4" />
@@ -353,12 +348,8 @@ export default function SuperAdmin() {
           <SuperAdminMarketingPanel />
         </TabsContent>
 
-        <TabsContent value="platform-marketing">
-          <PlatformMarketingPanel />
-        </TabsContent>
-
-        <TabsContent value="platform-seo">
-          <PlatformSEOManager />
+        <TabsContent value="platform-marketing-seo">
+          <PlatformMarketingAndSEOPanel />
         </TabsContent>
 
         <TabsContent value="partners">
