@@ -14,6 +14,57 @@ export type Database = {
   }
   public: {
     Tables: {
+      access_audit_log: {
+        Row: {
+          action: string
+          created_at: string
+          failure_reason: string | null
+          geo_city: string | null
+          geo_country: string | null
+          id: string
+          ip_address: unknown
+          metadata: Json | null
+          resource: string | null
+          resource_id: string | null
+          session_id: string | null
+          success: boolean | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          failure_reason?: string | null
+          geo_city?: string | null
+          geo_country?: string | null
+          id?: string
+          ip_address?: unknown
+          metadata?: Json | null
+          resource?: string | null
+          resource_id?: string | null
+          session_id?: string | null
+          success?: boolean | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          failure_reason?: string | null
+          geo_city?: string | null
+          geo_country?: string | null
+          id?: string
+          ip_address?: unknown
+          metadata?: Json | null
+          resource?: string | null
+          resource_id?: string | null
+          session_id?: string | null
+          success?: boolean | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       addon_modules: {
         Row: {
           category: Database["public"]["Enums"]["addon_module_category"]
@@ -300,6 +351,99 @@ export type Database = {
           terminology?: Json
           theme?: Json
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      business_kpis_daily: {
+        Row: {
+          active_partners: number | null
+          active_tenants: number | null
+          addon_attach_rate: number | null
+          addon_revenue: number | null
+          arr: number | null
+          avg_arpu: number | null
+          avg_ltv: number | null
+          churned_mrr: number | null
+          churned_tenants: number | null
+          created_at: string
+          date: string
+          expansion_mrr: number | null
+          gross_revenue_retention: number | null
+          id: string
+          metadata: Json | null
+          mrr: number | null
+          net_revenue_retention: number | null
+          new_mrr: number | null
+          new_tenants: number | null
+          partner_revenue: number | null
+          past_due_amount: number | null
+          past_due_count: number | null
+          total_gmv: number | null
+          total_orders: number | null
+          total_partners: number | null
+          total_tenants: number | null
+          trial_to_paid_rate: number | null
+          trials_active: number | null
+        }
+        Insert: {
+          active_partners?: number | null
+          active_tenants?: number | null
+          addon_attach_rate?: number | null
+          addon_revenue?: number | null
+          arr?: number | null
+          avg_arpu?: number | null
+          avg_ltv?: number | null
+          churned_mrr?: number | null
+          churned_tenants?: number | null
+          created_at?: string
+          date: string
+          expansion_mrr?: number | null
+          gross_revenue_retention?: number | null
+          id?: string
+          metadata?: Json | null
+          mrr?: number | null
+          net_revenue_retention?: number | null
+          new_mrr?: number | null
+          new_tenants?: number | null
+          partner_revenue?: number | null
+          past_due_amount?: number | null
+          past_due_count?: number | null
+          total_gmv?: number | null
+          total_orders?: number | null
+          total_partners?: number | null
+          total_tenants?: number | null
+          trial_to_paid_rate?: number | null
+          trials_active?: number | null
+        }
+        Update: {
+          active_partners?: number | null
+          active_tenants?: number | null
+          addon_attach_rate?: number | null
+          addon_revenue?: number | null
+          arr?: number | null
+          avg_arpu?: number | null
+          avg_ltv?: number | null
+          churned_mrr?: number | null
+          churned_tenants?: number | null
+          created_at?: string
+          date?: string
+          expansion_mrr?: number | null
+          gross_revenue_retention?: number | null
+          id?: string
+          metadata?: Json | null
+          mrr?: number | null
+          net_revenue_retention?: number | null
+          new_mrr?: number | null
+          new_tenants?: number | null
+          partner_revenue?: number | null
+          past_due_amount?: number | null
+          past_due_count?: number | null
+          total_gmv?: number | null
+          total_orders?: number | null
+          total_partners?: number | null
+          total_tenants?: number | null
+          trial_to_paid_rate?: number | null
+          trials_active?: number | null
         }
         Relationships: []
       }
@@ -1060,6 +1204,92 @@ export type Database = {
           },
         ]
       }
+      consent_records: {
+        Row: {
+          consent_type: string
+          consent_version: string
+          created_at: string
+          granted: boolean
+          granted_at: string | null
+          id: string
+          ip_address: unknown
+          metadata: Json | null
+          revoked_at: string | null
+          tenant_id: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          consent_type: string
+          consent_version: string
+          created_at?: string
+          granted: boolean
+          granted_at?: string | null
+          id?: string
+          ip_address?: unknown
+          metadata?: Json | null
+          revoked_at?: string | null
+          tenant_id?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          consent_type?: string
+          consent_version?: string
+          created_at?: string
+          granted?: boolean
+          granted_at?: string | null
+          id?: string
+          ip_address?: unknown
+          metadata?: Json | null
+          revoked_at?: string | null
+          tenant_id?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consent_records_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conversion_funnel_metrics: {
+        Row: {
+          avg_time_to_next_stage: unknown
+          conversion_from_previous: number | null
+          count: number | null
+          created_at: string
+          date: string
+          funnel_stage: string
+          id: string
+          metadata: Json | null
+        }
+        Insert: {
+          avg_time_to_next_stage?: unknown
+          conversion_from_previous?: number | null
+          count?: number | null
+          created_at?: string
+          date: string
+          funnel_stage: string
+          id?: string
+          metadata?: Json | null
+        }
+        Update: {
+          avg_time_to_next_stage?: unknown
+          conversion_from_previous?: number | null
+          count?: number | null
+          created_at?: string
+          date?: string
+          funnel_stage?: string
+          id?: string
+          metadata?: Json | null
+        }
+        Relationships: []
+      }
       coupon_redemptions: {
         Row: {
           coupon_id: string
@@ -1387,6 +1617,107 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "customer_registrations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      data_retention_policies: {
+        Row: {
+          archive_before_delete: boolean | null
+          created_at: string
+          id: string
+          is_active: boolean | null
+          last_applied_at: string | null
+          notes: string | null
+          records_archived: number | null
+          records_deleted: number | null
+          retention_days: number
+          table_name: string
+          updated_at: string
+        }
+        Insert: {
+          archive_before_delete?: boolean | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          last_applied_at?: string | null
+          notes?: string | null
+          records_archived?: number | null
+          records_deleted?: number | null
+          retention_days?: number
+          table_name: string
+          updated_at?: string
+        }
+        Update: {
+          archive_before_delete?: boolean | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          last_applied_at?: string | null
+          notes?: string | null
+          records_archived?: number | null
+          records_deleted?: number | null
+          retention_days?: number
+          table_name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      data_subject_requests: {
+        Row: {
+          created_at: string
+          data_export_url: string | null
+          deadline_at: string
+          id: string
+          notes: string | null
+          processed_at: string | null
+          processed_by: string | null
+          rejection_reason: string | null
+          request_type: string
+          requester_email: string
+          status: string
+          submitted_at: string
+          tenant_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          data_export_url?: string | null
+          deadline_at?: string
+          id?: string
+          notes?: string | null
+          processed_at?: string | null
+          processed_by?: string | null
+          rejection_reason?: string | null
+          request_type: string
+          requester_email: string
+          status?: string
+          submitted_at?: string
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          data_export_url?: string | null
+          deadline_at?: string
+          id?: string
+          notes?: string | null
+          processed_at?: string | null
+          processed_by?: string | null
+          rejection_reason?: string | null
+          request_type?: string
+          requester_email?: string
+          status?: string
+          submitted_at?: string
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_subject_requests_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -2386,6 +2717,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      guided_flows: {
+        Row: {
+          completion_reward: string | null
+          created_at: string
+          description: string | null
+          flow_key: string
+          id: string
+          is_active: boolean | null
+          name: string
+          reward_config: Json | null
+          steps: Json
+          target_audience: string[] | null
+        }
+        Insert: {
+          completion_reward?: string | null
+          created_at?: string
+          description?: string | null
+          flow_key: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          reward_config?: Json | null
+          steps: Json
+          target_audience?: string[] | null
+        }
+        Update: {
+          completion_reward?: string | null
+          created_at?: string
+          description?: string | null
+          flow_key?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          reward_config?: Json | null
+          steps?: Json
+          target_audience?: string[] | null
+        }
+        Relationships: []
       }
       ifood_integrations: {
         Row: {
@@ -7778,6 +8148,136 @@ export type Database = {
           },
         ]
       }
+      self_service_actions: {
+        Row: {
+          action_key: string
+          actor_types: string[]
+          confirmation_type: string | null
+          cooldown_minutes: number | null
+          created_at: string
+          description: string | null
+          help_url: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          requires_confirmation: boolean | null
+        }
+        Insert: {
+          action_key: string
+          actor_types: string[]
+          confirmation_type?: string | null
+          cooldown_minutes?: number | null
+          created_at?: string
+          description?: string | null
+          help_url?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          requires_confirmation?: boolean | null
+        }
+        Update: {
+          action_key?: string
+          actor_types?: string[]
+          confirmation_type?: string | null
+          cooldown_minutes?: number | null
+          created_at?: string
+          description?: string | null
+          help_url?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          requires_confirmation?: boolean | null
+        }
+        Relationships: []
+      }
+      sensitive_actions_log: {
+        Row: {
+          action: string
+          actor_id: string | null
+          actor_role: string | null
+          created_at: string
+          id: string
+          ip_address: unknown
+          new_value: Json | null
+          old_value: Json | null
+          partner_id: string | null
+          reason: string | null
+          requires_review: boolean | null
+          review_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          risk_level: string | null
+          target_id: string | null
+          target_type: string | null
+          tenant_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          actor_role?: string | null
+          created_at?: string
+          id?: string
+          ip_address?: unknown
+          new_value?: Json | null
+          old_value?: Json | null
+          partner_id?: string | null
+          reason?: string | null
+          requires_review?: boolean | null
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          risk_level?: string | null
+          target_id?: string | null
+          target_type?: string | null
+          tenant_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          actor_role?: string | null
+          created_at?: string
+          id?: string
+          ip_address?: unknown
+          new_value?: Json | null
+          old_value?: Json | null
+          partner_id?: string | null
+          reason?: string | null
+          requires_review?: boolean | null
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          risk_level?: string | null
+          target_id?: string | null
+          target_type?: string | null
+          tenant_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sensitive_actions_log_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sensitive_actions_log_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "v_partner_financial_kpis"
+            referencedColumns: ["partner_id"]
+          },
+          {
+            foreignKeyName: "sensitive_actions_log_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       service_calls: {
         Row: {
           acknowledged_at: string | null
@@ -10236,6 +10736,95 @@ export type Database = {
         }
         Relationships: []
       }
+      trial_conversion_metrics: {
+        Row: {
+          avg_days_to_convert: number | null
+          conversion_rate: number | null
+          created_at: string
+          date: string
+          id: string
+          metadata: Json | null
+          top_churn_reasons: string[] | null
+          top_conversion_features: string[] | null
+          trials_active: number | null
+          trials_converted: number | null
+          trials_expired: number | null
+          trials_started: number | null
+        }
+        Insert: {
+          avg_days_to_convert?: number | null
+          conversion_rate?: number | null
+          created_at?: string
+          date: string
+          id?: string
+          metadata?: Json | null
+          top_churn_reasons?: string[] | null
+          top_conversion_features?: string[] | null
+          trials_active?: number | null
+          trials_converted?: number | null
+          trials_expired?: number | null
+          trials_started?: number | null
+        }
+        Update: {
+          avg_days_to_convert?: number | null
+          conversion_rate?: number | null
+          created_at?: string
+          date?: string
+          id?: string
+          metadata?: Json | null
+          top_churn_reasons?: string[] | null
+          top_conversion_features?: string[] | null
+          trials_active?: number | null
+          trials_converted?: number | null
+          trials_expired?: number | null
+          trials_started?: number | null
+        }
+        Relationships: []
+      }
+      trial_events: {
+        Row: {
+          created_at: string
+          event_type: string
+          feature_key: string | null
+          id: string
+          limit_value: number | null
+          metadata: Json | null
+          percentage_used: number | null
+          tenant_id: string
+          usage_count: number | null
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          feature_key?: string | null
+          id?: string
+          limit_value?: number | null
+          metadata?: Json | null
+          percentage_used?: number | null
+          tenant_id: string
+          usage_count?: number | null
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          feature_key?: string | null
+          id?: string
+          limit_value?: number | null
+          metadata?: Json | null
+          percentage_used?: number | null
+          tenant_id?: string
+          usage_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trial_events_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trial_notification_dismissals: {
         Row: {
           dismissed_at: string
@@ -10256,6 +10845,238 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      upsell_events: {
+        Row: {
+          conversion_value: number | null
+          created_at: string
+          dedupe_key: string | null
+          display_context: string | null
+          event_type: string
+          id: string
+          offer_type: string | null
+          offer_value: Json | null
+          rule_id: string | null
+          tenant_id: string
+          user_response: string | null
+        }
+        Insert: {
+          conversion_value?: number | null
+          created_at?: string
+          dedupe_key?: string | null
+          display_context?: string | null
+          event_type: string
+          id?: string
+          offer_type?: string | null
+          offer_value?: Json | null
+          rule_id?: string | null
+          tenant_id: string
+          user_response?: string | null
+        }
+        Update: {
+          conversion_value?: number | null
+          created_at?: string
+          dedupe_key?: string | null
+          display_context?: string | null
+          event_type?: string
+          id?: string
+          offer_type?: string | null
+          offer_value?: Json | null
+          rule_id?: string | null
+          tenant_id?: string
+          user_response?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "upsell_events_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "upsell_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "upsell_events_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      upsell_rules: {
+        Row: {
+          cooldown_hours: number | null
+          created_at: string
+          description: string | null
+          display_type: string | null
+          end_date: string | null
+          id: string
+          is_active: boolean | null
+          max_displays: number | null
+          name: string
+          offer_config: Json
+          offer_type: string
+          priority: number | null
+          start_date: string | null
+          target_audience: string | null
+          trigger_condition: Json
+          trigger_type: string
+          updated_at: string
+        }
+        Insert: {
+          cooldown_hours?: number | null
+          created_at?: string
+          description?: string | null
+          display_type?: string | null
+          end_date?: string | null
+          id?: string
+          is_active?: boolean | null
+          max_displays?: number | null
+          name: string
+          offer_config: Json
+          offer_type: string
+          priority?: number | null
+          start_date?: string | null
+          target_audience?: string | null
+          trigger_condition: Json
+          trigger_type: string
+          updated_at?: string
+        }
+        Update: {
+          cooldown_hours?: number | null
+          created_at?: string
+          description?: string | null
+          display_type?: string | null
+          end_date?: string | null
+          id?: string
+          is_active?: boolean | null
+          max_displays?: number | null
+          name?: string
+          offer_config?: Json
+          offer_type?: string
+          priority?: number | null
+          start_date?: string | null
+          target_audience?: string | null
+          trigger_condition?: Json
+          trigger_type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      usage_enforcement_log: {
+        Row: {
+          action_taken: string
+          created_at: string
+          current_usage: number | null
+          enforcement_level: string
+          feature_key: string
+          grace_expires_at: string | null
+          id: string
+          limit_value: number | null
+          metadata: Json | null
+          percentage_used: number | null
+          resolved_at: string | null
+          resolved_by: string | null
+          tenant_id: string
+          user_notified: boolean | null
+        }
+        Insert: {
+          action_taken: string
+          created_at?: string
+          current_usage?: number | null
+          enforcement_level: string
+          feature_key: string
+          grace_expires_at?: string | null
+          id?: string
+          limit_value?: number | null
+          metadata?: Json | null
+          percentage_used?: number | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          tenant_id: string
+          user_notified?: boolean | null
+        }
+        Update: {
+          action_taken?: string
+          created_at?: string
+          current_usage?: number | null
+          enforcement_level?: string
+          feature_key?: string
+          grace_expires_at?: string | null
+          id?: string
+          limit_value?: number | null
+          metadata?: Json | null
+          percentage_used?: number | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          tenant_id?: string
+          user_notified?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "usage_enforcement_log_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      usage_soft_limits: {
+        Row: {
+          created_at: string
+          feature_key: string
+          grace_period_hours: number | null
+          hard_limit_action: string | null
+          hard_limit_threshold: number | null
+          id: string
+          is_active: boolean | null
+          plan_id: string | null
+          soft_limit_action: string | null
+          soft_limit_threshold: number | null
+          updated_at: string
+          warn_action: string | null
+          warn_threshold: number | null
+        }
+        Insert: {
+          created_at?: string
+          feature_key: string
+          grace_period_hours?: number | null
+          hard_limit_action?: string | null
+          hard_limit_threshold?: number | null
+          id?: string
+          is_active?: boolean | null
+          plan_id?: string | null
+          soft_limit_action?: string | null
+          soft_limit_threshold?: number | null
+          updated_at?: string
+          warn_action?: string | null
+          warn_threshold?: number | null
+        }
+        Update: {
+          created_at?: string
+          feature_key?: string
+          grace_period_hours?: number | null
+          hard_limit_action?: string | null
+          hard_limit_threshold?: number | null
+          id?: string
+          is_active?: boolean | null
+          plan_id?: string | null
+          soft_limit_action?: string | null
+          soft_limit_threshold?: number | null
+          updated_at?: string
+          warn_action?: string | null
+          warn_threshold?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "usage_soft_limits_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
@@ -11190,7 +12011,24 @@ export type Database = {
         Returns: Json
       }
       apply_payment_event: { Args: { p_event_id: string }; Returns: Json }
+      apply_retention_policy: {
+        Args: never
+        Returns: {
+          archived: number
+          deleted: number
+          table_name: string
+        }[]
+      }
       archive_ledger: { Args: { before_date?: string }; Returns: Json }
+      assert_partner_scope: {
+        Args: { p_actor_id: string; p_partner_id: string }
+        Returns: boolean
+      }
+      assert_tenant_scope: {
+        Args: { p_actor_id: string; p_tenant_id: string }
+        Returns: boolean
+      }
+      calculate_daily_kpis: { Args: { p_date?: string }; Returns: string }
       calculate_partner_transaction_fee: {
         Args: {
           p_gross_amount: number
@@ -11264,6 +12102,19 @@ export type Database = {
       check_tenant_subscription_access: {
         Args: { p_tenant_id: string; p_user_id: string }
         Returns: Json
+      }
+      check_usage_limit: {
+        Args: {
+          p_current_usage: number
+          p_feature_key: string
+          p_tenant_id: string
+        }
+        Returns: {
+          action_required: string
+          enforcement_level: string
+          message: string
+          percentage_used: number
+        }[]
       }
       complete_payout_job: {
         Args: {
@@ -11829,6 +12680,18 @@ export type Database = {
         }
         Returns: string
       }
+      log_sensitive_action: {
+        Args: {
+          p_action: string
+          p_new_value?: Json
+          p_old_value?: Json
+          p_reason?: string
+          p_risk_level?: string
+          p_target_id: string
+          p_target_type: string
+        }
+        Returns: string
+      }
       manage_push_subscription: {
         Args: {
           p_action: string
@@ -11950,7 +12813,31 @@ export type Database = {
         }
         Returns: Json
       }
+      record_trial_event: {
+        Args: {
+          p_event_type: string
+          p_feature_key?: string
+          p_limit_value?: number
+          p_metadata?: Json
+          p_tenant_id: string
+          p_usage_count?: number
+        }
+        Returns: string
+      }
+      record_upsell_event: {
+        Args: {
+          p_dedupe_key?: string
+          p_event_type: string
+          p_offer_type?: string
+          p_offer_value?: Json
+          p_rule_id: string
+          p_tenant_id: string
+        }
+        Returns: string
+      }
       reprocess_payment_event: { Args: { p_event_id: string }; Returns: Json }
+      request_data_deletion: { Args: { p_tenant_id: string }; Returns: string }
+      request_data_export: { Args: { p_tenant_id: string }; Returns: string }
       requeue_dead_notification: {
         Args: { p_outbox_id: string }
         Returns: boolean
@@ -12100,6 +12987,14 @@ export type Database = {
       user_has_store_access: {
         Args: { _store_id: string; _user_id: string }
         Returns: boolean
+      }
+      validate_actor_permission: {
+        Args: { p_action: string; p_actor_id: string; p_scope?: string }
+        Returns: {
+          allowed: boolean
+          reason: string
+          risk_level: string
+        }[]
       }
       validate_coupon: {
         Args: { p_code: string; p_tenant_id: string }
