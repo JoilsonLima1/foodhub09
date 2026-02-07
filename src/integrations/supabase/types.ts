@@ -4507,6 +4507,8 @@ export type Database = {
           next_billing_date: string | null
           partner_id: string
           partner_plan_id: string | null
+          risk_flag: string | null
+          risk_flagged_at: string | null
           status: string | null
           tenant_id: string
         }
@@ -4517,6 +4519,8 @@ export type Database = {
           next_billing_date?: string | null
           partner_id: string
           partner_plan_id?: string | null
+          risk_flag?: string | null
+          risk_flagged_at?: string | null
           status?: string | null
           tenant_id: string
         }
@@ -4527,6 +4531,8 @@ export type Database = {
           next_billing_date?: string | null
           partner_id?: string
           partner_plan_id?: string | null
+          risk_flag?: string | null
+          risk_flagged_at?: string | null
           status?: string | null
           tenant_id?: string
         }
@@ -4750,6 +4756,90 @@ export type Database = {
           },
           {
             foreignKeyName: "password_queue_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_events: {
+        Row: {
+          amount_gross: number
+          amount_net: number | null
+          applied_at: string | null
+          correlation_id: string | null
+          created_at: string
+          currency: string
+          error_message: string | null
+          event_type: string
+          id: string
+          occurred_at: string
+          partner_id: string | null
+          payload: Json | null
+          payment_method: string | null
+          provider: string
+          provider_event_id: string
+          provider_payment_id: string
+          received_at: string
+          status: string | null
+          tenant_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount_gross?: number
+          amount_net?: number | null
+          applied_at?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          currency?: string
+          error_message?: string | null
+          event_type: string
+          id?: string
+          occurred_at?: string
+          partner_id?: string | null
+          payload?: Json | null
+          payment_method?: string | null
+          provider?: string
+          provider_event_id: string
+          provider_payment_id: string
+          received_at?: string
+          status?: string | null
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount_gross?: number
+          amount_net?: number | null
+          applied_at?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          currency?: string
+          error_message?: string | null
+          event_type?: string
+          id?: string
+          occurred_at?: string
+          partner_id?: string | null
+          payload?: Json | null
+          payment_method?: string | null
+          provider?: string
+          provider_event_id?: string
+          provider_payment_id?: string
+          received_at?: string
+          status?: string | null
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_events_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_events_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -7368,8 +7458,10 @@ export type Database = {
           delinquent_since: string | null
           external_subscription_id: string | null
           id: string
+          last_payment_at: string | null
           last_payment_attempt_at: string | null
           monthly_amount: number | null
+          notes: string | null
           partner_plan_id: string | null
           partner_tenant_id: string | null
           payment_attempts: number | null
@@ -7392,8 +7484,10 @@ export type Database = {
           delinquent_since?: string | null
           external_subscription_id?: string | null
           id?: string
+          last_payment_at?: string | null
           last_payment_attempt_at?: string | null
           monthly_amount?: number | null
+          notes?: string | null
           partner_plan_id?: string | null
           partner_tenant_id?: string | null
           payment_attempts?: number | null
@@ -7416,8 +7510,10 @@ export type Database = {
           delinquent_since?: string | null
           external_subscription_id?: string | null
           id?: string
+          last_payment_at?: string | null
           last_payment_attempt_at?: string | null
           monthly_amount?: number | null
+          notes?: string | null
           partner_plan_id?: string | null
           partner_tenant_id?: string | null
           payment_attempts?: number | null
@@ -7660,6 +7756,50 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transaction_effects: {
+        Row: {
+          amount: number
+          created_at: string
+          direction: string
+          id: string
+          metadata: Json | null
+          reason: string
+          source_event_id: string
+          target: string
+          target_record_id: string | null
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          direction: string
+          id?: string
+          metadata?: Json | null
+          reason: string
+          source_event_id: string
+          target: string
+          target_record_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          direction?: string
+          id?: string
+          metadata?: Json | null
+          reason?: string
+          source_event_id?: string
+          target?: string
+          target_record_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transaction_effects_source_event_id_fkey"
+            columns: ["source_event_id"]
+            isOneToOne: false
+            referencedRelation: "payment_events"
             referencedColumns: ["id"]
           },
         ]
@@ -8528,6 +8668,7 @@ export type Database = {
         }
         Returns: Json
       }
+      apply_payment_event: { Args: { p_event_id: string }; Returns: Json }
       calculate_partner_transaction_fee: {
         Args: {
           p_gross_amount: number
@@ -8901,6 +9042,21 @@ export type Database = {
         Args: { p_domain_id?: string; p_tenant_id: string }
         Returns: string
       }
+      insert_payment_event: {
+        Args: {
+          p_amount_gross: number
+          p_event_type: string
+          p_occurred_at: string
+          p_partner_id: string
+          p_payload: Json
+          p_payment_method: string
+          p_provider: string
+          p_provider_event_id: string
+          p_provider_payment_id: string
+          p_tenant_id: string
+        }
+        Returns: Json
+      }
       is_assigned_courier: {
         Args: { _order_id: string; _user_id: string }
         Returns: boolean
@@ -8926,6 +9082,7 @@ export type Database = {
         }
         Returns: Json
       }
+      map_asaas_event_type: { Args: { p_event: string }; Returns: string }
       process_partner_invoice_payment: {
         Args: {
           p_billing_type?: string
@@ -8963,6 +9120,11 @@ export type Database = {
           p_tenant_id: string
           p_transaction_id: string
         }
+        Returns: Json
+      }
+      reprocess_payment_event: { Args: { p_event_id: string }; Returns: Json }
+      resolve_payment_context: {
+        Args: { p_provider_payment_id: string }
         Returns: Json
       }
       reverse_partner_transaction: {
