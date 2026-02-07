@@ -4,7 +4,7 @@ interface HeroBadgesProps {
   heroBadge?: string;
 }
 
-export function HeroBadges({ heroBadge = 'Plataforma #1 para Gestão de Negócios Grátis' }: HeroBadgesProps) {
+export function HeroBadges({ heroBadge = 'Sistema Grátis para Restaurante — Comece Hoje' }: HeroBadgesProps) {
   return (
     <div className="flex flex-col items-center gap-3 mb-8">
       {/* Badge - Gold/Primary Capsule */}

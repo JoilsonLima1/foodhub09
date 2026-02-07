@@ -54,16 +54,16 @@ export default function PublicPlanos() {
           
           {/* Explanatory badges */}
           <div className="flex flex-wrap items-center justify-center gap-4 mb-8 text-sm">
-            <Badge variant="secondary" className="px-4 py-2">
-              <Gift className="h-4 w-4 mr-2" />
-              Plano Grátis disponível
-            </Badge>
-            <Badge variant="outline" className="px-4 py-2">
-              Acesso completo por 30 dias
-            </Badge>
-            <Badge variant="outline" className="px-4 py-2">
-              Planos pagos com teste grátis
-            </Badge>
+          <Badge variant="secondary" className="px-4 py-2">
+            <Gift className="h-4 w-4 mr-2" />
+            Sistema grátis para restaurante
+          </Badge>
+          <Badge variant="outline" className="px-4 py-2">
+            Teste todos os recursos por 30 dias
+          </Badge>
+          <Badge variant="outline" className="px-4 py-2">
+            Continue grátis após o período
+          </Badge>
           </div>
           
           {/* Prominent CTA Button */}
@@ -78,7 +78,7 @@ export default function PublicPlanos() {
           </Button>
           
           <p className="text-sm text-muted-foreground mt-4">
-            Grátis • Acesso completo por 30 dias • Continua grátis após o período
+            Plano grátis disponível • Teste todos os recursos por 30 dias • Continue grátis com recursos essenciais
           </p>
         </div>
       </section>

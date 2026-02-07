@@ -28,16 +28,19 @@ export function CTASection({ companyName, trialDays, whatsappNumber }: CTASectio
           </span>
           
           <h2 className="text-3xl md:text-5xl font-bold mb-6">
-            Pronto para revolucionar seu negócio?
+            Pronto para organizar seu restaurante?
           </h2>
           
           <p className="text-xl text-muted-foreground mb-4 max-w-2xl mx-auto">
-            Junte-se a centenas de restaurantes que já transformaram suas operações com o {companyName}.
+            Comece grátis e descubra como o {companyName} pode transformar a gestão do seu negócio.
           </p>
           
           <div className="inline-block p-4 rounded-2xl bg-primary/10 border border-primary/30 mb-8">
             <p className="text-2xl font-bold text-primary">
-              🎁 Plano Grátis com acesso completo por {trialDays} dias!
+              🎁 Sistema grátis com acesso completo por {trialDays} dias!
+            </p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Após o período, continue no plano grátis com recursos essenciais
             </p>
           </div>
           

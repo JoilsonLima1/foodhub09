@@ -1,74 +1,35 @@
-import { useEffect, useState } from 'react';
-import { Users } from 'lucide-react';
-
-// Imaginary partner brands
-const partners = [
-  { name: 'Pizzaria Bella Napoli', initials: 'BN', color: 'bg-red-500' },
-  { name: 'Burger Kingdom', initials: 'BK', color: 'bg-amber-600' },
-  { name: 'Sushi Master', initials: 'SM', color: 'bg-pink-500' },
-  { name: 'Cantina da Nonna', initials: 'CN', color: 'bg-green-600' },
-  { name: 'Taco Fiesta', initials: 'TF', color: 'bg-orange-500' },
-  { name: 'Açaí do Ponto', initials: 'AP', color: 'bg-purple-600' },
-  { name: 'Frango & Cia', initials: 'FC', color: 'bg-yellow-600' },
-  { name: 'Doceria Encanto', initials: 'DE', color: 'bg-rose-400' },
-  { name: 'Churrasco Prime', initials: 'CP', color: 'bg-red-700' },
-  { name: 'Massa Fresca', initials: 'MF', color: 'bg-emerald-500' },
-  { name: 'Espetinho Show', initials: 'ES', color: 'bg-orange-600' },
-  { name: 'Lanches Express', initials: 'LE', color: 'bg-blue-500' },
+// Illustrative partner examples - NOT real clients
+// These represent types of businesses that can use the platform
+export const partnerExamples = [
+  { name: 'Pizzaria Bella Napoli', initials: 'BN', color: 'bg-red-500', category: 'Pizzaria' },
+  { name: 'Burger Kingdom', initials: 'BK', color: 'bg-amber-600', category: 'Hamburgueria' },
+  { name: 'Sushi Master', initials: 'SM', color: 'bg-pink-500', category: 'Japonês' },
+  { name: 'Cantina da Nonna', initials: 'CN', color: 'bg-green-600', category: 'Italiano' },
+  { name: 'Taco Fiesta', initials: 'TF', color: 'bg-orange-500', category: 'Mexicano' },
+  { name: 'Açaí do Ponto', initials: 'AP', color: 'bg-purple-600', category: 'Açaí' },
+  { name: 'Frango & Cia', initials: 'FC', color: 'bg-yellow-600', category: 'Frangos' },
+  { name: 'Doceria Encanto', initials: 'DE', color: 'bg-rose-400', category: 'Doceria' },
+  { name: 'Churrasco Prime', initials: 'CP', color: 'bg-red-700', category: 'Churrascaria' },
+  { name: 'Massa Fresca', initials: 'MF', color: 'bg-emerald-500', category: 'Massas' },
+  { name: 'Espetinho Show', initials: 'ES', color: 'bg-orange-600', category: 'Espetinhos' },
+  { name: 'Lanches Express', initials: 'LE', color: 'bg-blue-500', category: 'Lanchonete' },
 ];
 
 export default function PartnersCarousel() {
-  const [count, setCount] = useState(0);
-  const targetCount = 1247;
-
-  // Animated counter effect
-  useEffect(() => {
-    const duration = 2000;
-    const steps = 60;
-    const increment = targetCount / steps;
-    let current = 0;
-    
-    const timer = setInterval(() => {
-      current += increment;
-      if (current >= targetCount) {
-        setCount(targetCount);
-        clearInterval(timer);
-      } else {
-        setCount(Math.floor(current));
-      }
-    }, duration / steps);
-
-    return () => clearInterval(timer);
-  }, []);
-
   return (
     <section className="py-16 px-4 bg-card/30 border-y border-border overflow-hidden">
       <div className="container mx-auto max-w-6xl">
-        {/* Stats Badge */}
-        <div className="flex justify-center mb-10">
-          <div className="inline-flex items-center gap-3 bg-primary/10 border border-primary/30 rounded-full px-6 py-3">
-            <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/20">
-              <Users className="h-5 w-5 text-primary" />
-            </div>
-            <div className="text-center">
-              <p className="text-2xl md:text-3xl font-bold text-primary">
-                +{count.toLocaleString('pt-BR')}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                estabelecimentos já confiam em nós
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Section Title */}
+        {/* Section Title - No fake counters */}
         <div className="text-center mb-8">
           <p className="text-muted-foreground text-sm uppercase tracking-widest mb-2">
-            Parceiros de Sucesso
+            Tipos de Negócios
           </p>
           <h3 className="text-xl md:text-2xl font-semibold">
-            Empresas que crescem com a gente
+            Modelos de negócios que operam com nossa plataforma
           </h3>
+          <p className="text-sm text-muted-foreground mt-2 max-w-xl mx-auto">
+            Exemplos ilustrativos de segmentos atendidos pelo sistema
+          </p>
         </div>
 
         {/* Infinite Carousel */}
@@ -80,7 +41,7 @@ export default function PartnersCarousel() {
           {/* Scrolling Container */}
           <div className="flex animate-scroll">
             {/* First set of logos */}
-            {[...partners, ...partners].map((partner, index) => (
+            {[...partnerExamples, ...partnerExamples].map((partner, index) => (
               <div
                 key={`${partner.name}-${index}`}
                 className="flex-shrink-0 mx-4 group"
@@ -96,6 +57,9 @@ export default function PartnersCarousel() {
                   <p className="text-xs text-center text-muted-foreground font-medium line-clamp-2">
                     {partner.name}
                   </p>
+                  <span className="text-[10px] text-muted-foreground/60">
+                    {partner.category}
+                  </span>
                 </div>
               </div>
             ))}
