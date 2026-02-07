@@ -181,7 +181,7 @@ export function HeroSection({
             <Button 
               size="lg" 
               className="text-lg h-16 px-10 rounded-full shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 transition-all group"
-              onClick={scrollToPricing}
+              onClick={() => navigate('/auth?plan=free&intent=signup')}
             >
               Começar Agora - {trialText}
               <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
@@ -190,10 +190,10 @@ export function HeroSection({
               size="lg" 
               variant="outline" 
               className="text-lg h-16 px-10 rounded-full group"
-              onClick={() => navigate('/auth?intent=signup')}
+              onClick={() => navigate('/planos')}
             >
               <Play className="mr-2 h-5 w-5 group-hover:scale-110 transition-transform" />
-              Ver Demonstração
+              Ver Planos
             </Button>
           </div>
           

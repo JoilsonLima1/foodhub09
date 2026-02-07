@@ -80,6 +80,9 @@ const App = () => (
                   <Route path="/planos" element={<PublicPlanos />} />
                   <Route path="/clientes" element={<PublicClientes />} />
                   <Route path="/auth" element={<Auth />} />
+                  {/* Friendly redirect routes for SEO */}
+                  <Route path="/cadastro" element={<Navigate to="/auth?plan=free&intent=signup" replace />} />
+                  <Route path="/entrar" element={<Navigate to="/auth?intent=login" replace />} />
                   <Route path="/checkout/success" element={<CheckoutSuccess />} />
                   
                   {/* Public Menu - accessible without auth */}
