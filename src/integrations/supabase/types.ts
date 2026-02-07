@@ -1060,6 +1060,61 @@ export type Database = {
           },
         ]
       }
+      coupon_redemptions: {
+        Row: {
+          coupon_id: string
+          discount_amount: number
+          final_amount: number
+          id: string
+          invoice_id: string | null
+          original_amount: number
+          redeemed_at: string
+          tenant_id: string
+        }
+        Insert: {
+          coupon_id: string
+          discount_amount: number
+          final_amount: number
+          id?: string
+          invoice_id?: string | null
+          original_amount: number
+          redeemed_at?: string
+          tenant_id: string
+        }
+        Update: {
+          coupon_id?: string
+          discount_amount?: number
+          final_amount?: number
+          id?: string
+          invoice_id?: string | null
+          original_amount?: number
+          redeemed_at?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coupon_redemptions_coupon_id_fkey"
+            columns: ["coupon_id"]
+            isOneToOne: false
+            referencedRelation: "partner_coupons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coupon_redemptions_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "tenant_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coupon_redemptions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       coupons: {
         Row: {
           applies_to: string | null
@@ -4407,6 +4462,69 @@ export type Database = {
           },
         ]
       }
+      partner_addons: {
+        Row: {
+          amount: number
+          billing_period: string | null
+          created_at: string
+          currency: string
+          description: string | null
+          display_order: number
+          id: string
+          is_active: boolean
+          module_key: string | null
+          name: string
+          partner_id: string
+          pricing_type: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          billing_period?: string | null
+          created_at?: string
+          currency?: string
+          description?: string | null
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          module_key?: string | null
+          name: string
+          partner_id: string
+          pricing_type?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          billing_period?: string | null
+          created_at?: string
+          currency?: string
+          description?: string | null
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          module_key?: string | null
+          name?: string
+          partner_id?: string
+          pricing_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_addons_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_addons_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "v_partner_financial_kpis"
+            referencedColumns: ["partner_id"]
+          },
+        ]
+      }
       partner_branding: {
         Row: {
           accent_color: string | null
@@ -4492,6 +4610,75 @@ export type Database = {
             foreignKeyName: "partner_branding_partner_id_fkey"
             columns: ["partner_id"]
             isOneToOne: true
+            referencedRelation: "v_partner_financial_kpis"
+            referencedColumns: ["partner_id"]
+          },
+        ]
+      }
+      partner_coupons: {
+        Row: {
+          applies_to: string
+          code: string
+          created_at: string
+          description: string | null
+          discount_type: string
+          discount_value: number
+          id: string
+          is_active: boolean
+          max_redemptions: number | null
+          max_redemptions_per_tenant: number | null
+          min_amount: number | null
+          partner_id: string
+          updated_at: string
+          valid_from: string
+          valid_to: string | null
+        }
+        Insert: {
+          applies_to?: string
+          code: string
+          created_at?: string
+          description?: string | null
+          discount_type: string
+          discount_value: number
+          id?: string
+          is_active?: boolean
+          max_redemptions?: number | null
+          max_redemptions_per_tenant?: number | null
+          min_amount?: number | null
+          partner_id: string
+          updated_at?: string
+          valid_from?: string
+          valid_to?: string | null
+        }
+        Update: {
+          applies_to?: string
+          code?: string
+          created_at?: string
+          description?: string | null
+          discount_type?: string
+          discount_value?: number
+          id?: string
+          is_active?: boolean
+          max_redemptions?: number | null
+          max_redemptions_per_tenant?: number | null
+          min_amount?: number | null
+          partner_id?: string
+          updated_at?: string
+          valid_from?: string
+          valid_to?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_coupons_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_coupons_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
             referencedRelation: "v_partner_financial_kpis"
             referencedColumns: ["partner_id"]
           },
@@ -5567,6 +5754,77 @@ export type Database = {
           },
         ]
       }
+      partner_tenant_addon_subscriptions: {
+        Row: {
+          addon_id: string
+          canceled_at: string | null
+          cancellation_reason: string | null
+          created_at: string
+          end_at: string | null
+          id: string
+          partner_id: string
+          start_at: string
+          status: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          addon_id: string
+          canceled_at?: string | null
+          cancellation_reason?: string | null
+          created_at?: string
+          end_at?: string | null
+          id?: string
+          partner_id: string
+          start_at?: string
+          status?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          addon_id?: string
+          canceled_at?: string | null
+          cancellation_reason?: string | null
+          created_at?: string
+          end_at?: string | null
+          id?: string
+          partner_id?: string
+          start_at?: string
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_tenant_addon_subscriptions_addon_id_fkey"
+            columns: ["addon_id"]
+            isOneToOne: false
+            referencedRelation: "partner_addons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_tenant_addon_subscriptions_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_tenant_addon_subscriptions_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "v_partner_financial_kpis"
+            referencedColumns: ["partner_id"]
+          },
+          {
+            foreignKeyName: "partner_tenant_addon_subscriptions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       partner_tenants: {
         Row: {
           billing_notes: string | null
@@ -6404,6 +6662,81 @@ export type Database = {
             columns: ["plan_id"]
             isOneToOne: false
             referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plan_change_prorations: {
+        Row: {
+          applied_at: string | null
+          created_at: string
+          days_in_cycle: number
+          days_remaining: number
+          from_amount: number
+          from_plan_id: string | null
+          from_plan_name: string | null
+          id: string
+          invoice_id: string | null
+          net_amount: number
+          proration_charge: number
+          proration_credit: number
+          status: string
+          tenant_id: string
+          to_amount: number
+          to_plan_id: string | null
+          to_plan_name: string | null
+        }
+        Insert: {
+          applied_at?: string | null
+          created_at?: string
+          days_in_cycle: number
+          days_remaining: number
+          from_amount: number
+          from_plan_id?: string | null
+          from_plan_name?: string | null
+          id?: string
+          invoice_id?: string | null
+          net_amount: number
+          proration_charge: number
+          proration_credit: number
+          status?: string
+          tenant_id: string
+          to_amount: number
+          to_plan_id?: string | null
+          to_plan_name?: string | null
+        }
+        Update: {
+          applied_at?: string | null
+          created_at?: string
+          days_in_cycle?: number
+          days_remaining?: number
+          from_amount?: number
+          from_plan_id?: string | null
+          from_plan_name?: string | null
+          id?: string
+          invoice_id?: string | null
+          net_amount?: number
+          proration_charge?: number
+          proration_credit?: number
+          status?: string
+          tenant_id?: string
+          to_amount?: number
+          to_plan_id?: string | null
+          to_plan_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_change_prorations_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "tenant_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_change_prorations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -8839,6 +9172,67 @@ export type Database = {
           },
         ]
       }
+      tenant_entitlements: {
+        Row: {
+          created_at: string
+          effective_from: string
+          effective_to: string | null
+          entitlement_key: string
+          entitlement_value: Json
+          id: string
+          partner_id: string | null
+          source: string
+          source_id: string | null
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string
+          effective_from?: string
+          effective_to?: string | null
+          entitlement_key: string
+          entitlement_value?: Json
+          id?: string
+          partner_id?: string | null
+          source: string
+          source_id?: string | null
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string
+          effective_from?: string
+          effective_to?: string | null
+          entitlement_key?: string
+          entitlement_value?: Json
+          id?: string
+          partner_id?: string | null
+          source?: string
+          source_id?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_entitlements_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_entitlements_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "v_partner_financial_kpis"
+            referencedColumns: ["partner_id"]
+          },
+          {
+            foreignKeyName: "tenant_entitlements_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_fee_overrides: {
         Row: {
           created_at: string
@@ -9088,6 +9482,54 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "tenant_module_usage_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenant_pending_coupons: {
+        Row: {
+          applied_at: string | null
+          applies_to: string
+          coupon_id: string
+          created_at: string
+          id: string
+          status: string
+          target_id: string | null
+          tenant_id: string
+        }
+        Insert: {
+          applied_at?: string | null
+          applies_to: string
+          coupon_id: string
+          created_at?: string
+          id?: string
+          status?: string
+          target_id?: string | null
+          tenant_id: string
+        }
+        Update: {
+          applied_at?: string | null
+          applies_to?: string
+          coupon_id?: string
+          created_at?: string
+          id?: string
+          status?: string
+          target_id?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_pending_coupons_coupon_id_fkey"
+            columns: ["coupon_id"]
+            isOneToOne: false
+            referencedRelation: "partner_coupons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_pending_coupons_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -10538,6 +10980,10 @@ export type Database = {
         }
         Returns: Json
       }
+      apply_coupon_to_next_invoice: {
+        Args: { p_code: string; p_tenant_id: string }
+        Returns: string
+      }
       apply_dunning_policy: { Args: { p_tenant_id: string }; Returns: Json }
       apply_ops_recommendation: {
         Args: { p_actor_id?: string; p_recommendation_id: string }
@@ -10562,7 +11008,43 @@ export type Database = {
         }
         Returns: Json
       }
+      calculate_proration: {
+        Args: { p_new_plan_id: string; p_tenant_id: string }
+        Returns: {
+          days_in_cycle: number
+          days_remaining: number
+          from_amount: number
+          from_plan_id: string
+          from_plan_name: string
+          net_amount: number
+          proration_charge: number
+          proration_credit: number
+          to_amount: number
+          to_plan_id: string
+          to_plan_name: string
+        }[]
+      }
       can_create_branch: { Args: { p_tenant_id: string }; Returns: boolean }
+      cancel_tenant_addon_subscription: {
+        Args: { p_reason?: string; p_subscription_id: string }
+        Returns: boolean
+      }
+      change_tenant_plan_with_proration: {
+        Args: {
+          p_new_plan_id: string
+          p_tenant_id: string
+          p_waive_proration?: boolean
+        }
+        Returns: string
+      }
+      check_entitlement: {
+        Args: { p_key: string; p_requested_value?: number; p_tenant_id: string }
+        Returns: {
+          allowed: boolean
+          current_value: Json
+          reason: string
+        }[]
+      }
       check_module_limit: {
         Args: {
           p_limit_key: string
@@ -10603,6 +11085,18 @@ export type Database = {
           p_tenant_id: string
         }
         Returns: Json
+      }
+      create_partner_addon: {
+        Args: {
+          p_amount?: number
+          p_billing_period?: string
+          p_description?: string
+          p_module_key?: string
+          p_name: string
+          p_partner_id: string
+          p_pricing_type?: string
+        }
+        Returns: string
       }
       create_provider_charge_v2: {
         Args: {
@@ -11061,6 +11555,48 @@ export type Database = {
         }
         Returns: Json
       }
+      list_available_addons_for_tenant: {
+        Args: { p_tenant_id: string }
+        Returns: {
+          amount: number
+          billing_period: string
+          currency: string
+          description: string
+          id: string
+          is_subscribed: boolean
+          name: string
+          pricing_type: string
+        }[]
+      }
+      list_partner_addons: {
+        Args: { p_partner_id: string }
+        Returns: {
+          amount: number
+          billing_period: string
+          currency: string
+          description: string
+          id: string
+          is_active: boolean
+          module_key: string
+          name: string
+          pricing_type: string
+          subscribers_count: number
+        }[]
+      }
+      list_tenant_addon_subscriptions: {
+        Args: { p_tenant_id: string }
+        Returns: {
+          addon_description: string
+          addon_id: string
+          addon_name: string
+          amount: number
+          end_at: string
+          id: string
+          pricing_type: string
+          start_at: string
+          status: string
+        }[]
+      }
       log_comanda_action: {
         Args: {
           p_action: string
@@ -11104,6 +11640,10 @@ export type Database = {
       reactivate_on_payment: {
         Args: { p_invoice_id?: string; p_tenant_id: string }
         Returns: Json
+      }
+      rebuild_tenant_entitlements: {
+        Args: { p_tenant_id: string }
+        Returns: number
       }
       reconcile_provider_payments: {
         Args: { p_from_date?: string; p_provider?: string }
@@ -11183,6 +11723,10 @@ export type Database = {
         Args: { p_partner_id: string }
         Returns: Json
       }
+      subscribe_tenant_addon: {
+        Args: { p_addon_id: string; p_tenant_id: string }
+        Returns: string
+      }
       sync_invoice_status_from_ssot: {
         Args: { p_provider_payment_id: string }
         Returns: Json
@@ -11211,6 +11755,18 @@ export type Database = {
           p_notes?: string
         }
         Returns: Json
+      }
+      update_partner_addon: {
+        Args: {
+          p_addon_id: string
+          p_amount?: number
+          p_billing_period?: string
+          p_description?: string
+          p_is_active?: boolean
+          p_name?: string
+          p_pricing_type?: string
+        }
+        Returns: boolean
       }
       update_partner_payment_account: {
         Args: {
@@ -11255,6 +11811,17 @@ export type Database = {
       user_has_store_access: {
         Args: { _store_id: string; _user_id: string }
         Returns: boolean
+      }
+      validate_coupon: {
+        Args: { p_code: string; p_tenant_id: string }
+        Returns: {
+          applies_to: string
+          coupon_id: string
+          discount_type: string
+          discount_value: number
+          error_message: string
+          valid: boolean
+        }[]
       }
       validate_financial_integrity: {
         Args: {
