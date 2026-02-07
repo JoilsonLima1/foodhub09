@@ -27,6 +27,7 @@ import {
   Megaphone,
   Handshake,
   Shield,
+  Wrench,
 } from 'lucide-react';
 import { PlanEditor } from '@/components/superadmin/PlanEditor';
 import { FeatureComparison } from '@/components/superadmin/FeatureComparison';
@@ -51,6 +52,14 @@ import { PlatformMarketingPanel } from '@/components/superadmin/PlatformMarketin
 import { PlatformSEOManager } from '@/components/superadmin/PlatformSEOManager';
 import { PartnersManager } from '@/components/superadmin/PartnersManager';
 import { PartnerPoliciesManager } from '@/components/superadmin/PartnerPoliciesManager';
+import { 
+  OpsAlertsPanel, 
+  OpsReconciliationPanel, 
+  OpsRecommendationsPanel, 
+  OpsDisputesPanel, 
+  OpsPaymentsPanel, 
+  OpsSettingsPanel 
+} from '@/components/superadmin/ops';
 import { useSubscribers } from '@/hooks/useSubscribers';
 import { useOrganizations } from '@/hooks/useOrganizations';
 
@@ -255,6 +264,10 @@ export default function SuperAdmin() {
             <Shield className="h-4 w-4" />
             Políticas Parceiros
           </TabsTrigger>
+          <TabsTrigger value="ops" className="flex items-center gap-2">
+            <Wrench className="h-4 w-4" />
+            Backoffice Ops
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="organizations">
@@ -354,6 +367,37 @@ export default function SuperAdmin() {
 
         <TabsContent value="partner-policies">
           <PartnerPoliciesManager />
+        </TabsContent>
+
+        <TabsContent value="ops">
+          <Tabs defaultValue="alerts" className="space-y-4">
+            <TabsList>
+              <TabsTrigger value="alerts">Alertas</TabsTrigger>
+              <TabsTrigger value="reconciliation">Reconciliação</TabsTrigger>
+              <TabsTrigger value="recommendations">Recomendações</TabsTrigger>
+              <TabsTrigger value="disputes">Disputas</TabsTrigger>
+              <TabsTrigger value="payments">Pagamentos</TabsTrigger>
+              <TabsTrigger value="settings">Configurações</TabsTrigger>
+            </TabsList>
+            <TabsContent value="alerts">
+              <OpsAlertsPanel />
+            </TabsContent>
+            <TabsContent value="reconciliation">
+              <OpsReconciliationPanel />
+            </TabsContent>
+            <TabsContent value="recommendations">
+              <OpsRecommendationsPanel />
+            </TabsContent>
+            <TabsContent value="disputes">
+              <OpsDisputesPanel />
+            </TabsContent>
+            <TabsContent value="payments">
+              <OpsPaymentsPanel />
+            </TabsContent>
+            <TabsContent value="settings">
+              <OpsSettingsPanel />
+            </TabsContent>
+          </Tabs>
         </TabsContent>
       </Tabs>
     </div>
