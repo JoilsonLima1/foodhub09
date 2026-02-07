@@ -3833,6 +3833,200 @@ export type Database = {
           },
         ]
       }
+      notification_delivery: {
+        Row: {
+          created_at: string
+          id: string
+          outbox_id: string
+          provider: string
+          provider_message_id: string | null
+          raw: Json | null
+          status: Database["public"]["Enums"]["notification_delivery_status"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          outbox_id: string
+          provider: string
+          provider_message_id?: string | null
+          raw?: Json | null
+          status?: Database["public"]["Enums"]["notification_delivery_status"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          outbox_id?: string
+          provider?: string
+          provider_message_id?: string | null
+          raw?: Json | null
+          status?: Database["public"]["Enums"]["notification_delivery_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_delivery_outbox_id_fkey"
+            columns: ["outbox_id"]
+            isOneToOne: false
+            referencedRelation: "notification_outbox"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_outbox: {
+        Row: {
+          attempts: number
+          channel: Database["public"]["Enums"]["notification_channel"]
+          correlation_id: string | null
+          created_at: string
+          dedupe_key: string
+          event_id: string | null
+          id: string
+          invoice_id: string | null
+          last_error: string | null
+          max_attempts: number
+          next_attempt_at: string | null
+          partner_id: string | null
+          payload: Json
+          status: Database["public"]["Enums"]["notification_outbox_status"]
+          template_key: string
+          tenant_id: string | null
+          to_address: string
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          channel?: Database["public"]["Enums"]["notification_channel"]
+          correlation_id?: string | null
+          created_at?: string
+          dedupe_key: string
+          event_id?: string | null
+          id?: string
+          invoice_id?: string | null
+          last_error?: string | null
+          max_attempts?: number
+          next_attempt_at?: string | null
+          partner_id?: string | null
+          payload?: Json
+          status?: Database["public"]["Enums"]["notification_outbox_status"]
+          template_key: string
+          tenant_id?: string | null
+          to_address: string
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          channel?: Database["public"]["Enums"]["notification_channel"]
+          correlation_id?: string | null
+          created_at?: string
+          dedupe_key?: string
+          event_id?: string | null
+          id?: string
+          invoice_id?: string | null
+          last_error?: string | null
+          max_attempts?: number
+          next_attempt_at?: string | null
+          partner_id?: string | null
+          payload?: Json
+          status?: Database["public"]["Enums"]["notification_outbox_status"]
+          template_key?: string
+          tenant_id?: string | null
+          to_address?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_outbox_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "payment_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_outbox_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "tenant_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_outbox_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_outbox_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "v_partner_financial_kpis"
+            referencedColumns: ["partner_id"]
+          },
+          {
+            foreignKeyName: "notification_outbox_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_templates: {
+        Row: {
+          body: string
+          channel: Database["public"]["Enums"]["notification_channel"]
+          created_at: string
+          id: string
+          is_active: boolean
+          partner_id: string | null
+          subject: string | null
+          template_key: string
+          updated_at: string
+          variables: Json | null
+        }
+        Insert: {
+          body: string
+          channel?: Database["public"]["Enums"]["notification_channel"]
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          partner_id?: string | null
+          subject?: string | null
+          template_key: string
+          updated_at?: string
+          variables?: Json | null
+        }
+        Update: {
+          body?: string
+          channel?: Database["public"]["Enums"]["notification_channel"]
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          partner_id?: string | null
+          subject?: string | null
+          template_key?: string
+          updated_at?: string
+          variables?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_templates_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_templates_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "v_partner_financial_kpis"
+            referencedColumns: ["partner_id"]
+          },
+        ]
+      }
       operational_alerts: {
         Row: {
           acknowledged_at: string | null
@@ -11129,7 +11323,28 @@ export type Database = {
         Args: { p_lookback_days?: number; p_partner_id: string }
         Returns: Json
       }
+      emit_billing_notifications: {
+        Args: { p_date_from?: string; p_date_to?: string }
+        Returns: {
+          enqueued: number
+          skipped: number
+        }[]
+      }
       enqueue_apply_event: { Args: { p_event_id: string }; Returns: Json }
+      enqueue_notification: {
+        Args: {
+          p_channel: Database["public"]["Enums"]["notification_channel"]
+          p_dedupe_key?: string
+          p_event_id?: string
+          p_invoice_id?: string
+          p_partner_id: string
+          p_payload: Json
+          p_template_key: string
+          p_tenant_id: string
+          p_to_address: string
+        }
+        Returns: string
+      }
       enqueue_payout_job: {
         Args: {
           p_amount?: number
@@ -11625,10 +11840,45 @@ export type Database = {
         Returns: Json
       }
       map_asaas_event_type: { Args: { p_event: string }; Returns: string }
+      mark_notification_delivery: {
+        Args: {
+          p_outbox_id: string
+          p_provider: string
+          p_provider_message_id: string
+          p_raw?: Json
+          p_status: Database["public"]["Enums"]["notification_delivery_status"]
+        }
+        Returns: string
+      }
       mark_payout_job_processing: { Args: { p_job_id: string }; Returns: Json }
+      preview_notification: {
+        Args: {
+          p_channel: Database["public"]["Enums"]["notification_channel"]
+          p_partner_id: string
+          p_payload?: Json
+          p_template_key: string
+        }
+        Returns: {
+          body: string
+          is_default: boolean
+          rendered_body: string
+          rendered_subject: string
+          subject: string
+          template_id: string
+        }[]
+      }
       process_apply_queue: {
         Args: { p_batch_size?: number; p_worker_id?: string }
         Returns: Json
+      }
+      process_notification_outbox: {
+        Args: { p_batch_size?: number }
+        Returns: {
+          dead: number
+          failed: number
+          processed: number
+          sent: number
+        }[]
       }
       process_partner_invoice_payment: {
         Args: {
@@ -11701,6 +11951,27 @@ export type Database = {
         Returns: Json
       }
       reprocess_payment_event: { Args: { p_event_id: string }; Returns: Json }
+      requeue_dead_notification: {
+        Args: { p_outbox_id: string }
+        Returns: boolean
+      }
+      resolve_notification_template: {
+        Args: {
+          p_channel: Database["public"]["Enums"]["notification_channel"]
+          p_partner_id: string
+          p_template_key: string
+        }
+        Returns: {
+          body: string
+          channel: Database["public"]["Enums"]["notification_channel"]
+          id: string
+          is_default: boolean
+          partner_id: string
+          subject: string
+          template_key: string
+          variables: Json
+        }[]
+      }
       resolve_payment_context: {
         Args: { p_provider_payment_id: string }
         Returns: Json
@@ -11798,6 +12069,18 @@ export type Database = {
       }
       upsert_dispute_from_event: {
         Args: { p_event_id: string }
+        Returns: string
+      }
+      upsert_notification_template: {
+        Args: {
+          p_body: string
+          p_channel: Database["public"]["Enums"]["notification_channel"]
+          p_is_active?: boolean
+          p_partner_id: string
+          p_subject: string
+          p_template_key: string
+          p_variables?: Json
+        }
         Returns: string
       }
       upsert_partner_settlement_config: {
@@ -11918,6 +12201,19 @@ export type Database = {
         | "DISPATCHED"
         | "DELIVERED"
         | "CONCLUDED"
+      notification_channel: "email" | "whatsapp" | "inapp" | "sms"
+      notification_delivery_status:
+        | "accepted"
+        | "delivered"
+        | "bounced"
+        | "complained"
+        | "failed"
+      notification_outbox_status:
+        | "queued"
+        | "sending"
+        | "sent"
+        | "failed"
+        | "dead"
       order_origin: "online" | "pos" | "whatsapp" | "ifood" | "marketplace"
       order_status:
         | "pending_payment"
@@ -12140,6 +12436,21 @@ export const Constants = {
         "DISPATCHED",
         "DELIVERED",
         "CONCLUDED",
+      ],
+      notification_channel: ["email", "whatsapp", "inapp", "sms"],
+      notification_delivery_status: [
+        "accepted",
+        "delivered",
+        "bounced",
+        "complained",
+        "failed",
+      ],
+      notification_outbox_status: [
+        "queued",
+        "sending",
+        "sent",
+        "failed",
+        "dead",
       ],
       order_origin: ["online", "pos", "whatsapp", "ifood", "marketplace"],
       order_status: [
