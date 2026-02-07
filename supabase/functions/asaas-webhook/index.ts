@@ -92,6 +92,19 @@ function getPaymentMethodFromAsaas(billingType: string | undefined): string {
   }
 }
 
+// Events that represent successful payment
+const PAYMENT_SUCCESS_EVENTS = ['PAYMENT_RECEIVED', 'PAYMENT_CONFIRMED'];
+
+// Events that represent payment reversal
+const PAYMENT_REVERSAL_EVENTS = [
+  'PAYMENT_REFUNDED',
+  'PAYMENT_CHARGEBACK_REQUESTED',
+  'PAYMENT_CHARGEBACK_DISPUTE',
+  'PAYMENT_AWAITING_CHARGEBACK_REVERSAL',
+  'PAYMENT_DELETED',
+  'PAYMENT_RESTORED', // Handle as reversal check
+];
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -106,11 +119,24 @@ serve(async (req) => {
 
     const body = await req.json();
     const paymentId = body.payment?.id;
-    logStep("Event received", { event: body.event, paymentId });
+    const event = body.event;
+    logStep("Event received", { event, paymentId });
 
-    // Only process confirmed payments
-    if (body.event !== "PAYMENT_RECEIVED" && body.event !== "PAYMENT_CONFIRMED") {
-      logStep("Event ignored (not a payment confirmation)", { event: body.event });
+    // ============================================================
+    // HANDLE REVERSALS (Refunds, Chargebacks, Deletions)
+    // ============================================================
+    if (PAYMENT_REVERSAL_EVENTS.includes(event)) {
+      logStep("Processing reversal event", { event, paymentId });
+      await processReversal(supabase, paymentId, event, body.payment);
+      return new Response(
+        JSON.stringify({ received: true, processed: true, type: 'reversal', event }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Only process confirmed payments for activation
+    if (!PAYMENT_SUCCESS_EVENTS.includes(event)) {
+      logStep("Event ignored (not a payment confirmation or reversal)", { event });
       return new Response(
         JSON.stringify({ received: true, processed: false }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -155,6 +181,9 @@ serve(async (req) => {
       // Activate the module
       await activateModuleFromPurchase(supabase, modulePurchase, payment);
       
+      // Record partner transaction fees if applicable
+      await recordPartnerTransactionFees(supabase, modulePurchase.tenant_id, payment);
+      
       return new Response(
         JSON.stringify({ received: true, processed: true, type: 'module', method: 'payment_id' }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -179,7 +208,7 @@ serve(async (req) => {
     // ============================================================
     if (!payment?.externalReference) {
       // Store as unmatched event for later processing
-      await storeUnmatchedEvent(supabase, 'asaas', body.event, payment);
+      await storeUnmatchedEvent(supabase, 'asaas', event, payment);
       logStep("No externalReference and no module_purchase match, stored as unmatched");
       return new Response(
         JSON.stringify({ received: true, processed: false, reason: "no_match", stored: true }),
@@ -189,7 +218,7 @@ serve(async (req) => {
 
     const metadata = parseExternalReference(String(payment.externalReference));
     if (!metadata) {
-      await storeUnmatchedEvent(supabase, 'asaas', body.event, payment);
+      await storeUnmatchedEvent(supabase, 'asaas', event, payment);
       logStep("Invalid externalReference, stored as unmatched", { externalReference: payment.externalReference });
       return new Response(
         JSON.stringify({ received: true, processed: false, reason: "invalid_external_reference", stored: true }),
@@ -241,6 +270,122 @@ serve(async (req) => {
     );
   }
 });
+
+// ============================================================
+// NEW: Process reversals (refunds, chargebacks, cancellations)
+// ============================================================
+async function processReversal(
+  supabase: any,
+  paymentId: string,
+  event: string,
+  payment: any
+) {
+  if (!paymentId) {
+    logStep("Reversal: No payment ID, skipping");
+    return;
+  }
+
+  // Map event to reversal type
+  let reversalType = 'refund';
+  if (event.includes('CHARGEBACK')) {
+    reversalType = 'chargeback';
+  } else if (event === 'PAYMENT_DELETED') {
+    reversalType = 'canceled';
+  }
+
+  const reason = `Asaas event: ${event}`;
+
+  logStep("Processing reversal", { paymentId, reversalType, reason });
+
+  // Call the reversal function
+  const { data, error } = await supabase.rpc('reverse_partner_transaction', {
+    p_external_payment_id: paymentId,
+    p_reversal_reason: reason,
+    p_reversal_type: reversalType,
+  });
+
+  if (error) {
+    logStep("Reversal RPC error", { error: error.message });
+    // Don't throw - log and continue
+  } else {
+    logStep("Reversal result", data);
+  }
+
+  // Also update any module purchases if applicable
+  const { error: purchaseError } = await supabase
+    .from('module_purchases')
+    .update({ 
+      status: 'refunded',
+      notes: reason,
+    })
+    .eq('gateway_payment_id', paymentId);
+
+  if (purchaseError) {
+    logStep("Module purchase reversal update error", { error: purchaseError.message });
+  }
+
+  // Update partner invoices if applicable
+  const { error: invoiceError } = await supabase
+    .from('partner_invoices')
+    .update({
+      status: 'canceled',
+      canceled_at: new Date().toISOString(),
+      notes: reason,
+    })
+    .eq('gateway_payment_id', paymentId);
+
+  if (invoiceError) {
+    logStep("Partner invoice reversal update error", { error: invoiceError.message });
+  }
+}
+
+// ============================================================
+// NEW: Record partner transaction fees (idempotent)
+// ============================================================
+async function recordPartnerTransactionFees(
+  supabase: any,
+  tenantId: string,
+  payment: any
+) {
+  try {
+    // Get partner for this tenant
+    const { data: partnerId, error: partnerError } = await supabase
+      .rpc('get_partner_for_tenant', { p_tenant_id: tenantId });
+
+    if (partnerError || !partnerId) {
+      logStep("No partner found for tenant, skipping fee recording", { tenantId });
+      return;
+    }
+
+    const paymentMethod = getPaymentMethodFromAsaas(payment.billingType);
+    const amount = payment.value || 0;
+
+    if (amount <= 0) {
+      logStep("Zero or negative amount, skipping fee recording");
+      return;
+    }
+
+    // Record the transaction with idempotency
+    const { data, error } = await supabase.rpc('record_partner_transaction', {
+      p_partner_id: partnerId,
+      p_tenant_id: tenantId,
+      p_transaction_id: crypto.randomUUID(),
+      p_order_id: null, // Module purchase, not order
+      p_gross_amount: amount,
+      p_payment_method: paymentMethod,
+      p_external_payment_id: payment.id,
+      p_settlement_mode: 'invoice', // Default to invoice settlement
+    });
+
+    if (error) {
+      logStep("Error recording partner transaction", { error: error.message });
+    } else {
+      logStep("Partner transaction recorded", data);
+    }
+  } catch (e) {
+    logStep("Exception in recordPartnerTransactionFees", { error: String(e) });
+  }
+}
 
 // Store unmatched webhook events for later processing
 async function storeUnmatchedEvent(
@@ -455,6 +600,9 @@ async function activatePlanSubscription(
     throw new Error("Failed to activate subscription");
   }
 
+  // Record partner transaction fees if applicable
+  await recordPartnerTransactionFees(supabase, profile.tenant_id, payment);
+
   logStep("Plan activated successfully", { 
     tenantId: profile.tenant_id, 
     planId: metadata.plan_id,
@@ -546,6 +694,9 @@ async function activateModuleSubscriptionLegacy(
     throw new Error("Failed to activate module");
   }
 
+  // Record partner transaction fees if applicable
+  await recordPartnerTransactionFees(supabase, tenantId, payment);
+
   logStep("Module activated successfully (legacy)", { 
     tenantId, 
     moduleId,
@@ -606,6 +757,29 @@ async function processPartnerTenantPayment(
   if (rpcError) {
     logStep("Failed to process partner invoice", { error: rpcError.message });
     throw new Error("Failed to process partner invoice payment");
+  }
+
+  // Record partner transaction fees (partner earns from tenant payment)
+  const paymentMethod = getPaymentMethodFromAsaas(payment.billingType);
+  const amount = invoice.amount || payment.value || 0;
+
+  if (amount > 0 && invoice.partner_id) {
+    const { data: feeResult, error: feeError } = await supabase.rpc('record_partner_transaction', {
+      p_partner_id: invoice.partner_id,
+      p_tenant_id: invoice.tenant_id,
+      p_transaction_id: crypto.randomUUID(),
+      p_order_id: null,
+      p_gross_amount: amount,
+      p_payment_method: paymentMethod,
+      p_external_payment_id: paymentId,
+      p_settlement_mode: 'invoice',
+    });
+
+    if (feeError) {
+      logStep("Error recording partner transaction for invoice", { error: feeError.message });
+    } else {
+      logStep("Partner transaction recorded for invoice", feeResult);
+    }
   }
 
   logStep("Partner invoice processed successfully", result);
