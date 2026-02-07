@@ -1578,6 +1578,128 @@ export type Database = {
           },
         ]
       }
+      dispute_timeline: {
+        Row: {
+          action: string
+          actor_id: string | null
+          actor_type: string
+          created_at: string | null
+          data: Json | null
+          dispute_id: string
+          id: string
+          new_status: string | null
+          previous_status: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          actor_type: string
+          created_at?: string | null
+          data?: Json | null
+          dispute_id: string
+          id?: string
+          new_status?: string | null
+          previous_status?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          actor_type?: string
+          created_at?: string | null
+          data?: Json | null
+          dispute_id?: string
+          id?: string
+          new_status?: string | null
+          previous_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dispute_timeline_dispute_id_fkey"
+            columns: ["dispute_id"]
+            isOneToOne: false
+            referencedRelation: "disputes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      disputes: {
+        Row: {
+          amount: number | null
+          created_at: string | null
+          currency: string | null
+          dedupe_key: string
+          dispute_type: string
+          evidence_deadline_at: string | null
+          id: string
+          metadata: Json | null
+          notes: string | null
+          opened_at: string | null
+          partner_id: string | null
+          provider: string
+          provider_payment_id: string
+          resolved_at: string | null
+          source_event_id: string | null
+          status: string
+          tenant_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          amount?: number | null
+          created_at?: string | null
+          currency?: string | null
+          dedupe_key: string
+          dispute_type: string
+          evidence_deadline_at?: string | null
+          id?: string
+          metadata?: Json | null
+          notes?: string | null
+          opened_at?: string | null
+          partner_id?: string | null
+          provider?: string
+          provider_payment_id: string
+          resolved_at?: string | null
+          source_event_id?: string | null
+          status?: string
+          tenant_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number | null
+          created_at?: string | null
+          currency?: string | null
+          dedupe_key?: string
+          dispute_type?: string
+          evidence_deadline_at?: string | null
+          id?: string
+          metadata?: Json | null
+          notes?: string | null
+          opened_at?: string | null
+          partner_id?: string | null
+          provider?: string
+          provider_payment_id?: string
+          resolved_at?: string | null
+          source_event_id?: string | null
+          status?: string
+          tenant_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "disputes_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "disputes_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       duplicate_alerts: {
         Row: {
           alert_level: Database["public"]["Enums"]["fraud_alert_level"]
@@ -1883,6 +2005,48 @@ export type Database = {
         }
         Relationships: []
       }
+      financial_audit_log_archive: {
+        Row: {
+          action: string | null
+          actor_id: string | null
+          actor_type: string | null
+          after_state: Json | null
+          archived_at: string | null
+          before_state: Json | null
+          created_at: string | null
+          entity_id: string | null
+          entity_type: string | null
+          id: string
+          metadata: Json | null
+        }
+        Insert: {
+          action?: string | null
+          actor_id?: string | null
+          actor_type?: string | null
+          after_state?: Json | null
+          archived_at?: string | null
+          before_state?: Json | null
+          created_at?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
+          id: string
+          metadata?: Json | null
+        }
+        Update: {
+          action?: string | null
+          actor_id?: string | null
+          actor_type?: string | null
+          after_state?: Json | null
+          archived_at?: string | null
+          before_state?: Json | null
+          created_at?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          metadata?: Json | null
+        }
+        Relationships: []
+      }
       financial_reconciliation: {
         Row: {
           checked_at: string | null
@@ -1942,6 +2106,7 @@ export type Database = {
       fraud_flags: {
         Row: {
           created_at: string
+          dedupe_key: string | null
           details: Json
           id: string
           partner_id: string | null
@@ -1956,6 +2121,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          dedupe_key?: string | null
           details?: Json
           id?: string
           partner_id?: string | null
@@ -1970,6 +2136,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          dedupe_key?: string | null
           details?: Json
           id?: string
           partner_id?: string | null
@@ -3486,6 +3653,7 @@ export type Database = {
           acknowledged_at: string | null
           acknowledged_by: string | null
           created_at: string
+          dedupe_key: string | null
           details: Json
           id: string
           idempotency_key: string | null
@@ -3504,6 +3672,7 @@ export type Database = {
           acknowledged_at?: string | null
           acknowledged_by?: string | null
           created_at?: string
+          dedupe_key?: string | null
           details?: Json
           id?: string
           idempotency_key?: string | null
@@ -3522,6 +3691,7 @@ export type Database = {
           acknowledged_at?: string | null
           acknowledged_by?: string | null
           created_at?: string
+          dedupe_key?: string | null
           details?: Json
           id?: string
           idempotency_key?: string | null
@@ -3597,6 +3767,108 @@ export type Database = {
           tenant_id?: string | null
         }
         Relationships: []
+      }
+      operational_logs_archive: {
+        Row: {
+          archived_at: string | null
+          correlation_id: string | null
+          created_at: string | null
+          id: string
+          level: string | null
+          message: string | null
+          metadata: Json | null
+          scope: string | null
+        }
+        Insert: {
+          archived_at?: string | null
+          correlation_id?: string | null
+          created_at?: string | null
+          id: string
+          level?: string | null
+          message?: string | null
+          metadata?: Json | null
+          scope?: string | null
+        }
+        Update: {
+          archived_at?: string | null
+          correlation_id?: string | null
+          created_at?: string | null
+          id?: string
+          level?: string | null
+          message?: string | null
+          metadata?: Json | null
+          scope?: string | null
+        }
+        Relationships: []
+      }
+      ops_recommendations: {
+        Row: {
+          applied_at: string | null
+          applied_by: string | null
+          created_at: string | null
+          dedupe_key: string
+          error_message: string | null
+          id: string
+          partner_id: string | null
+          payload: Json | null
+          provider: string
+          provider_payment_id: string | null
+          status: string
+          suggested_action: string
+          tenant_id: string | null
+          type: string
+          updated_at: string | null
+        }
+        Insert: {
+          applied_at?: string | null
+          applied_by?: string | null
+          created_at?: string | null
+          dedupe_key: string
+          error_message?: string | null
+          id?: string
+          partner_id?: string | null
+          payload?: Json | null
+          provider: string
+          provider_payment_id?: string | null
+          status?: string
+          suggested_action: string
+          tenant_id?: string | null
+          type: string
+          updated_at?: string | null
+        }
+        Update: {
+          applied_at?: string | null
+          applied_by?: string | null
+          created_at?: string | null
+          dedupe_key?: string
+          error_message?: string | null
+          id?: string
+          partner_id?: string | null
+          payload?: Json | null
+          provider?: string
+          provider_payment_id?: string | null
+          status?: string
+          suggested_action?: string
+          tenant_id?: string | null
+          type?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ops_recommendations_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ops_recommendations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       order_item_addons: {
         Row: {
@@ -9137,6 +9409,10 @@ export type Database = {
         }
         Returns: Json
       }
+      apply_ops_recommendation: {
+        Args: { p_actor_id?: string; p_recommendation_id: string }
+        Returns: Json
+      }
       apply_payment_event: { Args: { p_event_id: string }; Returns: Json }
       calculate_partner_transaction_fee: {
         Args: {
@@ -9192,6 +9468,14 @@ export type Database = {
         }
         Returns: Json
       }
+      execute_partner_payout_v2: {
+        Args: {
+          p_external_reference?: string
+          p_payment_method?: string
+          p_settlement_id: string
+        }
+        Returns: Json
+      }
       force_sync_tenant_modules: {
         Args: { p_tenant_id: string }
         Returns: {
@@ -9201,6 +9485,7 @@ export type Database = {
         }[]
       }
       generate_operational_alerts: { Args: never; Returns: Json }
+      generate_ops_recommendations: { Args: never; Returns: number }
       generate_partner_settlement: {
         Args: {
           p_partner_id: string
@@ -9602,6 +9887,25 @@ export type Database = {
         Args: { p_from_date?: string; p_provider?: string }
         Returns: Json
       }
+      reconcile_provider_payments_v2: {
+        Args: {
+          p_partner_id?: string
+          p_period_end?: string
+          p_period_start?: string
+          p_status?: string
+          p_tenant_id?: string
+        }
+        Returns: {
+          difference: number
+          internal_amount: number
+          issue_type: string
+          provider: string
+          provider_amount: number
+          provider_payment_id: string
+          reconciliation_id: string
+          status: string
+        }[]
+      }
       record_ledger_entry: {
         Args: {
           p_amount: number
@@ -9641,6 +9945,10 @@ export type Database = {
         }
         Returns: Json
       }
+      rotate_logs: {
+        Args: { p_archive_days?: number; p_retention_days?: number }
+        Returns: Json
+      }
       sync_partner_tenant_modules: {
         Args: { p_tenant_id: string }
         Returns: undefined
@@ -9652,6 +9960,19 @@ export type Database = {
       tenant_has_addon: {
         Args: { _addon_slug: string; _tenant_id: string }
         Returns: boolean
+      }
+      update_dispute_status: {
+        Args: {
+          p_actor_id?: string
+          p_dispute_id: string
+          p_new_status: string
+          p_notes?: string
+        }
+        Returns: Json
+      }
+      upsert_dispute_from_event: {
+        Args: { p_event_id: string }
+        Returns: string
       }
       user_belongs_to_tenant: {
         Args: { _tenant_id: string; _user_id: string }
