@@ -4957,6 +4957,69 @@ export type Database = {
           },
         ]
       }
+      partner_payment_accounts: {
+        Row: {
+          capabilities: Json
+          created_at: string
+          id: string
+          kyc_level: string
+          last_sync_at: string | null
+          onboarding_url: string | null
+          partner_id: string
+          provider: string
+          provider_account_id: string | null
+          provider_wallet_id: string | null
+          status: string
+          sync_error: string | null
+          updated_at: string
+        }
+        Insert: {
+          capabilities?: Json
+          created_at?: string
+          id?: string
+          kyc_level?: string
+          last_sync_at?: string | null
+          onboarding_url?: string | null
+          partner_id: string
+          provider?: string
+          provider_account_id?: string | null
+          provider_wallet_id?: string | null
+          status?: string
+          sync_error?: string | null
+          updated_at?: string
+        }
+        Update: {
+          capabilities?: Json
+          created_at?: string
+          id?: string
+          kyc_level?: string
+          last_sync_at?: string | null
+          onboarding_url?: string | null
+          partner_id?: string
+          provider?: string
+          provider_account_id?: string | null
+          provider_wallet_id?: string | null
+          status?: string
+          sync_error?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_payment_accounts_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: true
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_payment_accounts_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: true
+            referencedRelation: "v_partner_financial_kpis"
+            referencedColumns: ["partner_id"]
+          },
+        ]
+      }
       partner_payouts: {
         Row: {
           amount: number
@@ -5328,6 +5391,63 @@ export type Database = {
             foreignKeyName: "partner_seo_pages_partner_id_fkey"
             columns: ["partner_id"]
             isOneToOne: false
+            referencedRelation: "v_partner_financial_kpis"
+            referencedColumns: ["partner_id"]
+          },
+        ]
+      }
+      partner_settlement_configs: {
+        Row: {
+          auto_payout_enabled: boolean
+          chargeback_reserve_percent: number
+          created_at: string
+          notes: string | null
+          partner_id: string
+          payout_day_of_month: number | null
+          payout_day_of_week: number | null
+          payout_min_amount: number
+          payout_schedule: string
+          settlement_mode: string
+          updated_at: string
+        }
+        Insert: {
+          auto_payout_enabled?: boolean
+          chargeback_reserve_percent?: number
+          created_at?: string
+          notes?: string | null
+          partner_id: string
+          payout_day_of_month?: number | null
+          payout_day_of_week?: number | null
+          payout_min_amount?: number
+          payout_schedule?: string
+          settlement_mode?: string
+          updated_at?: string
+        }
+        Update: {
+          auto_payout_enabled?: boolean
+          chargeback_reserve_percent?: number
+          created_at?: string
+          notes?: string | null
+          partner_id?: string
+          payout_day_of_month?: number | null
+          payout_day_of_week?: number | null
+          payout_min_amount?: number
+          payout_schedule?: string
+          settlement_mode?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_settlement_configs_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: true
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_settlement_configs_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: true
             referencedRelation: "v_partner_financial_kpis"
             referencedColumns: ["partner_id"]
           },
@@ -6056,6 +6176,85 @@ export type Database = {
           },
         ]
       }
+      payout_jobs: {
+        Row: {
+          amount: number
+          attempts: number
+          completed_at: string | null
+          created_at: string
+          currency: string
+          dedupe_key: string
+          id: string
+          last_error: string | null
+          max_attempts: number
+          next_attempt_at: string | null
+          partner_id: string
+          provider_transfer_id: string | null
+          scheduled_at: string
+          settlement_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          attempts?: number
+          completed_at?: string | null
+          created_at?: string
+          currency?: string
+          dedupe_key: string
+          id?: string
+          last_error?: string | null
+          max_attempts?: number
+          next_attempt_at?: string | null
+          partner_id: string
+          provider_transfer_id?: string | null
+          scheduled_at?: string
+          settlement_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          attempts?: number
+          completed_at?: string | null
+          created_at?: string
+          currency?: string
+          dedupe_key?: string
+          id?: string
+          last_error?: string | null
+          max_attempts?: number
+          next_attempt_at?: string | null
+          partner_id?: string
+          provider_transfer_id?: string | null
+          scheduled_at?: string
+          settlement_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payout_jobs_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payout_jobs_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "v_partner_financial_kpis"
+            referencedColumns: ["partner_id"]
+          },
+          {
+            foreignKeyName: "payout_jobs_settlement_id_fkey"
+            columns: ["settlement_id"]
+            isOneToOne: false
+            referencedRelation: "settlements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       plan_addon_modules: {
         Row: {
           addon_module_id: string
@@ -6639,6 +6838,98 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      provider_transfers: {
+        Row: {
+          amount: number
+          bank_account_info: Json | null
+          confirmed_at: string | null
+          created_at: string
+          currency: string
+          error_message: string | null
+          fee: number | null
+          id: string
+          net_amount: number | null
+          partner_id: string
+          payload: Json | null
+          payout_job_id: string | null
+          provider: string
+          provider_transfer_id: string
+          settlement_id: string | null
+          status: string
+          transfer_type: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          bank_account_info?: Json | null
+          confirmed_at?: string | null
+          created_at?: string
+          currency?: string
+          error_message?: string | null
+          fee?: number | null
+          id?: string
+          net_amount?: number | null
+          partner_id: string
+          payload?: Json | null
+          payout_job_id?: string | null
+          provider?: string
+          provider_transfer_id: string
+          settlement_id?: string | null
+          status?: string
+          transfer_type?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          bank_account_info?: Json | null
+          confirmed_at?: string | null
+          created_at?: string
+          currency?: string
+          error_message?: string | null
+          fee?: number | null
+          id?: string
+          net_amount?: number | null
+          partner_id?: string
+          payload?: Json | null
+          payout_job_id?: string | null
+          provider?: string
+          provider_transfer_id?: string
+          settlement_id?: string | null
+          status?: string
+          transfer_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "provider_transfers_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "provider_transfers_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "v_partner_financial_kpis"
+            referencedColumns: ["partner_id"]
+          },
+          {
+            foreignKeyName: "provider_transfers_payout_job_id_fkey"
+            columns: ["payout_job_id"]
+            isOneToOne: false
+            referencedRelation: "payout_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "provider_transfers_settlement_id_fkey"
+            columns: ["settlement_id"]
+            isOneToOne: false
+            referencedRelation: "settlements"
             referencedColumns: ["id"]
           },
         ]
@@ -9930,12 +10221,38 @@ export type Database = {
         Args: { p_tenant_id: string; p_user_id: string }
         Returns: Json
       }
+      complete_payout_job: {
+        Args: {
+          p_error?: string
+          p_job_id: string
+          p_provider_transfer_id?: string
+          p_success: boolean
+        }
+        Returns: Json
+      }
       compute_ops_metrics: { Args: { p_date?: string }; Returns: Json }
+      create_provider_charge_v2: {
+        Args: {
+          p_amount: number
+          p_description?: string
+          p_metadata?: Json
+          p_tenant_id: string
+        }
+        Returns: Json
+      }
       detect_fraud_signals: {
         Args: { p_lookback_days?: number; p_partner_id: string }
         Returns: Json
       }
       enqueue_apply_event: { Args: { p_event_id: string }; Returns: Json }
+      enqueue_payout_job: {
+        Args: {
+          p_amount?: number
+          p_partner_id: string
+          p_settlement_id?: string
+        }
+        Returns: Json
+      }
       ensure_headquarters_store: {
         Args: { p_tenant_id: string }
         Returns: string
@@ -10035,6 +10352,10 @@ export type Database = {
         Returns: Json
       }
       get_partner_for_tenant: { Args: { p_tenant_id: string }; Returns: string }
+      get_partner_onboarding_status: {
+        Args: { p_partner_id: string }
+        Returns: Json
+      }
       get_partner_policy: {
         Args: { p_partner_id: string }
         Returns: {
@@ -10111,6 +10432,11 @@ export type Database = {
           sitemap_changefreq: string
           sitemap_priority: number
         }[]
+      }
+      get_partners_payment_status: { Args: never; Returns: Json }
+      get_pending_payout_jobs: {
+        Args: { p_batch_size?: number }
+        Returns: Json
       }
       get_plan_addon_modules: {
         Args: { p_plan_id: string }
@@ -10355,6 +10681,7 @@ export type Database = {
         Returns: Json
       }
       map_asaas_event_type: { Args: { p_event: string }; Returns: string }
+      mark_payout_job_processing: { Args: { p_job_id: string }; Returns: Json }
       process_apply_queue: {
         Args: { p_batch_size?: number; p_worker_id?: string }
         Returns: Json
@@ -10442,9 +10769,17 @@ export type Database = {
         Args: { p_enabled: boolean; p_flag_key: string }
         Returns: Json
       }
+      start_partner_onboarding: {
+        Args: { p_partner_id: string }
+        Returns: Json
+      }
       sync_partner_tenant_modules: {
         Args: { p_tenant_id: string }
         Returns: undefined
+      }
+      sync_provider_transfers_status: {
+        Args: { p_partner_id?: string }
+        Returns: Json
       }
       sync_tenant_modules_from_plan: {
         Args: { p_tenant_id: string }
@@ -10460,6 +10795,28 @@ export type Database = {
           p_dispute_id: string
           p_new_status: string
           p_notes?: string
+        }
+        Returns: Json
+      }
+      update_partner_payment_account: {
+        Args: {
+          p_capabilities?: Json
+          p_kyc_level?: string
+          p_onboarding_url?: string
+          p_partner_id: string
+          p_provider_account_id?: string
+          p_status?: string
+          p_sync_error?: string
+        }
+        Returns: Json
+      }
+      update_provider_transfer_status: {
+        Args: {
+          p_error_message?: string
+          p_fee?: number
+          p_net_amount?: number
+          p_status: string
+          p_transfer_id: string
         }
         Returns: Json
       }

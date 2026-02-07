@@ -57,7 +57,8 @@ import {
   OpsRecommendationsPanel, 
   OpsDisputesPanel, 
   OpsPaymentsPanel, 
-  OpsSettingsPanel 
+  OpsSettingsPanel,
+  OpsPartnersPaymentsPanel,
 } from '@/components/superadmin/ops';
 import { useSubscribers } from '@/hooks/useSubscribers';
 import { useOrganizations } from '@/hooks/useOrganizations';
