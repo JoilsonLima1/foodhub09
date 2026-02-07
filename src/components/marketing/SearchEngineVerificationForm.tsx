@@ -74,11 +74,17 @@ export function SearchEngineVerificationForm({ tenantId, settingsId }: SearchEng
     mutationFn: async () => {
       if (!settingsId) throw new Error('Settings não encontradas');
 
+      // Update codes AND verification status based on whether codes are present
       const { error } = await supabase
         .from('marketing_seo_settings')
         .update({
           google_verification_code: googleCode || null,
           bing_verification_code: bingCode || null,
+          // Auto-mark as verified when code is provided
+          google_search_console_verified: !!googleCode,
+          google_search_console_verified_at: googleCode ? new Date().toISOString() : null,
+          bing_webmaster_verified: !!bingCode,
+          bing_webmaster_verified_at: bingCode ? new Date().toISOString() : null,
           updated_at: new Date().toISOString(),
         })
         .eq('id', settingsId);
