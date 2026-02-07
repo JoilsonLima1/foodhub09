@@ -45,6 +45,8 @@ import PublicClientes from "./pages/PublicClientes";
 import PublicRecursos from "./pages/PublicRecursos";
 import PublicPlanos from "./pages/PublicPlanos";
 import TenantBilling from "./pages/TenantBilling";
+import TenantBillingAddons from "./pages/TenantBillingAddons";
+import TenantBillingCoupon from "./pages/TenantBillingCoupon";
 
 // Partner pages
 import {
@@ -62,6 +64,8 @@ import {
   PartnerSettlementsPage,
   PartnerPaymentsPage,
   PartnerTenantBillingPage,
+  PartnerAddonsPage,
+  PartnerCouponsPage,
 } from "./pages/partner";
 import PartnerAuth from "./pages/PartnerAuth";
 
@@ -129,6 +133,8 @@ const App = () => (
                       <Route path="payments" element={<PartnerPaymentsPage />} />
                       <Route path="tenant-billing" element={<PartnerTenantBillingPage />} />
                       <Route path="tenant-billing/:tenantId" element={<PartnerTenantBillingPage />} />
+                      <Route path="addons" element={<PartnerAddonsPage />} />
+                      <Route path="coupons" element={<PartnerCouponsPage />} />
                       <Route path="users" element={<PartnerUsersPage />} />
                     </Route>
                     
@@ -150,6 +156,8 @@ const App = () => (
                       <Route path="/reports" element={<Reports />} />
                       <Route path="/settings" element={<Settings />} />
                       <Route path="/billing" element={<TenantBilling />} />
+                      <Route path="/billing/addons" element={<TenantBillingAddons />} />
+                      <Route path="/billing/coupon" element={<TenantBillingCoupon />} />
                       <Route path="/courier-dashboard" element={<CourierDashboard />} />
                       <Route path="/super-admin" element={<SuperAdmin />} />
                     </Route>

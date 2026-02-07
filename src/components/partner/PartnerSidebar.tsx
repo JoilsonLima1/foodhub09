@@ -21,6 +21,8 @@ import {
   Rocket,
   TrendingUp,
   Landmark,
+  Ticket,
+  Puzzle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -47,6 +49,18 @@ const menuItems = [
     path: '/partner/plans', 
     label: 'Planos', 
     icon: Package,
+    adminOnly: true,
+  },
+  {
+    path: '/partner/addons',
+    label: 'Add-ons',
+    icon: Puzzle,
+    adminOnly: true,
+  },
+  {
+    path: '/partner/coupons',
+    label: 'Cupons',
+    icon: Ticket,
     adminOnly: true,
   },
   {
