@@ -23,6 +23,7 @@ import {
   Landmark,
   Ticket,
   Puzzle,
+  Bell,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -109,6 +110,12 @@ const menuItems = [
     path: '/partner/payments', 
     label: 'Pagamentos', 
     icon: CreditCard,
+    adminOnly: true,
+  },
+  { 
+    path: '/partner/notifications', 
+    label: 'Notificações', 
+    icon: Bell,
     adminOnly: true,
   },
   { 

@@ -66,6 +66,7 @@ import {
   PartnerTenantBillingPage,
   PartnerAddonsPage,
   PartnerCouponsPage,
+  PartnerNotificationsPage,
 } from "./pages/partner";
 import PartnerAuth from "./pages/PartnerAuth";
 
@@ -135,6 +136,7 @@ const App = () => (
                       <Route path="tenant-billing/:tenantId" element={<PartnerTenantBillingPage />} />
                       <Route path="addons" element={<PartnerAddonsPage />} />
                       <Route path="coupons" element={<PartnerCouponsPage />} />
+                      <Route path="notifications" element={<PartnerNotificationsPage />} />
                       <Route path="users" element={<PartnerUsersPage />} />
                     </Route>
                     

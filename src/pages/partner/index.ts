@@ -16,3 +16,5 @@ export { default as PartnerTenantBillingPage } from './PartnerTenantBillingPage'
 // Phase 12 - Add-ons and Coupons
 export { default as PartnerAddonsPage } from './PartnerAddonsPage';
 export { default as PartnerCouponsPage } from './PartnerCouponsPage';
+// Phase 13 - Notifications
+export { default as PartnerNotificationsPage } from './PartnerNotificationsPage';
