@@ -14,7 +14,8 @@ const logStep = (step: string, details?: any) => {
 // Legacy parser for backward compatibility with old externalReference format
 type ParsedRef =
   | { type: 'plan'; plan_id: string; user_id: string }
-  | { type: 'module'; module_id_prefix: string; tenant_id_prefix: string };
+  | { type: 'module'; module_id_prefix: string; tenant_id_prefix: string }
+  | { type: 'partner_tenant'; subscription_id_prefix: string; tenant_id_prefix: string };
 
 function parseExternalReference(ref: string): ParsedRef | null {
   // Try JSON format first (old compact format)
@@ -35,6 +36,22 @@ function parseExternalReference(ref: string): ParsedRef | null {
     const parts = ref.split(':');
     if (parts.length >= 3) {
       return { type: 'module', module_id_prefix: parts[1], tenant_id_prefix: parts[2] };
+    }
+  }
+
+  // Partner tenant subscription format: pts:<subscription_id_prefix>|t:<tenant_id_prefix>
+  if (ref.startsWith('pts:')) {
+    const parts = ref.split('|').map((p) => p.trim()).filter(Boolean);
+    const map: Record<string, string> = {};
+    for (const part of parts) {
+      const idx = part.indexOf(':');
+      if (idx === -1) continue;
+      const k = part.slice(0, idx);
+      const v = part.slice(idx + 1);
+      if (k && v) map[k] = v;
+    }
+    if (map.pts && map.t) {
+      return { type: 'partner_tenant', subscription_id_prefix: map.pts, tenant_id_prefix: map.t };
     }
   }
 
@@ -144,6 +161,17 @@ serve(async (req) => {
       );
     }
 
+    // ============================================================
+    // NEW: Try to find partner invoice by payment_id
+    // ============================================================
+    const partnerProcessed = await processPartnerTenantPayment(supabase, paymentId, payment);
+    if (partnerProcessed) {
+      return new Response(
+        JSON.stringify({ received: true, processed: true, type: 'partner_tenant', method: 'payment_id' }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     logStep("No module purchase found by payment_id, trying legacy methods", { paymentId });
 
     // ============================================================
@@ -184,6 +212,15 @@ serve(async (req) => {
       await activateModuleSubscriptionLegacy(supabase, metadata, payment);
       return new Response(
         JSON.stringify({ received: true, processed: true, type: 'module', method: 'external_reference_legacy' }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (metadata.type === 'partner_tenant') {
+      // Partner tenant subscription activation
+      await processPartnerTenantSubscriptionLegacy(supabase, metadata, payment);
+      return new Response(
+        JSON.stringify({ received: true, processed: true, type: 'partner_tenant', method: 'external_reference' }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -515,4 +552,100 @@ async function activateModuleSubscriptionLegacy(
     moduleName: moduleData.name,
     pricePaid: payment.value
   });
+}
+
+// NEW: Process partner tenant subscription payment
+async function processPartnerTenantPayment(
+  supabase: any,
+  paymentId: string,
+  payment: any
+) {
+  logStep("Checking for partner invoice", { paymentId });
+
+  // Try to find partner invoice by gateway_payment_id
+  const { data: invoice, error: invoiceError } = await supabase
+    .from('partner_invoices')
+    .select(`
+      id,
+      tenant_subscription_id,
+      tenant_id,
+      partner_id,
+      partner_plan_id,
+      amount,
+      status
+    `)
+    .eq('gateway_payment_id', paymentId)
+    .eq('status', 'pending')
+    .maybeSingle();
+
+  if (invoiceError) {
+    logStep("Invoice lookup error", { error: invoiceError.message });
+    return false;
+  }
+
+  if (!invoice) {
+    logStep("No partner invoice found for this payment");
+    return false;
+  }
+
+  logStep("Partner invoice found", { 
+    invoiceId: invoice.id,
+    tenantId: invoice.tenant_id,
+    subscriptionId: invoice.tenant_subscription_id
+  });
+
+  // Process payment using the RPC function
+  const { data: result, error: rpcError } = await supabase
+    .rpc('process_partner_invoice_payment', {
+      p_invoice_id: invoice.id,
+      p_payment_provider: 'asaas',
+      p_gateway_payment_id: paymentId,
+      p_billing_type: payment.billingType
+    });
+
+  if (rpcError) {
+    logStep("Failed to process partner invoice", { error: rpcError.message });
+    throw new Error("Failed to process partner invoice payment");
+  }
+
+  logStep("Partner invoice processed successfully", result);
+  return true;
+}
+
+// NEW: Process partner tenant subscription via externalReference
+async function processPartnerTenantSubscriptionLegacy(
+  supabase: any,
+  metadata: { subscription_id_prefix: string; tenant_id_prefix: string },
+  payment: any
+) {
+  logStep("Processing partner tenant subscription (legacy)", metadata);
+
+  // Find subscription by prefix
+  const { data: subscriptions, error: subError } = await supabase
+    .from('tenant_subscriptions')
+    .select('id, tenant_id, partner_plan_id')
+    .like('id', `${metadata.subscription_id_prefix}%`)
+    .limit(1);
+
+  if (subError || !subscriptions?.length) {
+    logStep("Subscription not found by prefix", { prefix: metadata.subscription_id_prefix });
+    throw new Error("Subscription not found");
+  }
+
+  const subscription = subscriptions[0];
+
+  // Activate subscription
+  const { data: result, error: rpcError } = await supabase
+    .rpc('activate_partner_tenant_subscription', {
+      p_tenant_subscription_id: subscription.id,
+      p_payment_provider: 'asaas',
+      p_gateway_payment_id: payment.id
+    });
+
+  if (rpcError) {
+    logStep("Failed to activate partner subscription", { error: rpcError.message });
+    throw new Error("Failed to activate partner subscription");
+  }
+
+  logStep("Partner tenant subscription activated", result);
 }

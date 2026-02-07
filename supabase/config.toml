@@ -59,3 +59,9 @@ verify_jwt = false
 
 [functions.toggle-store-status]
 verify_jwt = false
+
+[functions.partner-tenant-checkout]
+verify_jwt = false
+
+[functions.sitemap]
+verify_jwt = false
