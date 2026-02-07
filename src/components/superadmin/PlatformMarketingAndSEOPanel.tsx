@@ -136,6 +136,13 @@ export function PlatformMarketingAndSEOPanel() {
     );
   }
 
+  const canonicalDomain = (globalForm.canonical_domain ?? settings?.canonical_domain ?? "https://foodhub09.com.br").replace(/\/$/, "");
+  const bingVerificationCode = (globalForm.bing_site_verification ?? settings?.bing_site_verification ?? "").trim();
+  const bingSiteAuthUrl = `${canonicalDomain}/BingSiteAuth.xml`;
+  const bingSiteAuthXml = bingVerificationCode
+    ? `<?xml version="1.0"?>\n<users>\n  <user>${bingVerificationCode}</user>\n</users>\n`
+    : "";
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -217,7 +224,7 @@ export function PlatformMarketingAndSEOPanel() {
 
       {/* Main Content Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="overview" className="flex items-center gap-2">
             <BarChart3 className="h-4 w-4" />
             <span className="hidden sm:inline">Visão Geral</span>
@@ -229,6 +236,10 @@ export function PlatformMarketingAndSEOPanel() {
           <TabsTrigger value="global" className="flex items-center gap-2">
             <Settings2 className="h-4 w-4" />
             <span className="hidden sm:inline">Config. Global</span>
+          </TabsTrigger>
+          <TabsTrigger value="search-engines" className="flex items-center gap-2">
+            <Globe className="h-4 w-4" />
+            <span className="hidden sm:inline">Buscadores</span>
           </TabsTrigger>
           <TabsTrigger value="schema" className="flex items-center gap-2">
             <Code className="h-4 w-4" />
@@ -556,36 +567,7 @@ export function PlatformMarketingAndSEOPanel() {
                 </div>
               </div>
 
-              {/* Webmaster Verification */}
-              <div className="space-y-2">
-                <h4 className="font-medium text-sm text-muted-foreground">Verificação de Webmasters</h4>
-              </div>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="google_site_verification">Google Search Console</Label>
-                  <Input
-                    id="google_site_verification"
-                    value={globalForm.google_site_verification ?? settings?.google_site_verification ?? ''}
-                    onChange={(e) => setGlobalForm({ ...globalForm, google_site_verification: e.target.value })}
-                    placeholder="Código de verificação (content do meta tag)"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Cole apenas o valor do atributo content da meta tag fornecida pelo Google.
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="bing_site_verification">Bing Webmaster Tools</Label>
-                  <Input
-                    id="bing_site_verification"
-                    value={globalForm.bing_site_verification ?? settings?.bing_site_verification ?? ''}
-                    onChange={(e) => setGlobalForm({ ...globalForm, bing_site_verification: e.target.value })}
-                    placeholder="Código de verificação Bing (meta HTML)"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Cole o valor do atributo content da meta tag msvalidate.01 fornecida pelo Bing.
-                  </p>
-                </div>
-              </div>
+              {/* Verificação de Webmasters movida para a aba "Buscadores" */}
 
               <div className="space-y-2">
                 <Label htmlFor="default_robots">Diretiva Robots Padrão</Label>
@@ -600,6 +582,99 @@ export function PlatformMarketingAndSEOPanel() {
               <Button onClick={handleSaveGlobalSettings} disabled={isSaving}>
                 {isSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
                 Salvar Configurações
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Buscadores Tab */}
+        <TabsContent value="search-engines" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Globe className="h-4 w-4" />
+                Configuração Automática (Buscadores)
+              </CardTitle>
+              <CardDescription>
+                Configure os métodos de verificação dos buscadores (meta tag no &lt;head&gt; e arquivo na raiz do site).
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Meta tag verification */}
+              <div className="space-y-3">
+                <h4 className="text-sm font-medium text-muted-foreground">Verificação por Meta Tag</h4>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="google_site_verification">Google Search Console</Label>
+                    <Input
+                      id="google_site_verification"
+                      value={globalForm.google_site_verification ?? settings?.google_site_verification ?? ''}
+                      onChange={(e) => setGlobalForm({ ...globalForm, google_site_verification: e.target.value })}
+                      placeholder="Cole apenas o valor do content"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Gera: <code className="bg-muted px-1 rounded">&lt;meta name="google-site-verification" content="..."&gt;</code>
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="bing_site_verification">Bing Webmaster Tools</Label>
+                    <Input
+                      id="bing_site_verification"
+                      value={globalForm.bing_site_verification ?? settings?.bing_site_verification ?? ''}
+                      onChange={(e) => setGlobalForm({ ...globalForm, bing_site_verification: e.target.value })}
+                      placeholder="Cole apenas o valor do content"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Gera: <code className="bg-muted px-1 rounded">&lt;meta name="msvalidate.01" content="..."&gt;</code>
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Root file verification (Bing) */}
+              <div className="space-y-3">
+                <h4 className="text-sm font-medium text-muted-foreground">Verificação por Arquivo na Raiz (Bing)</h4>
+                <Alert>
+                  <Info className="h-4 w-4" />
+                  <AlertTitle>Arquivo automático</AlertTitle>
+                  <AlertDescription>
+                    Quando você informar o código do Bing acima, o sistema publica automaticamente o arquivo <code className="bg-muted px-1 rounded">BingSiteAuth.xml</code> na raiz do seu site para verificação.
+                  </AlertDescription>
+                </Alert>
+                <div className="space-y-2">
+                  <Label>URL do arquivo</Label>
+                  <div className="flex items-center gap-2">
+                    <Input readOnly value={bingSiteAuthUrl} />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        navigator.clipboard.writeText(bingSiteAuthUrl);
+                        toast({ title: 'Copiado!', description: 'URL do BingSiteAuth.xml copiada.' });
+                      }}
+                    >
+                      Copiar
+                    </Button>
+                    <Button type="button" variant="outline" asChild>
+                      <a href={bingSiteAuthUrl} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="h-4 w-4" />
+                      </a>
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Se o Bing pedir especificamente “Carregue o arquivo no diretório raiz do seu site”, use essa URL.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Conteúdo gerado</Label>
+                  <Textarea readOnly value={bingSiteAuthXml || 'Informe o código do Bing acima para gerar o arquivo.'} rows={6} />
+                </div>
+              </div>
+
+              <Button onClick={handleSaveGlobalSettings} disabled={isSaving} className="w-full">
+                {isSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                Salvar configurações de buscadores
               </Button>
             </CardContent>
           </Card>

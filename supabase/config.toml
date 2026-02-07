@@ -74,3 +74,6 @@ verify_jwt = false
 
 [functions.robots]
 verify_jwt = false
+
+[functions.site-verification]
+verify_jwt = false
