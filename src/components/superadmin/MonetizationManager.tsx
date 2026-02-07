@@ -23,9 +23,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Loader2, Save, DollarSign, Percent, CreditCard, FileText, History, Building2, AlertTriangle } from 'lucide-react';
-import { usePlatformFees, type MethodFeeConfig } from '@/hooks/usePlatformFees';
+import { usePlatformFees } from '@/hooks/usePlatformFees';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { TenantOverridesTab } from './TenantOverridesTab';
 
 const PAYMENT_METHODS = [
   { key: 'pix', label: 'PIX' },
@@ -366,54 +367,7 @@ export function MonetizationManager() {
 
           {/* Tenant Overrides */}
           <TabsContent value="overrides">
-            <Card>
-              <CardHeader>
-                <CardTitle>Taxas Personalizadas por Tenant</CardTitle>
-                <CardDescription>
-                  Overrides individuais para tenants específicos (maior prioridade)
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {overrides && overrides.length > 0 ? (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Tenant</TableHead>
-                        <TableHead>Percentual</TableHead>
-                        <TableHead>Fixo</TableHead>
-                        <TableHead>Notas</TableHead>
-                        <TableHead>Criado em</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {overrides.map((override: any) => (
-                        <TableRow key={override.id}>
-                          <TableCell className="font-medium">
-                            {override.tenant?.name || override.tenant_id}
-                          </TableCell>
-                          <TableCell>
-                            {override.override_percent != null ? `${override.override_percent}%` : '-'}
-                          </TableCell>
-                          <TableCell>
-                            {override.override_fixed != null ? `R$ ${override.override_fixed.toFixed(2)}` : '-'}
-                          </TableCell>
-                          <TableCell className="max-w-[200px] truncate">
-                            {override.notes || '-'}
-                          </TableCell>
-                          <TableCell>
-                            {format(new Date(override.created_at), 'dd/MM/yyyy', { locale: ptBR })}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                ) : (
-                  <p className="text-muted-foreground text-center py-8">
-                    Nenhum override configurado. Todos os tenants usam as taxas padrão.
-                  </p>
-                )}
-              </CardContent>
-            </Card>
+            <TenantOverridesTab overrides={overrides} />
           </TabsContent>
 
           {/* Audit Logs */}
