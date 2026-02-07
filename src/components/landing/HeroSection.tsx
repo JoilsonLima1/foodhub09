@@ -183,7 +183,7 @@ export function HeroSection({
               className="text-lg h-16 px-10 rounded-full shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 transition-all group"
               onClick={() => navigate('/auth?plan=free&intent=signup')}
             >
-              Começar Agora - {trialText}
+              Começar Grátis
               <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
             </Button>
             <Button 
@@ -196,6 +196,10 @@ export function HeroSection({
               Ver Planos
             </Button>
           </div>
+          
+          <p className="text-sm text-muted-foreground mt-4">
+            Grátis • Acesso completo por 30 dias
+          </p>
           
           <p className="text-sm text-muted-foreground mt-6">
             {socialProofText} <span className="text-primary font-semibold">{companyName}</span>

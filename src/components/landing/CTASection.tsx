@@ -37,7 +37,7 @@ export function CTASection({ companyName, trialDays, whatsappNumber }: CTASectio
           
           <div className="inline-block p-4 rounded-2xl bg-primary/10 border border-primary/30 mb-8">
             <p className="text-2xl font-bold text-primary">
-              🎁 {trialDays} dias grátis com acesso a TODAS as funcionalidades!
+              🎁 Plano Grátis com acesso completo por {trialDays} dias!
             </p>
           </div>
           
@@ -48,7 +48,7 @@ export function CTASection({ companyName, trialDays, whatsappNumber }: CTASectio
               onClick={() => navigate('/auth?plan=free&intent=signup')}
             >
               <Gift className="mr-2 h-5 w-5" />
-              Começar Teste Grátis
+              Começar Grátis
               <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
             </Button>
             

@@ -95,9 +95,13 @@ export function PricingSection({ plans, isLoading, trialDays, trialText }: Prici
           <h2 className="text-3xl md:text-5xl font-bold mt-4 mb-6">
             Planos que cabem no seu <span className="text-primary">bolso</span>
           </h2>
-          <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            Escolha o plano ideal para o tamanho do seu negócio. 
-            Planos pagos incluem <span className="text-primary font-semibold">{trialDays} dias grátis</span> para você testar.
+          <p className="text-muted-foreground text-lg max-w-2xl mx-auto mb-4">
+            Escolha o plano ideal para o tamanho do seu negócio.
+          </p>
+          <p className="text-sm text-muted-foreground max-w-2xl mx-auto">
+            <span className="text-emerald-500 font-medium">Plano Grátis disponível</span> • 
+            Acesso completo por 30 dias • 
+            Planos pagos com teste grátis de {trialDays} dias
           </p>
         </div>
 
@@ -131,7 +135,7 @@ export function PricingSection({ plans, isLoading, trialDays, trialText }: Prici
                   {isFree && (
                     <div className="absolute -top-4 left-1/2 -translate-x-1/2">
                       <Badge className="bg-emerald-500 text-white px-4 py-1">
-                        Grátis para Sempre
+                        Grátis
                       </Badge>
                     </div>
                   )}
@@ -149,9 +153,17 @@ export function PricingSection({ plans, isLoading, trialDays, trialText }: Prici
                   <CardContent className="flex-1">
                     <div className="text-center mb-6">
                       {isFree ? (
-                        <div className="flex items-baseline justify-center gap-1">
-                          <span className="text-5xl font-bold text-emerald-500">Grátis</span>
-                        </div>
+                        <>
+                          <div className="flex items-baseline justify-center gap-1">
+                            <span className="text-5xl font-bold text-emerald-500">Grátis</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-2">
+                            Acesso completo por 30 dias
+                          </p>
+                          <p className="text-xs text-emerald-600 mt-1">
+                            Após, continua grátis com limites
+                          </p>
+                        </>
                       ) : (
                         <>
                           <div className="flex items-baseline justify-center gap-1">
@@ -197,8 +209,9 @@ export function PricingSection({ plans, isLoading, trialDays, trialText }: Prici
         )}
 
         <p className="text-center text-muted-foreground mt-12 text-lg">
-          💡 Todos os planos pagos incluem <strong className="text-primary">{trialText}</strong>. 
-          Sem cartão de crédito. Cancele a qualquer momento.
+          💡 <span className="text-emerald-500 font-medium">Plano Grátis:</span> acesso completo por 30 dias, depois continua grátis com limites.
+          <br />
+          <span className="text-sm">Planos pagos: {trialDays} dias grátis para testar. Sem cartão de crédito. Cancele a qualquer momento.</span>
         </p>
       </div>
 
