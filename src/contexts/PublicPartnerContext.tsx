@@ -12,6 +12,8 @@ interface PublicPartnerContextType {
   isPartnerDomain: boolean;
   isMarketingDomain: boolean;
   isAppDomain: boolean;
+  isPublished: boolean;
+  isSuspended: boolean;
   partner: ResolvedPartner | null;
   isLoading: boolean;
 }
@@ -66,6 +68,8 @@ export function PublicPartnerProvider({ children }: { children: React.ReactNode 
         isPartnerDomain: resolution.isPartnerDomain,
         isMarketingDomain: resolution.isMarketingDomain,
         isAppDomain: resolution.isAppDomain,
+        isPublished: resolution.isPublished,
+        isSuspended: resolution.isSuspended,
         partner: resolution.partner,
         isLoading: resolution.isLoading,
       }}

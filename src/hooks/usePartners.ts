@@ -39,11 +39,13 @@ export interface PartnerDomain {
   id: string;
   partner_id: string;
   domain: string;
+  domain_type: 'marketing' | 'app';
   is_primary: boolean;
   is_verified: boolean;
   verification_token: string | null;
   verified_at: string | null;
   ssl_status: string;
+  published: boolean;
   created_at: string;
 }
 
