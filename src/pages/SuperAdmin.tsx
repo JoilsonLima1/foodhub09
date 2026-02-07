@@ -26,6 +26,7 @@ import {
   TrendingUp,
   Megaphone,
   Handshake,
+  Shield,
 } from 'lucide-react';
 import { PlanEditor } from '@/components/superadmin/PlanEditor';
 import { FeatureComparison } from '@/components/superadmin/FeatureComparison';
@@ -48,6 +49,7 @@ import { ModuleLimitsManager } from '@/components/superadmin/ModuleLimitsManager
 import { SuperAdminMarketingPanel } from '@/components/superadmin/SuperAdminMarketingPanel';
 import { PlatformMarketingPanel } from '@/components/superadmin/PlatformMarketingPanel';
 import { PartnersManager } from '@/components/superadmin/PartnersManager';
+import { PartnerPoliciesManager } from '@/components/superadmin/PartnerPoliciesManager';
 import { useSubscribers } from '@/hooks/useSubscribers';
 import { useOrganizations } from '@/hooks/useOrganizations';
 
@@ -244,6 +246,10 @@ export default function SuperAdmin() {
             <Handshake className="h-4 w-4" />
             Parceiros
           </TabsTrigger>
+          <TabsTrigger value="partner-policies" className="flex items-center gap-2">
+            <Shield className="h-4 w-4" />
+            Políticas Parceiros
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="organizations">
@@ -335,6 +341,10 @@ export default function SuperAdmin() {
 
         <TabsContent value="partners">
           <PartnersManager />
+        </TabsContent>
+
+        <TabsContent value="partner-policies">
+          <PartnerPoliciesManager />
         </TabsContent>
       </Tabs>
     </div>

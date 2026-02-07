@@ -3793,8 +3793,10 @@ export type Database = {
           description: string | null
           display_order: number | null
           id: string
+          included_features: string[] | null
           included_modules: string[] | null
           is_active: boolean | null
+          is_free: boolean | null
           max_orders_per_month: number | null
           max_products: number | null
           max_users: number | null
@@ -3802,6 +3804,7 @@ export type Database = {
           name: string
           partner_id: string
           slug: string
+          trial_days: number | null
           updated_at: string | null
         }
         Insert: {
@@ -3811,8 +3814,10 @@ export type Database = {
           description?: string | null
           display_order?: number | null
           id?: string
+          included_features?: string[] | null
           included_modules?: string[] | null
           is_active?: boolean | null
+          is_free?: boolean | null
           max_orders_per_month?: number | null
           max_products?: number | null
           max_users?: number | null
@@ -3820,6 +3825,7 @@ export type Database = {
           name: string
           partner_id: string
           slug: string
+          trial_days?: number | null
           updated_at?: string | null
         }
         Update: {
@@ -3829,8 +3835,10 @@ export type Database = {
           description?: string | null
           display_order?: number | null
           id?: string
+          included_features?: string[] | null
           included_modules?: string[] | null
           is_active?: boolean | null
+          is_free?: boolean | null
           max_orders_per_month?: number | null
           max_products?: number | null
           max_users?: number | null
@@ -3838,6 +3846,7 @@ export type Database = {
           name?: string
           partner_id?: string
           slug?: string
+          trial_days?: number | null
           updated_at?: string | null
         }
         Relationships: [
@@ -3852,6 +3861,80 @@ export type Database = {
             foreignKeyName: "partner_plans_partner_id_fkey"
             columns: ["partner_id"]
             isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partner_policies: {
+        Row: {
+          allow_free_plan: boolean
+          allow_offline_billing: boolean
+          allowed_features_catalog: string[] | null
+          allowed_modules_catalog: string[] | null
+          created_at: string
+          free_plan_constraints: Json | null
+          free_plan_max_features: number
+          free_plan_max_modules: number
+          id: string
+          max_features_per_plan: number
+          max_modules_per_plan: number
+          max_plans_per_partner: number
+          max_trial_days_allowed: number
+          min_paid_plan_price: number
+          partner_id: string | null
+          require_plan_hierarchy: boolean
+          trial_allowed_features: string[] | null
+          trial_allowed_modules: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          allow_free_plan?: boolean
+          allow_offline_billing?: boolean
+          allowed_features_catalog?: string[] | null
+          allowed_modules_catalog?: string[] | null
+          created_at?: string
+          free_plan_constraints?: Json | null
+          free_plan_max_features?: number
+          free_plan_max_modules?: number
+          id?: string
+          max_features_per_plan?: number
+          max_modules_per_plan?: number
+          max_plans_per_partner?: number
+          max_trial_days_allowed?: number
+          min_paid_plan_price?: number
+          partner_id?: string | null
+          require_plan_hierarchy?: boolean
+          trial_allowed_features?: string[] | null
+          trial_allowed_modules?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          allow_free_plan?: boolean
+          allow_offline_billing?: boolean
+          allowed_features_catalog?: string[] | null
+          allowed_modules_catalog?: string[] | null
+          created_at?: string
+          free_plan_constraints?: Json | null
+          free_plan_max_features?: number
+          free_plan_max_modules?: number
+          id?: string
+          max_features_per_plan?: number
+          max_modules_per_plan?: number
+          max_plans_per_partner?: number
+          max_trial_days_allowed?: number
+          min_paid_plan_price?: number
+          partner_id?: string | null
+          require_plan_hierarchy?: boolean
+          trial_allowed_features?: string[] | null
+          trial_allowed_modules?: string[] | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_policies_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: true
             referencedRelation: "partners"
             referencedColumns: ["id"]
           },
@@ -6454,6 +6537,88 @@ export type Database = {
           },
         ]
       }
+      tenant_subscriptions: {
+        Row: {
+          billing_mode: string
+          canceled_at: string | null
+          created_at: string
+          currency: string | null
+          current_period_end: string | null
+          current_period_start: string | null
+          external_subscription_id: string | null
+          id: string
+          monthly_amount: number | null
+          partner_plan_id: string | null
+          partner_tenant_id: string | null
+          payment_provider: string | null
+          status: string
+          tenant_id: string
+          trial_ends_at: string | null
+          trial_starts_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          billing_mode?: string
+          canceled_at?: string | null
+          created_at?: string
+          currency?: string | null
+          current_period_end?: string | null
+          current_period_start?: string | null
+          external_subscription_id?: string | null
+          id?: string
+          monthly_amount?: number | null
+          partner_plan_id?: string | null
+          partner_tenant_id?: string | null
+          payment_provider?: string | null
+          status?: string
+          tenant_id: string
+          trial_ends_at?: string | null
+          trial_starts_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          billing_mode?: string
+          canceled_at?: string | null
+          created_at?: string
+          currency?: string | null
+          current_period_end?: string | null
+          current_period_start?: string | null
+          external_subscription_id?: string | null
+          id?: string
+          monthly_amount?: number | null
+          partner_plan_id?: string | null
+          partner_tenant_id?: string | null
+          payment_provider?: string | null
+          status?: string
+          tenant_id?: string
+          trial_ends_at?: string | null
+          trial_starts_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_subscriptions_partner_plan_id_fkey"
+            columns: ["partner_plan_id"]
+            isOneToOne: false
+            referencedRelation: "partner_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_subscriptions_partner_tenant_id_fkey"
+            columns: ["partner_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "partner_tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_subscriptions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenants: {
         Row: {
           address: string | null
@@ -7481,6 +7646,10 @@ export type Database = {
         }
         Returns: Json
       }
+      check_tenant_subscription_access: {
+        Args: { p_tenant_id: string; p_user_id: string }
+        Returns: Json
+      }
       ensure_headquarters_store: {
         Args: { p_tenant_id: string }
         Returns: string
@@ -7543,6 +7712,36 @@ export type Database = {
           partner_name: string
           partner_slug: string
         }[]
+      }
+      get_partner_policy: {
+        Args: { p_partner_id: string }
+        Returns: {
+          allow_free_plan: boolean
+          allow_offline_billing: boolean
+          allowed_features_catalog: string[] | null
+          allowed_modules_catalog: string[] | null
+          created_at: string
+          free_plan_constraints: Json | null
+          free_plan_max_features: number
+          free_plan_max_modules: number
+          id: string
+          max_features_per_plan: number
+          max_modules_per_plan: number
+          max_plans_per_partner: number
+          max_trial_days_allowed: number
+          min_paid_plan_price: number
+          partner_id: string | null
+          require_plan_hierarchy: boolean
+          trial_allowed_features: string[] | null
+          trial_allowed_modules: string[] | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "partner_policies"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       get_plan_addon_modules: {
         Args: { p_plan_id: string }
