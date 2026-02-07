@@ -44,6 +44,7 @@ import Marketing from "./pages/Marketing";
 import PublicClientes from "./pages/PublicClientes";
 import PublicRecursos from "./pages/PublicRecursos";
 import PublicPlanos from "./pages/PublicPlanos";
+import TenantBilling from "./pages/TenantBilling";
 
 // Partner pages
 import {
@@ -60,6 +61,7 @@ import {
   PartnerEarningsPage,
   PartnerSettlementsPage,
   PartnerPaymentsPage,
+  PartnerTenantBillingPage,
 } from "./pages/partner";
 import PartnerAuth from "./pages/PartnerAuth";
 
@@ -125,6 +127,8 @@ const App = () => (
                       <Route path="earnings" element={<PartnerEarningsPage />} />
                       <Route path="settlements" element={<PartnerSettlementsPage />} />
                       <Route path="payments" element={<PartnerPaymentsPage />} />
+                      <Route path="tenant-billing" element={<PartnerTenantBillingPage />} />
+                      <Route path="tenant-billing/:tenantId" element={<PartnerTenantBillingPage />} />
                       <Route path="users" element={<PartnerUsersPage />} />
                     </Route>
                     
@@ -145,6 +149,7 @@ const App = () => (
                       <Route path="/stock" element={<Stock />} />
                       <Route path="/reports" element={<Reports />} />
                       <Route path="/settings" element={<Settings />} />
+                      <Route path="/billing" element={<TenantBilling />} />
                       <Route path="/courier-dashboard" element={<CourierDashboard />} />
                       <Route path="/super-admin" element={<SuperAdmin />} />
                     </Route>

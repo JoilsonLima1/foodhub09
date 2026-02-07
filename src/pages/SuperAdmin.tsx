@@ -59,6 +59,7 @@ import {
   OpsPaymentsPanel, 
   OpsSettingsPanel,
   OpsPartnersPaymentsPanel,
+  OpsBillingPanel,
 } from '@/components/superadmin/ops';
 import { useSubscribers } from '@/hooks/useSubscribers';
 import { useOrganizations } from '@/hooks/useOrganizations';
@@ -370,6 +371,7 @@ export default function SuperAdmin() {
               <TabsTrigger value="disputes">Disputas</TabsTrigger>
               <TabsTrigger value="payments">Pagamentos</TabsTrigger>
               <TabsTrigger value="partners-payments">Parceiros</TabsTrigger>
+              <TabsTrigger value="billing">Faturamento</TabsTrigger>
               <TabsTrigger value="settings">Configurações</TabsTrigger>
             </TabsList>
             <TabsContent value="alerts">
@@ -389,6 +391,9 @@ export default function SuperAdmin() {
             </TabsContent>
             <TabsContent value="partners-payments">
               <OpsPartnersPaymentsPanel />
+            </TabsContent>
+            <TabsContent value="billing">
+              <OpsBillingPanel />
             </TabsContent>
             <TabsContent value="settings">
               <OpsSettingsPanel />

@@ -171,6 +171,66 @@ export type Database = {
           },
         ]
       }
+      billing_notifications: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          id: string
+          invoice_id: string | null
+          metadata: Json | null
+          provider_message_id: string | null
+          scheduled_at: string
+          sent_at: string | null
+          status: string
+          template_key: string
+          tenant_id: string
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          invoice_id?: string | null
+          metadata?: Json | null
+          provider_message_id?: string | null
+          scheduled_at?: string
+          sent_at?: string | null
+          status?: string
+          template_key: string
+          tenant_id: string
+          type: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          invoice_id?: string | null
+          metadata?: Json | null
+          provider_message_id?: string | null
+          scheduled_at?: string
+          sent_at?: string | null
+          status?: string
+          template_key?: string
+          tenant_id?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_notifications_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "tenant_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "billing_notifications_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       billing_settings: {
         Row: {
           created_at: string
@@ -4545,6 +4605,60 @@ export type Database = {
           },
         ]
       }
+      partner_dunning_policies: {
+        Row: {
+          auto_cancel_after_days: number | null
+          auto_cancel_enabled: boolean
+          block_after_days: number
+          created_at: string
+          grace_days: number
+          id: string
+          notify_schedule: Json
+          partner_id: string | null
+          suspend_after_days: number
+          updated_at: string
+        }
+        Insert: {
+          auto_cancel_after_days?: number | null
+          auto_cancel_enabled?: boolean
+          block_after_days?: number
+          created_at?: string
+          grace_days?: number
+          id?: string
+          notify_schedule?: Json
+          partner_id?: string | null
+          suspend_after_days?: number
+          updated_at?: string
+        }
+        Update: {
+          auto_cancel_after_days?: number | null
+          auto_cancel_enabled?: boolean
+          block_after_days?: number
+          created_at?: string
+          grace_days?: number
+          id?: string
+          notify_schedule?: Json
+          partner_id?: string | null
+          suspend_after_days?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_dunning_policies_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: true
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_dunning_policies_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: true
+            referencedRelation: "v_partner_financial_kpis"
+            referencedColumns: ["partner_id"]
+          },
+        ]
+      }
       partner_earnings: {
         Row: {
           created_at: string | null
@@ -7818,6 +7932,78 @@ export type Database = {
           },
         ]
       }
+      subscription_cycles: {
+        Row: {
+          created_at: string
+          cycle_end: string
+          cycle_start: string
+          id: string
+          invoice_id: string | null
+          partner_id: string | null
+          status: string
+          subscription_id: string | null
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string
+          cycle_end: string
+          cycle_start: string
+          id?: string
+          invoice_id?: string | null
+          partner_id?: string | null
+          status?: string
+          subscription_id?: string | null
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string
+          cycle_end?: string
+          cycle_start?: string
+          id?: string
+          invoice_id?: string | null
+          partner_id?: string | null
+          status?: string
+          subscription_id?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_cycles_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "tenant_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscription_cycles_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscription_cycles_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "v_partner_financial_kpis"
+            referencedColumns: ["partner_id"]
+          },
+          {
+            foreignKeyName: "subscription_cycles_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "tenant_subscriptions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscription_cycles_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subscription_plans: {
         Row: {
           created_at: string
@@ -8583,6 +8769,76 @@ export type Database = {
           },
         ]
       }
+      tenant_billing_profiles: {
+        Row: {
+          billing_doc: string | null
+          billing_email: string | null
+          billing_name: string | null
+          billing_phone: string | null
+          created_at: string
+          id: string
+          metadata: Json | null
+          partner_id: string | null
+          provider: string
+          provider_customer_id: string | null
+          status: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          billing_doc?: string | null
+          billing_email?: string | null
+          billing_name?: string | null
+          billing_phone?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          partner_id?: string | null
+          provider?: string
+          provider_customer_id?: string | null
+          status?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          billing_doc?: string | null
+          billing_email?: string | null
+          billing_name?: string | null
+          billing_phone?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          partner_id?: string | null
+          provider?: string
+          provider_customer_id?: string | null
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_billing_profiles_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_billing_profiles_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "v_partner_financial_kpis"
+            referencedColumns: ["partner_id"]
+          },
+          {
+            foreignKeyName: "tenant_billing_profiles_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_fee_overrides: {
         Row: {
           created_at: string
@@ -8625,6 +8881,111 @@ export type Database = {
             foreignKeyName: "tenant_fee_overrides_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenant_invoices: {
+        Row: {
+          amount: number
+          canceled_at: string | null
+          created_at: string
+          currency: string
+          due_date: string
+          id: string
+          metadata: Json | null
+          notes: string | null
+          paid_at: string | null
+          partner_id: string | null
+          period_end: string | null
+          period_start: string | null
+          plan_id: string | null
+          provider: string
+          provider_payment_id: string | null
+          provider_payment_url: string | null
+          status: string
+          subscription_id: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          canceled_at?: string | null
+          created_at?: string
+          currency?: string
+          due_date: string
+          id?: string
+          metadata?: Json | null
+          notes?: string | null
+          paid_at?: string | null
+          partner_id?: string | null
+          period_end?: string | null
+          period_start?: string | null
+          plan_id?: string | null
+          provider?: string
+          provider_payment_id?: string | null
+          provider_payment_url?: string | null
+          status?: string
+          subscription_id?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          canceled_at?: string | null
+          created_at?: string
+          currency?: string
+          due_date?: string
+          id?: string
+          metadata?: Json | null
+          notes?: string | null
+          paid_at?: string | null
+          partner_id?: string | null
+          period_end?: string | null
+          period_start?: string | null
+          plan_id?: string | null
+          provider?: string
+          provider_payment_id?: string | null
+          provider_payment_url?: string | null
+          status?: string
+          subscription_id?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_invoices_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_invoices_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "v_partner_financial_kpis"
+            referencedColumns: ["partner_id"]
+          },
+          {
+            foreignKeyName: "tenant_invoices_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "partner_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_invoices_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "tenant_subscriptions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_invoices_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
             referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
@@ -10177,6 +10538,7 @@ export type Database = {
         }
         Returns: Json
       }
+      apply_dunning_policy: { Args: { p_tenant_id: string }; Returns: Json }
       apply_ops_recommendation: {
         Args: { p_actor_id?: string; p_recommendation_id: string }
         Returns: Json
@@ -10231,11 +10593,34 @@ export type Database = {
         Returns: Json
       }
       compute_ops_metrics: { Args: { p_date?: string }; Returns: Json }
+      create_or_update_billing_profile: {
+        Args: {
+          p_billing_doc?: string
+          p_billing_email?: string
+          p_billing_name?: string
+          p_billing_phone?: string
+          p_provider_customer_id?: string
+          p_tenant_id: string
+        }
+        Returns: Json
+      }
       create_provider_charge_v2: {
         Args: {
           p_amount: number
           p_description?: string
           p_metadata?: Json
+          p_tenant_id: string
+        }
+        Returns: Json
+      }
+      create_subscription_invoice: {
+        Args: {
+          p_amount: number
+          p_due_date: string
+          p_idempotency_key?: string
+          p_period_end: string
+          p_period_start: string
+          p_subscription_id: string
           p_tenant_id: string
         }
         Returns: Json
@@ -10302,6 +10687,7 @@ export type Database = {
           provider: string
         }[]
       }
+      get_billing_ops_overview: { Args: never; Returns: Json }
       get_billing_settings: {
         Args: never
         Returns: {
@@ -10600,6 +10986,10 @@ export type Database = {
           slug: string
         }[]
       }
+      get_tenant_billing_summary: {
+        Args: { p_tenant_id: string }
+        Returns: Json
+      }
       get_user_active_store: { Args: { p_user_id: string }; Returns: string }
       get_user_allowed_stores: {
         Args: { _user_id: string }
@@ -10613,6 +11003,10 @@ export type Database = {
         }[]
       }
       get_user_tenant_id: { Args: { _user_id: string }; Returns: string }
+      handle_billing_event_from_ssot: {
+        Args: { p_event_id: string }
+        Returns: Json
+      }
       has_accepted_current_terms: {
         Args: { p_tenant_id: string }
         Returns: boolean
@@ -10659,6 +11053,14 @@ export type Database = {
         Args: { _order_id: string; _user_id: string }
         Returns: boolean
       }
+      link_invoice_to_provider: {
+        Args: {
+          p_invoice_id: string
+          p_provider_payment_id: string
+          p_provider_payment_url?: string
+        }
+        Returns: Json
+      }
       log_comanda_action: {
         Args: {
           p_action: string
@@ -10698,6 +11100,10 @@ export type Database = {
       publish_partner_landing: {
         Args: { p_partner_id: string; p_publish: boolean }
         Returns: boolean
+      }
+      reactivate_on_payment: {
+        Args: { p_invoice_id?: string; p_tenant_id: string }
+        Returns: Json
       }
       reconcile_provider_payments: {
         Args: { p_from_date?: string; p_provider?: string }
@@ -10765,12 +11171,20 @@ export type Database = {
         Args: { p_archive_days?: number; p_retention_days?: number }
         Returns: Json
       }
+      run_billing_cycle_cron: {
+        Args: { p_target_date?: string }
+        Returns: Json
+      }
       set_feature_flag: {
         Args: { p_enabled: boolean; p_flag_key: string }
         Returns: Json
       }
       start_partner_onboarding: {
         Args: { p_partner_id: string }
+        Returns: Json
+      }
+      sync_invoice_status_from_ssot: {
+        Args: { p_provider_payment_id: string }
         Returns: Json
       }
       sync_partner_tenant_modules: {
