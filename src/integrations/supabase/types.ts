@@ -10824,6 +10824,16 @@ export type Database = {
         Args: { p_event_id: string }
         Returns: string
       }
+      upsert_partner_settlement_config: {
+        Args: {
+          p_partner_id: string
+          p_payout_day_of_week?: number
+          p_payout_min_amount?: number
+          p_payout_schedule?: string
+          p_settlement_mode?: string
+        }
+        Returns: string
+      }
       user_belongs_to_tenant: {
         Args: { _tenant_id: string; _user_id: string }
         Returns: boolean

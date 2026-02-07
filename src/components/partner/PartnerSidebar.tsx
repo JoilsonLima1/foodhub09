@@ -92,6 +92,12 @@ const menuItems = [
     adminOnly: true,
   },
   { 
+    path: '/partner/payments', 
+    label: 'Pagamentos', 
+    icon: CreditCard,
+    adminOnly: true,
+  },
+  { 
     path: '/partner/users', 
     label: 'Usuários', 
     icon: Users,
