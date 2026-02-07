@@ -6,9 +6,12 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { BusinessCategoryProvider } from "@/contexts/BusinessCategoryContext";
 import { ActiveStoreProvider } from "@/contexts/ActiveStoreContext";
+import { PartnerProvider } from "@/contexts/PartnerContext";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { ModuleRouteGuard } from "@/components/auth/ModuleRouteGuard";
+import { PartnerRouteGuard } from "@/components/auth/PartnerRouteGuard";
+import { PartnerLayout } from "@/components/partner/PartnerLayout";
 import { useDynamicFavicon } from "@/hooks/useDynamicFavicon";
 
 import Auth from "./pages/Auth";
@@ -37,6 +40,18 @@ import PublicClientes from "./pages/PublicClientes";
 import PublicRecursos from "./pages/PublicRecursos";
 import PublicPlanos from "./pages/PublicPlanos";
 
+// Partner pages
+import {
+  PartnerDashboard,
+  PartnerTenants,
+  CreatePartnerTenant,
+  PartnerBrandingPage,
+  PartnerDomainsPage,
+  PartnerPlansPage,
+  PartnerFeesPage,
+  PartnerUsersPage,
+} from "./pages/partner";
+
 const queryClient = new QueryClient();
 
 // Component that applies the dynamic favicon
@@ -53,49 +68,62 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <BusinessCategoryProvider>
-            <ActiveStoreProvider>
-              <Routes>
-                <Route path="/" element={<Landing />} />
-                <Route path="/recursos" element={<PublicRecursos />} />
-                <Route path="/planos" element={<PublicPlanos />} />
-                <Route path="/clientes" element={<PublicClientes />} />
-                <Route path="/auth" element={<Auth />} />
-                <Route path="/checkout/success" element={<CheckoutSuccess />} />
-                <Route path="/checkout/success" element={<CheckoutSuccess />} />
-                
-                {/* Public Menu - accessible without auth */}
-                <Route path="/menu/:tenantId" element={<PublicMenu />} />
-                
-                {/* Order Tracking - accessible without auth */}
-                <Route path="/rastrear" element={<TrackOrder />} />
-                <Route path="/rastrear/:tenantId" element={<TrackOrder />} />
-                
-                <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
-                  <Route path="/dashboard" element={<Dashboard />} />
-                  <Route path="/orders" element={<Orders />} />
-                  <Route path="/pos" element={<POS />} />
-                  <Route path="/tables" element={<Tables />} />
-                  {/* Module-gated routes */}
-                  <Route path="/comandas" element={<ModuleRouteGuard><Comandas /></ModuleRouteGuard>} />
-                  <Route path="/events" element={<ModuleRouteGuard><Events /></ModuleRouteGuard>} />
-                  <Route path="/kitchen" element={<ModuleRouteGuard><Kitchen /></ModuleRouteGuard>} />
-                  <Route path="/deliveries" element={<ModuleRouteGuard><Deliveries /></ModuleRouteGuard>} />
-                  <Route path="/stores" element={<ModuleRouteGuard><Stores /></ModuleRouteGuard>} />
-                  <Route path="/marketing" element={<ModuleRouteGuard><Marketing /></ModuleRouteGuard>} />
-                  {/* Standard routes */}
-                  <Route path="/products" element={<Products />} />
-                  <Route path="/stock" element={<Stock />} />
-                  <Route path="/reports" element={<Reports />} />
-                  <Route path="/settings" element={<Settings />} />
-                  <Route path="/courier-dashboard" element={<CourierDashboard />} />
-                  <Route path="/super-admin" element={<SuperAdmin />} />
-                </Route>
-                
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </ActiveStoreProvider>
-          </BusinessCategoryProvider>
+          <PartnerProvider>
+            <BusinessCategoryProvider>
+              <ActiveStoreProvider>
+                <Routes>
+                  <Route path="/" element={<Landing />} />
+                  <Route path="/recursos" element={<PublicRecursos />} />
+                  <Route path="/planos" element={<PublicPlanos />} />
+                  <Route path="/clientes" element={<PublicClientes />} />
+                  <Route path="/auth" element={<Auth />} />
+                  <Route path="/checkout/success" element={<CheckoutSuccess />} />
+                  
+                  {/* Public Menu - accessible without auth */}
+                  <Route path="/menu/:tenantId" element={<PublicMenu />} />
+                  
+                  {/* Order Tracking - accessible without auth */}
+                  <Route path="/rastrear" element={<TrackOrder />} />
+                  <Route path="/rastrear/:tenantId" element={<TrackOrder />} />
+                  
+                  {/* Partner Panel Routes */}
+                  <Route path="/partner" element={<PartnerRouteGuard><PartnerLayout /></PartnerRouteGuard>}>
+                    <Route index element={<PartnerDashboard />} />
+                    <Route path="tenants" element={<PartnerTenants />} />
+                    <Route path="tenants/create" element={<CreatePartnerTenant />} />
+                    <Route path="branding" element={<PartnerBrandingPage />} />
+                    <Route path="domains" element={<PartnerDomainsPage />} />
+                    <Route path="plans" element={<PartnerPlansPage />} />
+                    <Route path="fees" element={<PartnerFeesPage />} />
+                    <Route path="users" element={<PartnerUsersPage />} />
+                  </Route>
+                  
+                  <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+                    <Route path="/dashboard" element={<Dashboard />} />
+                    <Route path="/orders" element={<Orders />} />
+                    <Route path="/pos" element={<POS />} />
+                    <Route path="/tables" element={<Tables />} />
+                    {/* Module-gated routes */}
+                    <Route path="/comandas" element={<ModuleRouteGuard><Comandas /></ModuleRouteGuard>} />
+                    <Route path="/events" element={<ModuleRouteGuard><Events /></ModuleRouteGuard>} />
+                    <Route path="/kitchen" element={<ModuleRouteGuard><Kitchen /></ModuleRouteGuard>} />
+                    <Route path="/deliveries" element={<ModuleRouteGuard><Deliveries /></ModuleRouteGuard>} />
+                    <Route path="/stores" element={<ModuleRouteGuard><Stores /></ModuleRouteGuard>} />
+                    <Route path="/marketing" element={<ModuleRouteGuard><Marketing /></ModuleRouteGuard>} />
+                    {/* Standard routes */}
+                    <Route path="/products" element={<Products />} />
+                    <Route path="/stock" element={<Stock />} />
+                    <Route path="/reports" element={<Reports />} />
+                    <Route path="/settings" element={<Settings />} />
+                    <Route path="/courier-dashboard" element={<CourierDashboard />} />
+                    <Route path="/super-admin" element={<SuperAdmin />} />
+                  </Route>
+                  
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </ActiveStoreProvider>
+            </BusinessCategoryProvider>
+          </PartnerProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
