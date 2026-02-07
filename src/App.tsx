@@ -56,7 +56,9 @@ import {
   PartnerFeesPage,
   PartnerUsersPage,
   PartnerInvoicesPage,
+  PartnerPublicationPage,
 } from "./pages/partner";
+import PartnerAuth from "./pages/PartnerAuth";
 
 const queryClient = new QueryClient();
 
@@ -113,6 +115,7 @@ const App = () => (
                       <Route path="tenants/create" element={<CreatePartnerTenant />} />
                       <Route path="branding" element={<PartnerBrandingPage />} />
                       <Route path="domains" element={<PartnerDomainsPage />} />
+                      <Route path="publication" element={<PartnerPublicationPage />} />
                       <Route path="plans" element={<PartnerPlansPage />} />
                       <Route path="invoices" element={<PartnerInvoicesPage />} />
                       <Route path="fees" element={<PartnerFeesPage />} />

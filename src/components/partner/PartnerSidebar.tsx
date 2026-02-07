@@ -18,6 +18,7 @@ import {
   Package,
   ChevronLeft,
   Receipt,
+  Rocket,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -62,6 +63,12 @@ const menuItems = [
     path: '/partner/domains', 
     label: 'Domínios', 
     icon: Globe,
+    adminOnly: true,
+  },
+  { 
+    path: '/partner/publication', 
+    label: 'Publicação', 
+    icon: Rocket,
     adminOnly: true,
   },
   { 

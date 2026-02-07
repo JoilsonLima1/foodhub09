@@ -59,6 +59,8 @@ export interface PartnerMarketingPage {
   show_pricing_section: boolean;
   show_faq_section: boolean;
   show_testimonials_section: boolean;
+  published: boolean;
+  published_at: string | null;
 }
 
 export interface ResolvedPartner {
@@ -66,6 +68,8 @@ export interface ResolvedPartner {
   partnerName: string;
   partnerSlug: string;
   domainType: 'app' | 'marketing';
+  isPublished: boolean;
+  isSuspended: boolean;
   branding: PartnerBrandingResolved | null;
   marketingPage: PartnerMarketingPage | null;
 }
@@ -74,6 +78,8 @@ interface PartnerResolutionResult {
   isPartnerDomain: boolean;
   isMarketingDomain: boolean;
   isAppDomain: boolean;
+  isPublished: boolean;
+  isSuspended: boolean;
   partner: ResolvedPartner | null;
   isLoading: boolean;
   error: Error | null;
@@ -134,6 +140,8 @@ export function usePartnerResolution(): PartnerResolutionResult {
         partnerName: result.partner_name,
         partnerSlug: result.partner_slug,
         domainType: result.domain_type as 'app' | 'marketing',
+        isPublished: result.is_published || false,
+        isSuspended: result.is_suspended || false,
         branding: result.branding as unknown as PartnerBrandingResolved | null,
         marketingPage: result.marketing_page as unknown as PartnerMarketingPage | null,
       } as ResolvedPartner;
@@ -150,6 +158,8 @@ export function usePartnerResolution(): PartnerResolutionResult {
     isPartnerDomain,
     isMarketingDomain: isPartnerDomain && domainType === 'marketing',
     isAppDomain: isPartnerDomain && domainType === 'app',
+    isPublished: data?.isPublished || false,
+    isSuspended: data?.isSuspended || false,
     partner: data || null,
     isLoading: shouldQuery ? isLoading : false,
     error: error as Error | null,
@@ -173,5 +183,25 @@ export function usePublicPartnerPlans(partnerId: string | null) {
     },
     enabled: !!partnerId,
     staleTime: 5 * 60 * 1000,
+  });
+}
+
+/**
+ * Hook to get partner publication status (for Partner Dashboard)
+ */
+export function usePartnerPublicationStatus(partnerId: string | null) {
+  return useQuery({
+    queryKey: ['partner-publication-status', partnerId],
+    queryFn: async () => {
+      if (!partnerId) return null;
+      
+      const { data, error } = await supabase
+        .rpc('get_partner_publication_status', { p_partner_id: partnerId });
+      
+      if (error) throw error;
+      return data?.[0] || null;
+    },
+    enabled: !!partnerId,
+    staleTime: 30 * 1000, // 30 seconds
   });
 }

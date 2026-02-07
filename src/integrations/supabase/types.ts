@@ -3999,6 +3999,8 @@ export type Database = {
           id: string
           include_in_sitemap: boolean
           partner_id: string
+          published: boolean
+          published_at: string | null
           schema_org: Json | null
           seo_description: string | null
           seo_keywords: string[] | null
@@ -4031,6 +4033,8 @@ export type Database = {
           id?: string
           include_in_sitemap?: boolean
           partner_id: string
+          published?: boolean
+          published_at?: string | null
           schema_org?: Json | null
           seo_description?: string | null
           seo_keywords?: string[] | null
@@ -4063,6 +4067,8 @@ export type Database = {
           id?: string
           include_in_sitemap?: boolean
           partner_id?: string
+          published?: boolean
+          published_at?: string | null
           schema_org?: Json | null
           seo_description?: string | null
           seo_keywords?: string[] | null
@@ -4449,6 +4455,7 @@ export type Database = {
           email: string
           id: string
           is_active: boolean | null
+          is_suspended: boolean
           max_tenants: number | null
           max_users_per_tenant: number | null
           name: string
@@ -4456,6 +4463,8 @@ export type Database = {
           phone: string | null
           revenue_share_percent: number | null
           slug: string
+          suspended_at: string | null
+          suspension_reason: string | null
           updated_at: string | null
         }
         Insert: {
@@ -4464,6 +4473,7 @@ export type Database = {
           email: string
           id?: string
           is_active?: boolean | null
+          is_suspended?: boolean
           max_tenants?: number | null
           max_users_per_tenant?: number | null
           name: string
@@ -4471,6 +4481,8 @@ export type Database = {
           phone?: string | null
           revenue_share_percent?: number | null
           slug: string
+          suspended_at?: string | null
+          suspension_reason?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -4479,6 +4491,7 @@ export type Database = {
           email?: string
           id?: string
           is_active?: boolean | null
+          is_suspended?: boolean
           max_tenants?: number | null
           max_users_per_tenant?: number | null
           name?: string
@@ -4486,6 +4499,8 @@ export type Database = {
           phone?: string | null
           revenue_share_percent?: number | null
           slug?: string
+          suspended_at?: string | null
+          suspension_reason?: string | null
           updated_at?: string | null
         }
         Relationships: []
@@ -8376,6 +8391,8 @@ export type Database = {
         Returns: {
           branding: Json
           domain_type: string
+          is_published: boolean
+          is_suspended: boolean
           marketing_page: Json
           partner_id: string
           partner_name: string
@@ -8411,6 +8428,19 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      get_partner_publication_status: {
+        Args: { p_partner_id: string }
+        Returns: {
+          app_domain: string
+          app_domain_verified: boolean
+          has_branding: boolean
+          has_marketing_page: boolean
+          is_published: boolean
+          marketing_domain: string
+          marketing_domain_verified: boolean
+          published_at: string
+        }[]
       }
       get_partner_seo_by_domain: {
         Args: { p_domain: string }
@@ -8671,6 +8701,10 @@ export type Database = {
           p_payment_provider: string
         }
         Returns: Json
+      }
+      publish_partner_landing: {
+        Args: { p_partner_id: string; p_publish: boolean }
+        Returns: boolean
       }
       record_ledger_entry: {
         Args: {

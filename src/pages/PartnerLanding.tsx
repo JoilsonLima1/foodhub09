@@ -15,17 +15,21 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { ArrowRight, Check, Gift, Star, Zap, Shield, Clock, Users } from 'lucide-react';
+import { ArrowRight, Check, Gift, Star, Zap, Shield, Clock, Users, Eye } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function PartnerLanding() {
   const navigate = useNavigate();
-  const { partner, isLoading: partnerLoading } = usePublicPartner();
+  const { partner, isLoading: partnerLoading, isPublished } = usePublicPartner();
   const { data: plans = [], isLoading: plansLoading } = usePublicPartnerPlans(partner?.partnerId || null);
   const { modules: addonModules } = usePublicAddonModules();
 
   const branding = partner?.branding;
   const marketing = partner?.marketingPage;
+  
+  // Determine if this is preview mode (not published)
+  const isPreviewMode = !isPublished;
 
   // Redirect to main landing if not a partner domain
   useEffect(() => {
@@ -87,9 +91,9 @@ export default function PartnerLanding() {
         <title>{seoTitle}</title>
         <meta name="description" content={seoDescription} />
         
-        {/* Canonical & Robots - only indexable if on marketing domain */}
+        {/* Canonical & Robots - only indexable if published */}
         <link rel="canonical" href={canonicalDomain} />
-        <meta name="robots" content="index, follow" />
+        <meta name="robots" content={isPreviewMode ? "noindex, nofollow" : "index, follow"} />
         
         {/* Keywords */}
         {marketing?.seo_keywords && marketing.seo_keywords.length > 0 && (
@@ -120,6 +124,19 @@ export default function PartnerLanding() {
       </Helmet>
 
       <div className="min-h-screen bg-background">
+        {/* Preview Mode Banner */}
+        {isPreviewMode && (
+          <div className="bg-warning/10 border-b border-warning/30 py-2 px-4">
+            <div className="container mx-auto flex items-center justify-center gap-2 text-sm">
+              <Eye className="h-4 w-4 text-warning" />
+              <span className="font-medium text-warning">Modo Preview</span>
+              <span className="text-muted-foreground">
+                — Esta página não está publicada e não será indexada pelos motores de busca.
+              </span>
+            </div>
+          </div>
+        )}
+        
         {/* Header */}
         <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b">
           <div className="container mx-auto px-4 py-4 flex items-center justify-between">
