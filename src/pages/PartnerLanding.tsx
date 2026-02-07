@@ -76,14 +76,47 @@ export default function PartnerLanding() {
     navigate(`/signup?${params.toString()}`);
   };
 
+  // Build canonical URL from partner domain (marketing domain)
+  const canonicalDomain = partner?.branding?.platform_name 
+    ? `https://${window.location.hostname}` 
+    : window.location.origin;
+
   return (
     <>
       <Helmet>
         <title>{seoTitle}</title>
         <meta name="description" content={seoDescription} />
-        {ogImage && <meta property="og:image" content={ogImage} />}
+        
+        {/* Canonical & Robots - only indexable if on marketing domain */}
+        <link rel="canonical" href={canonicalDomain} />
+        <meta name="robots" content="index, follow" />
+        
+        {/* Keywords */}
+        {marketing?.seo_keywords && marketing.seo_keywords.length > 0 && (
+          <meta name="keywords" content={marketing.seo_keywords.join(', ')} />
+        )}
+        
+        {/* Open Graph */}
         <meta property="og:title" content={seoTitle} />
         <meta property="og:description" content={seoDescription} />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={canonicalDomain} />
+        <meta property="og:site_name" content={platformName} />
+        <meta property="og:locale" content="pt_BR" />
+        {ogImage && <meta property="og:image" content={ogImage} />}
+        
+        {/* Twitter Card */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={seoTitle} />
+        <meta name="twitter:description" content={seoDescription} />
+        {ogImage && <meta name="twitter:image" content={ogImage} />}
+        
+        {/* Schema.org - Organization */}
+        {marketing?.schema_org && (
+          <script type="application/ld+json">
+            {JSON.stringify(marketing.schema_org)}
+          </script>
+        )}
       </Helmet>
 
       <div className="min-h-screen bg-background">

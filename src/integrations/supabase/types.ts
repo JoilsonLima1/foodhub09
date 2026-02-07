@@ -3789,6 +3789,7 @@ export type Database = {
           is_primary: boolean | null
           is_verified: boolean | null
           partner_id: string
+          published: boolean
           ssl_status: string | null
           verification_token: string | null
           verified_at: string | null
@@ -3801,6 +3802,7 @@ export type Database = {
           is_primary?: boolean | null
           is_verified?: boolean | null
           partner_id: string
+          published?: boolean
           ssl_status?: string | null
           verification_token?: string | null
           verified_at?: string | null
@@ -3813,6 +3815,7 @@ export type Database = {
           is_primary?: boolean | null
           is_verified?: boolean | null
           partner_id?: string
+          published?: boolean
           ssl_status?: string | null
           verification_token?: string | null
           verified_at?: string | null
@@ -3994,6 +3997,7 @@ export type Database = {
           hero_subtitle: string | null
           hero_title: string
           id: string
+          include_in_sitemap: boolean
           partner_id: string
           schema_org: Json | null
           seo_description: string | null
@@ -4025,6 +4029,7 @@ export type Database = {
           hero_subtitle?: string | null
           hero_title?: string
           id?: string
+          include_in_sitemap?: boolean
           partner_id: string
           schema_org?: Json | null
           seo_description?: string | null
@@ -4056,6 +4061,7 @@ export type Database = {
           hero_subtitle?: string | null
           hero_title?: string
           id?: string
+          include_in_sitemap?: boolean
           partner_id?: string
           schema_org?: Json | null
           seo_description?: string | null
@@ -4267,6 +4273,80 @@ export type Database = {
             foreignKeyName: "partner_policies_partner_id_fkey"
             columns: ["partner_id"]
             isOneToOne: true
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partner_seo_pages: {
+        Row: {
+          created_at: string
+          description: string | null
+          display_order: number
+          id: string
+          include_in_sitemap: boolean
+          is_active: boolean
+          is_indexable: boolean
+          keywords: string[] | null
+          og_description: string | null
+          og_image_url: string | null
+          og_title: string | null
+          og_type: string | null
+          partner_id: string
+          path: string
+          robots: string | null
+          sitemap_changefreq: string | null
+          sitemap_priority: number | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          id?: string
+          include_in_sitemap?: boolean
+          is_active?: boolean
+          is_indexable?: boolean
+          keywords?: string[] | null
+          og_description?: string | null
+          og_image_url?: string | null
+          og_title?: string | null
+          og_type?: string | null
+          partner_id: string
+          path: string
+          robots?: string | null
+          sitemap_changefreq?: string | null
+          sitemap_priority?: number | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          id?: string
+          include_in_sitemap?: boolean
+          is_active?: boolean
+          is_indexable?: boolean
+          keywords?: string[] | null
+          og_description?: string | null
+          og_image_url?: string | null
+          og_title?: string | null
+          og_type?: string | null
+          partner_id?: string
+          path?: string
+          robots?: string | null
+          sitemap_changefreq?: string | null
+          sitemap_priority?: number | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_seo_pages_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
             referencedRelation: "partners"
             referencedColumns: ["id"]
           },
@@ -8331,6 +8411,34 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      get_partner_seo_by_domain: {
+        Args: { p_domain: string }
+        Returns: {
+          canonical_domain: string
+          default_description: string
+          default_title: string
+          domain_type: string
+          favicon_url: string
+          is_published: boolean
+          logo_url: string
+          og_image_url: string
+          partner_id: string
+          partner_name: string
+          partner_slug: string
+          schema_org: Json
+          seo_keywords: string[]
+          site_name: string
+        }[]
+      }
+      get_partner_sitemap_pages: {
+        Args: { p_partner_id: string }
+        Returns: {
+          lastmod: string
+          path: string
+          sitemap_changefreq: string
+          sitemap_priority: number
+        }[]
       }
       get_plan_addon_modules: {
         Args: { p_plan_id: string }
