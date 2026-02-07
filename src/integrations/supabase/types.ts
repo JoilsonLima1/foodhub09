@@ -3830,6 +3830,92 @@ export type Database = {
           },
         ]
       }
+      partner_earnings: {
+        Row: {
+          created_at: string | null
+          currency: string | null
+          gateway_fee: number
+          gross_amount: number
+          id: string
+          merchant_net: number
+          order_id: string | null
+          partner_fee: number
+          partner_id: string
+          payment_method: string | null
+          platform_fee: number
+          settled_at: string | null
+          status: string | null
+          tenant_id: string
+          transaction_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          currency?: string | null
+          gateway_fee?: number
+          gross_amount: number
+          id?: string
+          merchant_net?: number
+          order_id?: string | null
+          partner_fee?: number
+          partner_id: string
+          payment_method?: string | null
+          platform_fee?: number
+          settled_at?: string | null
+          status?: string | null
+          tenant_id: string
+          transaction_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          currency?: string | null
+          gateway_fee?: number
+          gross_amount?: number
+          id?: string
+          merchant_net?: number
+          order_id?: string | null
+          partner_fee?: number
+          partner_id?: string
+          payment_method?: string | null
+          platform_fee?: number
+          settled_at?: string | null
+          status?: string | null
+          tenant_id?: string
+          transaction_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_earnings_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_earnings_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_earnings_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_earnings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       partner_fee_config: {
         Row: {
           boleto_fee_fixed: number | null
@@ -3842,6 +3928,8 @@ export type Database = {
           pix_fee_percent: number | null
           platform_fee_fixed: number | null
           platform_fee_percent: number | null
+          platform_share_enabled: boolean | null
+          platform_share_percent: number | null
           updated_at: string | null
         }
         Insert: {
@@ -3855,6 +3943,8 @@ export type Database = {
           pix_fee_percent?: number | null
           platform_fee_fixed?: number | null
           platform_fee_percent?: number | null
+          platform_share_enabled?: boolean | null
+          platform_share_percent?: number | null
           updated_at?: string | null
         }
         Update: {
@@ -3868,6 +3958,8 @@ export type Database = {
           pix_fee_percent?: number | null
           platform_fee_fixed?: number | null
           platform_fee_percent?: number | null
+          platform_share_enabled?: boolean | null
+          platform_share_percent?: number | null
           updated_at?: string | null
         }
         Relationships: [
@@ -4221,9 +4313,15 @@ export type Database = {
           free_plan_max_features: number
           free_plan_max_modules: number
           id: string
+          max_boleto_fee_fixed: number | null
+          max_credit_fee_percent: number | null
+          max_debit_fee_percent: number | null
           max_features_per_plan: number
           max_modules_per_plan: number
+          max_pix_fee_percent: number | null
           max_plans_per_partner: number
+          max_platform_fee_fixed: number | null
+          max_platform_fee_percent: number | null
           max_trial_days_allowed: number
           min_paid_plan_price: number
           partner_id: string | null
@@ -4242,9 +4340,15 @@ export type Database = {
           free_plan_max_features?: number
           free_plan_max_modules?: number
           id?: string
+          max_boleto_fee_fixed?: number | null
+          max_credit_fee_percent?: number | null
+          max_debit_fee_percent?: number | null
           max_features_per_plan?: number
           max_modules_per_plan?: number
+          max_pix_fee_percent?: number | null
           max_plans_per_partner?: number
+          max_platform_fee_fixed?: number | null
+          max_platform_fee_percent?: number | null
           max_trial_days_allowed?: number
           min_paid_plan_price?: number
           partner_id?: string | null
@@ -4263,9 +4367,15 @@ export type Database = {
           free_plan_max_features?: number
           free_plan_max_modules?: number
           id?: string
+          max_boleto_fee_fixed?: number | null
+          max_credit_fee_percent?: number | null
+          max_debit_fee_percent?: number | null
           max_features_per_plan?: number
           max_modules_per_plan?: number
+          max_pix_fee_percent?: number | null
           max_plans_per_partner?: number
+          max_platform_fee_fixed?: number | null
+          max_platform_fee_percent?: number | null
           max_trial_days_allowed?: number
           min_paid_plan_price?: number
           partner_id?: string | null
@@ -4978,6 +5088,63 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      platform_partner_revenue: {
+        Row: {
+          amount: number
+          created_at: string | null
+          description: string | null
+          fee_type: string
+          id: string
+          invoice_id: string | null
+          partner_earning_id: string | null
+          partner_id: string
+          period_end: string | null
+          period_start: string | null
+          status: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          description?: string | null
+          fee_type: string
+          id?: string
+          invoice_id?: string | null
+          partner_earning_id?: string | null
+          partner_id: string
+          period_end?: string | null
+          period_start?: string | null
+          status?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          description?: string | null
+          fee_type?: string
+          id?: string
+          invoice_id?: string | null
+          partner_earning_id?: string | null
+          partner_id?: string
+          period_end?: string | null
+          period_start?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_partner_revenue_partner_earning_id_fkey"
+            columns: ["partner_earning_id"]
+            isOneToOne: false
+            referencedRelation: "partner_earnings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_partner_revenue_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       platform_seo_pages: {
         Row: {
@@ -8311,6 +8478,15 @@ export type Database = {
         }
         Returns: Json
       }
+      calculate_partner_transaction_fee: {
+        Args: {
+          p_gross_amount: number
+          p_partner_id: string
+          p_payment_method: string
+          p_tenant_id: string
+        }
+        Returns: Json
+      }
       calculate_platform_fee: {
         Args: {
           p_amount: number
@@ -8411,9 +8587,15 @@ export type Database = {
           free_plan_max_features: number
           free_plan_max_modules: number
           id: string
+          max_boleto_fee_fixed: number | null
+          max_credit_fee_percent: number | null
+          max_debit_fee_percent: number | null
           max_features_per_plan: number
           max_modules_per_plan: number
+          max_pix_fee_percent: number | null
           max_plans_per_partner: number
+          max_platform_fee_fixed: number | null
+          max_platform_fee_percent: number | null
           max_trial_days_allowed: number
           min_paid_plan_price: number
           partner_id: string | null
@@ -8714,6 +8896,17 @@ export type Database = {
           p_metadata?: Json
           p_order_id: string
           p_payment_method?: string
+          p_tenant_id: string
+          p_transaction_id: string
+        }
+        Returns: string
+      }
+      record_partner_transaction: {
+        Args: {
+          p_gross_amount: number
+          p_order_id: string
+          p_partner_id: string
+          p_payment_method: string
           p_tenant_id: string
           p_transaction_id: string
         }

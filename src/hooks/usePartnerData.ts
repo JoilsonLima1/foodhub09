@@ -250,6 +250,17 @@ export interface PartnerFeeConfigData {
   credit_fee_percent: number | null;
   debit_fee_percent: number | null;
   boleto_fee_fixed: number | null;
+  platform_share_percent: number | null;
+  platform_share_enabled: boolean | null;
+}
+
+export interface PartnerFeeLimits {
+  max_platform_fee_percent: number;
+  max_platform_fee_fixed: number;
+  max_pix_fee_percent: number;
+  max_credit_fee_percent: number;
+  max_debit_fee_percent: number;
+  max_boleto_fee_fixed: number;
 }
 
 export function usePartnerFeeConfig() {
@@ -274,9 +285,56 @@ export function usePartnerFeeConfig() {
     enabled: !!currentPartner?.id,
   });
 
+  // Fetch global fee limits from partner_policies
+  const { data: feeLimits } = useQuery({
+    queryKey: ['partner-fee-limits'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('partner_policies')
+        .select('max_platform_fee_percent, max_platform_fee_fixed, max_pix_fee_percent, max_credit_fee_percent, max_debit_fee_percent, max_boleto_fee_fixed')
+        .is('partner_id', null)
+        .single();
+
+      if (error) {
+        // Return defaults if no policy exists
+        return {
+          max_platform_fee_percent: 10,
+          max_platform_fee_fixed: 5,
+          max_pix_fee_percent: 5,
+          max_credit_fee_percent: 10,
+          max_debit_fee_percent: 5,
+          max_boleto_fee_fixed: 10,
+        } as PartnerFeeLimits;
+      }
+      return data as PartnerFeeLimits;
+    },
+  });
+
   const updateFeeConfig = useMutation({
     mutationFn: async (updates: Partial<PartnerFeeConfigData>) => {
       if (!currentPartner?.id) throw new Error('Partner not found');
+
+      // Validate against limits
+      if (feeLimits) {
+        if (updates.platform_fee_percent && updates.platform_fee_percent > feeLimits.max_platform_fee_percent) {
+          throw new Error(`Taxa percentual não pode exceder ${feeLimits.max_platform_fee_percent}%`);
+        }
+        if (updates.platform_fee_fixed && updates.platform_fee_fixed > feeLimits.max_platform_fee_fixed) {
+          throw new Error(`Taxa fixa não pode exceder R$ ${feeLimits.max_platform_fee_fixed}`);
+        }
+        if (updates.pix_fee_percent && updates.pix_fee_percent > feeLimits.max_pix_fee_percent) {
+          throw new Error(`Taxa PIX não pode exceder ${feeLimits.max_pix_fee_percent}%`);
+        }
+        if (updates.credit_fee_percent && updates.credit_fee_percent > feeLimits.max_credit_fee_percent) {
+          throw new Error(`Taxa Crédito não pode exceder ${feeLimits.max_credit_fee_percent}%`);
+        }
+        if (updates.debit_fee_percent && updates.debit_fee_percent > feeLimits.max_debit_fee_percent) {
+          throw new Error(`Taxa Débito não pode exceder ${feeLimits.max_debit_fee_percent}%`);
+        }
+        if (updates.boleto_fee_fixed && updates.boleto_fee_fixed > feeLimits.max_boleto_fee_fixed) {
+          throw new Error(`Taxa Boleto não pode exceder R$ ${feeLimits.max_boleto_fee_fixed}`);
+        }
+      }
 
       const { error } = await supabase
         .from('partner_fee_config')
@@ -302,6 +360,7 @@ export function usePartnerFeeConfig() {
 
   return {
     feeConfig,
+    feeLimits,
     isLoading,
     updateFeeConfig,
   };
