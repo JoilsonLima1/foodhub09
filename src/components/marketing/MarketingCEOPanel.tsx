@@ -135,7 +135,7 @@ export function MarketingCEOPanel({ tenantId: propTenantId, isSuperAdmin = false
             <FileCode className="h-4 w-4" />
             <span className="hidden sm:inline">SEO Técnico</span>
           </TabsTrigger>
-          <TabsTrigger value="search-console" className="flex items-center gap-2" disabled={!hasVerifiedDomain}>
+          <TabsTrigger value="search-console" className="flex items-center gap-2" disabled={!effectiveTenantId}>
             <Search className="h-4 w-4" />
             <span className="hidden sm:inline">Buscadores</span>
           </TabsTrigger>
