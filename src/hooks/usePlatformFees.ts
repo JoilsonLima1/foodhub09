@@ -35,6 +35,7 @@ export interface PlatformFeeConfig {
 export interface TenantFeeOverride {
   id: string;
   tenant_id: string;
+  enabled: boolean;
   override_percent: number | null;
   override_fixed: number | null;
   per_method_override: Record<string, MethodFeeConfig> | null;
@@ -173,6 +174,7 @@ export function usePlatformFees() {
   const createOverride = useMutation({
     mutationFn: async (payload: {
       tenant_id: string;
+      enabled?: boolean;
       override_percent?: number;
       override_fixed?: number;
       per_method_override?: Record<string, MethodFeeConfig>;
@@ -180,6 +182,7 @@ export function usePlatformFees() {
     }) => {
       const insertData: Record<string, unknown> = {
         tenant_id: payload.tenant_id,
+        enabled: payload.enabled ?? true,
         override_percent: payload.override_percent,
         override_fixed: payload.override_fixed,
         notes: payload.notes,
@@ -191,7 +194,7 @@ export function usePlatformFees() {
 
       const { data: result, error } = await supabase
         .from('tenant_fee_overrides')
-        .insert([insertData as { tenant_id: string; [key: string]: Json | string | number | undefined }])
+        .insert([insertData as { tenant_id: string; [key: string]: Json | string | number | boolean | undefined }])
         .select()
         .single();
 
@@ -216,7 +219,7 @@ export function usePlatformFees() {
 
   // Update tenant fee override
   const updateOverride = useMutation({
-    mutationFn: async ({ id, per_method_override, ...updates }: { id: string } & Partial<TenantFeeOverride>) => {
+    mutationFn: async ({ id, per_method_override, ...updates }: { id: string; enabled?: boolean } & Partial<TenantFeeOverride>) => {
       const updatePayload: Record<string, unknown> = {
         ...updates,
         updated_at: new Date().toISOString(),

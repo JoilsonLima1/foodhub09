@@ -9,6 +9,7 @@ export interface TenantFeeInfo {
   fixed_applied: number;
   tenant_plan: string | null;
   has_override: boolean;
+  monetization_disabled: boolean;
 }
 
 export interface LedgerEntry {
@@ -107,6 +108,7 @@ export function useTenantFees() {
     summary,
     calculateFee,
     hasOverride: !!feeOverride,
+    isMonetizationDisabled: feeOverride?.enabled === false,
     isLoading: isLoadingLedger || isLoadingOverride,
   };
 }

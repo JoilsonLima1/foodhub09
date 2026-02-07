@@ -5837,6 +5837,7 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
+          enabled: boolean
           id: string
           notes: string | null
           override_fixed: number | null
@@ -5848,6 +5849,7 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by?: string | null
+          enabled?: boolean
           id?: string
           notes?: string | null
           override_fixed?: number | null
@@ -5859,6 +5861,7 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string | null
+          enabled?: boolean
           id?: string
           notes?: string | null
           override_fixed?: number | null
