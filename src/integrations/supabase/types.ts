@@ -71,6 +71,56 @@ export type Database = {
         }
         Relationships: []
       }
+      apply_queue: {
+        Row: {
+          attempts: number
+          completed_at: string | null
+          created_at: string | null
+          event_id: string
+          id: string
+          last_error: string | null
+          locked_at: string | null
+          locked_by: string | null
+          max_attempts: number
+          next_attempt_at: string | null
+          status: string
+        }
+        Insert: {
+          attempts?: number
+          completed_at?: string | null
+          created_at?: string | null
+          event_id: string
+          id?: string
+          last_error?: string | null
+          locked_at?: string | null
+          locked_by?: string | null
+          max_attempts?: number
+          next_attempt_at?: string | null
+          status?: string
+        }
+        Update: {
+          attempts?: number
+          completed_at?: string | null
+          created_at?: string | null
+          event_id?: string
+          id?: string
+          last_error?: string | null
+          locked_at?: string | null
+          locked_by?: string | null
+          max_attempts?: number
+          next_attempt_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "apply_queue_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "payment_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_logs: {
         Row: {
           action: string
@@ -1692,6 +1742,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "disputes_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "v_partner_financial_kpis"
+            referencedColumns: ["partner_id"]
+          },
+          {
             foreignKeyName: "disputes_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
@@ -2156,6 +2213,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "partners"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fraud_flags_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "v_partner_financial_kpis"
+            referencedColumns: ["partner_id"]
           },
           {
             foreignKeyName: "fraud_flags_tenant_id_fkey"
@@ -3715,6 +3779,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "operational_alerts_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "v_partner_financial_kpis"
+            referencedColumns: ["partner_id"]
+          },
+          {
             foreignKeyName: "operational_alerts_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
@@ -3801,6 +3872,72 @@ export type Database = {
         }
         Relationships: []
       }
+      ops_metrics_daily: {
+        Row: {
+          avg_apply_duration_ms: number | null
+          created_at: string | null
+          disputes_opened_count: number | null
+          disputes_resolved_count: number | null
+          duplicates_ignored: number | null
+          events_applied_ok: number | null
+          events_apply_error: number | null
+          events_received: number | null
+          id: string
+          metric_date: string
+          p95_apply_duration_ms: number | null
+          partner_payouts_total: number | null
+          payout_failed_count: number | null
+          payout_success_count: number | null
+          platform_revenue: number | null
+          provider: string | null
+          queue_lag_p95_seconds: number | null
+          reconciliation_mismatch_count: number | null
+          total_volume_processed: number | null
+        }
+        Insert: {
+          avg_apply_duration_ms?: number | null
+          created_at?: string | null
+          disputes_opened_count?: number | null
+          disputes_resolved_count?: number | null
+          duplicates_ignored?: number | null
+          events_applied_ok?: number | null
+          events_apply_error?: number | null
+          events_received?: number | null
+          id?: string
+          metric_date: string
+          p95_apply_duration_ms?: number | null
+          partner_payouts_total?: number | null
+          payout_failed_count?: number | null
+          payout_success_count?: number | null
+          platform_revenue?: number | null
+          provider?: string | null
+          queue_lag_p95_seconds?: number | null
+          reconciliation_mismatch_count?: number | null
+          total_volume_processed?: number | null
+        }
+        Update: {
+          avg_apply_duration_ms?: number | null
+          created_at?: string | null
+          disputes_opened_count?: number | null
+          disputes_resolved_count?: number | null
+          duplicates_ignored?: number | null
+          events_applied_ok?: number | null
+          events_apply_error?: number | null
+          events_received?: number | null
+          id?: string
+          metric_date?: string
+          p95_apply_duration_ms?: number | null
+          partner_payouts_total?: number | null
+          payout_failed_count?: number | null
+          payout_success_count?: number | null
+          platform_revenue?: number | null
+          provider?: string | null
+          queue_lag_p95_seconds?: number | null
+          reconciliation_mismatch_count?: number | null
+          total_volume_processed?: number | null
+        }
+        Relationships: []
+      }
       ops_recommendations: {
         Row: {
           applied_at: string | null
@@ -3860,6 +3997,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "partners"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ops_recommendations_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "v_partner_financial_kpis"
+            referencedColumns: ["partner_id"]
           },
           {
             foreignKeyName: "ops_recommendations_tenant_id_fkey"
@@ -4284,6 +4428,13 @@ export type Database = {
             referencedRelation: "partners"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "partner_branding_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: true
+            referencedRelation: "v_partner_financial_kpis"
+            referencedColumns: ["partner_id"]
+          },
         ]
       }
       partner_delinquency_config: {
@@ -4327,6 +4478,13 @@ export type Database = {
             isOneToOne: true
             referencedRelation: "partners"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_delinquency_config_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: true
+            referencedRelation: "v_partner_financial_kpis"
+            referencedColumns: ["partner_id"]
           },
         ]
       }
@@ -4377,6 +4535,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "partners"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_domains_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "v_partner_financial_kpis"
+            referencedColumns: ["partner_id"]
           },
         ]
       }
@@ -4480,6 +4645,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "partner_earnings_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "v_partner_financial_kpis"
+            referencedColumns: ["partner_id"]
+          },
+          {
             foreignKeyName: "partner_earnings_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
@@ -4550,6 +4722,13 @@ export type Database = {
             isOneToOne: true
             referencedRelation: "partners"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_fee_config_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: true
+            referencedRelation: "v_partner_financial_kpis"
+            referencedColumns: ["partner_id"]
           },
         ]
       }
@@ -4627,6 +4806,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "partners"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_invoices_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "v_partner_financial_kpis"
+            referencedColumns: ["partner_id"]
           },
           {
             foreignKeyName: "partner_invoices_partner_plan_id_fkey"
@@ -4762,6 +4948,13 @@ export type Database = {
             referencedRelation: "partners"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "partner_marketing_pages_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: true
+            referencedRelation: "v_partner_financial_kpis"
+            referencedColumns: ["partner_id"]
+          },
         ]
       }
       partner_payouts: {
@@ -4817,6 +5010,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "partners"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_payouts_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "v_partner_financial_kpis"
+            referencedColumns: ["partner_id"]
           },
           {
             foreignKeyName: "partner_payouts_settlement_id_fkey"
@@ -4944,6 +5144,13 @@ export type Database = {
             referencedRelation: "partners"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "partner_plans_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "v_partner_financial_kpis"
+            referencedColumns: ["partner_id"]
+          },
         ]
       }
       partner_policies: {
@@ -5036,6 +5243,13 @@ export type Database = {
             referencedRelation: "partners"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "partner_policies_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: true
+            referencedRelation: "v_partner_financial_kpis"
+            referencedColumns: ["partner_id"]
+          },
         ]
       }
       partner_seo_pages: {
@@ -5110,6 +5324,13 @@ export type Database = {
             referencedRelation: "partners"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "partner_seo_pages_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "v_partner_financial_kpis"
+            referencedColumns: ["partner_id"]
+          },
         ]
       }
       partner_tenants: {
@@ -5156,6 +5377,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "partners"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_tenants_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "v_partner_financial_kpis"
+            referencedColumns: ["partner_id"]
           },
           {
             foreignKeyName: "partner_tenants_partner_plan_id_fkey"
@@ -5205,6 +5433,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "partners"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_users_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "v_partner_financial_kpis"
+            referencedColumns: ["partner_id"]
           },
         ]
       }
@@ -5452,6 +5687,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "payment_events_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "v_partner_financial_kpis"
+            referencedColumns: ["partner_id"]
+          },
+          {
             foreignKeyName: "payment_events_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
@@ -5459,6 +5701,78 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      payment_events_archive: {
+        Row: {
+          amount_gross: number | null
+          amount_net: number | null
+          applied_at: string | null
+          archived_at: string | null
+          correlation_id: string | null
+          created_at: string | null
+          currency: string | null
+          error_message: string | null
+          event_type: string | null
+          id: string
+          occurred_at: string | null
+          partner_id: string | null
+          payload: Json | null
+          payment_method: string | null
+          provider: string | null
+          provider_event_id: string | null
+          provider_payment_id: string | null
+          received_at: string | null
+          status: string | null
+          tenant_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          amount_gross?: number | null
+          amount_net?: number | null
+          applied_at?: string | null
+          archived_at?: string | null
+          correlation_id?: string | null
+          created_at?: string | null
+          currency?: string | null
+          error_message?: string | null
+          event_type?: string | null
+          id: string
+          occurred_at?: string | null
+          partner_id?: string | null
+          payload?: Json | null
+          payment_method?: string | null
+          provider?: string | null
+          provider_event_id?: string | null
+          provider_payment_id?: string | null
+          received_at?: string | null
+          status?: string | null
+          tenant_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          amount_gross?: number | null
+          amount_net?: number | null
+          applied_at?: string | null
+          archived_at?: string | null
+          correlation_id?: string | null
+          created_at?: string | null
+          currency?: string | null
+          error_message?: string | null
+          event_type?: string | null
+          id?: string
+          occurred_at?: string | null
+          partner_id?: string | null
+          payload?: Json | null
+          payment_method?: string | null
+          provider?: string | null
+          provider_event_id?: string | null
+          provider_payment_id?: string | null
+          received_at?: string | null
+          status?: string | null
+          tenant_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       payment_gateways: {
         Row: {
@@ -5896,6 +6210,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "partners"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_partner_revenue_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "v_partner_financial_kpis"
+            referencedColumns: ["partner_id"]
           },
         ]
       }
@@ -6730,6 +7051,13 @@ export type Database = {
             referencedRelation: "partners"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "settlements_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "v_partner_financial_kpis"
+            referencedColumns: ["partner_id"]
+          },
         ]
       }
       sms_campaigns: {
@@ -7472,6 +7800,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      system_feature_flags: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          enabled: boolean
+          flag_key: string
+          id: string
+          metadata: Json | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          enabled?: boolean
+          flag_key: string
+          id?: string
+          metadata?: Json | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          enabled?: boolean
+          flag_key?: string
+          id?: string
+          metadata?: Json | null
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       system_settings: {
         Row: {
@@ -8545,6 +8903,45 @@ export type Database = {
           },
         ]
       }
+      transaction_effects_archive: {
+        Row: {
+          amount: number | null
+          archived_at: string | null
+          created_at: string | null
+          direction: string | null
+          id: string
+          metadata: Json | null
+          reason: string | null
+          source_event_id: string | null
+          target: string | null
+          target_record_id: string | null
+        }
+        Insert: {
+          amount?: number | null
+          archived_at?: string | null
+          created_at?: string | null
+          direction?: string | null
+          id: string
+          metadata?: Json | null
+          reason?: string | null
+          source_event_id?: string | null
+          target?: string | null
+          target_record_id?: string | null
+        }
+        Update: {
+          amount?: number | null
+          archived_at?: string | null
+          created_at?: string | null
+          direction?: string | null
+          id?: string
+          metadata?: Json | null
+          reason?: string | null
+          source_event_id?: string | null
+          target?: string | null
+          target_record_id?: string | null
+        }
+        Relationships: []
+      }
       trial_notification_dismissals: {
         Row: {
           dismissed_at: string
@@ -9205,6 +9602,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "partner_invoices_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "v_partner_financial_kpis"
+            referencedColumns: ["partner_id"]
+          },
+          {
             foreignKeyName: "partner_invoices_partner_plan_id_fkey"
             columns: ["partner_plan_id"]
             isOneToOne: false
@@ -9226,6 +9630,32 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      payment_events_all: {
+        Row: {
+          amount_gross: number | null
+          amount_net: number | null
+          applied_at: string | null
+          correlation_id: string | null
+          created_at: string | null
+          currency: string | null
+          error_message: string | null
+          event_type: string | null
+          id: string | null
+          is_archived: boolean | null
+          occurred_at: string | null
+          partner_id: string | null
+          payload: Json | null
+          payment_method: string | null
+          provider: string | null
+          provider_event_id: string | null
+          provider_payment_id: string | null
+          received_at: string | null
+          status: string | null
+          tenant_id: string | null
+          updated_at: string | null
+        }
+        Relationships: []
       }
       products_pricing_safe: {
         Row: {
@@ -9399,6 +9829,53 @@ export type Database = {
           },
         ]
       }
+      transaction_effects_all: {
+        Row: {
+          amount: number | null
+          created_at: string | null
+          direction: string | null
+          id: string | null
+          is_archived: boolean | null
+          metadata: Json | null
+          reason: string | null
+          source_event_id: string | null
+          target: string | null
+          target_record_id: string | null
+        }
+        Relationships: []
+      }
+      v_ops_backoffice_summary: {
+        Row: {
+          critical_alerts_open: number | null
+          disputes_open: number | null
+          events_last_24h: number | null
+          events_last_hour: number | null
+          high_risk_fraud_flags: number | null
+          payouts_failed: number | null
+          payouts_pending: number | null
+          recommendations_pending: number | null
+          reconciliation_mismatches: number | null
+          total_alerts_open: number | null
+        }
+        Relationships: []
+      }
+      v_partner_financial_kpis: {
+        Row: {
+          confirmed_payments: number | null
+          open_disputes: number | null
+          partner_id: string | null
+          partner_name: string | null
+          period_day: string | null
+          period_month: string | null
+          period_week: string | null
+          platform_fees: number | null
+          refunds_chargebacks: number | null
+          total_credited: number | null
+          total_debited: number | null
+          total_events: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       activate_partner_tenant_subscription: {
@@ -9414,6 +9891,7 @@ export type Database = {
         Returns: Json
       }
       apply_payment_event: { Args: { p_event_id: string }; Returns: Json }
+      archive_ledger: { Args: { before_date?: string }; Returns: Json }
       calculate_partner_transaction_fee: {
         Args: {
           p_gross_amount: number
@@ -9452,10 +9930,12 @@ export type Database = {
         Args: { p_tenant_id: string; p_user_id: string }
         Returns: Json
       }
+      compute_ops_metrics: { Args: { p_date?: string }; Returns: Json }
       detect_fraud_signals: {
         Args: { p_lookback_days?: number; p_partner_id: string }
         Returns: Json
       }
+      enqueue_apply_event: { Args: { p_event_id: string }; Returns: Json }
       ensure_headquarters_store: {
         Args: { p_tenant_id: string }
         Returns: string
@@ -9513,6 +9993,7 @@ export type Database = {
           proration_enabled: boolean
         }[]
       }
+      get_feature_flag: { Args: { p_flag_key: string }; Returns: boolean }
       get_ifood_integration_safe: {
         Args: { p_tenant_id: string }
         Returns: {
@@ -9817,6 +10298,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      housekeeping_all: {
+        Args: { p_archive_before_days?: number; p_log_retention_days?: number }
+        Returns: Json
+      }
       increment_module_usage: {
         Args: {
           p_module_slug: string
@@ -9870,6 +10355,10 @@ export type Database = {
         Returns: Json
       }
       map_asaas_event_type: { Args: { p_event: string }; Returns: string }
+      process_apply_queue: {
+        Args: { p_batch_size?: number; p_worker_id?: string }
+        Returns: Json
+      }
       process_partner_invoice_payment: {
         Args: {
           p_billing_type?: string
@@ -9947,6 +10436,10 @@ export type Database = {
       }
       rotate_logs: {
         Args: { p_archive_days?: number; p_retention_days?: number }
+        Returns: Json
+      }
+      set_feature_flag: {
+        Args: { p_enabled: boolean; p_flag_key: string }
         Returns: Json
       }
       sync_partner_tenant_modules: {
