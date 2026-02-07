@@ -22,6 +22,12 @@ export interface PartnerEarning {
   status: 'pending' | 'settled' | 'refunded' | 'disputed';
   settled_at: string | null;
   created_at: string;
+  // New optional fields for Phase 5 finalization
+  external_payment_id?: string | null;
+  settlement_mode?: 'split' | 'invoice' | 'manual' | null;
+  reversed_at?: string | null;
+  reversal_reason?: string | null;
+  original_earning_id?: string | null;
   tenant?: {
     id: string;
     name: string;
@@ -36,6 +42,8 @@ export interface EarningsSummary {
   totalMerchantNet: number;
   pendingEarnings: number;
   settledEarnings: number;
+  refundedAmount: number;
+  netEarnings: number; // After refunds
 }
 
 export interface EarningsFilters {
@@ -87,19 +95,25 @@ export function usePartnerEarnings(filters?: EarningsFilters) {
     enabled: !!currentPartner?.id,
   });
 
-  // Calculate summary stats
+  // Calculate summary stats (exclude reversal entries from positive counts)
+  const positiveEarnings = earnings.filter(e => !e.original_earning_id && !e.reversed_at);
+  const reversalEntries = earnings.filter(e => e.original_earning_id || e.reversed_at);
+  
   const summary: EarningsSummary = {
-    totalTransactions: earnings.length,
-    totalGrossAmount: earnings.reduce((sum, e) => sum + (e.gross_amount || 0), 0),
-    totalPartnerEarnings: earnings.reduce((sum, e) => sum + (e.partner_fee || 0), 0),
-    totalPlatformFees: earnings.reduce((sum, e) => sum + (e.platform_fee || 0), 0),
-    totalMerchantNet: earnings.reduce((sum, e) => sum + (e.merchant_net || 0), 0),
-    pendingEarnings: earnings
+    totalTransactions: positiveEarnings.length,
+    totalGrossAmount: positiveEarnings.reduce((sum, e) => sum + (e.gross_amount || 0), 0),
+    totalPartnerEarnings: positiveEarnings.reduce((sum, e) => sum + (e.partner_fee || 0), 0),
+    totalPlatformFees: positiveEarnings.reduce((sum, e) => sum + (e.platform_fee || 0), 0),
+    totalMerchantNet: positiveEarnings.reduce((sum, e) => sum + (e.merchant_net || 0), 0),
+    pendingEarnings: positiveEarnings
       .filter(e => e.status === 'pending')
       .reduce((sum, e) => sum + (e.partner_fee || 0), 0),
-    settledEarnings: earnings
+    settledEarnings: positiveEarnings
       .filter(e => e.status === 'settled')
       .reduce((sum, e) => sum + (e.partner_fee || 0), 0),
+    refundedAmount: Math.abs(reversalEntries.reduce((sum, e) => sum + (e.partner_fee || 0), 0)),
+    // Net earnings = total - refunds (reversals have negative amounts)
+    netEarnings: earnings.reduce((sum, e) => sum + (e.partner_fee || 0), 0),
   };
 
   return {

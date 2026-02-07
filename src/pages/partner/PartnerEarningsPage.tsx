@@ -35,6 +35,8 @@ import {
   RefreshCw,
   Filter,
   Download,
+  RotateCcw,
+  ArrowDownRight,
 } from 'lucide-react';
 import {
   LineChart,
@@ -168,10 +170,16 @@ export default function PartnerEarningsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-primary">
-              {formatCurrency(summary.totalPartnerEarnings)}
+              {formatCurrency(summary.netEarnings)}
             </div>
             <p className="text-xs text-muted-foreground">
-              {formatCurrency(summary.pendingEarnings)} pendente
+              {summary.refundedAmount > 0 ? (
+                <span className="text-destructive">
+                  -{formatCurrency(summary.refundedAmount)} estornado
+                </span>
+              ) : (
+                `${formatCurrency(summary.pendingEarnings)} pendente`
+              )}
             </p>
           </CardContent>
         </Card>
@@ -349,31 +357,46 @@ export default function PartnerEarningsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {earnings.map((earning) => (
-                  <TableRow key={earning.id}>
-                    <TableCell>
-                      {format(new Date(earning.created_at), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      {earning.tenant?.name || 'N/A'}
-                    </TableCell>
-                    <TableCell>
-                      {getPaymentMethodLabel(earning.payment_method)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {formatCurrency(earning.gross_amount)}
-                    </TableCell>
-                    <TableCell className="text-right text-primary font-medium">
-                      +{formatCurrency(earning.partner_fee)}
-                    </TableCell>
-                    <TableCell className="text-right text-muted-foreground">
-                      {formatCurrency(earning.merchant_net)}
-                    </TableCell>
-                    <TableCell>
-                      {getStatusBadge(earning.status)}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {earnings.map((earning) => {
+                  const isReversal = !!earning.original_earning_id;
+                  const wasReversed = !!earning.reversed_at;
+                  
+                  return (
+                    <TableRow key={earning.id} className={isReversal ? 'bg-destructive/5' : wasReversed ? 'opacity-50' : ''}>
+                      <TableCell>
+                        {format(new Date(earning.created_at), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
+                        {isReversal && (
+                          <div className="flex items-center gap-1 text-xs text-destructive">
+                            <RotateCcw className="h-3 w-3" />
+                            Estorno
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {earning.tenant?.name || 'N/A'}
+                      </TableCell>
+                      <TableCell>
+                        {getPaymentMethodLabel(earning.payment_method)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {isReversal ? (
+                          <span className="text-destructive">{formatCurrency(earning.gross_amount)}</span>
+                        ) : (
+                          formatCurrency(earning.gross_amount)
+                        )}
+                      </TableCell>
+                      <TableCell className={`text-right font-medium ${isReversal ? 'text-destructive' : 'text-primary'}`}>
+                        {isReversal ? '' : '+'}{formatCurrency(earning.partner_fee)}
+                      </TableCell>
+                      <TableCell className="text-right text-muted-foreground">
+                        {formatCurrency(earning.merchant_net)}
+                      </TableCell>
+                      <TableCell>
+                        {getStatusBadge(earning.status)}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           ) : (

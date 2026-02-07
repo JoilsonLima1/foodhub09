@@ -3834,16 +3834,21 @@ export type Database = {
         Row: {
           created_at: string | null
           currency: string | null
+          external_payment_id: string | null
           gateway_fee: number
           gross_amount: number
           id: string
           merchant_net: number
           order_id: string | null
+          original_earning_id: string | null
           partner_fee: number
           partner_id: string
           payment_method: string | null
           platform_fee: number
+          reversal_reason: string | null
+          reversed_at: string | null
           settled_at: string | null
+          settlement_mode: string | null
           status: string | null
           tenant_id: string
           transaction_id: string
@@ -3852,16 +3857,21 @@ export type Database = {
         Insert: {
           created_at?: string | null
           currency?: string | null
+          external_payment_id?: string | null
           gateway_fee?: number
           gross_amount: number
           id?: string
           merchant_net?: number
           order_id?: string | null
+          original_earning_id?: string | null
           partner_fee?: number
           partner_id: string
           payment_method?: string | null
           platform_fee?: number
+          reversal_reason?: string | null
+          reversed_at?: string | null
           settled_at?: string | null
+          settlement_mode?: string | null
           status?: string | null
           tenant_id: string
           transaction_id: string
@@ -3870,16 +3880,21 @@ export type Database = {
         Update: {
           created_at?: string | null
           currency?: string | null
+          external_payment_id?: string | null
           gateway_fee?: number
           gross_amount?: number
           id?: string
           merchant_net?: number
           order_id?: string | null
+          original_earning_id?: string | null
           partner_fee?: number
           partner_id?: string
           payment_method?: string | null
           platform_fee?: number
+          reversal_reason?: string | null
+          reversed_at?: string | null
           settled_at?: string | null
+          settlement_mode?: string | null
           status?: string | null
           tenant_id?: string
           transaction_id?: string
@@ -3898,6 +3913,13 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "orders_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_earnings_original_earning_id_fkey"
+            columns: ["original_earning_id"]
+            isOneToOne: false
+            referencedRelation: "partner_earnings"
             referencedColumns: ["id"]
           },
           {
@@ -3922,6 +3944,8 @@ export type Database = {
           created_at: string | null
           credit_fee_percent: number | null
           debit_fee_percent: number | null
+          default_settlement_mode: string | null
+          gateway_split_recipient_id: string | null
           id: string
           is_enabled: boolean | null
           partner_id: string
@@ -3930,6 +3954,7 @@ export type Database = {
           platform_fee_percent: number | null
           platform_share_enabled: boolean | null
           platform_share_percent: number | null
+          split_enabled: boolean | null
           updated_at: string | null
         }
         Insert: {
@@ -3937,6 +3962,8 @@ export type Database = {
           created_at?: string | null
           credit_fee_percent?: number | null
           debit_fee_percent?: number | null
+          default_settlement_mode?: string | null
+          gateway_split_recipient_id?: string | null
           id?: string
           is_enabled?: boolean | null
           partner_id: string
@@ -3945,6 +3972,7 @@ export type Database = {
           platform_fee_percent?: number | null
           platform_share_enabled?: boolean | null
           platform_share_percent?: number | null
+          split_enabled?: boolean | null
           updated_at?: string | null
         }
         Update: {
@@ -3952,6 +3980,8 @@ export type Database = {
           created_at?: string | null
           credit_fee_percent?: number | null
           debit_fee_percent?: number | null
+          default_settlement_mode?: string | null
+          gateway_split_recipient_id?: string | null
           id?: string
           is_enabled?: boolean | null
           partner_id?: string
@@ -3960,6 +3990,7 @@ export type Database = {
           platform_fee_percent?: number | null
           platform_share_enabled?: boolean | null
           platform_share_percent?: number | null
+          split_enabled?: boolean | null
           updated_at?: string | null
         }
         Relationships: [
@@ -5094,42 +5125,61 @@ export type Database = {
           amount: number
           created_at: string | null
           description: string | null
+          external_payment_id: string | null
           fee_type: string
           id: string
           invoice_id: string | null
+          original_revenue_id: string | null
           partner_earning_id: string | null
           partner_id: string
           period_end: string | null
           period_start: string | null
+          reversal_reason: string | null
+          reversed_at: string | null
           status: string | null
         }
         Insert: {
           amount: number
           created_at?: string | null
           description?: string | null
+          external_payment_id?: string | null
           fee_type: string
           id?: string
           invoice_id?: string | null
+          original_revenue_id?: string | null
           partner_earning_id?: string | null
           partner_id: string
           period_end?: string | null
           period_start?: string | null
+          reversal_reason?: string | null
+          reversed_at?: string | null
           status?: string | null
         }
         Update: {
           amount?: number
           created_at?: string | null
           description?: string | null
+          external_payment_id?: string | null
           fee_type?: string
           id?: string
           invoice_id?: string | null
+          original_revenue_id?: string | null
           partner_earning_id?: string | null
           partner_id?: string
           period_end?: string | null
           period_start?: string | null
+          reversal_reason?: string | null
+          reversed_at?: string | null
           status?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "platform_partner_revenue_original_revenue_id_fkey"
+            columns: ["original_revenue_id"]
+            isOneToOne: false
+            referencedRelation: "platform_partner_revenue"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "platform_partner_revenue_partner_earning_id_fkey"
             columns: ["partner_earning_id"]
@@ -8575,6 +8625,7 @@ export type Database = {
           partner_slug: string
         }[]
       }
+      get_partner_for_tenant: { Args: { p_tenant_id: string }; Returns: string }
       get_partner_policy: {
         Args: { p_partner_id: string }
         Returns: {
@@ -8903,14 +8954,24 @@ export type Database = {
       }
       record_partner_transaction: {
         Args: {
+          p_external_payment_id?: string
           p_gross_amount: number
           p_order_id: string
           p_partner_id: string
           p_payment_method: string
+          p_settlement_mode?: string
           p_tenant_id: string
           p_transaction_id: string
         }
-        Returns: string
+        Returns: Json
+      }
+      reverse_partner_transaction: {
+        Args: {
+          p_external_payment_id: string
+          p_reversal_reason: string
+          p_reversal_type?: string
+        }
+        Returns: Json
       }
       sync_partner_tenant_modules: {
         Args: { p_tenant_id: string }
