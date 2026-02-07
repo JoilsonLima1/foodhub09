@@ -5,3 +5,4 @@ export { OpsDisputesPanel } from './OpsDisputesPanel';
 export { OpsPaymentsPanel } from './OpsPaymentsPanel';
 export { OpsSettingsPanel } from './OpsSettingsPanel';
 export { OpsMetricsPanel } from './OpsMetricsPanel';
+export { OpsPartnersPaymentsPanel } from './OpsPartnersPaymentsPanel';
