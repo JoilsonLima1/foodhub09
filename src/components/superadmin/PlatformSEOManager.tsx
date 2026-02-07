@@ -7,7 +7,7 @@
  * - Sitemap control
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { usePlatformSEOAdmin, type PlatformSEOSettings, type PlatformSEOPage } from '@/hooks/usePlatformSEO';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -56,6 +56,7 @@ import {
   Search,
   Code,
 } from 'lucide-react';
+import { DestructiveConfirmDialog } from './DestructiveConfirmDialog';
 
 export function PlatformSEOManager() {
   const { toast } = useToast();
@@ -64,6 +65,8 @@ export function PlatformSEOManager() {
   const [isSaving, setIsSaving] = useState(false);
   const [isPageDialogOpen, setIsPageDialogOpen] = useState(false);
   const [editingPage, setEditingPage] = useState<PlatformSEOPage | null>(null);
+  const [deleteConfirmState, setDeleteConfirmState] = useState<{ open: boolean; pageId: string | null }>({ open: false, pageId: null });
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Form states for global settings
   const [globalForm, setGlobalForm] = useState<Partial<PlatformSEOSettings>>({});
@@ -93,13 +96,20 @@ export function PlatformSEOManager() {
   };
 
   const handleDeletePage = async (id: string) => {
-    if (!confirm('Tem certeza que deseja excluir esta página?')) return;
+    setIsDeleting(true);
     try {
       await deletePage(id);
       toast({ title: 'Página excluída' });
+      setDeleteConfirmState({ open: false, pageId: null });
     } catch (error: any) {
       toast({ title: 'Erro ao excluir', description: error.message, variant: 'destructive' });
+    } finally {
+      setIsDeleting(false);
     }
+  };
+
+  const openDeleteConfirmation = (id: string) => {
+    setDeleteConfirmState({ open: true, pageId: id });
   };
 
   if (isLoading) {
@@ -336,7 +346,7 @@ export function PlatformSEOManager() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => handleDeletePage(page.id)}
+                            onClick={() => openDeleteConfirmation(page.id)}
                           >
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
@@ -348,6 +358,18 @@ export function PlatformSEOManager() {
               </Table>
             </CardContent>
           </Card>
+
+          {/* Delete Confirmation Dialog */}
+          <DestructiveConfirmDialog
+            open={deleteConfirmState.open}
+            onOpenChange={(open) => setDeleteConfirmState({ open, pageId: open ? deleteConfirmState.pageId : null })}
+            onConfirm={() => deleteConfirmState.pageId && handleDeletePage(deleteConfirmState.pageId)}
+            title="Excluir Página SEO"
+            description="Esta ação removerá permanentemente a página do sitemap e das configurações de SEO."
+            confirmWord="EXCLUIR"
+            confirmLabel="Excluir Página"
+            isLoading={isDeleting}
+          />
         </TabsContent>
 
         {/* Schema.org Tab */}
@@ -467,6 +489,36 @@ export function PlatformSEOManager() {
   );
 }
 
+// Helper function for default form state
+function getDefaultFormState(page: PlatformSEOPage | null): Partial<PlatformSEOPage> {
+  if (page) {
+    return {
+      path: page.path,
+      title: page.title,
+      description: page.description,
+      slug: page.slug,
+      is_indexable: page.is_indexable,
+      include_in_sitemap: page.include_in_sitemap,
+      sitemap_priority: page.sitemap_priority,
+      sitemap_changefreq: page.sitemap_changefreq,
+      is_active: page.is_active,
+      display_order: page.display_order,
+    };
+  }
+  return {
+    path: '',
+    title: '',
+    description: '',
+    slug: '',
+    is_indexable: true,
+    include_in_sitemap: true,
+    sitemap_priority: 0.8,
+    sitemap_changefreq: 'weekly',
+    is_active: true,
+    display_order: 0,
+  };
+}
+
 // Page Form Dialog Component
 function PageFormDialog({
   page,
@@ -477,21 +529,39 @@ function PageFormDialog({
   onSave: (data: Partial<PlatformSEOPage>) => Promise<void>;
   onClose: () => void;
 }) {
-  const [form, setForm] = useState<Partial<PlatformSEOPage>>(
-    page ?? {
-      path: '',
-      title: '',
-      description: '',
-      slug: '',
-      is_indexable: true,
-      include_in_sitemap: true,
-      sitemap_priority: 0.8,
-      sitemap_changefreq: 'weekly',
-      is_active: true,
-      display_order: 0,
-    }
-  );
+  const [form, setForm] = useState<Partial<PlatformSEOPage>>(getDefaultFormState(page));
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  // Sync form state when page prop changes (fixes the empty form bug)
+  useEffect(() => {
+    if (page) {
+      // Editing existing page - load all its data
+      setForm({
+        path: page.path,
+        title: page.title,
+        description: page.description,
+        slug: page.slug,
+        is_indexable: page.is_indexable,
+        include_in_sitemap: page.include_in_sitemap,
+        sitemap_priority: page.sitemap_priority,
+        sitemap_changefreq: page.sitemap_changefreq,
+        is_active: page.is_active,
+        display_order: page.display_order,
+        og_title: page.og_title,
+        og_description: page.og_description,
+        og_image_url: page.og_image_url,
+        og_type: page.og_type,
+        robots: page.robots,
+        keywords: page.keywords,
+      });
+      setIsLoaded(true);
+    } else {
+      // Creating new page - reset to defaults
+      setForm(getDefaultFormState(null));
+      setIsLoaded(true);
+    }
+  }, [page]);
 
   const handleSubmit = async () => {
     if (!form.path || !form.title) return;
@@ -502,6 +572,10 @@ function PageFormDialog({
       setIsSaving(false);
     }
   };
+
+  // Show loading state for edit mode until data is loaded
+  const isEditMode = page !== null;
+  const canSubmit = isLoaded && form.path && form.title;
 
   return (
     <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -630,7 +704,7 @@ function PageFormDialog({
 
       <DialogFooter>
         <Button variant="outline" onClick={onClose}>Cancelar</Button>
-        <Button onClick={handleSubmit} disabled={isSaving || !form.path || !form.title}>
+        <Button onClick={handleSubmit} disabled={isSaving || !canSubmit}>
           {isSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
           {page ? 'Atualizar' : 'Criar'}
         </Button>
