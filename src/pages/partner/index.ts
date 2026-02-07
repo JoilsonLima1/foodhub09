@@ -7,3 +7,4 @@ export { default as PartnerDomainsPage } from './PartnerDomainsPage';
 export { default as PartnerPlansPage } from './PartnerPlansPage';
 export { default as PartnerFeesPage } from './PartnerFeesPage';
 export { default as PartnerUsersPage } from './PartnerUsersPage';
+export { default as PartnerInvoicesPage } from './PartnerInvoicesPage';
