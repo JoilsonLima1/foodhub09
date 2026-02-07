@@ -18,3 +18,5 @@ export { default as PartnerAddonsPage } from './PartnerAddonsPage';
 export { default as PartnerCouponsPage } from './PartnerCouponsPage';
 // Phase 13 - Notifications
 export { default as PartnerNotificationsPage } from './PartnerNotificationsPage';
+// Partner Onboarding
+export { default as PartnerOnboardingPage } from './PartnerOnboardingPage';

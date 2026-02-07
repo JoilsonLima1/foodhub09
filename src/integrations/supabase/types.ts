@@ -5603,6 +5603,42 @@ export type Database = {
           },
         ]
       }
+      partner_guides: {
+        Row: {
+          category: string | null
+          content_md: string
+          created_at: string
+          display_order: number | null
+          id: string
+          is_active: boolean
+          key: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          content_md: string
+          created_at?: string
+          display_order?: number | null
+          id?: string
+          is_active?: boolean
+          key: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          content_md?: string
+          created_at?: string
+          display_order?: number | null
+          id?: string
+          is_active?: boolean
+          key?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       partner_invoices: {
         Row: {
           amount: number
@@ -5821,6 +5857,69 @@ export type Database = {
           },
           {
             foreignKeyName: "partner_marketing_pages_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: true
+            referencedRelation: "v_partner_financial_kpis"
+            referencedColumns: ["partner_id"]
+          },
+        ]
+      }
+      partner_onboarding_status: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          dry_run_passed: boolean | null
+          dry_run_passed_at: string | null
+          partner_id: string
+          step_branding_completed: boolean
+          step_compliance_completed: boolean
+          step_domains_completed: boolean
+          step_notifications_completed: boolean
+          step_payments_completed: boolean
+          step_plans_completed: boolean
+          step_ready_to_sell: boolean | null
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          dry_run_passed?: boolean | null
+          dry_run_passed_at?: string | null
+          partner_id: string
+          step_branding_completed?: boolean
+          step_compliance_completed?: boolean
+          step_domains_completed?: boolean
+          step_notifications_completed?: boolean
+          step_payments_completed?: boolean
+          step_plans_completed?: boolean
+          step_ready_to_sell?: boolean | null
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          dry_run_passed?: boolean | null
+          dry_run_passed_at?: string | null
+          partner_id?: string
+          step_branding_completed?: boolean
+          step_compliance_completed?: boolean
+          step_domains_completed?: boolean
+          step_notifications_completed?: boolean
+          step_payments_completed?: boolean
+          step_plans_completed?: boolean
+          step_ready_to_sell?: boolean | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_onboarding_status_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: true
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_onboarding_status_partner_id_fkey"
             columns: ["partner_id"]
             isOneToOne: true
             referencedRelation: "v_partner_financial_kpis"
@@ -12020,6 +12119,10 @@ export type Database = {
         }[]
       }
       archive_ledger: { Args: { before_date?: string }; Returns: Json }
+      assert_partner_ready_for: {
+        Args: { p_action: string; p_partner_id: string }
+        Returns: Json
+      }
       assert_partner_scope: {
         Args: { p_actor_id: string; p_partner_id: string }
         Returns: boolean
@@ -12304,6 +12407,11 @@ export type Database = {
         Returns: Json
       }
       get_partner_for_tenant: { Args: { p_tenant_id: string }; Returns: string }
+      get_partner_guides: { Args: { p_category?: string }; Returns: Json }
+      get_partner_onboarding_progress: {
+        Args: { p_partner_id: string }
+        Returns: Json
+      }
       get_partner_onboarding_status: {
         Args: { p_partner_id: string }
         Returns: Json
@@ -12879,6 +12987,10 @@ export type Database = {
         Args: { p_target_date?: string }
         Returns: Json
       }
+      run_partner_onboarding_dry_run: {
+        Args: { p_partner_id: string }
+        Returns: Json
+      }
       set_feature_flag: {
         Args: { p_enabled: boolean; p_flag_key: string }
         Returns: Json
@@ -12931,6 +13043,10 @@ export type Database = {
           p_pricing_type?: string
         }
         Returns: boolean
+      }
+      update_partner_onboarding_step: {
+        Args: { p_partner_id: string; p_step: string; p_value: boolean }
+        Returns: Json
       }
       update_partner_payment_account: {
         Args: {

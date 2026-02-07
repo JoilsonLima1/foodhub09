@@ -67,6 +67,7 @@ import {
   PartnerAddonsPage,
   PartnerCouponsPage,
   PartnerNotificationsPage,
+  PartnerOnboardingPage,
 } from "./pages/partner";
 import PartnerAuth from "./pages/PartnerAuth";
 
@@ -122,6 +123,7 @@ const App = () => (
                     {/* Partner Panel Routes */}
                     <Route path="/partner" element={<PartnerRouteGuard><PartnerLayout /></PartnerRouteGuard>}>
                       <Route index element={<PartnerDashboard />} />
+                      <Route path="onboarding" element={<PartnerOnboardingPage />} />
                       <Route path="tenants" element={<PartnerTenants />} />
                       <Route path="tenants/create" element={<CreatePartnerTenant />} />
                       <Route path="branding" element={<PartnerBrandingPage />} />

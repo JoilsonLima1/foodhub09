@@ -24,6 +24,7 @@ import {
   Ticket,
   Puzzle,
   Bell,
+  ClipboardCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -35,6 +36,12 @@ const menuItems = [
     label: 'Dashboard', 
     icon: LayoutDashboard, 
     end: true 
+  },
+  { 
+    path: '/partner/onboarding', 
+    label: 'Onboarding', 
+    icon: ClipboardCheck,
+    adminOnly: true,
   },
   { 
     path: '/partner/tenants', 
