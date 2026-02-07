@@ -48,9 +48,23 @@ export default function PublicPlanos() {
           <h1 className="text-4xl md:text-5xl font-bold mb-4">
             Escolha o plano <span className="text-primary">ideal</span> para seu negócio
           </h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
-            Comece grátis e evolua conforme seu negócio cresce. Todos os planos incluem {trialDays} dias de teste sem compromisso.
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-6">
+            Comece grátis e evolua conforme seu negócio cresce.
           </p>
+          
+          {/* Explanatory badges */}
+          <div className="flex flex-wrap items-center justify-center gap-4 mb-8 text-sm">
+            <Badge variant="secondary" className="px-4 py-2">
+              <Gift className="h-4 w-4 mr-2" />
+              Plano Grátis disponível
+            </Badge>
+            <Badge variant="outline" className="px-4 py-2">
+              Acesso completo por 30 dias
+            </Badge>
+            <Badge variant="outline" className="px-4 py-2">
+              Planos pagos com teste grátis
+            </Badge>
+          </div>
           
           {/* Prominent CTA Button */}
           <Button 
@@ -59,9 +73,13 @@ export default function PublicPlanos() {
             onClick={() => navigate('/auth?plan=free&intent=signup')}
           >
             <Gift className="mr-2 h-5 w-5" />
-            Começar Grátis - {trialText}
+            Começar Grátis
             <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
           </Button>
+          
+          <p className="text-sm text-muted-foreground mt-4">
+            Grátis • Acesso completo por 30 dias • Continua grátis após o período
+          </p>
         </div>
       </section>
 
