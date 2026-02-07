@@ -54,6 +54,12 @@ const menuItems = [
     icon: Plus 
   },
   { 
+    path: '/partner/leads', 
+    label: 'Leads', 
+    icon: Users,
+    adminOnly: true,
+  },
+  { 
     path: '/partner/plans', 
     label: 'Planos', 
     icon: Package,

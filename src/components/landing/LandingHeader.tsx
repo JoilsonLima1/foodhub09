@@ -57,6 +57,9 @@ export function LandingHeader({ logoUrl, companyName, whatsappNumber, onOpenChat
           <button onClick={() => navigate('/clientes')} className="text-foreground/80 hover:text-primary transition-colors font-medium">
             Clientes
           </button>
+          <button onClick={() => navigate('/parceiros')} className="text-foreground/80 hover:text-primary transition-colors font-medium">
+            Parceiros
+          </button>
           <button onClick={() => scrollTo('faq')} className="text-foreground/80 hover:text-primary transition-colors font-medium">
             FAQ
           </button>

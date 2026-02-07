@@ -68,7 +68,12 @@ import {
   PartnerCouponsPage,
   PartnerNotificationsPage,
   PartnerOnboardingPage,
+  PartnerLeadsPage,
 } from "./pages/partner";
+// Public partner pages
+import PublicParceiros from "./pages/PublicParceiros";
+import PublicParceiroCadastro from "./pages/PublicParceiroCadastro";
+import PublicParceiroProfile from "./pages/PublicParceiroProfile";
 import PartnerAuth from "./pages/PartnerAuth";
 
 const queryClient = new QueryClient();
@@ -100,6 +105,9 @@ const App = () => (
                     <Route path="/recursos" element={<PublicRecursos />} />
                     <Route path="/planos" element={<PublicPlanos />} />
                     <Route path="/clientes" element={<PublicClientes />} />
+                    <Route path="/parceiros" element={<PublicParceiros />} />
+                    <Route path="/parceiros/cadastrar" element={<PublicParceiroCadastro />} />
+                    <Route path="/parceiros/:slug" element={<PublicParceiroProfile />} />
                     <Route path="/auth" element={<Auth />} />
                     
                     {/* Partner public routes */}
@@ -140,6 +148,7 @@ const App = () => (
                       <Route path="addons" element={<PartnerAddonsPage />} />
                       <Route path="coupons" element={<PartnerCouponsPage />} />
                       <Route path="notifications" element={<PartnerNotificationsPage />} />
+                      <Route path="leads" element={<PartnerLeadsPage />} />
                       <Route path="users" element={<PartnerUsersPage />} />
                     </Route>
                     

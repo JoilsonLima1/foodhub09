@@ -5744,6 +5744,60 @@ export type Database = {
           },
         ]
       }
+      partner_leads: {
+        Row: {
+          contact: string
+          created_at: string
+          id: string
+          message: string | null
+          name: string
+          notes: string | null
+          partner_id: string
+          source_url: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          contact: string
+          created_at?: string
+          id?: string
+          message?: string | null
+          name: string
+          notes?: string | null
+          partner_id: string
+          source_url?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          contact?: string
+          created_at?: string
+          id?: string
+          message?: string | null
+          name?: string
+          notes?: string | null
+          partner_id?: string
+          source_url?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_leads_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_leads_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "v_partner_financial_kpis"
+            referencedColumns: ["partner_id"]
+          },
+        ]
+      }
       partner_marketing_pages: {
         Row: {
           benefits: Json | null
@@ -12219,6 +12273,16 @@ export type Database = {
           percentage_used: number
         }[]
       }
+      complete_partner_registration: {
+        Args: {
+          p_email: string
+          p_name: string
+          p_phone?: string
+          p_slug: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       complete_payout_job: {
         Args: {
           p_error?: string
@@ -12237,6 +12301,15 @@ export type Database = {
           p_billing_phone?: string
           p_provider_customer_id?: string
           p_tenant_id: string
+        }
+        Returns: Json
+      }
+      create_partner_account: {
+        Args: {
+          p_email: string
+          p_name: string
+          p_password: string
+          p_phone?: string
         }
         Returns: Json
       }
@@ -12408,6 +12481,15 @@ export type Database = {
       }
       get_partner_for_tenant: { Args: { p_tenant_id: string }; Returns: string }
       get_partner_guides: { Args: { p_category?: string }; Returns: Json }
+      get_partner_leads: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_partner_id: string
+          p_status?: string
+        }
+        Returns: Json
+      }
       get_partner_onboarding_progress: {
         Args: { p_partner_id: string }
         Returns: Json
@@ -12602,6 +12684,7 @@ export type Database = {
           trial_days: number
         }[]
       }
+      get_public_partner_profile: { Args: { p_slug: string }; Returns: Json }
       get_public_product_variations: {
         Args: { p_product_ids: string[] }
         Returns: {
@@ -12999,6 +13082,16 @@ export type Database = {
         Args: { p_partner_id: string }
         Returns: Json
       }
+      submit_partner_lead: {
+        Args: {
+          p_contact: string
+          p_message?: string
+          p_name: string
+          p_partner_id: string
+          p_source_url?: string
+        }
+        Returns: Json
+      }
       subscribe_tenant_addon: {
         Args: { p_addon_id: string; p_tenant_id: string }
         Returns: string
@@ -13043,6 +13136,10 @@ export type Database = {
           p_pricing_type?: string
         }
         Returns: boolean
+      }
+      update_partner_lead_status: {
+        Args: { p_lead_id: string; p_notes?: string; p_status: string }
+        Returns: Json
       }
       update_partner_onboarding_step: {
         Args: { p_partner_id: string; p_step: string; p_value: boolean }
