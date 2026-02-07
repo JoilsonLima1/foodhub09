@@ -12,3 +12,4 @@ export { default as PartnerPublicationPage } from './PartnerPublicationPage';
 export { default as PartnerEarningsPage } from './PartnerEarningsPage';
 export { default as PartnerSettlementsPage } from './PartnerSettlementsPage';
 export { default as PartnerPaymentsPage } from './PartnerPaymentsPage';
+export { default as PartnerTenantBillingPage } from './PartnerTenantBillingPage';
