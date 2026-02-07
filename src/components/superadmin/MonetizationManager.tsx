@@ -182,7 +182,7 @@ export function MonetizationManager() {
             </TabsTrigger>
             <TabsTrigger value="overrides" className="flex items-center gap-2">
               <Building2 className="h-4 w-4" />
-              Overrides
+              Por Loja
             </TabsTrigger>
             <TabsTrigger value="audit" className="flex items-center gap-2">
               <History className="h-4 w-4" />
