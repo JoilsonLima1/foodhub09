@@ -164,7 +164,7 @@ export function MarketingCEOPanel({ tenantId: propTenantId, isSuperAdmin = false
         </TabsContent>
 
         <TabsContent value="search-console">
-          <SearchConsoleGuideTab domain={activeDomain} />
+          <SearchConsoleGuideTab domain={activeDomain} tenantId={effectiveTenantId} />
         </TabsContent>
 
         <TabsContent value="pages">

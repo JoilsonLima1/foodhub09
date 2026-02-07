@@ -3326,6 +3326,7 @@ export type Database = {
       }
       marketing_seo_settings: {
         Row: {
+          bing_verification_code: string | null
           bing_webmaster_verified: boolean | null
           bing_webmaster_verified_at: string | null
           created_at: string | null
@@ -3335,6 +3336,7 @@ export type Database = {
           domain_id: string | null
           google_search_console_verified: boolean | null
           google_search_console_verified_at: string | null
+          google_verification_code: string | null
           id: string
           last_audit_at: string | null
           robots_allow_all: boolean | null
@@ -3350,6 +3352,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          bing_verification_code?: string | null
           bing_webmaster_verified?: boolean | null
           bing_webmaster_verified_at?: string | null
           created_at?: string | null
@@ -3359,6 +3362,7 @@ export type Database = {
           domain_id?: string | null
           google_search_console_verified?: boolean | null
           google_search_console_verified_at?: string | null
+          google_verification_code?: string | null
           id?: string
           last_audit_at?: string | null
           robots_allow_all?: boolean | null
@@ -3374,6 +3378,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          bing_verification_code?: string | null
           bing_webmaster_verified?: boolean | null
           bing_webmaster_verified_at?: string | null
           created_at?: string | null
@@ -3383,6 +3388,7 @@ export type Database = {
           domain_id?: string | null
           google_search_console_verified?: boolean | null
           google_search_console_verified_at?: string | null
+          google_verification_code?: string | null
           id?: string
           last_audit_at?: string | null
           robots_allow_all?: boolean | null
