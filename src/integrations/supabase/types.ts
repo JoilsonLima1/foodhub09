@@ -3658,12 +3658,18 @@ export type Database = {
           accent_color: string | null
           created_at: string | null
           favicon_url: string | null
+          footer_text: string | null
           hero_subtitle: string | null
           hero_title: string | null
           id: string
           logo_url: string | null
+          meta_description: string | null
+          meta_title: string | null
+          og_image_url: string | null
           partner_id: string
           platform_name: string | null
+          powered_by_enabled: boolean | null
+          powered_by_text: string | null
           primary_color: string | null
           privacy_url: string | null
           secondary_color: string | null
@@ -3676,12 +3682,18 @@ export type Database = {
           accent_color?: string | null
           created_at?: string | null
           favicon_url?: string | null
+          footer_text?: string | null
           hero_subtitle?: string | null
           hero_title?: string | null
           id?: string
           logo_url?: string | null
+          meta_description?: string | null
+          meta_title?: string | null
+          og_image_url?: string | null
           partner_id: string
           platform_name?: string | null
+          powered_by_enabled?: boolean | null
+          powered_by_text?: string | null
           primary_color?: string | null
           privacy_url?: string | null
           secondary_color?: string | null
@@ -3694,12 +3706,18 @@ export type Database = {
           accent_color?: string | null
           created_at?: string | null
           favicon_url?: string | null
+          footer_text?: string | null
           hero_subtitle?: string | null
           hero_title?: string | null
           id?: string
           logo_url?: string | null
+          meta_description?: string | null
+          meta_title?: string | null
+          og_image_url?: string | null
           partner_id?: string
           platform_name?: string | null
+          powered_by_enabled?: boolean | null
+          powered_by_text?: string | null
           primary_color?: string | null
           privacy_url?: string | null
           secondary_color?: string | null
@@ -3766,6 +3784,7 @@ export type Database = {
         Row: {
           created_at: string | null
           domain: string
+          domain_type: string
           id: string
           is_primary: boolean | null
           is_verified: boolean | null
@@ -3777,6 +3796,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           domain: string
+          domain_type?: string
           id?: string
           is_primary?: boolean | null
           is_verified?: boolean | null
@@ -3788,6 +3808,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           domain?: string
+          domain_type?: string
           id?: string
           is_primary?: boolean | null
           is_verified?: boolean | null
@@ -3950,6 +3971,110 @@ export type Database = {
             columns: ["tenant_subscription_id"]
             isOneToOne: false
             referencedRelation: "tenant_subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partner_marketing_pages: {
+        Row: {
+          benefits: Json | null
+          benefits_title: string | null
+          created_at: string
+          cta_button_text: string | null
+          cta_subtitle: string | null
+          cta_title: string | null
+          faq_items: Json | null
+          faq_title: string | null
+          features: Json | null
+          features_title: string | null
+          hero_badge: string | null
+          hero_cta_text: string | null
+          hero_cta_url: string | null
+          hero_image_url: string | null
+          hero_subtitle: string | null
+          hero_title: string
+          id: string
+          partner_id: string
+          schema_org: Json | null
+          seo_description: string | null
+          seo_keywords: string[] | null
+          seo_title: string | null
+          show_faq_section: boolean | null
+          show_modules_section: boolean | null
+          show_pricing_section: boolean | null
+          show_testimonials_section: boolean | null
+          social_proof_text: string | null
+          testimonials: Json | null
+          updated_at: string
+        }
+        Insert: {
+          benefits?: Json | null
+          benefits_title?: string | null
+          created_at?: string
+          cta_button_text?: string | null
+          cta_subtitle?: string | null
+          cta_title?: string | null
+          faq_items?: Json | null
+          faq_title?: string | null
+          features?: Json | null
+          features_title?: string | null
+          hero_badge?: string | null
+          hero_cta_text?: string | null
+          hero_cta_url?: string | null
+          hero_image_url?: string | null
+          hero_subtitle?: string | null
+          hero_title?: string
+          id?: string
+          partner_id: string
+          schema_org?: Json | null
+          seo_description?: string | null
+          seo_keywords?: string[] | null
+          seo_title?: string | null
+          show_faq_section?: boolean | null
+          show_modules_section?: boolean | null
+          show_pricing_section?: boolean | null
+          show_testimonials_section?: boolean | null
+          social_proof_text?: string | null
+          testimonials?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          benefits?: Json | null
+          benefits_title?: string | null
+          created_at?: string
+          cta_button_text?: string | null
+          cta_subtitle?: string | null
+          cta_title?: string | null
+          faq_items?: Json | null
+          faq_title?: string | null
+          features?: Json | null
+          features_title?: string | null
+          hero_badge?: string | null
+          hero_cta_text?: string | null
+          hero_cta_url?: string | null
+          hero_image_url?: string | null
+          hero_subtitle?: string | null
+          hero_title?: string
+          id?: string
+          partner_id?: string
+          schema_org?: Json | null
+          seo_description?: string | null
+          seo_keywords?: string[] | null
+          seo_title?: string | null
+          show_faq_section?: boolean | null
+          show_modules_section?: boolean | null
+          show_pricing_section?: boolean | null
+          show_testimonials_section?: boolean | null
+          social_proof_text?: string | null
+          testimonials?: Json | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_marketing_pages_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: true
+            referencedRelation: "partners"
             referencedColumns: ["id"]
           },
         ]
@@ -8170,6 +8295,8 @@ export type Database = {
         Args: { p_domain: string }
         Returns: {
           branding: Json
+          domain_type: string
+          marketing_page: Json
           partner_id: string
           partner_name: string
           partner_slug: string
@@ -8288,6 +8415,25 @@ export type Database = {
           tenant_name: string
           total: number
           updated_at: string
+        }[]
+      }
+      get_public_partner_plans: {
+        Args: { p_partner_id: string }
+        Returns: {
+          currency: string
+          description: string
+          display_order: number
+          id: string
+          included_features: string[]
+          included_modules: string[]
+          is_free: boolean
+          max_orders_per_month: number
+          max_products: number
+          max_users: number
+          monthly_price: number
+          name: string
+          slug: string
+          trial_days: number
         }[]
       }
       get_public_product_variations: {

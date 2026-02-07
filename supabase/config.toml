@@ -68,3 +68,6 @@ verify_jwt = false
 
 [functions.partner-billing-cron]
 verify_jwt = false
+
+[functions.partner-tenant-signup]
+verify_jwt = false
