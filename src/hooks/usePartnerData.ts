@@ -39,6 +39,9 @@ export interface PartnerTenantWithDetails {
     status: string;
     current_period_start: string | null;
     current_period_end: string | null;
+    trial_ends_at: string | null;
+    delinquency_stage: string | null;
+    payment_provider: string | null;
   } | null;
 }
 
@@ -58,7 +61,7 @@ export function usePartnerTenantsData() {
           *,
           tenant:tenants(id, name, email, phone, is_active, subscription_status, created_at),
           plan:partner_plans(id, name, monthly_price),
-          subscription:tenant_subscriptions(id, status, current_period_start, current_period_end)
+          subscription:tenant_subscriptions(id, status, current_period_start, current_period_end, trial_ends_at, delinquency_stage, payment_provider)
         `)
         .eq('partner_id', currentPartner.id)
         .order('joined_at', { ascending: false });

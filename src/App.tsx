@@ -51,6 +51,7 @@ import {
   PartnerPlansPage,
   PartnerFeesPage,
   PartnerUsersPage,
+  PartnerInvoicesPage,
 } from "./pages/partner";
 
 const queryClient = new QueryClient();
@@ -96,6 +97,7 @@ const App = () => (
                     <Route path="branding" element={<PartnerBrandingPage />} />
                     <Route path="domains" element={<PartnerDomainsPage />} />
                     <Route path="plans" element={<PartnerPlansPage />} />
+                    <Route path="invoices" element={<PartnerInvoicesPage />} />
                     <Route path="fees" element={<PartnerFeesPage />} />
                     <Route path="users" element={<PartnerUsersPage />} />
                   </Route>

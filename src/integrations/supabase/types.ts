@@ -1080,6 +1080,33 @@ export type Database = {
           },
         ]
       }
+      cron_job_logs: {
+        Row: {
+          created_at: string | null
+          executed_at: string
+          id: string
+          job_name: string
+          results: Json | null
+          status: string
+        }
+        Insert: {
+          created_at?: string | null
+          executed_at?: string
+          id?: string
+          job_name: string
+          results?: Json | null
+          status?: string
+        }
+        Update: {
+          created_at?: string | null
+          executed_at?: string
+          id?: string
+          job_name?: string
+          results?: Json | null
+          status?: string
+        }
+        Relationships: []
+      }
       customer_push_subscriptions: {
         Row: {
           auth: string
@@ -6900,6 +6927,7 @@ export type Database = {
           current_period_end: string | null
           current_period_start: string | null
           delinquency_level: string | null
+          delinquency_stage: string | null
           delinquent_since: string | null
           external_subscription_id: string | null
           id: string
@@ -6923,6 +6951,7 @@ export type Database = {
           current_period_end?: string | null
           current_period_start?: string | null
           delinquency_level?: string | null
+          delinquency_stage?: string | null
           delinquent_since?: string | null
           external_subscription_id?: string | null
           id?: string
@@ -6946,6 +6975,7 @@ export type Database = {
           current_period_end?: string | null
           current_period_start?: string | null
           delinquency_level?: string | null
+          delinquency_stage?: string | null
           delinquent_since?: string | null
           external_subscription_id?: string | null
           id?: string

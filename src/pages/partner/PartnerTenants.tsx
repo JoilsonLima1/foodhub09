@@ -22,11 +22,23 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
-import { Plus, MoreHorizontal, Search, Building2, CheckCircle, XCircle, Loader2 } from 'lucide-react';
-import { format } from 'date-fns';
+import { 
+  Plus, 
+  MoreHorizontal, 
+  Search, 
+  Building2, 
+  CheckCircle, 
+  XCircle, 
+  Loader2, 
+  Receipt,
+  AlertTriangle,
+  Clock,
+} from 'lucide-react';
+import { format, differenceInDays, parseISO, isPast } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 export default function PartnerTenants() {
@@ -44,6 +56,49 @@ export default function PartnerTenants() {
 
   const handleStatusChange = (id: string, newStatus: string) => {
     updateStatus.mutate({ id, status: newStatus });
+  };
+
+  // Helper to get trial status display
+  const getTrialStatus = (trialEndsAt: string | null) => {
+    if (!trialEndsAt) return null;
+    const endDate = parseISO(trialEndsAt);
+    const daysRemaining = differenceInDays(endDate, new Date());
+    
+    if (isPast(endDate)) {
+      return { text: 'Expirado', variant: 'destructive' as const };
+    }
+    if (daysRemaining <= 3) {
+      return { text: `${daysRemaining}d restante`, variant: 'secondary' as const, warning: true };
+    }
+    return { text: `${daysRemaining}d restante`, variant: 'outline' as const };
+  };
+
+  // Helper to get subscription status badge
+  const getStatusBadge = (status: string, delinquencyStage?: string | null) => {
+    if (delinquencyStage === 'full') {
+      return { label: 'Bloqueado', variant: 'destructive' as const };
+    }
+    if (delinquencyStage === 'partial') {
+      return { label: 'Bloqueio Parcial', variant: 'destructive' as const };
+    }
+    if (delinquencyStage === 'warning') {
+      return { label: 'Aviso Enviado', variant: 'secondary' as const };
+    }
+    
+    switch (status) {
+      case 'active':
+        return { label: 'Ativa', variant: 'default' as const };
+      case 'trial':
+        return { label: 'Teste', variant: 'secondary' as const };
+      case 'past_due':
+        return { label: 'Vencida', variant: 'destructive' as const };
+      case 'expired':
+        return { label: 'Expirada', variant: 'outline' as const };
+      case 'canceled':
+        return { label: 'Cancelada', variant: 'outline' as const };
+      default:
+        return { label: status, variant: 'secondary' as const };
+    }
   };
 
   return (
@@ -66,7 +121,7 @@ export default function PartnerTenants() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Total</CardTitle>
@@ -80,7 +135,17 @@ export default function PartnerTenants() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Ativas</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.active}</div>
+            <div className="text-2xl font-bold text-primary">{stats.active}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Em Trial</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-secondary-foreground">
+              {tenants.filter(t => t.subscription?.status === 'trial').length}
+            </div>
           </CardContent>
         </Card>
         <Card>
@@ -135,8 +200,8 @@ export default function PartnerTenants() {
                 <TableRow>
                   <TableHead>Organização</TableHead>
                   <TableHead>Plano</TableHead>
-                  <TableHead>Status Assinatura</TableHead>
-                  <TableHead>Desde</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Trial/Vencimento</TableHead>
                   <TableHead>Ações Faturamento</TableHead>
                   <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
@@ -144,6 +209,10 @@ export default function PartnerTenants() {
               <TableBody>
                 {filteredTenants.map((pt) => {
                   const subscriptionStatus = pt.subscription?.status || pt.tenant?.subscription_status || 'pending';
+                  const statusBadge = getStatusBadge(subscriptionStatus, pt.subscription?.delinquency_stage);
+                  const trialStatus = pt.subscription?.status === 'trial' 
+                    ? getTrialStatus(pt.subscription?.trial_ends_at || null)
+                    : null;
                   
                   return (
                     <TableRow key={pt.id}>
@@ -161,18 +230,24 @@ export default function PartnerTenants() {
                         )}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={subscriptionStatus === 'active' ? 'default' : 'secondary'}>
-                          {subscriptionStatus === 'active' ? 'Ativa' : 
-                           subscriptionStatus === 'trial' ? 'Teste' :
-                           subscriptionStatus === 'past_due' ? 'Vencida' :
-                           subscriptionStatus === 'expired' ? 'Expirada' :
-                           subscriptionStatus}
+                        <Badge variant={statusBadge.variant}>
+                          {statusBadge.label}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-muted-foreground text-sm">
-                        {pt.joined_at 
-                          ? format(new Date(pt.joined_at), 'dd/MM/yyyy', { locale: ptBR })
-                          : '-'}
+                      <TableCell>
+                        {trialStatus ? (
+                          <div className="flex items-center gap-2">
+                            {trialStatus.warning && <AlertTriangle className="h-4 w-4 text-destructive" />}
+                            <Badge variant={trialStatus.variant}>{trialStatus.text}</Badge>
+                          </div>
+                        ) : pt.subscription?.current_period_end ? (
+                          <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                            <Clock className="h-3 w-3" />
+                            {format(parseISO(pt.subscription.current_period_end), 'dd/MM/yyyy', { locale: ptBR })}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">-</span>
+                        )}
                       </TableCell>
                       <TableCell>
                         {pt.subscription?.id && pt.plan ? (
@@ -197,6 +272,13 @@ export default function PartnerTenants() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() => navigate(`/partner/invoices?tenant=${pt.tenant_id}`)}
+                            >
+                              <Receipt className="h-4 w-4 mr-2" />
+                              Ver Faturas
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
                             {pt.status === 'active' ? (
                               <DropdownMenuItem
                                 onClick={() => handleStatusChange(pt.id, 'suspended')}

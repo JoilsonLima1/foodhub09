@@ -17,6 +17,7 @@ import {
   LogOut,
   Package,
   ChevronLeft,
+  Receipt,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -43,6 +44,12 @@ const menuItems = [
     path: '/partner/plans', 
     label: 'Planos', 
     icon: Package,
+    adminOnly: true,
+  },
+  {
+    path: '/partner/invoices',
+    label: 'Faturas',
+    icon: Receipt,
     adminOnly: true,
   },
   { 
