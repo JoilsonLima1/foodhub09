@@ -3691,6 +3691,50 @@ export type Database = {
           },
         ]
       }
+      partner_delinquency_config: {
+        Row: {
+          created_at: string | null
+          full_block_days: number | null
+          id: string
+          partial_block_days: number | null
+          partner_id: string | null
+          send_email_warning: boolean | null
+          send_sms_warning: boolean | null
+          updated_at: string | null
+          warning_days: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          full_block_days?: number | null
+          id?: string
+          partial_block_days?: number | null
+          partner_id?: string | null
+          send_email_warning?: boolean | null
+          send_sms_warning?: boolean | null
+          updated_at?: string | null
+          warning_days?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          full_block_days?: number | null
+          id?: string
+          partial_block_days?: number | null
+          partner_id?: string | null
+          send_email_warning?: boolean | null
+          send_sms_warning?: boolean | null
+          updated_at?: string | null
+          warning_days?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_delinquency_config_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: true
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       partner_domains: {
         Row: {
           created_at: string | null
@@ -3781,6 +3825,142 @@ export type Database = {
             columns: ["partner_id"]
             isOneToOne: true
             referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partner_invoices: {
+        Row: {
+          amount: number
+          billing_type: string | null
+          canceled_at: string | null
+          created_at: string | null
+          currency: string | null
+          description: string | null
+          due_date: string
+          gateway_invoice_url: string | null
+          gateway_payment_id: string | null
+          id: string
+          invoice_number: string | null
+          notes: string | null
+          paid_at: string | null
+          partner_id: string
+          partner_plan_id: string | null
+          payment_provider: string | null
+          status: string
+          tenant_id: string
+          tenant_subscription_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          amount: number
+          billing_type?: string | null
+          canceled_at?: string | null
+          created_at?: string | null
+          currency?: string | null
+          description?: string | null
+          due_date: string
+          gateway_invoice_url?: string | null
+          gateway_payment_id?: string | null
+          id?: string
+          invoice_number?: string | null
+          notes?: string | null
+          paid_at?: string | null
+          partner_id: string
+          partner_plan_id?: string | null
+          payment_provider?: string | null
+          status?: string
+          tenant_id: string
+          tenant_subscription_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number
+          billing_type?: string | null
+          canceled_at?: string | null
+          created_at?: string | null
+          currency?: string | null
+          description?: string | null
+          due_date?: string
+          gateway_invoice_url?: string | null
+          gateway_payment_id?: string | null
+          id?: string
+          invoice_number?: string | null
+          notes?: string | null
+          paid_at?: string | null
+          partner_id?: string
+          partner_plan_id?: string | null
+          payment_provider?: string | null
+          status?: string
+          tenant_id?: string
+          tenant_subscription_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_invoices_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_invoices_partner_plan_id_fkey"
+            columns: ["partner_plan_id"]
+            isOneToOne: false
+            referencedRelation: "partner_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_invoices_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_invoices_tenant_subscription_id_fkey"
+            columns: ["tenant_subscription_id"]
+            isOneToOne: false
+            referencedRelation: "tenant_subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partner_plan_modules: {
+        Row: {
+          created_at: string | null
+          id: string
+          included_quantity: number | null
+          is_active: boolean | null
+          module_key: string
+          partner_plan_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          included_quantity?: number | null
+          is_active?: boolean | null
+          module_key: string
+          partner_plan_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          included_quantity?: number | null
+          is_active?: boolean | null
+          module_key?: string
+          partner_plan_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_plan_modules_partner_plan_id_fkey"
+            columns: ["partner_plan_id"]
+            isOneToOne: false
+            referencedRelation: "partner_plans"
             referencedColumns: ["id"]
           },
         ]
@@ -6545,11 +6725,15 @@ export type Database = {
           currency: string | null
           current_period_end: string | null
           current_period_start: string | null
+          delinquency_level: string | null
+          delinquent_since: string | null
           external_subscription_id: string | null
           id: string
+          last_payment_attempt_at: string | null
           monthly_amount: number | null
           partner_plan_id: string | null
           partner_tenant_id: string | null
+          payment_attempts: number | null
           payment_provider: string | null
           status: string
           tenant_id: string
@@ -6564,11 +6748,15 @@ export type Database = {
           currency?: string | null
           current_period_end?: string | null
           current_period_start?: string | null
+          delinquency_level?: string | null
+          delinquent_since?: string | null
           external_subscription_id?: string | null
           id?: string
+          last_payment_attempt_at?: string | null
           monthly_amount?: number | null
           partner_plan_id?: string | null
           partner_tenant_id?: string | null
+          payment_attempts?: number | null
           payment_provider?: string | null
           status?: string
           tenant_id: string
@@ -6583,11 +6771,15 @@ export type Database = {
           currency?: string | null
           current_period_end?: string | null
           current_period_start?: string | null
+          delinquency_level?: string | null
+          delinquent_since?: string | null
           external_subscription_id?: string | null
           id?: string
+          last_payment_attempt_at?: string | null
           monthly_amount?: number | null
           partner_plan_id?: string | null
           partner_tenant_id?: string | null
+          payment_attempts?: number | null
           payment_provider?: string | null
           status?: string
           tenant_id?: string
@@ -7455,6 +7647,64 @@ export type Database = {
           },
         ]
       }
+      partner_overdue_invoices: {
+        Row: {
+          amount: number | null
+          billing_type: string | null
+          canceled_at: string | null
+          created_at: string | null
+          currency: string | null
+          days_overdue: number | null
+          description: string | null
+          due_date: string | null
+          gateway_invoice_url: string | null
+          gateway_payment_id: string | null
+          id: string | null
+          invoice_number: string | null
+          notes: string | null
+          paid_at: string | null
+          partner_id: string | null
+          partner_name: string | null
+          partner_plan_id: string | null
+          payment_provider: string | null
+          plan_name: string | null
+          status: string | null
+          tenant_id: string | null
+          tenant_name: string | null
+          tenant_subscription_id: string | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_invoices_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_invoices_partner_plan_id_fkey"
+            columns: ["partner_plan_id"]
+            isOneToOne: false
+            referencedRelation: "partner_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_invoices_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_invoices_tenant_subscription_id_fkey"
+            columns: ["tenant_subscription_id"]
+            isOneToOne: false
+            referencedRelation: "tenant_subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products_pricing_safe: {
         Row: {
           base_price: number | null
@@ -7629,6 +7879,14 @@ export type Database = {
       }
     }
     Functions: {
+      activate_partner_tenant_subscription: {
+        Args: {
+          p_gateway_payment_id?: string
+          p_payment_provider?: string
+          p_tenant_subscription_id: string
+        }
+        Returns: Json
+      }
       calculate_platform_fee: {
         Args: {
           p_amount: number
@@ -7947,6 +8205,15 @@ export type Database = {
         }
         Returns: Json
       }
+      process_partner_invoice_payment: {
+        Args: {
+          p_billing_type?: string
+          p_gateway_payment_id?: string
+          p_invoice_id: string
+          p_payment_provider: string
+        }
+        Returns: Json
+      }
       record_ledger_entry: {
         Args: {
           p_amount: number
@@ -7959,6 +8226,10 @@ export type Database = {
           p_transaction_id: string
         }
         Returns: string
+      }
+      sync_partner_tenant_modules: {
+        Args: { p_tenant_id: string }
+        Returns: undefined
       }
       sync_tenant_modules_from_plan: {
         Args: { p_tenant_id: string }
