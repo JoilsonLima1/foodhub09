@@ -34,6 +34,12 @@ export interface PartnerTenantWithDetails {
     name: string;
     monthly_price: number;
   } | null;
+  subscription: {
+    id: string;
+    status: string;
+    current_period_start: string | null;
+    current_period_end: string | null;
+  } | null;
 }
 
 export function usePartnerTenantsData() {
@@ -51,13 +57,21 @@ export function usePartnerTenantsData() {
         .select(`
           *,
           tenant:tenants(id, name, email, phone, is_active, subscription_status, created_at),
-          plan:partner_plans(id, name, monthly_price)
+          plan:partner_plans(id, name, monthly_price),
+          subscription:tenant_subscriptions(id, status, current_period_start, current_period_end)
         `)
         .eq('partner_id', currentPartner.id)
         .order('joined_at', { ascending: false });
 
       if (error) throw error;
-      return (data || []) as PartnerTenantWithDetails[];
+      
+      // Flatten subscription array to single object (taking most recent)
+      return (data || []).map((pt: any) => ({
+        ...pt,
+        subscription: Array.isArray(pt.subscription) 
+          ? pt.subscription[0] || null 
+          : pt.subscription,
+      })) as PartnerTenantWithDetails[];
     },
     enabled: !!currentPartner?.id,
   });

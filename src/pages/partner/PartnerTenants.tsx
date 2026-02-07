@@ -6,8 +6,9 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePartnerTenantsData } from '@/hooks/usePartnerData';
 import { usePartnerContext } from '@/contexts/PartnerContext';
+import { PartnerTenantBillingActions } from '@/components/partner/PartnerTenantBillingActions';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
   Table,
@@ -31,7 +32,7 @@ import { ptBR } from 'date-fns/locale';
 export default function PartnerTenants() {
   const navigate = useNavigate();
   const { currentPartner } = usePartnerContext();
-  const { tenants, isLoading, stats, updateStatus } = usePartnerTenantsData();
+  const { tenants, isLoading, stats, updateStatus, refetch } = usePartnerTenantsData();
   const [search, setSearch] = useState('');
 
   const filteredTenants = tenants.filter(t =>
@@ -134,65 +135,89 @@ export default function PartnerTenants() {
                 <TableRow>
                   <TableHead>Organização</TableHead>
                   <TableHead>Plano</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>Status Assinatura</TableHead>
                   <TableHead>Desde</TableHead>
+                  <TableHead>Ações Faturamento</TableHead>
                   <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredTenants.map((pt) => (
-                  <TableRow key={pt.id}>
-                    <TableCell>
-                      <div>
-                        <p className="font-medium">{pt.tenant?.name || 'Sem nome'}</p>
-                        <p className="text-sm text-muted-foreground">{pt.tenant?.email || '-'}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {pt.plan ? (
-                        <Badge variant="outline">{pt.plan.name}</Badge>
-                      ) : (
-                        <span className="text-muted-foreground text-sm">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={pt.status === 'active' ? 'default' : 'secondary'}>
-                        {pt.status === 'active' ? 'Ativa' : pt.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground text-sm">
-                      {pt.joined_at 
-                        ? format(new Date(pt.joined_at), 'dd/MM/yyyy', { locale: ptBR })
-                        : '-'}
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          {pt.status === 'active' ? (
-                            <DropdownMenuItem
-                              onClick={() => handleStatusChange(pt.id, 'suspended')}
-                            >
-                              <XCircle className="h-4 w-4 mr-2" />
-                              Suspender
-                            </DropdownMenuItem>
-                          ) : (
-                            <DropdownMenuItem
-                              onClick={() => handleStatusChange(pt.id, 'active')}
-                            >
-                              <CheckCircle className="h-4 w-4 mr-2" />
-                              Ativar
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {filteredTenants.map((pt) => {
+                  const subscriptionStatus = pt.subscription?.status || pt.tenant?.subscription_status || 'pending';
+                  
+                  return (
+                    <TableRow key={pt.id}>
+                      <TableCell>
+                        <div>
+                          <p className="font-medium">{pt.tenant?.name || 'Sem nome'}</p>
+                          <p className="text-sm text-muted-foreground">{pt.tenant?.email || '-'}</p>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {pt.plan ? (
+                          <Badge variant="outline">{pt.plan.name}</Badge>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={subscriptionStatus === 'active' ? 'default' : 'secondary'}>
+                          {subscriptionStatus === 'active' ? 'Ativa' : 
+                           subscriptionStatus === 'trial' ? 'Teste' :
+                           subscriptionStatus === 'past_due' ? 'Vencida' :
+                           subscriptionStatus === 'expired' ? 'Expirada' :
+                           subscriptionStatus}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-sm">
+                        {pt.joined_at 
+                          ? format(new Date(pt.joined_at), 'dd/MM/yyyy', { locale: ptBR })
+                          : '-'}
+                      </TableCell>
+                      <TableCell>
+                        {pt.subscription?.id && pt.plan ? (
+                          <PartnerTenantBillingActions
+                            tenantId={pt.tenant_id}
+                            tenantSubscriptionId={pt.subscription.id}
+                            tenantName={pt.tenant?.name || 'Organização'}
+                            planName={pt.plan.name}
+                            planPrice={pt.plan.monthly_price}
+                            subscriptionStatus={subscriptionStatus}
+                            onSuccess={() => refetch()}
+                          />
+                        ) : (
+                          <span className="text-muted-foreground text-sm">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            {pt.status === 'active' ? (
+                              <DropdownMenuItem
+                                onClick={() => handleStatusChange(pt.id, 'suspended')}
+                              >
+                                <XCircle className="h-4 w-4 mr-2" />
+                                Suspender
+                              </DropdownMenuItem>
+                            ) : (
+                              <DropdownMenuItem
+                                onClick={() => handleStatusChange(pt.id, 'active')}
+                              >
+                                <CheckCircle className="h-4 w-4 mr-2" />
+                                Ativar
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           )}
