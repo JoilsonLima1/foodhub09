@@ -1,6 +1,7 @@
 # Dynamic SEO files - served by Edge Functions
 /sitemap.xml    https://baxitzkbbqqbbbtojswm.supabase.co/functions/v1/sitemap    200
 /robots.txt     https://baxitzkbbqqbbbtojswm.supabase.co/functions/v1/robots     200
+/BingSiteAuth.xml https://baxitzkbbqqbbbtojswm.supabase.co/functions/v1/site-verification 200
 
 # Static files - serve directly
 /favicon.ico    /favicon.ico    200
