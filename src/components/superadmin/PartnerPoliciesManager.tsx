@@ -33,6 +33,13 @@ interface PartnerPolicy {
   max_features_per_plan: number;
   require_plan_hierarchy: boolean;
   allow_offline_billing: boolean;
+  // Fee limits
+  max_platform_fee_percent: number;
+  max_platform_fee_fixed: number;
+  max_pix_fee_percent: number;
+  max_credit_fee_percent: number;
+  max_debit_fee_percent: number;
+  max_boleto_fee_fixed: number;
 }
 
 // Available features catalog
@@ -188,6 +195,7 @@ export function PartnerPoliciesManager() {
             <TabsTrigger value="modules">Módulos</TabsTrigger>
             <TabsTrigger value="features">Features</TabsTrigger>
             <TabsTrigger value="trial">Trial</TabsTrigger>
+            <TabsTrigger value="fees">Taxas</TabsTrigger>
             <TabsTrigger value="billing">Cobrança</TabsTrigger>
           </TabsList>
 
@@ -499,6 +507,124 @@ export function PartnerPoliciesManager() {
                     })}
                     disabled={!editingPolicy}
                   />
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="fees">
+            <Card>
+              <CardHeader>
+                <CardTitle>Limites de Taxas de Transação</CardTitle>
+                <CardDescription>
+                  Defina os valores máximos de taxas que parceiros podem cobrar de seus tenants
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Taxa Percentual Máxima (%)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={activePolicy.max_platform_fee_percent ?? 10}
+                      onChange={(e) => editingPolicy && setEditingPolicy({
+                        ...editingPolicy,
+                        max_platform_fee_percent: parseFloat(e.target.value) || 0
+                      })}
+                      disabled={!editingPolicy}
+                      min={0}
+                      max={50}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Taxa base máxima sobre transações
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Taxa Fixa Máxima (R$)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={activePolicy.max_platform_fee_fixed ?? 5}
+                      onChange={(e) => editingPolicy && setEditingPolicy({
+                        ...editingPolicy,
+                        max_platform_fee_fixed: parseFloat(e.target.value) || 0
+                      })}
+                      disabled={!editingPolicy}
+                      min={0}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Valor fixo máximo por transação
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>PIX - Taxa Máxima (%)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={activePolicy.max_pix_fee_percent ?? 5}
+                      onChange={(e) => editingPolicy && setEditingPolicy({
+                        ...editingPolicy,
+                        max_pix_fee_percent: parseFloat(e.target.value) || 0
+                      })}
+                      disabled={!editingPolicy}
+                      min={0}
+                      max={20}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Débito - Taxa Máxima (%)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={activePolicy.max_debit_fee_percent ?? 5}
+                      onChange={(e) => editingPolicy && setEditingPolicy({
+                        ...editingPolicy,
+                        max_debit_fee_percent: parseFloat(e.target.value) || 0
+                      })}
+                      disabled={!editingPolicy}
+                      min={0}
+                      max={20}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Crédito - Taxa Máxima (%)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={activePolicy.max_credit_fee_percent ?? 10}
+                      onChange={(e) => editingPolicy && setEditingPolicy({
+                        ...editingPolicy,
+                        max_credit_fee_percent: parseFloat(e.target.value) || 0
+                      })}
+                      disabled={!editingPolicy}
+                      min={0}
+                      max={30}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Boleto - Taxa Fixa Máxima (R$)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={activePolicy.max_boleto_fee_fixed ?? 10}
+                      onChange={(e) => editingPolicy && setEditingPolicy({
+                        ...editingPolicy,
+                        max_boleto_fee_fixed: parseFloat(e.target.value) || 0
+                      })}
+                      disabled={!editingPolicy}
+                      min={0}
+                    />
+                  </div>
                 </div>
               </CardContent>
             </Card>

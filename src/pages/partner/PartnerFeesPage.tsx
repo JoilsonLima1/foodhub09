@@ -9,11 +9,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, CreditCard, Percent, DollarSign } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Loader2, CreditCard, Percent, DollarSign, Info, AlertTriangle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function PartnerFeesPage() {
-  const { feeConfig, isLoading, updateFeeConfig } = usePartnerFeeConfig();
+  const { feeConfig, feeLimits, isLoading, updateFeeConfig } = usePartnerFeeConfig();
 
   const [formData, setFormData] = useState({
     is_enabled: false,
@@ -42,6 +43,28 @@ export default function PartnerFeesPage() {
   const handleSave = () => {
     updateFeeConfig.mutate(formData);
   };
+
+  // Check if any value exceeds limits
+  const getExceedsLimit = (field: string, value: number) => {
+    if (!feeLimits) return false;
+    const limits: Record<string, number> = {
+      platform_fee_percent: feeLimits.max_platform_fee_percent,
+      platform_fee_fixed: feeLimits.max_platform_fee_fixed,
+      pix_fee_percent: feeLimits.max_pix_fee_percent,
+      credit_fee_percent: feeLimits.max_credit_fee_percent,
+      debit_fee_percent: feeLimits.max_debit_fee_percent,
+      boleto_fee_fixed: feeLimits.max_boleto_fee_fixed,
+    };
+    return value > (limits[field] || Infinity);
+  };
+
+  const hasExceedingLimits = 
+    getExceedsLimit('platform_fee_percent', formData.platform_fee_percent) ||
+    getExceedsLimit('platform_fee_fixed', formData.platform_fee_fixed) ||
+    getExceedsLimit('pix_fee_percent', formData.pix_fee_percent) ||
+    getExceedsLimit('credit_fee_percent', formData.credit_fee_percent) ||
+    getExceedsLimit('debit_fee_percent', formData.debit_fee_percent) ||
+    getExceedsLimit('boleto_fee_fixed', formData.boleto_fee_fixed);
 
   if (isLoading) {
     return (
@@ -76,11 +99,28 @@ export default function PartnerFeesPage() {
             Configure as taxas aplicadas sobre transações das organizações
           </p>
         </div>
-        <Button onClick={handleSave} disabled={updateFeeConfig.isPending}>
+        <Button 
+          onClick={handleSave} 
+          disabled={updateFeeConfig.isPending || hasExceedingLimits}
+        >
           {updateFeeConfig.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
           Salvar Alterações
         </Button>
       </div>
+
+      {/* Limits Info */}
+      {feeLimits && (
+        <Alert>
+          <Info className="h-4 w-4" />
+          <AlertDescription>
+            Limites máximos definidos pela plataforma: Taxa base até <strong>{feeLimits.max_platform_fee_percent}%</strong> + 
+            R$ <strong>{feeLimits.max_platform_fee_fixed}</strong> | PIX até <strong>{feeLimits.max_pix_fee_percent}%</strong> | 
+            Crédito até <strong>{feeLimits.max_credit_fee_percent}%</strong> | 
+            Débito até <strong>{feeLimits.max_debit_fee_percent}%</strong> | 
+            Boleto até R$ <strong>{feeLimits.max_boleto_fee_fixed}</strong>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Enable/Disable */}
       <Card>
@@ -115,7 +155,14 @@ export default function PartnerFeesPage() {
             </CardHeader>
             <CardContent className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <Label>Taxa Percentual (%)</Label>
+                <Label className="flex items-center justify-between">
+                  Taxa Percentual (%)
+                  {feeLimits && (
+                    <span className="text-xs text-muted-foreground">
+                      máx: {feeLimits.max_platform_fee_percent}%
+                    </span>
+                  )}
+                </Label>
                 <Input
                   type="number"
                   step="0.01"
@@ -125,10 +172,24 @@ export default function PartnerFeesPage() {
                     platform_fee_percent: Number(e.target.value) 
                   }))}
                   placeholder="0.00"
+                  className={getExceedsLimit('platform_fee_percent', formData.platform_fee_percent) ? 'border-destructive' : ''}
                 />
+                {getExceedsLimit('platform_fee_percent', formData.platform_fee_percent) && (
+                  <p className="text-xs text-destructive flex items-center gap-1">
+                    <AlertTriangle className="h-3 w-3" />
+                    Excede limite máximo
+                  </p>
+                )}
               </div>
               <div className="space-y-2">
-                <Label>Taxa Fixa (R$)</Label>
+                <Label className="flex items-center justify-between">
+                  Taxa Fixa (R$)
+                  {feeLimits && (
+                    <span className="text-xs text-muted-foreground">
+                      máx: R$ {feeLimits.max_platform_fee_fixed}
+                    </span>
+                  )}
+                </Label>
                 <Input
                   type="number"
                   step="0.01"
@@ -138,7 +199,14 @@ export default function PartnerFeesPage() {
                     platform_fee_fixed: Number(e.target.value) 
                   }))}
                   placeholder="0.00"
+                  className={getExceedsLimit('platform_fee_fixed', formData.platform_fee_fixed) ? 'border-destructive' : ''}
                 />
+                {getExceedsLimit('platform_fee_fixed', formData.platform_fee_fixed) && (
+                  <p className="text-xs text-destructive flex items-center gap-1">
+                    <AlertTriangle className="h-3 w-3" />
+                    Excede limite máximo
+                  </p>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -157,7 +225,14 @@ export default function PartnerFeesPage() {
             <CardContent className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label>PIX (%)</Label>
+                  <Label className="flex items-center justify-between">
+                    PIX (%)
+                    {feeLimits && (
+                      <span className="text-xs text-muted-foreground">
+                        máx: {feeLimits.max_pix_fee_percent}%
+                      </span>
+                    )}
+                  </Label>
                   <Input
                     type="number"
                     step="0.01"
@@ -167,10 +242,18 @@ export default function PartnerFeesPage() {
                       pix_fee_percent: Number(e.target.value) 
                     }))}
                     placeholder="0.00"
+                    className={getExceedsLimit('pix_fee_percent', formData.pix_fee_percent) ? 'border-destructive' : ''}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Débito (%)</Label>
+                  <Label className="flex items-center justify-between">
+                    Débito (%)
+                    {feeLimits && (
+                      <span className="text-xs text-muted-foreground">
+                        máx: {feeLimits.max_debit_fee_percent}%
+                      </span>
+                    )}
+                  </Label>
                   <Input
                     type="number"
                     step="0.01"
@@ -180,13 +263,21 @@ export default function PartnerFeesPage() {
                       debit_fee_percent: Number(e.target.value) 
                     }))}
                     placeholder="0.00"
+                    className={getExceedsLimit('debit_fee_percent', formData.debit_fee_percent) ? 'border-destructive' : ''}
                   />
                 </div>
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label>Crédito (%)</Label>
+                  <Label className="flex items-center justify-between">
+                    Crédito (%)
+                    {feeLimits && (
+                      <span className="text-xs text-muted-foreground">
+                        máx: {feeLimits.max_credit_fee_percent}%
+                      </span>
+                    )}
+                  </Label>
                   <Input
                     type="number"
                     step="0.01"
@@ -196,10 +287,18 @@ export default function PartnerFeesPage() {
                       credit_fee_percent: Number(e.target.value) 
                     }))}
                     placeholder="0.00"
+                    className={getExceedsLimit('credit_fee_percent', formData.credit_fee_percent) ? 'border-destructive' : ''}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Boleto (R$ fixo)</Label>
+                  <Label className="flex items-center justify-between">
+                    Boleto (R$ fixo)
+                    {feeLimits && (
+                      <span className="text-xs text-muted-foreground">
+                        máx: R$ {feeLimits.max_boleto_fee_fixed}
+                      </span>
+                    )}
+                  </Label>
                   <Input
                     type="number"
                     step="0.01"
@@ -209,6 +308,7 @@ export default function PartnerFeesPage() {
                       boleto_fee_fixed: Number(e.target.value) 
                     }))}
                     placeholder="0.00"
+                    className={getExceedsLimit('boleto_fee_fixed', formData.boleto_fee_fixed) ? 'border-destructive' : ''}
                   />
                 </div>
               </div>
@@ -228,7 +328,7 @@ export default function PartnerFeesPage() {
             </CardHeader>
             <CardContent>
               <div className="grid gap-4 md:grid-cols-4 text-center">
-                {['PIX', 'Débito', 'Crédito', 'Boleto'].map((method, i) => {
+                {['PIX', 'Débito', 'Crédito', 'Boleto'].map((method) => {
                   const methodFees: Record<string, number> = {
                     'PIX': formData.pix_fee_percent,
                     'Débito': formData.debit_fee_percent,

@@ -19,6 +19,7 @@ import {
   ChevronLeft,
   Receipt,
   Rocket,
+  TrendingUp,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -75,6 +76,12 @@ const menuItems = [
     path: '/partner/fees', 
     label: 'Taxas', 
     icon: CreditCard,
+    adminOnly: true,
+  },
+  { 
+    path: '/partner/earnings', 
+    label: 'Ganhos', 
+    icon: TrendingUp,
     adminOnly: true,
   },
   { 

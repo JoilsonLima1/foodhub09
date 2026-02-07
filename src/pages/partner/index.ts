@@ -9,3 +9,4 @@ export { default as PartnerFeesPage } from './PartnerFeesPage';
 export { default as PartnerUsersPage } from './PartnerUsersPage';
 export { default as PartnerInvoicesPage } from './PartnerInvoicesPage';
 export { default as PartnerPublicationPage } from './PartnerPublicationPage';
+export { default as PartnerEarningsPage } from './PartnerEarningsPage';
