@@ -18,14 +18,19 @@ import {
 import { useMarketingSEO } from '@/hooks/useMarketingSEO';
 import { OrganizationDomain } from '@/hooks/useOrganizationDomains';
 import { useToast } from '@/hooks/use-toast';
+import { SearchEngineVerificationForm } from './SearchEngineVerificationForm';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface SearchConsoleGuideTabProps {
   domain: OrganizationDomain | undefined;
+  tenantId?: string | null;
 }
 
-export function SearchConsoleGuideTab({ domain }: SearchConsoleGuideTabProps) {
+export function SearchConsoleGuideTab({ domain, tenantId: propTenantId }: SearchConsoleGuideTabProps) {
   const { toast } = useToast();
-  const { settings, updateSearchConsoleStatus, getSitemapUrl } = useMarketingSEO();
+  const { tenantId: authTenantId } = useAuth();
+  const effectiveTenantId = propTenantId || authTenantId;
+  const { settings, updateSearchConsoleStatus, getSitemapUrl } = useMarketingSEO(effectiveTenantId || undefined);
   const [copied, setCopied] = useState<string | null>(null);
 
   const sitemapUrl = getSitemapUrl(domain?.domain);
@@ -65,6 +70,14 @@ export function SearchConsoleGuideTab({ domain }: SearchConsoleGuideTabProps) {
           </Alert>
         </CardContent>
       </Card>
+
+      {/* Verification Codes Form - Main configuration area */}
+      {effectiveTenantId && (
+        <SearchEngineVerificationForm 
+          tenantId={effectiveTenantId} 
+          settingsId={settings?.id} 
+        />
+      )}
 
       {/* Google Search Console */}
       <Card>

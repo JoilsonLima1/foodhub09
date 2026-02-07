@@ -21,6 +21,9 @@ export interface MarketingSEOSettings {
   google_search_console_verified_at: string | null;
   bing_webmaster_verified: boolean;
   bing_webmaster_verified_at: string | null;
+  // Verification codes for meta tag injection
+  google_verification_code: string | null;
+  bing_verification_code: string | null;
   seo_score: number;
   seo_init_status: 'pending_domain' | 'initialized' | 'ready';
   last_audit_at: string | null;
