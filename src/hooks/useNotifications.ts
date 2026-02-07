@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { usePartner } from '@/contexts/PartnerContext';
+import { usePartnerContext } from '@/contexts/PartnerContext';
 
 // ==================== Types ====================
 
@@ -66,8 +66,8 @@ export interface TemplatePreview {
 export function useNotificationTemplates(partnerId?: string | null) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { partner } = usePartner();
-  const effectivePartnerId = partnerId ?? partner?.id ?? null;
+  const { currentPartner } = usePartnerContext();
+  const effectivePartnerId = partnerId ?? currentPartner?.id ?? null;
 
   // Fetch templates for this partner (or platform defaults)
   const { data: templates = [], isLoading, refetch } = useQuery({
