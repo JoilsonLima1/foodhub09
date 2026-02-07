@@ -107,7 +107,7 @@ export function TenantOverridesTab({ overrides }: TenantOverridesTabProps) {
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm('Tem certeza que deseja remover este override?')) {
+    if (confirm('Tem certeza que deseja remover esta configuração?')) {
       await deleteOverride.mutateAsync(id);
     }
   };
@@ -122,28 +122,28 @@ export function TenantOverridesTab({ overrides }: TenantOverridesTabProps) {
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle className="flex items-center gap-2">
-              <Building2 className="h-5 w-5" />
-              Configurações por Loja
-            </CardTitle>
-            <CardDescription>
-              Desative a monetização ou configure taxas personalizadas para lojas específicas
-            </CardDescription>
-          </div>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={handleOpenCreate}>
-                <Plus className="h-4 w-4 mr-2" />
-                Adicionar Override
-              </Button>
+              <CardTitle className="flex items-center gap-2">
+                <Building2 className="h-5 w-5" />
+                Configurações por Loja
+              </CardTitle>
+              <CardDescription>
+                Desative a cobrança ou configure taxas personalizadas para lojas específicas
+              </CardDescription>
+            </div>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button onClick={handleOpenCreate}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Adicionar Loja
+                </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>
-                  {editingOverride ? 'Editar Configuração' : 'Nova Configuração de Loja'}
+                  {editingOverride ? 'Editar Configuração da Loja' : 'Nova Configuração de Loja'}
                 </DialogTitle>
                 <DialogDescription>
-                  Configure taxas personalizadas ou desative a monetização para uma loja específica
+                  Configure taxas personalizadas ou isente a loja da cobrança de taxas
                 </DialogDescription>
               </DialogHeader>
 
@@ -171,10 +171,10 @@ export function TenantOverridesTab({ overrides }: TenantOverridesTabProps) {
 
                 <div className="flex items-center justify-between p-4 border rounded-lg">
                   <div>
-                    <Label className="text-base font-medium">Cobrar Monetização</Label>
+                    <Label className="text-base font-medium">Cobrar Taxa</Label>
                     <p className="text-sm text-muted-foreground">
                       {formData.enabled
-                        ? 'Taxas serão cobradas desta loja'
+                        ? 'Taxas serão cobradas normalmente'
                         : 'Loja isenta de taxas (acordo especial)'}
                     </p>
                   </div>
@@ -219,7 +219,7 @@ export function TenantOverridesTab({ overrides }: TenantOverridesTabProps) {
                 <div className="space-y-2">
                   <Label>Observações</Label>
                   <Textarea
-                    placeholder="Ex: Acordo comercial especial até 12/2025"
+                    placeholder="Ex: Acordo comercial especial até 12/2025, taxa reduzida por volume"
                     value={formData.notes}
                     onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                   />
