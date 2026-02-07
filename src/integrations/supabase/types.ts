@@ -3626,6 +3626,375 @@ export type Database = {
           },
         ]
       }
+      partner_branding: {
+        Row: {
+          accent_color: string | null
+          created_at: string | null
+          favicon_url: string | null
+          hero_subtitle: string | null
+          hero_title: string | null
+          id: string
+          logo_url: string | null
+          partner_id: string
+          platform_name: string | null
+          primary_color: string | null
+          privacy_url: string | null
+          secondary_color: string | null
+          support_email: string | null
+          support_phone: string | null
+          terms_url: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          accent_color?: string | null
+          created_at?: string | null
+          favicon_url?: string | null
+          hero_subtitle?: string | null
+          hero_title?: string | null
+          id?: string
+          logo_url?: string | null
+          partner_id: string
+          platform_name?: string | null
+          primary_color?: string | null
+          privacy_url?: string | null
+          secondary_color?: string | null
+          support_email?: string | null
+          support_phone?: string | null
+          terms_url?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          accent_color?: string | null
+          created_at?: string | null
+          favicon_url?: string | null
+          hero_subtitle?: string | null
+          hero_title?: string | null
+          id?: string
+          logo_url?: string | null
+          partner_id?: string
+          platform_name?: string | null
+          primary_color?: string | null
+          privacy_url?: string | null
+          secondary_color?: string | null
+          support_email?: string | null
+          support_phone?: string | null
+          terms_url?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_branding_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: true
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partner_domains: {
+        Row: {
+          created_at: string | null
+          domain: string
+          id: string
+          is_primary: boolean | null
+          is_verified: boolean | null
+          partner_id: string
+          ssl_status: string | null
+          verification_token: string | null
+          verified_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          domain: string
+          id?: string
+          is_primary?: boolean | null
+          is_verified?: boolean | null
+          partner_id: string
+          ssl_status?: string | null
+          verification_token?: string | null
+          verified_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          domain?: string
+          id?: string
+          is_primary?: boolean | null
+          is_verified?: boolean | null
+          partner_id?: string
+          ssl_status?: string | null
+          verification_token?: string | null
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_domains_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partner_fee_config: {
+        Row: {
+          boleto_fee_fixed: number | null
+          created_at: string | null
+          credit_fee_percent: number | null
+          debit_fee_percent: number | null
+          id: string
+          is_enabled: boolean | null
+          partner_id: string
+          pix_fee_percent: number | null
+          platform_fee_fixed: number | null
+          platform_fee_percent: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          boleto_fee_fixed?: number | null
+          created_at?: string | null
+          credit_fee_percent?: number | null
+          debit_fee_percent?: number | null
+          id?: string
+          is_enabled?: boolean | null
+          partner_id: string
+          pix_fee_percent?: number | null
+          platform_fee_fixed?: number | null
+          platform_fee_percent?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          boleto_fee_fixed?: number | null
+          created_at?: string | null
+          credit_fee_percent?: number | null
+          debit_fee_percent?: number | null
+          id?: string
+          is_enabled?: boolean | null
+          partner_id?: string
+          pix_fee_percent?: number | null
+          platform_fee_fixed?: number | null
+          platform_fee_percent?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_fee_config_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: true
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partner_plans: {
+        Row: {
+          base_plan_id: string | null
+          created_at: string | null
+          currency: string | null
+          description: string | null
+          display_order: number | null
+          id: string
+          included_modules: string[] | null
+          is_active: boolean | null
+          max_orders_per_month: number | null
+          max_products: number | null
+          max_users: number | null
+          monthly_price: number
+          name: string
+          partner_id: string
+          slug: string
+          updated_at: string | null
+        }
+        Insert: {
+          base_plan_id?: string | null
+          created_at?: string | null
+          currency?: string | null
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          included_modules?: string[] | null
+          is_active?: boolean | null
+          max_orders_per_month?: number | null
+          max_products?: number | null
+          max_users?: number | null
+          monthly_price: number
+          name: string
+          partner_id: string
+          slug: string
+          updated_at?: string | null
+        }
+        Update: {
+          base_plan_id?: string | null
+          created_at?: string | null
+          currency?: string | null
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          included_modules?: string[] | null
+          is_active?: boolean | null
+          max_orders_per_month?: number | null
+          max_products?: number | null
+          max_users?: number | null
+          monthly_price?: number
+          name?: string
+          partner_id?: string
+          slug?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_plans_base_plan_id_fkey"
+            columns: ["base_plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_plans_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partner_tenants: {
+        Row: {
+          billing_notes: string | null
+          id: string
+          joined_at: string | null
+          next_billing_date: string | null
+          partner_id: string
+          partner_plan_id: string | null
+          status: string | null
+          tenant_id: string
+        }
+        Insert: {
+          billing_notes?: string | null
+          id?: string
+          joined_at?: string | null
+          next_billing_date?: string | null
+          partner_id: string
+          partner_plan_id?: string | null
+          status?: string | null
+          tenant_id: string
+        }
+        Update: {
+          billing_notes?: string | null
+          id?: string
+          joined_at?: string | null
+          next_billing_date?: string | null
+          partner_id?: string
+          partner_plan_id?: string | null
+          status?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_tenants_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_tenants_partner_plan_id_fkey"
+            columns: ["partner_plan_id"]
+            isOneToOne: false
+            referencedRelation: "partner_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_tenants_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partner_users: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          partner_id: string
+          role: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          partner_id: string
+          role?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          partner_id?: string
+          role?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_users_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partners: {
+        Row: {
+          created_at: string | null
+          document: string | null
+          email: string
+          id: string
+          is_active: boolean | null
+          max_tenants: number | null
+          max_users_per_tenant: number | null
+          name: string
+          notes: string | null
+          phone: string | null
+          revenue_share_percent: number | null
+          slug: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          document?: string | null
+          email: string
+          id?: string
+          is_active?: boolean | null
+          max_tenants?: number | null
+          max_users_per_tenant?: number | null
+          name: string
+          notes?: string | null
+          phone?: string | null
+          revenue_share_percent?: number | null
+          slug: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          document?: string | null
+          email?: string
+          id?: string
+          is_active?: boolean | null
+          max_tenants?: number | null
+          max_users_per_tenant?: number | null
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          revenue_share_percent?: number | null
+          slug?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       password_panel_config: {
         Row: {
           config: Json | null
@@ -7164,6 +7533,15 @@ export type Database = {
           available: number
           quota: number
           used: number
+        }[]
+      }
+      get_partner_by_domain: {
+        Args: { p_domain: string }
+        Returns: {
+          branding: Json
+          partner_id: string
+          partner_name: string
+          partner_slug: string
         }[]
       }
       get_plan_addon_modules: {
