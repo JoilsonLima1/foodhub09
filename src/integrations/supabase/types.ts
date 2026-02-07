@@ -1838,6 +1838,62 @@ export type Database = {
         }
         Relationships: []
       }
+      financial_reconciliation: {
+        Row: {
+          checked_at: string | null
+          created_at: string | null
+          difference: number | null
+          expected_amount: number | null
+          id: string
+          internal_event_id: string | null
+          metadata: Json | null
+          provider: string
+          provider_amount: number | null
+          provider_payment_id: string
+          resolution_notes: string | null
+          resolved_at: string | null
+          status: string
+        }
+        Insert: {
+          checked_at?: string | null
+          created_at?: string | null
+          difference?: number | null
+          expected_amount?: number | null
+          id?: string
+          internal_event_id?: string | null
+          metadata?: Json | null
+          provider: string
+          provider_amount?: number | null
+          provider_payment_id: string
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          status?: string
+        }
+        Update: {
+          checked_at?: string | null
+          created_at?: string | null
+          difference?: number | null
+          expected_amount?: number | null
+          id?: string
+          internal_event_id?: string | null
+          metadata?: Json | null
+          provider?: string
+          provider_amount?: number | null
+          provider_payment_id?: string
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financial_reconciliation_internal_event_id_fkey"
+            columns: ["internal_event_id"]
+            isOneToOne: false
+            referencedRelation: "payment_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       goal_notifications_sent: {
         Row: {
           goal_id: string
@@ -4214,6 +4270,69 @@ export type Database = {
           },
         ]
       }
+      partner_payouts: {
+        Row: {
+          amount: number
+          created_at: string | null
+          executed_at: string | null
+          failed_at: string | null
+          failure_reason: string | null
+          id: string
+          metadata: Json | null
+          partner_id: string
+          payout_method: string
+          provider_reference: string | null
+          settlement_id: string | null
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          executed_at?: string | null
+          failed_at?: string | null
+          failure_reason?: string | null
+          id?: string
+          metadata?: Json | null
+          partner_id: string
+          payout_method: string
+          provider_reference?: string | null
+          settlement_id?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          executed_at?: string | null
+          failed_at?: string | null
+          failure_reason?: string | null
+          id?: string
+          metadata?: Json | null
+          partner_id?: string
+          payout_method?: string
+          provider_reference?: string | null
+          settlement_id?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_payouts_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_payouts_settlement_id_fkey"
+            columns: ["settlement_id"]
+            isOneToOne: false
+            referencedRelation: "settlements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       partner_plan_modules: {
         Row: {
           created_at: string | null
@@ -5987,6 +6106,113 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      settlement_items: {
+        Row: {
+          amount: number
+          created_at: string | null
+          id: string
+          settlement_id: string
+          transaction_effect_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          id?: string
+          settlement_id: string
+          transaction_effect_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          id?: string
+          settlement_id?: string
+          transaction_effect_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "settlement_items_settlement_id_fkey"
+            columns: ["settlement_id"]
+            isOneToOne: false
+            referencedRelation: "settlements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "settlement_items_transaction_effect_id_fkey"
+            columns: ["transaction_effect_id"]
+            isOneToOne: true
+            referencedRelation: "transaction_effects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      settlements: {
+        Row: {
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          created_at: string | null
+          generated_at: string
+          id: string
+          metadata: Json | null
+          paid_at: string | null
+          partner_id: string
+          period_end: string
+          period_start: string
+          settlement_mode: string
+          status: string
+          total_gross: number
+          total_partner_net: number
+          total_platform_fee: number
+          transaction_count: number
+          updated_at: string | null
+        }
+        Insert: {
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          created_at?: string | null
+          generated_at?: string
+          id?: string
+          metadata?: Json | null
+          paid_at?: string | null
+          partner_id: string
+          period_end: string
+          period_start: string
+          settlement_mode?: string
+          status?: string
+          total_gross?: number
+          total_partner_net?: number
+          total_platform_fee?: number
+          transaction_count?: number
+          updated_at?: string | null
+        }
+        Update: {
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          created_at?: string | null
+          generated_at?: string
+          id?: string
+          metadata?: Json | null
+          paid_at?: string | null
+          partner_id?: string
+          period_end?: string
+          period_start?: string
+          settlement_mode?: string
+          status?: string
+          total_gross?: number
+          total_partner_net?: number
+          total_platform_fee?: number
+          transaction_count?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "settlements_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
             referencedColumns: ["id"]
           },
         ]
@@ -8703,6 +8929,14 @@ export type Database = {
         Args: { p_tenant_id: string }
         Returns: string
       }
+      execute_partner_payout: {
+        Args: {
+          p_payout_method?: string
+          p_provider_reference?: string
+          p_settlement_id: string
+        }
+        Returns: Json
+      }
       force_sync_tenant_modules: {
         Args: { p_tenant_id: string }
         Returns: {
@@ -8710,6 +8944,14 @@ export type Database = {
           details: string
           module_name: string
         }[]
+      }
+      generate_partner_settlement: {
+        Args: {
+          p_partner_id: string
+          p_period_end: string
+          p_period_start: string
+        }
+        Returns: Json
       }
       generate_unique_code: { Args: { prefix?: string }; Returns: string }
       get_active_payment_gateways: {
@@ -8765,6 +9007,10 @@ export type Database = {
           partner_name: string
           partner_slug: string
         }[]
+      }
+      get_partner_financial_summary: {
+        Args: { p_partner_id: string }
+        Returns: Json
       }
       get_partner_for_tenant: { Args: { p_tenant_id: string }; Returns: string }
       get_partner_policy: {
@@ -9095,6 +9341,10 @@ export type Database = {
       publish_partner_landing: {
         Args: { p_partner_id: string; p_publish: boolean }
         Returns: boolean
+      }
+      reconcile_provider_payments: {
+        Args: { p_from_date?: string; p_provider?: string }
+        Returns: Json
       }
       record_ledger_entry: {
         Args: {

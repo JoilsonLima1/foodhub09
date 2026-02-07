@@ -20,6 +20,7 @@ import {
   Receipt,
   Rocket,
   TrendingUp,
+  Landmark,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -82,6 +83,12 @@ const menuItems = [
     path: '/partner/earnings', 
     label: 'Ganhos', 
     icon: TrendingUp,
+    adminOnly: true,
+  },
+  { 
+    path: '/partner/settlements', 
+    label: 'Liquidação', 
+    icon: Landmark,
     adminOnly: true,
   },
   { 
