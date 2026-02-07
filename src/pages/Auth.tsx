@@ -58,6 +58,7 @@ export default function AuthPage() {
 
   // Check intent params
   const searchParams = new URLSearchParams(location.search);
+  const intent = searchParams.get('intent');
   const hasIntent = searchParams.has('intent') || searchParams.has('plan');
   const hasFromState = !!location.state?.from;
 
@@ -215,7 +216,7 @@ export default function AuthPage() {
             </Alert>
           )}
 
-          <Tabs defaultValue="login" className="w-full">
+          <Tabs defaultValue={searchParams.get('intent') === 'signup' ? 'signup' : 'login'} className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="login">Entrar</TabsTrigger>
               <TabsTrigger value="signup">Cadastrar</TabsTrigger>

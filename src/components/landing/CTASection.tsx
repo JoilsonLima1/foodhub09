@@ -45,7 +45,7 @@ export function CTASection({ companyName, trialDays, whatsappNumber }: CTASectio
             <Button 
               size="lg" 
               className="text-lg h-16 px-10 rounded-full shadow-lg shadow-primary/30 group"
-              onClick={() => navigate('/auth?intent=signup')}
+              onClick={() => navigate('/auth?plan=free&intent=signup')}
             >
               <Gift className="mr-2 h-5 w-5" />
               Começar Teste Grátis

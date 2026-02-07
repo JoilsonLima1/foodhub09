@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { usePublicSettings } from '@/hooks/usePublicSettings';
 import { usePublicTheme } from '@/hooks/usePublicTheme';
 import { usePublicSubscriptionPlans } from '@/hooks/usePublicSubscriptionPlans';
@@ -9,9 +10,13 @@ import { PricingSection } from '@/components/landing/PricingSection';
 import { FAQSection } from '@/components/landing/FAQSection';
 import { WhatsAppButton } from '@/components/landing/WhatsAppButton';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { ArrowRight, Gift } from 'lucide-react';
 import fallbackLogo from '@/assets/logo.png';
 
 export default function PublicPlanos() {
+  const navigate = useNavigate();
+  
   useEffect(() => {
     resetThemeToDefault();
   }, []);
@@ -34,7 +39,7 @@ export default function PublicPlanos() {
         companyName={companyName}
       />
 
-      {/* Hero Section */}
+      {/* Hero Section with prominent CTA */}
       <section className="py-16 bg-gradient-to-b from-primary/5 to-background">
         <div className="container px-4 mx-auto text-center">
           <Badge variant="outline" className="mb-4">
@@ -43,9 +48,20 @@ export default function PublicPlanos() {
           <h1 className="text-4xl md:text-5xl font-bold mb-4">
             Escolha o plano <span className="text-primary">ideal</span> para seu negócio
           </h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
             Comece grátis e evolua conforme seu negócio cresce. Todos os planos incluem {trialDays} dias de teste sem compromisso.
           </p>
+          
+          {/* Prominent CTA Button */}
+          <Button 
+            size="lg" 
+            className="text-lg h-14 px-8 rounded-full shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 transition-all group"
+            onClick={() => navigate('/auth?plan=free&intent=signup')}
+          >
+            <Gift className="mr-2 h-5 w-5" />
+            Começar Grátis - {trialText}
+            <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+          </Button>
         </div>
       </section>
 
