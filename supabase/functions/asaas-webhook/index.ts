@@ -6,9 +6,67 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Correlation ID for request tracing
+let correlationId: string | null = null;
+
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
   console.log(`[ASAAS-WEBHOOK] ${step}${detailsStr}`);
+};
+
+// Write to operational_logs table (additive observability)
+const writeOperationalLog = async (
+  supabase: any,
+  level: 'debug' | 'info' | 'warn' | 'error',
+  message: string,
+  metadata: Record<string, any> = {},
+  partnerId?: string | null,
+  tenantId?: string | null,
+  providerPaymentId?: string | null,
+  eventId?: string | null,
+  durationMs?: number | null
+) => {
+  try {
+    await supabase.rpc('write_operational_log', {
+      p_scope: 'webhook',
+      p_level: level,
+      p_message: message,
+      p_metadata: { ...metadata, correlation_id: correlationId },
+      p_correlation_id: correlationId,
+      p_partner_id: partnerId || null,
+      p_tenant_id: tenantId || null,
+      p_provider_payment_id: providerPaymentId || null,
+      p_event_id: eventId || null,
+      p_duration_ms: durationMs || null
+    });
+  } catch (e) {
+    // Don't fail webhook processing if logging fails
+    console.error('[ASAAS-WEBHOOK] Failed to write operational log:', e);
+  }
+};
+
+// Write to financial_audit_log table
+const writeFinancialAudit = async (
+  supabase: any,
+  action: string,
+  entityType: string,
+  entityId?: string | null,
+  beforeState?: Record<string, any> | null,
+  afterState?: Record<string, any> | null
+) => {
+  try {
+    await supabase.rpc('write_financial_audit', {
+      p_actor_type: 'webhook',
+      p_action: action,
+      p_entity_type: entityType,
+      p_entity_id: entityId || null,
+      p_correlation_id: correlationId,
+      p_before_state: beforeState || null,
+      p_after_state: afterState || null
+    });
+  } catch (e) {
+    console.error('[ASAAS-WEBHOOK] Failed to write audit log:', e);
+  }
 };
 
 // ============================================================
@@ -49,23 +107,61 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const startTime = Date.now();
+  // Generate correlation ID for request tracing
+  correlationId = `asaas-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+
+  let supabase: any = null;
+  let paymentId: string | null = null;
+  let tenantId: string | null = null;
+  let partnerId: string | null = null;
+
   try {
-    logStep("Webhook received", { method: req.method });
+    logStep("Webhook received", { method: req.method, correlationId });
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const body = await req.json();
     const event = body.event;
     const payment = body.payment;
-    const paymentId = payment?.id;
+    paymentId = payment?.id;
 
     logStep("Event received", { event, paymentId });
+
+    // ============================================================
+    // PHASE 7: Rate limiting (additive security layer)
+    // ============================================================
+    const clientIP = req.headers.get('x-forwarded-for') || req.headers.get('cf-connecting-ip') || 'unknown';
+    const rateLimitKey = `webhook:asaas:${clientIP}`;
+    
+    const { data: rateLimitResult } = await supabase.rpc('check_rate_limit', {
+      p_key: rateLimitKey,
+      p_max_requests: 100, // 100 requests per window
+      p_window_seconds: 60 // 1 minute window
+    });
+    
+    if (rateLimitResult && !rateLimitResult.allowed) {
+      await writeOperationalLog(supabase, 'warn', 'Rate limit exceeded for webhook', 
+        { ip: clientIP, event, rateLimitResult }, partnerId, tenantId, paymentId);
+      
+      return new Response(
+        JSON.stringify({ received: true, processed: false, reason: "rate_limited" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 429 }
+      );
+    }
+
+    // Log webhook reception
+    await writeOperationalLog(supabase, 'info', 'Webhook received', 
+      { event, ip: clientIP }, null, null, paymentId);
 
     // Validate we have required data
     if (!paymentId || !event) {
       logStep("Missing paymentId or event, skipping");
+      await writeOperationalLog(supabase, 'warn', 'Webhook missing required data', 
+        { hasPaymentId: !!paymentId, hasEvent: !!event });
+      
       return new Response(
         JSON.stringify({ received: true, processed: false, reason: "missing_data" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -75,6 +171,9 @@ serve(async (req) => {
     // Check if this is a ledger event
     if (!ALL_LEDGER_EVENTS.includes(event)) {
       logStep("Event not tracked in ledger", { event });
+      await writeOperationalLog(supabase, 'debug', 'Event not tracked in ledger', 
+        { event }, null, null, paymentId);
+      
       return new Response(
         JSON.stringify({ received: true, processed: false, reason: "event_not_tracked" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -89,10 +188,12 @@ serve(async (req) => {
 
     if (contextError) {
       logStep("Error resolving payment context", { error: contextError.message });
+      await writeOperationalLog(supabase, 'error', 'Failed to resolve payment context', 
+        { error: contextError.message }, null, null, paymentId);
     }
 
-    const tenantId = contextData?.tenant_id || null;
-    const partnerId = contextData?.partner_id || null;
+    tenantId = contextData?.tenant_id || null;
+    partnerId = contextData?.partner_id || null;
     const contextSource = contextData?.source || 'unknown';
 
     logStep("Payment context resolved", { tenantId, partnerId, contextSource });
@@ -100,7 +201,6 @@ serve(async (req) => {
     // ============================================================
     // STEP 2: Generate unique event ID for idempotency
     // ============================================================
-    // Use Asaas payment ID + event type + timestamp as unique identifier
     const eventTimestamp = payment.dateCreated || new Date().toISOString();
     const providerEventId = `${paymentId}:${event}:${eventTimestamp}`;
 
@@ -123,7 +223,14 @@ serve(async (req) => {
 
     if (insertError) {
       logStep("Error inserting payment event", { error: insertError.message });
-      // Don't fail - return 200 to prevent Asaas retries
+      
+      await writeOperationalLog(supabase, 'error', 'Failed to insert payment event', 
+        { error: insertError.message, event }, partnerId, tenantId, paymentId);
+      
+      // Write audit log for failed event
+      await writeFinancialAudit(supabase, 'EVENT_INSERT_FAILED', 'payment_events', 
+        providerEventId, null, { error: insertError.message, event, paymentId });
+      
       return new Response(
         JSON.stringify({ received: true, processed: false, error: insertError.message }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -131,10 +238,18 @@ serve(async (req) => {
     }
 
     logStep("Payment event processed via SSOT", insertResult);
+    
+    // Write audit log for successful event
+    await writeFinancialAudit(supabase, 
+      insertResult?.is_new ? 'EVENT_INSERTED' : 'EVENT_DUPLICATE',
+      'payment_events', 
+      insertResult?.event_id, 
+      null, 
+      { event, paymentId, is_new: insertResult?.is_new, apply_result: insertResult?.apply_result }
+    );
 
     // ============================================================
     // STEP 4: Handle legacy module/subscription activation
-    // (For backward compatibility with existing purchases)
     // ============================================================
     if (PAYMENT_SUCCESS_EVENTS.includes(event)) {
       await handleLegacyActivations(supabase, paymentId, payment);
@@ -147,24 +262,40 @@ serve(async (req) => {
       await handleLegacyReversals(supabase, paymentId, event);
     }
 
+    const duration = Date.now() - startTime;
+    
+    // Log successful completion
+    await writeOperationalLog(supabase, 'info', 'Webhook processed successfully', 
+      { event, is_new: insertResult?.is_new, apply_result: insertResult?.apply_result },
+      partnerId, tenantId, paymentId, insertResult?.event_id, duration);
+
     return new Response(
       JSON.stringify({
         received: true,
         processed: true,
         event_id: insertResult?.event_id,
         is_new: insertResult?.is_new,
-        apply_result: insertResult?.apply_result
+        apply_result: insertResult?.apply_result,
+        correlation_id: correlationId
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Webhook processing failed";
+    const duration = Date.now() - startTime;
     logStep("ERROR", { message: errorMessage });
+    
+    // Log error to operational_logs
+    if (supabase) {
+      await writeOperationalLog(supabase, 'error', 'Webhook processing failed', 
+        { error: errorMessage, stack: error instanceof Error ? error.stack : undefined },
+        partnerId, tenantId, paymentId, null, duration);
+    }
     
     // Return 200 to prevent Asaas from retrying
     return new Response(
-      JSON.stringify({ received: true, processed: false, error: errorMessage }),
+      JSON.stringify({ received: true, processed: false, error: errorMessage, correlation_id: correlationId }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
     );
   }
