@@ -23,7 +23,6 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Loader2,
-  MapPin,
   Globe,
   ExternalLink,
   CheckCircle2,
@@ -42,8 +41,6 @@ interface PartnerProfile {
   partner_id?: string;
   name?: string;
   slug?: string;
-  city?: string;
-  state?: string;
   branding?: {
     logo_url?: string;
     platform_name?: string;
@@ -176,7 +173,6 @@ export default function PublicParceiroProfile() {
 
   const partnerName = profile.branding?.platform_name || profile.name || 'Parceiro';
   const partnerLogo = profile.branding?.logo_url || platformLogo;
-  const location = [profile.city, profile.state].filter(Boolean).join(', ');
 
   return (
     <div className="min-h-screen bg-background">
@@ -200,12 +196,6 @@ export default function PublicParceiroProfile() {
               <h1 className="text-3xl md:text-4xl font-bold mb-2">{partnerName}</h1>
               {profile.branding?.tagline && (
                 <p className="text-lg text-muted-foreground mb-3">{profile.branding.tagline}</p>
-              )}
-              {location && (
-                <div className="flex items-center gap-2 text-muted-foreground justify-center md:justify-start">
-                  <MapPin className="h-4 w-4" />
-                  <span>{location}</span>
-                </div>
               )}
               
               {/* Domain links */}
