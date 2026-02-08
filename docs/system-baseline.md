@@ -1,7 +1,7 @@
-# System Baseline v1.0 - Production Ready
-**Data: 2026-02-07**  
-**Versão: release/production-baseline-v1**  
-**Status: 🔒 SNAPSHOT CONGELADO**
+# System Baseline v1.1 - Production Ready (Post-Scan Hotfix)
+**Data: 2026-02-08**  
+**Versão: release/production-baseline-v1.1**  
+**Status: 🔒 SNAPSHOT ATUALIZADO**
 
 ---
 
@@ -343,3 +343,27 @@ ORDER BY tablename;
 2. Integrar provedor de notificações (Email/WhatsApp)
 3. Configurar monitoramento externo
 4. Realizar testes de carga antes do go-live
+
+---
+
+## 🔧 HOTFIX v1.1 (2026-02-08)
+
+### Bugs Corrigidos:
+
+| Bug | Descrição | Fix |
+|-----|-----------|-----|
+| `get_public_partner_profile` | Referenciava coluna `status` inexistente | Alterado para `is_active = TRUE AND is_suspended = FALSE` |
+| `complete_partner_registration` | INSERT usava `status = 'active'` | Alterado para `is_active = TRUE, is_suspended = FALSE` |
+| `submit_partner_lead` | Validação usava `status = 'active'` | Alterado para `is_active = TRUE AND is_suspended = FALSE` |
+| `get_public_partner_profile` | Referenciava colunas `marketing_domain_verified` inexistentes | Ajustado para usar `domain_type` e `is_verified` |
+| `PublicParceiroProfile.tsx` | Referenciava `city`/`state` que não existem na tabela | Removida referência a localização |
+
+### Verificações Realizadas:
+
+- ✅ Edge Functions: `sitemap` e `robots` respondendo 200
+- ✅ Constraints UNIQUE: Todas validadas
+- ✅ RLS: Todas tabelas críticas protegidas
+- ✅ Feature Flags: 6 flags ativos e funcionais
+- ✅ Seed Data: Todos dados essenciais presentes
+- ✅ RPCs Críticas: Todas funcionando após correção
+- ✅ Frontend: Landing, Auth, Parceiros carregando sem erros
