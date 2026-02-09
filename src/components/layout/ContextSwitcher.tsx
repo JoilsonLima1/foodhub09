@@ -67,7 +67,9 @@ export function ContextSwitcher({ collapsed = false }: { collapsed?: boolean }) 
             <DropdownMenuItem
               key={type}
               onClick={() => handleSwitch(type)}
-              className={cn(isActive && 'bg-accent')}
+              className={cn(
+                isActive && 'bg-secondary text-foreground'
+              )}
             >
               <Icon className="h-4 w-4 mr-2" />
               <div className="flex flex-col">
