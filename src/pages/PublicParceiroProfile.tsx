@@ -332,6 +332,18 @@ export default function PublicParceiroProfile() {
         </div>
       </section>
 
+      {/* Partner login footer */}
+      <section className="py-8 border-t">
+        <div className="container px-4 mx-auto text-center">
+          <p className="text-sm text-muted-foreground">
+            É parceiro?{' '}
+            <Link to="/login?context=partner" className="text-primary hover:underline font-medium">
+              Entrar no painel
+            </Link>
+          </p>
+        </div>
+      </section>
+
       <LandingFooter 
         logoUrl={platformLogo} 
         companyName={platformName}

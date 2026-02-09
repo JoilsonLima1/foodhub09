@@ -33,6 +33,7 @@ import {
   Banknote,
   HeadphonesIcon,
   Clock,
+  LogIn,
 } from 'lucide-react';
 import fallbackLogo from '@/assets/logo.png';
 
@@ -161,10 +162,10 @@ export default function PublicParceiros() {
               </Link>
             </Button>
             <Button asChild variant="outline" size="lg" className="text-lg px-8">
-              <a href="#como-funciona">
-                Saiba como funciona
-                <ArrowRight className="h-5 w-5 ml-2" />
-              </a>
+              <Link to="/login?context=partner">
+                <LogIn className="h-5 w-5 mr-2" />
+                Entrar como parceiro
+              </Link>
             </Button>
             <InstallAppButton
               partnerName={companyName}
@@ -299,6 +300,12 @@ export default function PublicParceiros() {
           </div>
           <p className="text-sm opacity-70 mt-4">
             Sem taxas de adesão • Comece a ganhar hoje
+          </p>
+          <p className="text-sm opacity-80 mt-3">
+            Já é parceiro?{' '}
+            <Link to="/login?context=partner" className="underline font-medium hover:opacity-100">
+              Entrar
+            </Link>
           </p>
         </div>
       </section>
