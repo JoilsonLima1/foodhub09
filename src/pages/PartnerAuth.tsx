@@ -102,7 +102,7 @@ export default function PartnerAuthPage() {
         setError(error.message);
       }
     } else {
-      navigate('/dashboard');
+      navigate('/partner');
     }
     
     setIsLoading(false);
