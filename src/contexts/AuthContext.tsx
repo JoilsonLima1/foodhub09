@@ -92,7 +92,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       // If no profile or no tenant, try to bootstrap
-      if ((!profileData || !profileData.tenant_id) && sessionToken) {
+      // But skip bootstrap for partner users - they don't need a tenant
+      const isPartner = userMetadata?.is_partner === true;
+      const { data: partnerLink } = await supabase
+        .from('partner_users')
+        .select('id')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if ((!profileData || !profileData.tenant_id) && sessionToken && !isPartner && !partnerLink) {
         console.log('[AuthContext] No profile/tenant found - triggering bootstrap...');
         const bootstrapped = await bootstrapUserIfNeeded(userId, sessionToken, userMetadata);
         
@@ -106,6 +114,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           
           profileData = newProfileData;
         }
+      } else if (isPartner || partnerLink) {
+        console.log('[AuthContext] Partner user detected - skipping tenant bootstrap');
       }
 
       if (profileData) {
