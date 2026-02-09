@@ -625,39 +625,131 @@ serve(async (req) => {
         }
 
         // 3. Delete related data (order by dependency)
+        // Comprehensive list of all tables with tenant_id FK to tenants
+        // Order matters: child tables first, then parent tables
         const tablesToClean = [
+          // Comanda sub-tables
+          'comanda_payments',
+          'comanda_orders',
+          'comanda_participants',
+          'comanda_history',
+          'comandas',
+          // Order sub-tables
           'order_item_addons',
           'order_items',
           'order_status_history',
+          'kitchen_order_items',
+          // Payment / financial
           'payments',
           'payment_machine_records',
+          'payment_events',
+          'apply_queue', // references payment_events
+          'plan_change_prorations',
+          'ledger_entries',
+          'coupon_redemptions',
+          // Deliveries
           'deliveries',
+          // Orders (after sub-tables)
           'orders',
+          // Stock
           'stock_movements',
           'stock_entries',
+          // Recipes
           'recipe_items',
           'recipes',
+          // Products
           'product_addon_mapping',
           'product_addons',
           'product_variations',
+          'products',
+          // iFood
           'ifood_menu_mapping',
           'ifood_orders',
           'ifood_logs',
           'ifood_integrations',
-          'products',
+          // Marketplace
+          'marketplace_orders',
+          'marketplace_logs',
+          'marketplace_integrations',
+          // Categories & ingredients
           'categories',
           'ingredients',
+          // Delivery
           'couriers',
           'delivery_zones',
           'coupons',
+          // Customer
+          'customer_registrations',
+          'exit_validations',
+          // Sales & goals
           'sales_goals',
           'goal_notifications_sent',
           'sales_forecast_history',
+          // Cash
           'cash_movements',
           'cash_registers',
+          // Kitchen
+          'kitchen_stations',
+          'kitchen_display_config',
+          // Loyalty
+          'loyalty_transactions',
+          'loyalty_customers',
+          'loyalty_config',
+          // Dispatcher
+          'dispatcher_messages',
+          'dispatcher_triggers',
+          'dispatcher_config',
+          'caller_id_config',
+          'call_logs',
+          // Mobile
+          'mobile_sessions',
+          'mobile_command_config',
+          // Service calls
+          'service_calls',
+          // SMS
+          'sms_campaigns',
+          // Notifications
+          'notification_outbox',
+          'billing_notifications',
+          // Operational
+          'operational_alerts',
+          'ops_recommendations',
+          'disputes',
+          'fraud_flags',
+          // Modules
+          'tenant_module_audit',
+          'module_purchases',
+          'partner_tenant_addon_subscriptions',
+          // Partner / billing
+          'partner_earnings',
+          'partner_invoices',
+          'partner_tenants',
+          // Domains & SEO
+          'organization_domains',
+          'marketing_seo_audit_history',
+          'marketing_seo_pages',
+          'marketing_seo_reports',
+          'marketing_seo_settings',
+          // Password panel
+          'password_queue',
+          'password_panel_config',
+          // Consent & compliance
+          'consent_records',
+          'data_subject_requests',
+          'payment_terms_acceptance',
+          'sensitive_actions_log',
+          // Events
+          'events',
+          // Logs & audit
           'audit_logs',
           'duplicate_alerts',
+          // Tenant-level config/invoices
+          'tenant_invoices',
           'subscriptions',
+          // Stores
+          'tables',
+          'store_user_access',
+          'stores',
         ];
 
         for (const table of tablesToClean) {
