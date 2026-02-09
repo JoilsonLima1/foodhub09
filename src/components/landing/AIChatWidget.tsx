@@ -48,31 +48,7 @@ export function AIChatWidget({ companyName, isOpen: controlledIsOpen, onOpenChan
     scrollToBottom();
   }, [messages]);
 
-  const systemPrompt = `Você é o assistente virtual do ${companyName}, um sistema de gestão para restaurantes. Responda de forma amigável, clara e profissional.
-
-INFORMAÇÕES DO SISTEMA:
-- Sistema completo de gestão para restaurantes, pizzarias, lanchonetes, cafeterias e similares
-- Funciona 100% na nuvem, acessível de qualquer dispositivo
-- Principais recursos: PDV, gestão de pedidos, controle de estoque, dashboard de entregas, relatórios, previsão com IA
-- Integração com iFood e outros marketplaces
-- Suporte a impressoras térmicas, balanças e leitores de código de barras
-- Cardápio digital com QR Code para mesas
-- App exclusivo para entregadores
-
-PLANOS:
-- Grátis: Até 1 usuário, PDV básico, 20 produtos, 50 pedidos/mês
-- Starter (R$ 97/mês): Até 3 usuários, PDV completo, cozinha, entregas, relatórios básicos
-- Professional (R$ 197/mês): Até 10 usuários, estoque, CMV, app entregador, relatórios avançados
-- Enterprise (R$ 397/mês): Usuários ilimitados, IA, metas, multi-unidades, API, white label
-
-Todos os planos pagos incluem período de teste grátis.
-
-REGRAS:
-- Responda apenas sobre o sistema e seus recursos
-- Se não souber a resposta, sugira entrar em contato pelo WhatsApp
-- Use emojis moderadamente para ser mais amigável
-- Mantenha respostas concisas (máximo 3-4 frases)
-- Sempre incentive a experimentar o teste grátis`;
+  // System prompt is now built on the backend with real-time data from the database
 
   const sendMessage = async () => {
     if (!input.trim() || isLoading) return;
@@ -85,8 +61,7 @@ REGRAS:
     try {
       const response = await supabase.functions.invoke('ai-chat', {
         body: { 
-          messages: [...messages, { role: 'user', content: userMessage }],
-          systemPrompt 
+          messages: [...messages, { role: 'user', content: userMessage }]
         }
       });
 
