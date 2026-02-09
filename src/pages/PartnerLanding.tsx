@@ -16,6 +16,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { ArrowRight, Check, Gift, Star, Zap, Shield, Clock, Users, Eye } from 'lucide-react';
+import { InstallAppButton } from '@/components/pwa/InstallAppButton';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
@@ -183,6 +184,14 @@ export default function PartnerLanding() {
                 {freePlan ? `Começar Grátis - ${freePlan.trial_days} dias` : ctaText}
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
+              <InstallAppButton
+                partnerId={partner.partnerId}
+                partnerName={platformName}
+                appDomain={null}
+                variant="outline"
+                size="lg"
+                className="text-lg h-14 px-8 rounded-full"
+              />
             </div>
             
             {/* Trust badges */}

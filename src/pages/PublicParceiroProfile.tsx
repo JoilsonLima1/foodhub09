@@ -34,6 +34,7 @@ import {
   Shield,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { InstallAppButton } from '@/components/pwa/InstallAppButton';
 import fallbackLogo from '@/assets/logo.png';
 
 interface PartnerProfile {
@@ -210,13 +211,13 @@ export default function PublicParceiroProfile() {
                   </Button>
                 )}
                 {profile.domains?.app && (
-                  <Button asChild variant="outline" size="sm">
-                    <a href={`https://${profile.domains.app}`} target="_blank" rel="noopener noreferrer">
-                      <Sparkles className="h-4 w-4 mr-2" />
-                      Acessar Sistema
-                      <ExternalLink className="h-3 w-3 ml-1" />
-                    </a>
-                  </Button>
+                  <InstallAppButton
+                    partnerId={profile.partner_id}
+                    partnerName={partnerName}
+                    appDomain={profile.domains.app}
+                    variant="outline"
+                    size="sm"
+                  />
                 )}
               </div>
             </div>

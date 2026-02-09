@@ -15,6 +15,7 @@ import { PartnerRouteGuard } from "@/components/auth/PartnerRouteGuard";
 import { PartnerLayout } from "@/components/partner/PartnerLayout";
 import { useDynamicFavicon } from "@/hooks/useDynamicFavicon";
 import { PlatformSEOHead } from "@/components/seo/PlatformSEOHead";
+import { PWASetup } from "@/components/pwa/PWASetup";
 
 import Auth from "./pages/Auth";
 import LandingResolver from "./pages/LandingResolver";
@@ -97,6 +98,7 @@ const App = () => (
               <BusinessCategoryProvider>
                 <ActiveStoreProvider>
                   <PlatformSEOHead />
+                  <PWASetup />
                   <Routes>
                     {/* Root route - resolves landing by domain */}
                     <Route path="/" element={<LandingResolver />} />
