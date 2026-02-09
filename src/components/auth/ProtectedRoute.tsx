@@ -11,8 +11,9 @@ interface ProtectedRouteProps {
 
 export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
   const { user, roles, isLoading } = useAuth();
-  const { getDefaultRoute } = useActiveContext();
+  const { getDefaultRoute, contextType, isLoading: contextLoading } = useActiveContext();
   const location = useLocation();
+  console.info('[PROTECTED_ROUTE]', { path: location.pathname, contextType, contextLoading });
 
   if (isLoading) {
     return (

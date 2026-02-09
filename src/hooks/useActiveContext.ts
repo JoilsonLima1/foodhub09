@@ -111,7 +111,8 @@ export function useActiveContext(): ActiveContextValue {
       case 'super_admin': return '/super-admin';
       case 'partner': return '/partner/dashboard';
       case 'tenant': return '/dashboard';
-      default: return '/dashboard';
+      // SAFETY: if context not yet resolved, return '/' to avoid sending partner to /dashboard
+      default: return '/';
     }
   }, [contextType]);
 

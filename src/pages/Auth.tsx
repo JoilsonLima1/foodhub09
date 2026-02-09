@@ -87,8 +87,10 @@ export default function AuthPage() {
       const defaultRoute = context === 'partner' ? '/partner' : getDefaultRoute();
       // CRITICAL: Never send a partner to /dashboard via from state
       const from = location.state?.from?.pathname;
-      const safeFrom = from && from !== '/dashboard' ? from : null;
-      navigate(safeFrom || defaultRoute, { replace: true });
+      const safeFrom = from && !from.startsWith('/dashboard') ? from : null;
+      const target = safeFrom || defaultRoute;
+      console.info('[AUTH_REDIRECT]', { from, contextLoading, activeType: context || 'resolved', defaultRoute, target });
+      navigate(target, { replace: true });
     }
   }, [user, authLoading, contextLoading, hasIntent, hasFromState, navigate, location.state, getDefaultRoute, context]);
 
