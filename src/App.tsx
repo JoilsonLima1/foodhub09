@@ -11,6 +11,7 @@ import { PublicPartnerProvider } from "@/contexts/PublicPartnerContext";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { ModuleRouteGuard } from "@/components/auth/ModuleRouteGuard";
+import { TenantRouteGuard } from "@/components/auth/TenantRouteGuard";
 import { PartnerRouteGuard } from "@/components/auth/PartnerRouteGuard";
 import { PartnerLayout } from "@/components/partner/PartnerLayout";
 import { useDynamicFavicon } from "@/hooks/useDynamicFavicon";
@@ -162,7 +163,13 @@ const App = () => (
                       <Route path="users" element={<PartnerUsersPage />} />
                     </Route>
                     
+                    {/* Super Admin - outside tenant guard */}
                     <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+                      <Route path="/super-admin" element={<SuperAdmin />} />
+                    </Route>
+
+                    {/* Tenant routes - blocked for partner/super_admin context */}
+                    <Route element={<ProtectedRoute><TenantRouteGuard><AppLayout /></TenantRouteGuard></ProtectedRoute>}>
                       <Route path="/dashboard" element={<Dashboard />} />
                       <Route path="/orders" element={<Orders />} />
                       <Route path="/pos" element={<POS />} />
@@ -183,7 +190,6 @@ const App = () => (
                       <Route path="/billing/addons" element={<TenantBillingAddons />} />
                       <Route path="/billing/coupon" element={<TenantBillingCoupon />} />
                       <Route path="/courier-dashboard" element={<CourierDashboard />} />
-                      <Route path="/super-admin" element={<SuperAdmin />} />
                     </Route>
                     
                     <Route path="*" element={<NotFound />} />
