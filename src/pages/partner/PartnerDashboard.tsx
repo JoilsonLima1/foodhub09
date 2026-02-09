@@ -5,8 +5,7 @@
  * Redirects to /partner/onboarding if onboarding is not complete.
  */
 
-import { useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { usePartnerContext } from '@/contexts/PartnerContext';
 import { usePartnerDashboardStats } from '@/hooks/usePartnerData';
 import { usePartnerOnboarding } from '@/hooks/usePartnerOnboarding';
@@ -40,18 +39,9 @@ interface QuickAction {
 }
 
 export default function PartnerDashboard() {
-  const navigate = useNavigate();
   const { currentPartner, partnerBranding } = usePartnerContext();
   const { stats, isLoading } = usePartnerDashboardStats();
   const { progress, isLoading: onboardingLoading } = usePartnerOnboarding();
-
-  // Redirect to onboarding if not complete
-  useEffect(() => {
-    if (onboardingLoading || !progress) return;
-    if (!progress.completed_at && progress.completion_percentage < 100) {
-      navigate('/partner/onboarding', { replace: true });
-    }
-  }, [progress, onboardingLoading, navigate]);
 
   const quickActions: QuickAction[] = [
     {
