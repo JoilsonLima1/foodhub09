@@ -1,6 +1,23 @@
 import { useEffect } from 'react';
 import { usePublicSettings } from '@/hooks/usePublicSettings';
 
+function setFaviconLink(rel: string, href: string, sizes?: string) {
+  const selector = sizes 
+    ? `link[rel="${rel}"][sizes="${sizes}"]`
+    : `link[rel="${rel}"]`;
+  let link = document.querySelector<HTMLLinkElement>(selector);
+  
+  if (!link) {
+    link = document.createElement('link');
+    link.rel = rel;
+    if (sizes) link.setAttribute('sizes', sizes);
+    document.head.appendChild(link);
+  }
+
+  link.type = 'image/png';
+  link.href = href;
+}
+
 export function useDynamicFavicon() {
   const { branding } = usePublicSettings();
 
@@ -9,27 +26,12 @@ export function useDynamicFavicon() {
     
     if (!iconUrl) return;
 
-    // Find existing favicon link or create one
-    let link = document.querySelector<HTMLLinkElement>("link[rel*='icon']");
-    
-    if (!link) {
-      link = document.createElement('link');
-      link.rel = 'icon';
-      document.head.appendChild(link);
-    }
-
-    // Update the favicon href
-    link.type = 'image/png';
-    link.href = iconUrl;
-
-    // Also update apple-touch-icon if exists
-    let appleLink = document.querySelector<HTMLLinkElement>("link[rel='apple-touch-icon']");
-    if (!appleLink) {
-      appleLink = document.createElement('link');
-      appleLink.rel = 'apple-touch-icon';
-      document.head.appendChild(appleLink);
-    }
-    appleLink.href = iconUrl;
+    // Update all favicon variants
+    setFaviconLink('icon', iconUrl, '32x32');
+    setFaviconLink('icon', iconUrl, '16x16');
+    setFaviconLink('icon', iconUrl);
+    setFaviconLink('apple-touch-icon', iconUrl, '180x180');
+    setFaviconLink('apple-touch-icon', iconUrl);
 
   }, [branding?.icon_url]);
 }
