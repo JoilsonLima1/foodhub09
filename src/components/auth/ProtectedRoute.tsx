@@ -1,5 +1,6 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useActiveContext } from '@/hooks/useActiveContext';
 import type { AppRole } from '@/types/database';
 import { Loader2 } from 'lucide-react';
 
@@ -10,6 +11,7 @@ interface ProtectedRouteProps {
 
 export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
   const { user, roles, isLoading } = useAuth();
+  const { getDefaultRoute } = useActiveContext();
   const location = useLocation();
 
   if (isLoading) {
@@ -27,7 +29,8 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
   if (allowedRoles && allowedRoles.length > 0) {
     const hasPermission = allowedRoles.some(role => roles.includes(role));
     if (!hasPermission) {
-      return <Navigate to="/dashboard" replace />;
+      // Use context-aware redirect instead of hardcoded /dashboard
+      return <Navigate to={getDefaultRoute()} replace />;
     }
   }
 

@@ -1,11 +1,19 @@
 /**
  * PartnerLayout - Main layout for partner panel
+ * MUST NOT import AppLayout, AppSidebar, or any tenant components.
  */
 
-import { Outlet } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Outlet, useLocation } from 'react-router-dom';
 import { PartnerSidebar } from './PartnerSidebar';
 
 export function PartnerLayout() {
+  const location = useLocation();
+
+  useEffect(() => {
+    console.info('[PARTNER_LAYOUT]', location.pathname);
+  }, [location.pathname]);
+
   return (
     <div className="min-h-screen flex w-full bg-background">
       <PartnerSidebar />
