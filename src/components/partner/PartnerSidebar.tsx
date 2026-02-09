@@ -33,10 +33,9 @@ import { ContextSwitcher } from '@/components/layout/ContextSwitcher';
 
 const menuItems = [
   { 
-    path: '/partner', 
+    path: '/partner/dashboard', 
     label: 'Dashboard', 
     icon: LayoutDashboard, 
-    end: true 
   },
   { 
     path: '/partner/onboarding', 
@@ -185,7 +184,6 @@ export function PartnerSidebar() {
           <NavLink
             key={item.path}
             to={item.path}
-            end={item.end}
             className={({ isActive }) =>
               cn(
                 'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',

@@ -109,7 +109,7 @@ export function useActiveContext(): ActiveContextValue {
   const getDefaultRoute = useCallback(() => {
     switch (contextType) {
       case 'super_admin': return '/super-admin';
-      case 'partner': return '/partner';
+      case 'partner': return '/partner/dashboard';
       case 'tenant': return '/dashboard';
       default: return '/dashboard';
     }

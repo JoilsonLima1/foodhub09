@@ -77,6 +77,7 @@ import PublicParceiros from "./pages/PublicParceiros";
 import PublicParceiroCadastro from "./pages/PublicParceiroCadastro";
 import PublicParceiroProfile from "./pages/PublicParceiroProfile";
 import PartnerAuth from "./pages/PartnerAuth";
+import PartnerIndexRedirect from "./components/partner/PartnerIndexRedirect";
 
 const queryClient = new QueryClient();
 
@@ -141,7 +142,8 @@ const App = () => (
                     
                     {/* Partner Panel Routes */}
                     <Route path="/partner" element={<PartnerRouteGuard><PartnerLayout /></PartnerRouteGuard>}>
-                      <Route index element={<PartnerDashboard />} />
+                      <Route index element={<PartnerIndexRedirect />} />
+                      <Route path="dashboard" element={<PartnerDashboard />} />
                       <Route path="onboarding" element={<PartnerOnboardingPage />} />
                       <Route path="tenants" element={<PartnerTenants />} />
                       <Route path="tenants/create" element={<CreatePartnerTenant />} />
@@ -161,6 +163,7 @@ const App = () => (
                       <Route path="notifications" element={<PartnerNotificationsPage />} />
                       <Route path="leads" element={<PartnerLeadsPage />} />
                       <Route path="users" element={<PartnerUsersPage />} />
+                      <Route path="*" element={<Navigate to="/partner/dashboard" replace />} />
                     </Route>
                     
                     {/* Super Admin - outside tenant guard */}

@@ -1,10 +1,8 @@
 /**
  * TenantRouteGuard - Prevents partner/super_admin users from accessing tenant routes
  * 
- * Redirects users to their correct dashboard based on active context:
- * - partner context → /partner
- * - super_admin context → /super-admin
- * - tenant context → renders children normally
+ * CRITICAL: Returns a neutral loader during loading to prevent flash of tenant UI (AppLayout/AppSidebar).
+ * Only renders children when contextType is confirmed as 'tenant'.
  */
 
 import { ReactNode } from 'react';
@@ -19,6 +17,8 @@ interface TenantRouteGuardProps {
 export function TenantRouteGuard({ children }: TenantRouteGuardProps) {
   const { contextType, isLoading } = useActiveContext();
 
+  // CRITICAL: Do NOT render children (which includes AppLayout/AppSidebar) while loading.
+  // This prevents the "flash of tenant UI" for partner users.
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -32,9 +32,11 @@ export function TenantRouteGuard({ children }: TenantRouteGuardProps) {
     return <Navigate to="/partner" replace />;
   }
 
-  // Note: super_admin with tenant context='super_admin' can still access tenant routes
-  // if they explicitly switch context to 'tenant' via ContextSwitcher.
-  // We only block when active context is clearly not tenant.
+  // Super admin with active context 'super_admin' → redirect to super admin panel
+  if (contextType === 'super_admin') {
+    return <Navigate to="/super-admin" replace />;
+  }
 
+  // Only render tenant layout/children when context is confirmed as 'tenant'
   return <>{children}</>;
 }
