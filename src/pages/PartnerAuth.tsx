@@ -53,14 +53,17 @@ export default function PartnerAuthPage() {
   const searchParams = new URLSearchParams(location.search);
   const intent = searchParams.get('intent') || 'login';
 
-  // Handle redirects after auth
+  // Handle redirects after auth - ALWAYS send to /partner for partner auth page
   useEffect(() => {
     if (authLoading) return;
     
     if (user) {
-      // Redirect to appropriate dashboard
-      const from = location.state?.from?.pathname || '/dashboard';
-      navigate(from, { replace: true });
+      // PartnerAuth is ONLY used on partner app domains, so always redirect to /partner
+      const from = location.state?.from?.pathname;
+      // CRITICAL: Never send partner users to /dashboard from partner auth
+      const safeFrom = from && !from.startsWith('/dashboard') ? from : null;
+      console.info('[PARTNER_AUTH_REDIRECT]', { from, safeFrom, target: safeFrom || '/partner' });
+      navigate(safeFrom || '/partner', { replace: true });
     }
   }, [user, authLoading, navigate, location.state]);
 

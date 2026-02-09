@@ -16,6 +16,7 @@ interface TenantRouteGuardProps {
 
 export function TenantRouteGuard({ children }: TenantRouteGuardProps) {
   const { contextType, isLoading } = useActiveContext();
+  console.info('[TENANT_GUARD]', { contextType, isLoading });
 
   // CRITICAL: Do NOT render children (which includes AppLayout/AppSidebar) while loading.
   // This prevents the "flash of tenant UI" for partner users.
