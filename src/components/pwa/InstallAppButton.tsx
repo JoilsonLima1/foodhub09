@@ -19,6 +19,12 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Download, Share, Plus, Smartphone, ExternalLink, Info } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { usePWAInstall } from '@/hooks/usePWAInstall';
 
 interface InstallAppButtonProps {
@@ -101,7 +107,24 @@ export function InstallAppButton({
   const isIOSDevice = isIOS;
   const showFallbackButton = isIOSDevice || platform === 'android' || platform === 'unknown';
 
-  if (!showFallbackButton) return null; // Desktop: no install button
+  // Desktop: show button with tooltip indicating mobile-only
+  if (!showFallbackButton) {
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant={variant} size={size} className={`${className} opacity-80`} disabled>
+              <Smartphone className="h-4 w-4 mr-2" />
+              Baixar App
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Disponível no celular</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
 
   return (
     <>
