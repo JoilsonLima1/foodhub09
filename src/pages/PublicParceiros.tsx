@@ -12,6 +12,7 @@ import { usePublicTheme } from '@/hooks/usePublicTheme';
 import { resetThemeToDefault } from '@/hooks/useBusinessCategory';
 import { LandingHeader } from '@/components/landing/LandingHeader';
 import { LandingFooter } from '@/components/landing/LandingFooter';
+import { InstallAppButton } from '@/components/pwa/InstallAppButton';
 import { WhatsAppButton } from '@/components/landing/WhatsAppButton';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -165,6 +166,12 @@ export default function PublicParceiros() {
                 <ArrowRight className="h-5 w-5 ml-2" />
               </a>
             </Button>
+            <InstallAppButton
+              partnerName={companyName}
+              variant="outline"
+              size="lg"
+              className="text-lg px-8"
+            />
           </div>
           
           {/* Trust badges */}
@@ -296,7 +303,11 @@ export default function PublicParceiros() {
         </div>
       </section>
 
-      <LandingFooter logoUrl={logoUrl} companyName={companyName} />
+      <LandingFooter 
+        logoUrl={logoUrl} 
+        companyName={companyName}
+        installApp={{ partnerName: companyName }}
+      />
       
       <WhatsAppButton phoneNumber="" companyName={companyName} variant="floating" />
     </div>
