@@ -19,12 +19,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Download, Share, Plus, Smartphone, ExternalLink, Info } from 'lucide-react';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { usePWAInstall } from '@/hooks/usePWAInstall';
 
 interface InstallAppButtonProps {
@@ -67,24 +61,8 @@ export function InstallAppButton({
 
   const [showDialog, setShowDialog] = useState(false);
 
-  // DEBUG: log visibility conditions on mobile
-  console.log('[InstallAppButton]', {
-    isInstalled,
-    isInstallable,
-    isIOS,
-    platform,
-    appDomain,
-    appDomainOnly,
-    hostname: window.location.hostname,
-    partnerId,
-    partnerSlug,
-  });
-
   // If already installed in standalone mode, don't show
-  if (isInstalled) {
-    console.log('[InstallAppButton] Hidden: already installed (standalone)');
-    return null;
-  }
+  if (isInstalled) return null;
 
   // On the marketing domain, if appDomain exists, link to it
   const isOnAppDomain = appDomain
@@ -119,28 +97,8 @@ export function InstallAppButton({
     );
   }
 
-  // iOS or fallback: show instructions dialog
+  // For all platforms (mobile + desktop): show instructions dialog
   const isIOSDevice = isIOS;
-  const showFallbackButton = isIOSDevice || platform === 'android' || platform === 'unknown';
-
-  // Desktop: show button with tooltip indicating mobile-only
-  if (!showFallbackButton) {
-    return (
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button variant={variant} size={size} className={`${className} opacity-80`} disabled>
-              <Smartphone className="h-4 w-4 mr-2" />
-              Baixar App
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Disponível no celular</p>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-    );
-  }
 
   return (
     <>
@@ -167,11 +125,31 @@ export function InstallAppButton({
             <DialogDescription>
               {isIOSDevice
                 ? 'Adicione o app à tela inicial do seu iPhone/iPad'
+                : platform === 'desktop'
+                ? 'Acesse pelo celular para instalar o app'
                 : 'Adicione o app à tela inicial do seu celular'}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-6 py-4">
-            {isIOSDevice ? (
+            {platform === 'desktop' ? (
+              <>
+                <InstallStep
+                  step={1}
+                  title="Abra no celular"
+                  description={<>Acesse <strong>{window.location.hostname}</strong> no navegador do seu celular</>}
+                />
+                <InstallStep
+                  step={2}
+                  title="Instale o app"
+                  description="No Android, toque em 'Instalar'. No iPhone, use Compartilhar → Adicionar à Tela de Início."
+                />
+                <InstallStep
+                  step={3}
+                  title="Pronto!"
+                  description="O app aparecerá na sua tela inicial como um ícone"
+                />
+              </>
+            ) : isIOSDevice ? (
               <>
                 <InstallStep
                   step={1}
