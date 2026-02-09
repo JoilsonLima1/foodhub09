@@ -645,6 +645,53 @@ serve(async (req) => {
         );
       }
 
+      case 'change-email': {
+        // Only super_admin can change emails
+        if (!isSuperAdmin) {
+          return new Response(
+            JSON.stringify({ error: 'Apenas Super Admins podem alterar emails' }),
+            { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const { newEmail } = body;
+
+        if (!userId || !newEmail) {
+          return new Response(
+            JSON.stringify({ error: 'userId and newEmail required' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(newEmail)) {
+          return new Response(
+            JSON.stringify({ error: 'Email inválido' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const { error: changeEmailError } = await supabaseAdmin.auth.admin.updateUserById(
+          userId,
+          { email: newEmail, email_confirm: true }
+        );
+
+        if (changeEmailError) {
+          console.error('[manage-users] Change email error:', changeEmailError);
+          return new Response(
+            JSON.stringify({ error: changeEmailError.message || 'Falha ao alterar email' }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        console.log(`[manage-users] Email changed for user: ${userId} to ${newEmail}`);
+
+        return new Response(
+          JSON.stringify({ success: true }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       default:
         return new Response(
           JSON.stringify({ error: 'Invalid action' }),
