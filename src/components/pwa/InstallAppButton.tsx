@@ -67,8 +67,24 @@ export function InstallAppButton({
 
   const [showDialog, setShowDialog] = useState(false);
 
+  // DEBUG: log visibility conditions on mobile
+  console.log('[InstallAppButton]', {
+    isInstalled,
+    isInstallable,
+    isIOS,
+    platform,
+    appDomain,
+    appDomainOnly,
+    hostname: window.location.hostname,
+    partnerId,
+    partnerSlug,
+  });
+
   // If already installed in standalone mode, don't show
-  if (isInstalled) return null;
+  if (isInstalled) {
+    console.log('[InstallAppButton] Hidden: already installed (standalone)');
+    return null;
+  }
 
   // On the marketing domain, if appDomain exists, link to it
   const isOnAppDomain = appDomain
