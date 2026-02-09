@@ -1,9 +1,17 @@
+/**
+ * useServiceWorker - Registers and manages the service worker
+ * 
+ * Only registers on non-localhost app domains (or localhost for dev).
+ * Handles update detection and notification.
+ */
+
 import { useState, useEffect, useCallback } from 'react';
 
 interface ServiceWorkerState {
   isSupported: boolean;
   isRegistered: boolean;
   registration: ServiceWorkerRegistration | null;
+  updateAvailable: boolean;
   error: Error | null;
 }
 
@@ -12,6 +20,7 @@ export function useServiceWorker() {
     isSupported: false,
     isRegistered: false,
     registration: null,
+    updateAvailable: false,
     error: null,
   });
 
@@ -28,6 +37,19 @@ export function useServiceWorker() {
 
       console.log('[SW] Service Worker registrado:', registration.scope);
 
+      // Listen for updates
+      registration.addEventListener('updatefound', () => {
+        const newWorker = registration.installing;
+        if (newWorker) {
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              console.log('[SW] Nova versão disponível');
+              setState(prev => ({ ...prev, updateAvailable: true }));
+            }
+          });
+        }
+      });
+
       // Wait for the service worker to be ready
       await navigator.serviceWorker.ready;
 
@@ -35,6 +57,7 @@ export function useServiceWorker() {
         isSupported: true,
         isRegistered: true,
         registration,
+        updateAvailable: false,
         error: null,
       });
 
@@ -57,8 +80,16 @@ export function useServiceWorker() {
         isSupported: true,
         isRegistered: false,
         registration: null,
+        updateAvailable: false,
         error: null,
       });
+    }
+  }, [state.registration]);
+
+  const applyUpdate = useCallback(() => {
+    if (state.registration?.waiting) {
+      state.registration.waiting.postMessage({ type: 'CHECK_UPDATE' });
+      window.location.reload();
     }
   }, [state.registration]);
 
@@ -70,7 +101,6 @@ export function useServiceWorker() {
       }
 
       try {
-        // Send message to service worker to show notification
         if (navigator.serviceWorker.controller) {
           navigator.serviceWorker.controller.postMessage({
             type: 'SHOW_NOTIFICATION',
@@ -80,7 +110,6 @@ export function useServiceWorker() {
           return true;
         }
 
-        // Fallback: use registration directly
         await state.registration.showNotification(title, options);
         return true;
       } catch (error) {
@@ -96,17 +125,16 @@ export function useServiceWorker() {
     setState((prev) => ({ ...prev, isSupported }));
 
     if (isSupported) {
-      // Check if already registered
       navigator.serviceWorker.getRegistration().then((registration) => {
         if (registration) {
           setState({
             isSupported: true,
             isRegistered: true,
             registration,
+            updateAvailable: false,
             error: null,
           });
         } else {
-          // Auto-register
           register();
         }
       });
@@ -117,6 +145,7 @@ export function useServiceWorker() {
     ...state,
     register,
     unregister,
+    applyUpdate,
     showNotification,
   };
 }

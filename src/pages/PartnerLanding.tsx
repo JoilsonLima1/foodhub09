@@ -187,6 +187,7 @@ export default function PartnerLanding() {
               <InstallAppButton
                 partnerId={partner.partnerId}
                 partnerName={platformName}
+                partnerSlug={partner.partnerSlug}
                 appDomain={null}
                 variant="outline"
                 size="lg"
