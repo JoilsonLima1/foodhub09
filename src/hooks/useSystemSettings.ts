@@ -6,6 +6,7 @@ import type { Json } from '@/integrations/supabase/types';
 export interface BrandingSettings {
   logo_url: string | null;
   icon_url: string | null;
+  pwa_icon_url: string | null;
   company_name: string;
 }
 

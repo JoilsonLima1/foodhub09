@@ -22,6 +22,7 @@ export function BrandingSettings() {
   const [brandingData, setBrandingData] = useState<BrandingType>({
     logo_url: null,
     icon_url: null,
+    pwa_icon_url: null,
     company_name: 'FoodHub',
   });
 
@@ -169,6 +170,18 @@ export function BrandingSettings() {
               folder="icons"
               maxSizeMB={5}
               removeBackground={true}
+            />
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-1">
+            <ImageUploader
+              value={brandingData.pwa_icon_url}
+              onChange={(url) => setBrandingData({ ...brandingData, pwa_icon_url: url })}
+              label="Ícone do App (PWA)"
+              description="Ícone exibido ao instalar o app no celular. Recomendado: 512×512 PNG quadrado."
+              folder="pwa-icons"
+              maxSizeMB={5}
+              removeBackground={false}
             />
           </div>
           
