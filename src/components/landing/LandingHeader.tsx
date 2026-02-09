@@ -119,6 +119,9 @@ export function LandingHeader({ logoUrl, companyName, whatsappNumber, onOpenChat
             <button onClick={() => { navigate('/clientes'); setIsMobileMenuOpen(false); }} className="text-left py-2 text-foreground/80 hover:text-primary transition-colors font-medium">
               Clientes
             </button>
+            <button onClick={() => { navigate('/parceiros'); setIsMobileMenuOpen(false); }} className="text-left py-2 text-foreground/80 hover:text-primary transition-colors font-medium">
+              Parceiros
+            </button>
             <button onClick={() => scrollTo('faq')} className="text-left py-2 text-foreground/80 hover:text-primary transition-colors font-medium">
               FAQ
             </button>

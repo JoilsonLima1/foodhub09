@@ -127,6 +127,7 @@ export default function Landing() {
         logoUrl={logoUrl}
         companyName={companyName}
         whatsappNumber={whatsappNumber}
+        installApp={{ partnerName: companyName }}
       />
 
       {/* Floating WhatsApp Button */}

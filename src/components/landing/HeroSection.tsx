@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowRight, Play, CheckCircle2 } from 'lucide-react';
 import { HeroBadges } from './HeroBadges';
 import { PublicHeroTitlePart, PublicHeroTitleHighlightStyle } from '@/hooks/usePublicSettings';
+import { InstallAppButton } from '@/components/pwa/InstallAppButton';
 
 interface HeroTitleParts {
   top: PublicHeroTitlePart;
@@ -195,6 +196,11 @@ export function HeroSection({
               <Play className="mr-2 h-5 w-5 group-hover:scale-110 transition-transform" />
               Ver Planos
             </Button>
+            <InstallAppButton
+              variant="outline"
+              size="lg"
+              className="text-lg h-16 px-10 rounded-full"
+            />
           </div>
           
           <p className="text-sm text-muted-foreground mt-4">
