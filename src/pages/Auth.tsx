@@ -61,7 +61,8 @@ export default function AuthPage() {
   // Check intent params
   const searchParams = new URLSearchParams(location.search);
   const intent = searchParams.get('intent');
-  const hasIntent = searchParams.has('intent') || searchParams.has('plan');
+  const context = searchParams.get('context');
+  const hasIntent = searchParams.has('intent') || searchParams.has('plan') || searchParams.has('context');
   const hasFromState = !!location.state?.from;
 
   // IMPORTANT: Reset theme to default on auth page mount
@@ -82,7 +83,9 @@ export default function AuthPage() {
     
     // Redirect based on active context if already logged in
     if (user && !contextLoading) {
-      const from = location.state?.from?.pathname || getDefaultRoute();
+      // If context=partner, redirect to partner area
+      const defaultRoute = context === 'partner' ? '/partner' : getDefaultRoute();
+      const from = location.state?.from?.pathname || defaultRoute;
       navigate(from, { replace: true });
     }
   }, [user, authLoading, contextLoading, hasIntent, hasFromState, navigate, location.state, getDefaultRoute]);
@@ -125,8 +128,9 @@ export default function AuthPage() {
         setError(error.message);
       }
     } else {
-      // Small delay for context to resolve after login
-      setTimeout(() => navigate(getDefaultRoute()), 100);
+      // Redirect based on context param or default
+      const targetRoute = context === 'partner' ? '/partner' : getDefaultRoute();
+      setTimeout(() => navigate(targetRoute), 100);
     }
     
     setIsLoading(false);

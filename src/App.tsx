@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { BusinessCategoryProvider } from "@/contexts/BusinessCategoryContext";
 import { ActiveStoreProvider } from "@/contexts/ActiveStoreContext";
@@ -85,6 +85,14 @@ function DynamicFaviconHandler() {
   return null;
 }
 
+/** Preserves query params (e.g. context=partner) when redirecting /login → /auth */
+function LoginRedirect() {
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  params.set('intent', 'login');
+  return <Navigate to={`/auth?${params.toString()}`} replace />;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -115,7 +123,7 @@ const App = () => (
                     {/* Partner public routes */}
                     <Route path="/p/:partnerSlug" element={<PartnerLanding />} />
                     <Route path="/signup" element={<PartnerSignup />} />
-                    <Route path="/login" element={<Navigate to="/auth?intent=login" replace />} />
+                    <Route path="/login" element={<LoginRedirect />} />
                     
                     {/* Friendly redirect routes for SEO */}
                     <Route path="/cadastro" element={<Navigate to="/auth?plan=free&intent=signup" replace />} />
