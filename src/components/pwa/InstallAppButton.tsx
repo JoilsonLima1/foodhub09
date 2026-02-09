@@ -4,7 +4,9 @@
  * Behavior:
  * - Android/Chrome: shows "Instalar App" button that triggers native prompt
  * - iOS/Safari: shows "Como instalar" button with step-by-step modal
- * - Already installed or unsupported: hides or shows link to app domain
+ * - If no native prompt: shows fallback "Como instalar" UI
+ * - Marketing domain: links to partner app domain (or fallback with ?partner=slug)
+ * - Already installed in standalone: hides completely
  */
 
 import { useState } from 'react';
@@ -16,12 +18,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Download, Share, Plus, Smartphone, ExternalLink } from 'lucide-react';
+import { Download, Share, Plus, Smartphone, ExternalLink, Info } from 'lucide-react';
 import { usePWAInstall } from '@/hooks/usePWAInstall';
 
 interface InstallAppButtonProps {
   partnerId?: string | null;
   partnerName?: string;
+  partnerSlug?: string | null;
   appDomain?: string | null;
   variant?: 'default' | 'outline' | 'secondary' | 'ghost';
   size?: 'default' | 'sm' | 'lg';
@@ -30,9 +33,17 @@ interface InstallAppButtonProps {
   appDomainOnly?: boolean;
 }
 
+function getAppUrl(appDomain?: string | null, partnerSlug?: string | null): string {
+  if (appDomain) return `https://${appDomain}`;
+  // Fallback: platform app with partner query param
+  if (partnerSlug) return `${window.location.origin}/?partner=${encodeURIComponent(partnerSlug)}`;
+  return '/';
+}
+
 export function InstallAppButton({
   partnerId,
   partnerName = 'o aplicativo',
+  partnerSlug,
   appDomain,
   variant = 'default',
   size = 'default',
@@ -44,7 +55,6 @@ export function InstallAppButton({
     isInstalled,
     isIOS,
     platform,
-    showIOSInstructions,
     promptInstall,
     toggleIOSInstructions,
   } = usePWAInstall(partnerId);
@@ -57,21 +67,16 @@ export function InstallAppButton({
   // On the marketing domain, if appDomain exists, link to it
   const isOnAppDomain = appDomain
     ? window.location.hostname === appDomain
-    : true; // If no appDomain configured, assume we're on app
+    : true;
 
-  // If appDomainOnly and we're NOT on the app domain, show link instead
   if (appDomainOnly && !isOnAppDomain) return null;
 
-  // If we're on marketing domain and there's an app domain, show redirect link
-  if (!isOnAppDomain && appDomain) {
+  // Marketing domain: show link to app domain
+  if (!isOnAppDomain) {
+    const appUrl = getAppUrl(appDomain, partnerSlug);
     return (
-      <Button
-        variant={variant}
-        size={size}
-        className={className}
-        asChild
-      >
-        <a href={`https://${appDomain}`} target="_blank" rel="noopener noreferrer">
+      <Button variant={variant} size={size} className={className} asChild>
+        <a href={appUrl} target="_blank" rel="noopener noreferrer">
           <Smartphone className="h-4 w-4 mr-2" />
           Baixar App
           <ExternalLink className="h-3 w-3 ml-1" />
@@ -80,111 +85,26 @@ export function InstallAppButton({
     );
   }
 
-  // iOS: show instructions modal
-  if (isIOS) {
-    return (
-      <>
-        <Button
-          variant={variant}
-          size={size}
-          className={className}
-          onClick={() => {
-            setShowDialog(true);
-            toggleIOSInstructions(true);
-          }}
-        >
-          <Download className="h-4 w-4 mr-2" />
-          Instalar App
-        </Button>
+  // --- On App Domain ---
 
-        <Dialog open={showDialog} onOpenChange={(open) => {
-          setShowDialog(open);
-          if (!open) toggleIOSInstructions(false);
-        }}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Instalar {partnerName}</DialogTitle>
-              <DialogDescription>
-                Adicione o app à tela inicial do seu iPhone/iPad
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-6 py-4">
-              <div className="flex items-start gap-4">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-sm">
-                  1
-                </div>
-                <div>
-                  <p className="font-medium">Toque no botão Compartilhar</p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    No Safari, toque no ícone <Share className="inline h-4 w-4" /> na barra inferior
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-start gap-4">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-sm">
-                  2
-                </div>
-                <div>
-                  <p className="font-medium">Selecione "Adicionar à Tela de Início"</p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Role a lista e toque em <Plus className="inline h-4 w-4" /> Adicionar à Tela de Início
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-start gap-4">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-sm">
-                  3
-                </div>
-                <div>
-                  <p className="font-medium">Confirme tocando "Adicionar"</p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    O app aparecerá na sua tela inicial como um ícone
-                  </p>
-                </div>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </>
-    );
-  }
-
-  // Android/Chrome: native install prompt
+  // Android/Chrome: native install prompt available
   if (isInstallable) {
     return (
-      <Button
-        variant={variant}
-        size={size}
-        className={className}
-        onClick={promptInstall}
-      >
+      <Button variant={variant} size={size} className={className} onClick={promptInstall}>
         <Download className="h-4 w-4 mr-2" />
         Instalar App
       </Button>
     );
   }
 
-  // Desktop or no prompt available: show link to app domain if on marketing
-  if (!isOnAppDomain && appDomain) {
-    return (
-      <Button
-        variant={variant}
-        size={size}
-        className={className}
-        asChild
-      >
-        <a href={`https://${appDomain}`} target="_blank" rel="noopener noreferrer">
-          <Smartphone className="h-4 w-4 mr-2" />
-          Acessar App
-          <ExternalLink className="h-3 w-3 ml-1" />
-        </a>
-      </Button>
-    );
-  }
+  // iOS or fallback: show instructions dialog
+  const isIOSDevice = isIOS;
+  const showFallbackButton = isIOSDevice || platform === 'android' || platform === 'unknown';
 
-  // On app domain but no prompt (desktop/unsupported): show iOS-like instructions for mobile
-  if (platform === 'android' || platform === 'ios') {
-    return (
+  if (!showFallbackButton) return null; // Desktop: no install button
+
+  return (
+    <>
       <Button
         variant={variant}
         size={size}
@@ -197,9 +117,81 @@ export function InstallAppButton({
         <Download className="h-4 w-4 mr-2" />
         Instalar App
       </Button>
-    );
-  }
 
-  // Desktop: don't show install button
-  return null;
+      <Dialog open={showDialog} onOpenChange={(open) => {
+        setShowDialog(open);
+        if (!open) toggleIOSInstructions(false);
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Instalar {partnerName}</DialogTitle>
+            <DialogDescription>
+              {isIOSDevice
+                ? 'Adicione o app à tela inicial do seu iPhone/iPad'
+                : 'Adicione o app à tela inicial do seu celular'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-6 py-4">
+            {isIOSDevice ? (
+              <>
+                <InstallStep
+                  step={1}
+                  title="Toque no botão Compartilhar"
+                  description={<>No Safari, toque no ícone <Share className="inline h-4 w-4" /> na barra inferior</>}
+                />
+                <InstallStep
+                  step={2}
+                  title='Selecione "Adicionar à Tela de Início"'
+                  description={<>Role a lista e toque em <Plus className="inline h-4 w-4" /> Adicionar à Tela de Início</>}
+                />
+                <InstallStep
+                  step={3}
+                  title='Confirme tocando "Adicionar"'
+                  description="O app aparecerá na sua tela inicial como um ícone"
+                />
+              </>
+            ) : (
+              <>
+                <InstallStep
+                  step={1}
+                  title="Abra o menu do navegador"
+                  description="Toque nos três pontos (⋮) no canto superior direito do Chrome"
+                />
+                <InstallStep
+                  step={2}
+                  title='Toque em "Instalar aplicativo"'
+                  description='Ou "Adicionar à tela inicial" dependendo do navegador'
+                />
+                <InstallStep
+                  step={3}
+                  title="Confirme a instalação"
+                  description="O app aparecerá na sua tela inicial como um ícone"
+                />
+              </>
+            )}
+            <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+              <Info className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+              <p className="text-xs text-muted-foreground">
+                O app funciona offline e recebe atualizações automáticas. Nenhum download da loja de apps é necessário.
+              </p>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+function InstallStep({ step, title, description }: { step: number; title: string; description: React.ReactNode }) {
+  return (
+    <div className="flex items-start gap-4">
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-sm">
+        {step}
+      </div>
+      <div>
+        <p className="font-medium">{title}</p>
+        <p className="text-sm text-muted-foreground mt-1">{description}</p>
+      </div>
+    </div>
+  );
 }

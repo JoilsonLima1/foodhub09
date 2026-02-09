@@ -210,11 +210,20 @@ export default function PublicParceiroProfile() {
                     </a>
                   </Button>
                 )}
-                {profile.domains?.app && (
+                {profile.domains?.app ? (
                   <InstallAppButton
                     partnerId={profile.partner_id}
                     partnerName={partnerName}
+                    partnerSlug={profile.slug}
                     appDomain={profile.domains.app}
+                    variant="outline"
+                    size="sm"
+                  />
+                ) : (
+                  <InstallAppButton
+                    partnerId={profile.partner_id}
+                    partnerName={partnerName}
+                    partnerSlug={profile.slug}
                     variant="outline"
                     size="sm"
                   />
