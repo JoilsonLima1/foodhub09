@@ -61,7 +61,9 @@ export default function PublicParceiroCadastro() {
     setIsLoading(true);
 
     try {
-      // 1. Create auth user
+      // Step 1: Try to sign up (or sign in if already exists)
+      let userId: string | null = null;
+
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -76,29 +78,41 @@ export default function PublicParceiroCadastro() {
 
       if (authError) {
         if (authError.message.includes('already registered')) {
-          setError('Este email já está cadastrado. Faça login ou use outro email.');
+          // User already exists - try to sign in
+          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+            email: formData.email,
+            password: formData.password,
+          });
+
+          if (signInError) {
+            setError('Este email já está cadastrado. Faça login com sua senha.');
+            return;
+          }
+          userId = signInData.user?.id ?? null;
         } else {
-          setError(authError.message);
+          setError(`Erro de autenticação: ${authError.message}`);
+          return;
         }
+      } else {
+        userId = authData.user?.id ?? null;
+      }
+
+      if (!userId) {
+        setError('Erro ao obter ID do usuário. Tente novamente.');
         return;
       }
 
-      if (!authData.user) {
-        setError('Erro ao criar conta. Tente novamente.');
-        return;
-      }
-
-      // 2. Generate slug from name
-      let slug = formData.name
+      // Step 2: Generate slug from name
+      const slug = formData.name
         .toLowerCase()
         .replace(/[^a-z0-9]/g, '-')
         .replace(/-+/g, '-')
         .replace(/^-|-$/g, '');
 
-      // 3. Complete partner registration
+      // Step 3: Call atomic RPC
       const { data: partnerData, error: partnerError } = await supabase
         .rpc('complete_partner_registration', {
-          p_user_id: authData.user.id,
+          p_user_id: userId,
           p_name: formData.name,
           p_slug: slug,
           p_email: formData.email,
@@ -106,30 +120,50 @@ export default function PublicParceiroCadastro() {
         });
 
       if (partnerError) {
-        console.error('Partner registration error:', partnerError);
-        setError('Erro ao criar parceiro. Tente novamente.');
+        console.error('Partner registration RPC error:', partnerError);
+        setError(`Erro ao criar parceiro: ${partnerError.message} (${partnerError.code})`);
         return;
       }
 
-      const result = partnerData as { success: boolean; redirect_url?: string; message?: string };
+      const result = partnerData as { success: boolean; status?: string; redirect_url?: string; message?: string; code?: string };
 
       if (!result.success) {
-        setError(result.message || 'Erro ao criar parceiro.');
+        setError(`Erro: ${result.message || 'Falha desconhecida'} ${result.code ? `(${result.code})` : ''}`);
         return;
       }
 
-      toast.success('Conta criada com sucesso!', {
-        description: 'Você será redirecionado para o onboarding.',
+      // Step 4: Ensure we have an active session
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        // Sign in if signup didn't auto-login
+        const { error: loginError } = await supabase.auth.signInWithPassword({
+          email: formData.email,
+          password: formData.password,
+        });
+        if (loginError) {
+          // Account created but needs email confirmation
+          toast.success('Conta criada com sucesso!', {
+            description: 'Verifique seu email para confirmar e depois faça login.',
+          });
+          setTimeout(() => navigate('/auth?intent=login'), 2000);
+          return;
+        }
+      }
+
+      // Step 5: Set context and redirect
+      localStorage.setItem('active_context', 'partner');
+
+      toast.success('Conta de parceiro criada!', {
+        description: 'Redirecionando para o onboarding...',
       });
 
-      // 4. Redirect to partner onboarding
       setTimeout(() => {
-        navigate('/partner/onboarding');
-      }, 1500);
+        navigate(result.redirect_url || '/partner/onboarding');
+      }, 1000);
 
     } catch (err) {
       console.error('Registration error:', err);
-      setError('Erro inesperado. Tente novamente.');
+      setError(`Erro inesperado: ${err instanceof Error ? err.message : 'Tente novamente.'}`);
     } finally {
       setIsLoading(false);
     }

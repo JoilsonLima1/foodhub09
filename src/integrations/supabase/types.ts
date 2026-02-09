@@ -12810,6 +12810,10 @@ export type Database = {
         Args: { _order_id: string; _user_id: string }
         Returns: boolean
       }
+      is_partner_admin: {
+        Args: { _partner_id: string; _user_id: string }
+        Returns: boolean
+      }
       link_invoice_to_provider: {
         Args: {
           p_invoice_id: string
