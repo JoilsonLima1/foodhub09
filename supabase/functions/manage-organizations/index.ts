@@ -657,7 +657,8 @@ serve(async (req) => {
           // Recipes
           'recipe_items',
           'recipes',
-          // Products
+          // Products (table_session_items references products)
+          'table_session_items',
           'product_addon_mapping',
           'product_addons',
           'product_variations',
