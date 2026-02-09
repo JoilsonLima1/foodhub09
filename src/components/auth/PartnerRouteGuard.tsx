@@ -98,12 +98,16 @@ export function PartnerRouteGuard({ children, requireAdmin = false }: PartnerRou
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Alert className="max-w-md">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Acesso restrito</AlertTitle>
+          <AlertTitle>Esta conta não é de parceiro</AlertTitle>
           <AlertDescription className="mt-2">
-            Esta área é exclusiva para parceiros. Se você é um parceiro, entre em contato com o administrador.
-            <div className="mt-4">
+            A conta que você usou para entrar não possui acesso ao painel de parceiros. 
+            Verifique se usou o email correto ou crie uma nova conta de parceiro.
+            <div className="mt-4 flex gap-2">
               <Button variant="outline" onClick={() => navigate('/')}>
                 Voltar ao início
+              </Button>
+              <Button onClick={() => navigate('/parceiros/cadastrar')}>
+                Criar conta de parceiro
               </Button>
             </div>
           </AlertDescription>

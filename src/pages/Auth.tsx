@@ -188,7 +188,7 @@ export default function AuthPage() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => navigate('/')}
+            onClick={() => navigate(context === 'partner' ? '/parceiros' : '/')}
             className="w-fit gap-2"
           >
             ← Voltar
@@ -210,7 +210,9 @@ export default function AuthPage() {
               />
               <div className="text-center">
                 <h1 className="text-xl sm:text-2xl font-bold text-foreground">{companyName}</h1>
-                <p className="text-xs sm:text-sm text-muted-foreground mt-1">Sistema de Gestão para Restaurantes</p>
+                <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+                  {context === 'partner' ? 'Área do Parceiro' : 'Sistema de Gestão para Restaurantes'}
+                </p>
               </div>
             </div>
       
@@ -223,11 +225,13 @@ export default function AuthPage() {
             </Alert>
           )}
 
-          <Tabs defaultValue={searchParams.get('intent') === 'signup' ? 'signup' : 'login'} className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="login">Entrar</TabsTrigger>
-              <TabsTrigger value="signup">Cadastrar</TabsTrigger>
-            </TabsList>
+          <Tabs defaultValue={context === 'partner' ? 'login' : (searchParams.get('intent') === 'signup' ? 'signup' : 'login')} className="w-full">
+            {context !== 'partner' && (
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="login">Entrar</TabsTrigger>
+                <TabsTrigger value="signup">Cadastrar</TabsTrigger>
+              </TabsList>
+            )}
             
             <TabsContent value="login">
               <form onSubmit={handleLogin} className="space-y-4">
@@ -259,6 +263,14 @@ export default function AuthPage() {
                   {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Entrar
                 </Button>
+                {context === 'partner' && (
+                  <p className="text-center text-sm text-muted-foreground mt-3">
+                    Ainda não é parceiro?{' '}
+                    <Button variant="link" className="p-0 h-auto text-sm" onClick={() => navigate('/parceiros/cadastrar')}>
+                      Criar conta de parceiro
+                    </Button>
+                  </p>
+                )}
               </form>
             </TabsContent>
             
