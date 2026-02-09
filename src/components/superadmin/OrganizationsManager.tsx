@@ -396,6 +396,8 @@ export function OrganizationsManager() {
                   onChange={(e) => setDeletePassword(e.target.value)}
                   placeholder="Sua senha"
                   className="pr-10"
+                  autoComplete="new-password"
+                  name="delete-confirm-password"
                 />
                 <Button
                   type="button"
