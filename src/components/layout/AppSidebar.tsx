@@ -48,6 +48,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useState, useMemo } from 'react';
 import fallbackLogo from '@/assets/logo.png';
+import { ContextSwitcher } from '@/components/layout/ContextSwitcher';
 import { TrialStatusBadge } from '@/components/trial/TrialStatusBadge';
 import { StoreSelector } from './StoreSelector';
 
@@ -402,6 +403,11 @@ export function AppSidebar() {
             <ChevronLeft className="h-3.5 w-3.5" />
           )}
         </button>
+
+        {/* Context Switcher */}
+        <div className="px-2 py-1 border-t border-sidebar-border">
+          <ContextSwitcher collapsed={sidebarCollapsed} />
+        </div>
 
         {/* User Profile Dropdown - Footer */}
         <div className="border-t border-sidebar-border px-2 py-1">
