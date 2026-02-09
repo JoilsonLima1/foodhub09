@@ -332,7 +332,16 @@ export default function PublicParceiroProfile() {
         </div>
       </section>
 
-      <LandingFooter logoUrl={platformLogo} companyName={platformName} />
+      <LandingFooter 
+        logoUrl={platformLogo} 
+        companyName={platformName}
+        installApp={{
+          partnerId: profile.partner_id,
+          partnerName: partnerName,
+          partnerSlug: profile.slug,
+          appDomain: profile.domains?.app,
+        }}
+      />
     </div>
   );
 }

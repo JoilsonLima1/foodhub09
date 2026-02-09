@@ -1,17 +1,38 @@
 import { Link } from 'react-router-dom';
 import { MessageCircle, Mail, MapPin } from 'lucide-react';
 import { WhatsAppButton } from './WhatsAppButton';
+import { InstallAppButton } from '@/components/pwa/InstallAppButton';
 
 interface LandingFooterProps {
   logoUrl: string;
   companyName: string;
   whatsappNumber?: string;
+  installApp?: {
+    partnerId?: string | null;
+    partnerName?: string;
+    partnerSlug?: string | null;
+    appDomain?: string | null;
+  };
 }
 
-export function LandingFooter({ logoUrl, companyName, whatsappNumber }: LandingFooterProps) {
+export function LandingFooter({ logoUrl, companyName, whatsappNumber, installApp }: LandingFooterProps) {
   return (
     <footer className="py-16 px-4 bg-card border-t border-border">
       <div className="container mx-auto max-w-7xl">
+        {/* Download App CTA */}
+        {installApp && (
+          <div className="flex flex-col items-center gap-3 mb-12 pb-8 border-b border-border">
+            <p className="text-sm text-muted-foreground">Baixe o aplicativo e acesse mais rápido</p>
+            <InstallAppButton
+              partnerId={installApp.partnerId}
+              partnerName={installApp.partnerName}
+              partnerSlug={installApp.partnerSlug}
+              appDomain={installApp.appDomain}
+              variant="outline"
+              size="default"
+            />
+          </div>
+        )}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-12">
           {/* Brand */}
           <div className="lg:col-span-1">

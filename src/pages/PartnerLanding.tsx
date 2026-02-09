@@ -396,6 +396,18 @@ export default function PartnerLanding() {
         {/* Footer */}
         <footer className="py-12 px-4 border-t bg-muted/20">
           <div className="container mx-auto max-w-6xl">
+            {/* Download App section */}
+            <div className="flex flex-col items-center gap-3 mb-8 pb-8 border-b border-border">
+              <p className="text-sm text-muted-foreground">Baixe o aplicativo e acesse mais rápido</p>
+              <InstallAppButton
+                partnerId={partner.partnerId}
+                partnerName={platformName}
+                partnerSlug={partner.partnerSlug}
+                appDomain={null}
+                variant="outline"
+                size="default"
+              />
+            </div>
             <div className="flex flex-col md:flex-row items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 {logoUrl ? (
