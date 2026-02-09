@@ -51,8 +51,8 @@ import TenantBillingAddons from "./pages/TenantBillingAddons";
 import TenantBillingCoupon from "./pages/TenantBillingCoupon";
 
 // Partner pages
+import PartnerDashboardAdmin from "./pages/partner/PartnerDashboardAdmin";
 import {
-  PartnerDashboard,
   PartnerTenants,
   CreatePartnerTenant,
   PartnerBrandingPage,
@@ -143,7 +143,7 @@ const App = () => (
                     {/* Partner Panel Routes */}
                     <Route path="/partner" element={<PartnerRouteGuard><PartnerLayout /></PartnerRouteGuard>}>
                       <Route index element={<PartnerIndexRedirect />} />
-                      <Route path="dashboard" element={<PartnerDashboard />} />
+                      <Route path="dashboard" element={<PartnerDashboardAdmin />} />
                       <Route path="onboarding" element={<PartnerOnboardingPage />} />
                       <Route path="tenants" element={<PartnerTenants />} />
                       <Route path="tenants/create" element={<CreatePartnerTenant />} />

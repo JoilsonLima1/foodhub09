@@ -5,6 +5,7 @@
  * import any tenant/lojista components (Dashboard, AppLayout, AppSidebar, etc.).
  */
 
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { usePartnerContext } from '@/contexts/PartnerContext';
 import { usePartnerDashboardStats } from '@/hooks/usePartnerData';
@@ -45,6 +46,10 @@ export default function PartnerDashboardAdmin() {
   const { currentPartner, partnerBranding } = usePartnerContext();
   const { stats, isLoading } = usePartnerDashboardStats();
   const { progress, isLoading: onboardingLoading } = usePartnerOnboarding();
+
+  useEffect(() => {
+    console.info('[PARTNER_ADMIN_DASHBOARD] mounted');
+  }, []);
 
   const isReadyToSell =
     !onboardingLoading && progress?.completion_percentage === 100;
@@ -90,12 +95,12 @@ export default function PartnerDashboardAdmin() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="partner-dashboard-admin">
       {/* ── Header ── */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">
-            Painel Administrativo
+            PAINEL DO PARCEIRO (ADMIN)
           </h1>
           <p className="text-muted-foreground">
             {partnerBranding?.platform_name || currentPartner?.name}

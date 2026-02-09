@@ -85,10 +85,12 @@ export default function AuthPage() {
     if (user && !contextLoading) {
       // If context=partner, redirect to partner area
       const defaultRoute = context === 'partner' ? '/partner' : getDefaultRoute();
-      const from = location.state?.from?.pathname || defaultRoute;
-      navigate(from, { replace: true });
+      // CRITICAL: Never send a partner to /dashboard via from state
+      const from = location.state?.from?.pathname;
+      const safeFrom = from && from !== '/dashboard' ? from : null;
+      navigate(safeFrom || defaultRoute, { replace: true });
     }
-  }, [user, authLoading, contextLoading, hasIntent, hasFromState, navigate, location.state, getDefaultRoute]);
+  }, [user, authLoading, contextLoading, hasIntent, hasFromState, navigate, location.state, getDefaultRoute, context]);
 
   // Show loading while auth is being determined
   if (authLoading) {
@@ -128,9 +130,8 @@ export default function AuthPage() {
         setError(error.message);
       }
     } else {
-      // Redirect based on context param or default
-      const targetRoute = context === 'partner' ? '/partner' : getDefaultRoute();
-      setTimeout(() => navigate(targetRoute), 100);
+      // Don't redirect immediately - let the useEffect above handle it
+      // once contextLoading resolves (ensures partner context is available)
     }
     
     setIsLoading(false);
@@ -174,7 +175,8 @@ export default function AuthPage() {
         setError(error.message);
       }
     } else {
-      navigate(getDefaultRoute());
+      // Don't redirect immediately - let the useEffect handle it
+      // once context resolves properly
     }
     
     setIsLoading(false);
