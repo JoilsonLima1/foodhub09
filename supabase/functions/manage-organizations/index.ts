@@ -716,14 +716,23 @@ serve(async (req) => {
           'ops_recommendations',
           'disputes',
           'fraud_flags',
-          // Modules
+          // Modules - IMPORTANT: tenant_addon_subscriptions has a DELETE trigger
+          // that inserts into tenant_module_audit, so delete audit AFTER subscriptions
+          'tenant_addon_subscriptions',
           'tenant_module_audit',
+          'tenant_module_usage',
           'module_purchases',
           'partner_tenant_addon_subscriptions',
+          'tenant_entitlements',
           // Partner / billing
           'partner_earnings',
           'partner_invoices',
           'partner_tenants',
+          // Tenant billing
+          'tenant_billing_profiles',
+          'tenant_fee_overrides',
+          'tenant_pending_coupons',
+          'tenant_service_config',
           // Domains & SEO
           'organization_domains',
           'marketing_seo_audit_history',
@@ -738,6 +747,27 @@ serve(async (req) => {
           'data_subject_requests',
           'payment_terms_acceptance',
           'sensitive_actions_log',
+          // SMS
+          'sms_messages',
+          'sms_config',
+          // TEF
+          'tef_transactions',
+          'tef_config',
+          // Tables & sessions
+          'table_sessions',
+          // Waiter
+          'waiter_commissions',
+          'waiter_commission_config',
+          'waiter_performance',
+          // Misc
+          'suggestions',
+          'suppliers',
+          'tickets',
+          'trial_events',
+          'upsell_events',
+          'usage_enforcement_log',
+          'subscription_cycles',
+          'tenant_subscriptions',
           // Events
           'events',
           // Logs & audit
@@ -746,6 +776,8 @@ serve(async (req) => {
           // Tenant-level config/invoices
           'tenant_invoices',
           'subscriptions',
+          // User roles for this tenant's users
+          // user_roles already cleaned per-user above
           // Stores
           'tables',
           'store_user_access',
