@@ -1,5 +1,5 @@
 // Partner pages exports
-export { default as PartnerDashboard } from './PartnerDashboard';
+export { default as PartnerDashboard } from './PartnerDashboardAdmin';
 export { default as PartnerTenants } from './PartnerTenants';
 export { default as CreatePartnerTenant } from './CreatePartnerTenant';
 export { default as PartnerBrandingPage } from './PartnerBrandingPage';
