@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 export interface PublicBranding {
   logo_url: string | null;
   icon_url: string | null;
+  pwa_icon_url: string | null;
   company_name: string;
 }
 
@@ -75,6 +76,7 @@ interface PublicSettings {
 const DEFAULT_BRANDING: PublicBranding = {
   logo_url: null,
   icon_url: null,
+  pwa_icon_url: null,
   company_name: 'FoodHub09',
 };
 

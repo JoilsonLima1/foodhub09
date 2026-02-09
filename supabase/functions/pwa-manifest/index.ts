@@ -91,7 +91,8 @@ Deno.serve(async (req) => {
 
     const logoUrl = branding?.logo_url as string | null;
     const faviconUrl = branding?.favicon_url as string | null;
-    const iconSrc = logoUrl || faviconUrl;
+    const pwaIconUrl = branding?.pwa_icon_url as string | null;
+    const iconSrc = pwaIconUrl || logoUrl || faviconUrl;
 
     const icons = iconSrc
       ? [
