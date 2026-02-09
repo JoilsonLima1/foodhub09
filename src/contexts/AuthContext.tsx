@@ -272,6 +272,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
+    try { localStorage.removeItem('active_context'); } catch { /* ignore */ }
     await supabase.auth.signOut();
   };
 

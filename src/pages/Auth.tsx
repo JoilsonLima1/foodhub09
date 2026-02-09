@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useActiveContext } from '@/hooks/useActiveContext';
 import { usePublicSettings } from '@/hooks/usePublicSettings';
 import { resetThemeToDefault } from '@/hooks/useBusinessCategory';
 import { Button } from '@/components/ui/button';
@@ -35,6 +36,7 @@ export default function AuthPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { signIn, signUp, user, isLoading: authLoading } = useAuth();
+  const { getDefaultRoute, isLoading: contextLoading } = useActiveContext();
   const { branding } = usePublicSettings();
   
   const [isLoading, setIsLoading] = useState(false);
@@ -78,12 +80,12 @@ export default function AuthPage() {
       return;
     }
     
-    // Redirect to dashboard if already logged in
-    if (user) {
-      const from = location.state?.from?.pathname || '/dashboard';
+    // Redirect based on active context if already logged in
+    if (user && !contextLoading) {
+      const from = location.state?.from?.pathname || getDefaultRoute();
       navigate(from, { replace: true });
     }
-  }, [user, authLoading, hasIntent, hasFromState, navigate, location.state]);
+  }, [user, authLoading, contextLoading, hasIntent, hasFromState, navigate, location.state, getDefaultRoute]);
 
   // Show loading while auth is being determined
   if (authLoading) {
@@ -123,7 +125,8 @@ export default function AuthPage() {
         setError(error.message);
       }
     } else {
-      navigate('/dashboard');
+      // Small delay for context to resolve after login
+      setTimeout(() => navigate(getDefaultRoute()), 100);
     }
     
     setIsLoading(false);
@@ -167,7 +170,7 @@ export default function AuthPage() {
         setError(error.message);
       }
     } else {
-      navigate('/dashboard');
+      navigate(getDefaultRoute());
     }
     
     setIsLoading(false);

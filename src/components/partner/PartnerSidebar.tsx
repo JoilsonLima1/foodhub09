@@ -29,6 +29,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ContextSwitcher } from '@/components/layout/ContextSwitcher';
 
 const menuItems = [
   { 
@@ -204,16 +205,10 @@ export function PartnerSidebar() {
 
       {/* User Profile & Logout */}
       <div className="p-3 space-y-2">
-        {/* Back to main app (if user has tenant access) */}
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-full justify-start gap-2 text-muted-foreground"
-          onClick={() => navigate('/')}
-        >
-          <ChevronLeft className="h-4 w-4" />
-          Voltar ao Site
-        </Button>
+        {/* Context Switcher */}
+        <ContextSwitcher />
+
+        {/* Back to main app (if user has tenant access) - only show if no context switcher */}
 
         <div className="flex items-center gap-3 p-2 rounded-lg bg-muted/50">
           <Avatar className="h-8 w-8">
