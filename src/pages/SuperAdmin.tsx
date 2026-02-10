@@ -32,7 +32,6 @@ import {
   Lock,
   Copy,
   Receipt,
-  Landmark,
 } from 'lucide-react';
 import { PlanEditor } from '@/components/superadmin/PlanEditor';
 import { FeatureComparison } from '@/components/superadmin/FeatureComparison';
@@ -62,7 +61,7 @@ import { GrowthRulesPanel } from '@/components/superadmin/GrowthRulesPanel';
 import { PlatformTemplatesManager } from '@/components/superadmin/PlatformTemplatesManager';
 import { PartnerBillingManager } from '@/components/superadmin/PartnerBillingManager';
 import { PartnerPlanApprovalManager } from '@/components/superadmin/PartnerPlanApprovalManager';
-import { StoneAdminPanel } from '@/components/superadmin/stone';
+
 import { 
   OpsAlertsPanel, 
   OpsReconciliationPanel, 
@@ -302,10 +301,6 @@ export default function SuperAdmin() {
             <Shield className="h-4 w-4" />
             Aprovar Planos
           </TabsTrigger>
-          <TabsTrigger value="stone" className="flex items-center gap-2">
-            <Landmark className="h-4 w-4" />
-            Stone
-          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="organizations">
@@ -470,9 +465,6 @@ export default function SuperAdmin() {
           <PartnerPlanApprovalManager />
         </TabsContent>
 
-        <TabsContent value="stone">
-          <StoneAdminPanel />
-        </TabsContent>
       </Tabs>
     </div>
   );
