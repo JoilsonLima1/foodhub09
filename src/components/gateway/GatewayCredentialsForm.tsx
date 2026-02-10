@@ -9,7 +9,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import {
   Save, Eye, EyeOff, CheckCircle2, Info, Loader2, Copy,
   RefreshCw, Key, ExternalLink, TestTube, QrCode, Webhook,
-  Clock,
+  Clock, AlertTriangle,
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -620,8 +620,29 @@ export function GatewayCredentialsForm({ provider, scopeType, scopeId }: Gateway
       {/* ===== 2. VERIFIED ACCOUNT (CEDENTE) — RIGHT AFTER CREDENTIALS ===== */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Conta Vinculada — Dados do Cedente</CardTitle>
-          <CardDescription>Dados verificados da conta do provedor associada a estas credenciais.</CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-base">Conta Vinculada — Dados do Cedente</CardTitle>
+              <CardDescription>Dados verificados da conta do provedor associada a estas credenciais.</CardDescription>
+            </div>
+            {profile?.verified_at && (
+              <Badge
+                variant={profile.verified_level === 'full' ? 'default' : 'secondary'}
+                className="flex items-center gap-1"
+              >
+                {profile.verified_level === 'full' ? (
+                  <><CheckCircle2 className="h-3 w-3" /> Verificado</>
+                ) : (
+                  <><AlertTriangle className="h-3 w-3" /> Verificação parcial</>
+                )}
+              </Badge>
+            )}
+            {!profile?.verified_at && isConfigured && (
+              <Badge variant="outline" className="flex items-center gap-1">
+                <Clock className="h-3 w-3" /> Verificação pendente
+              </Badge>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="space-y-3">
           {!isConfigured ? (
@@ -630,76 +651,64 @@ export function GatewayCredentialsForm({ provider, scopeType, scopeId }: Gateway
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" /> Carregando...
             </div>
-          ) : profile?.verified_at ? (
+          ) : (
             <>
               <div className="grid gap-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Nome / Razão Social</span>
-                  <span className="font-medium">{profile.legal_name || '—'}</span>
+                  <span className="font-medium">{profile?.legal_name || '—'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">CPF/CNPJ</span>
-                  <span className="font-medium">{profile.document || '—'}</span>
+                  <span className="font-medium">{profile?.document || '—'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Banco</span>
-                  <span className="font-medium">{profile.bank_name || 'Não disponível via API'}</span>
+                  <span className="font-medium">{profile?.bank_name || '—'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Agência</span>
-                  <span className="font-medium">{profile.bank_agency || 'Não disponível via API'}</span>
+                  <span className="font-medium">{profile?.bank_agency || '—'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Conta</span>
-                  <span className="font-medium">{profile.bank_account || 'Não disponível via API'}</span>
+                  <span className="font-medium">{profile?.bank_account || '—'}</span>
                 </div>
-                {profile.wallet_id && (
+                {profile?.wallet_id && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Wallet ID</span>
                     <span className="font-medium font-mono text-xs">{profile.wallet_id}</span>
                   </div>
                 )}
-                {profile.verified_at && (
+                {profile?.verified_at && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Verificado em</span>
-                    <Badge variant="default" className="text-xs flex items-center gap-1">
-                      <CheckCircle2 className="h-3 w-3" />
+                    <span className="text-xs text-muted-foreground">
                       {new Date(profile.verified_at).toLocaleString('pt-BR')}
-                    </Badge>
+                    </span>
                   </div>
                 )}
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => verifyMutation.mutate()}
-                disabled={verifyMutation.isPending}
-              >
-                {verifyMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                <RefreshCw className="h-4 w-4 mr-2" /> Reverificar Dados
-              </Button>
-              {verifyError && (
-                <Alert variant="destructive" className="mt-2">
-                  <AlertDescription className="space-y-1">
-                    <p className="text-sm">{verifyError.message}</p>
-                    <details className="text-xs font-mono text-muted-foreground cursor-pointer">
-                      <summary>Detalhes técnicos</summary>
-                      <p className="mt-1">{verifyError.details}</p>
-                    </details>
+
+              {/* Partial verification info */}
+              {profile?.verified_level === 'partial' && profile.missing_fields?.length > 0 && (
+                <Alert>
+                  <Info className="h-4 w-4" />
+                  <AlertDescription className="text-xs">
+                    Verificação parcial — alguns dados não estão disponíveis via API do provedor: {(profile.missing_fields as string[]).map((f: string) => {
+                      const labels: Record<string, string> = { bank_agency: 'Agência', bank_account: 'Conta', bank_name: 'Banco', legal_name: 'Nome', document: 'CPF/CNPJ' };
+                      return labels[f] || f;
+                    }).join(', ')}. Isso é normal para contas principais do Asaas.
                   </AlertDescription>
                 </Alert>
               )}
-            </>
-          ) : (
-            <>
-              <div className="grid gap-2 text-sm">
-                <div className="flex justify-between"><span className="text-muted-foreground">Nome / Razão Social</span><span className="font-medium">—</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">CPF/CNPJ</span><span className="font-medium">—</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Banco</span><span className="font-medium">—</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Agência</span><span className="font-medium">—</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Conta</span><span className="font-medium">—</span></div>
-              </div>
-              <p className="text-xs text-muted-foreground">Ainda não verificado — clique em "Verificar Dados do Cedente" para consultar via API do provedor.</p>
+
+              {!profile?.verified_at && (
+                <p className="text-xs text-muted-foreground">
+                  Ainda não verificado — clique abaixo para consultar via API do provedor.
+                </p>
+              )}
+
               <Button
                 variant="outline"
                 size="sm"
@@ -707,8 +716,13 @@ export function GatewayCredentialsForm({ provider, scopeType, scopeId }: Gateway
                 disabled={verifyMutation.isPending || !isConfigured}
               >
                 {verifyMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                <CheckCircle2 className="h-4 w-4 mr-2" /> Verificar Dados do Cedente
+                {profile?.verified_at ? (
+                  <><RefreshCw className="h-4 w-4 mr-2" /> Reverificar Dados</>
+                ) : (
+                  <><CheckCircle2 className="h-4 w-4 mr-2" /> Verificar Dados do Cedente</>
+                )}
               </Button>
+
               {verifyError && (
                 <Alert variant="destructive" className="mt-2">
                   <AlertDescription className="space-y-1">

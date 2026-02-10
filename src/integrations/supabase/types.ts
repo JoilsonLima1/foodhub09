@@ -7646,10 +7646,12 @@ export type Database = {
           id: string
           legal_name: string | null
           merchant_id: string | null
+          missing_fields: string[] | null
           provider_account_id: string
           raw_profile_json: Json | null
           updated_at: string
           verified_at: string | null
+          verified_level: string | null
           wallet_id: string | null
         }
         Insert: {
@@ -7661,10 +7663,12 @@ export type Database = {
           id?: string
           legal_name?: string | null
           merchant_id?: string | null
+          missing_fields?: string[] | null
           provider_account_id: string
           raw_profile_json?: Json | null
           updated_at?: string
           verified_at?: string | null
+          verified_level?: string | null
           wallet_id?: string | null
         }
         Update: {
@@ -7676,10 +7680,12 @@ export type Database = {
           id?: string
           legal_name?: string | null
           merchant_id?: string | null
+          missing_fields?: string[] | null
           provider_account_id?: string
           raw_profile_json?: Json | null
           updated_at?: string
           verified_at?: string | null
+          verified_level?: string | null
           wallet_id?: string | null
         }
         Relationships: [
