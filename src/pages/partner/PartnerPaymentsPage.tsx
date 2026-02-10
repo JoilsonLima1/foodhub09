@@ -165,24 +165,10 @@ function PartnerGatewaysSection() {
         </div>
 
         {validProvider && (
-          <Tabs defaultValue="config" className="space-y-4">
-            <TabsList>
-              <TabsTrigger value="config">Configuração</TabsTrigger>
-              <TabsTrigger value="guide" className="flex items-center gap-2">
-                <BookOpen className="h-4 w-4" /> Guia Completo
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="config">
-              <GatewayCredentialsForm
-                provider={validProvider}
-                scopeType="partner"
-              />
-            </TabsContent>
-            <TabsContent value="guide">
-              <GatewaySetupGuide provider={validProvider} />
-            </TabsContent>
-          </Tabs>
+          <GatewayCredentialsForm
+            provider={validProvider}
+            scopeType="partner"
+          />
         )}
       </div>
     );

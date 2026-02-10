@@ -180,26 +180,12 @@ export function PaymentGatewaysManager() {
           <p className="text-muted-foreground">Configuração completa da integração {providerLabel}.</p>
         </div>
 
-        <Tabs defaultValue="credentials" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="credentials">Configuração</TabsTrigger>
-            <TabsTrigger value="guide" className="flex items-center gap-2">
-              <BookOpen className="h-4 w-4" /> Guia Completo
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="credentials">
-            {validProvider && (
-              <GatewayCredentialsForm
-                provider={validProvider}
-                scopeType="platform"
-              />
-            )}
-          </TabsContent>
-          <TabsContent value="guide">
-            {validProvider && <GatewaySetupGuide provider={validProvider} />}
-          </TabsContent>
-        </Tabs>
+        {validProvider && (
+          <GatewayCredentialsForm
+            provider={validProvider}
+            scopeType="platform"
+          />
+        )}
       </div>
     );
   }
