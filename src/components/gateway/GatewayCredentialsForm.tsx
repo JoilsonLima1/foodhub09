@@ -688,10 +688,12 @@ export function GatewayCredentialsForm({ provider, scopeType, scopeId }: Gateway
                     )}
                   </div>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">{provider === 'asaas' ? 'Conta (Beneficiário)' : 'Conta'}</span>
-                  <span className="font-medium font-mono">{profile?.bank_account || (provider === 'stripe' ? 'Não disponível via API' : '—')}</span>
-                </div>
+                {provider !== 'asaas' && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Conta</span>
+                    <span className="font-medium font-mono">{profile?.bank_account || (provider === 'stripe' ? 'Não disponível via API' : '—')}</span>
+                  </div>
+                )}
                 {provider === 'asaas' && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Conta (Bancária)</span>
@@ -725,7 +727,7 @@ export function GatewayCredentialsForm({ provider, scopeType, scopeId }: Gateway
                 <Alert className="bg-muted/50">
                   <Info className="h-4 w-4" />
                   <AlertDescription className="text-xs">
-                    Banco e agência seguem padrão da plataforma. "Conta (Beneficiário)" é o código do recebedor no Asaas. "Conta (Bancária)" é o número da conta do titular.
+                    Banco e agência seguem padrão da plataforma. "Conta (Bancária)" é o número da conta do titular.
                   </AlertDescription>
                 </Alert>
               )}
