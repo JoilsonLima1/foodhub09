@@ -174,23 +174,37 @@ export function useImportTemplates() {
       const { data, error } = await supabase
         .rpc('import_platform_templates_for_partner', { p_partner_id: partnerId });
       if (error) throw error;
-      return data as { plans_imported: number; page_imported: boolean };
+      return data as { plans_imported: number; page_imported: boolean; skipped_free_count: number };
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['partner-plans'] });
       queryClient.invalidateQueries({ queryKey: ['partner-marketing-page'] });
-      if (data.plans_imported === 0) {
+
+      if (data.plans_imported === 0 && data.skipped_free_count === 0) {
         toast({
           title: 'Nenhum template encontrado',
           description: 'Não existem templates ativos configurados pela plataforma. Contate o administrador.',
           variant: 'destructive',
         });
-      } else {
-        toast({
-          title: 'Templates importados!',
-          description: `${data.plans_imported} plano(s) importado(s)${data.page_imported ? ' + página de vendas' : ''}.`,
-        });
+        return;
       }
+
+      const parts: string[] = [];
+      if (data.plans_imported > 0) {
+        parts.push(`${data.plans_imported} plano(s) importado(s)`);
+      }
+      if (data.page_imported) {
+        parts.push('página de vendas importada');
+      }
+      if (data.skipped_free_count > 0) {
+        parts.push(`${data.skipped_free_count} plano(s) gratuito(s) ignorado(s) — não permitido para este parceiro. Peça liberação ao suporte.`);
+      }
+
+      toast({
+        title: data.plans_imported > 0 ? 'Templates importados!' : 'Importação parcial',
+        description: parts.join('. '),
+        variant: data.plans_imported > 0 ? 'default' : 'destructive',
+      });
     },
     onError: (e: any) => toast({ title: 'Erro ao importar', description: e.message, variant: 'destructive' }),
   });
