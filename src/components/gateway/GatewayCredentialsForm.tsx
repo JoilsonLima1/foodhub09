@@ -15,6 +15,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { PasswordConfirmDialog } from './PasswordConfirmDialog';
+import { CredentialOriginBanner } from './CredentialOriginBanner';
 import { format } from 'date-fns';
 
 // ===== Provider metadata =====
@@ -172,7 +173,7 @@ export function GatewayCredentialsForm({ provider, scopeType, scopeId }: Gateway
   const [isEditing, setIsEditing] = useState(false);
   const [showSecret, setShowSecret] = useState(false);
 
-  // Fetch existing account
+  // Fetch existing account (exact scope match)
   const { data: account, isLoading } = useQuery({
     queryKey: ['provider-account', provider, scopeType, scopeId],
     queryFn: async () => {
@@ -189,6 +190,22 @@ export function GatewayCredentialsForm({ provider, scopeType, scopeId }: Gateway
       }
 
       const { data, error } = await query.maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Fetch legacy payment_gateways as fallback (when no provider_account exists)
+  const { data: legacyGateway } = useQuery({
+    queryKey: ['legacy-gateway-fallback', provider],
+    enabled: !account && !isLoading,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('payment_gateways')
+        .select('*')
+        .eq('provider', provider)
+        .eq('is_active', true)
+        .maybeSingle();
       if (error) throw error;
       return data;
     },
@@ -240,12 +257,21 @@ export function GatewayCredentialsForm({ provider, scopeType, scopeId }: Gateway
     },
   });
 
-  const isConfigured = account && account.status !== 'inactive';
+  const hasLegacyKey = !account && legacyGateway?.api_key_masked && legacyGateway.api_key_masked.length > 10;
+  const isConfigured = (account && account.status !== 'inactive') || hasLegacyKey;
 
   const getFieldValue = (key: string) => {
     if (formValues[key] !== undefined) return formValues[key];
     const creds = account?.credentials_encrypted as Record<string, string> | null;
-    return creds?.[key] || '';
+    if (creds?.[key]) return creds[key];
+    // Fallback to legacy payment_gateways
+    if (!account && legacyGateway?.api_key_masked) {
+      if ((provider === 'asaas' && key === 'api_key') ||
+          (provider === 'stripe' && key === 'secret_key')) {
+        return legacyGateway.api_key_masked;
+      }
+    }
+    return '';
   };
 
   const hasCreds = meta.fields.some(f => {
@@ -414,6 +440,19 @@ export function GatewayCredentialsForm({ provider, scopeType, scopeId }: Gateway
 
   return (
     <div className="space-y-6">
+      {/* ===== 0. CREDENTIAL ORIGIN BANNER (Super Admin) ===== */}
+      {scopeType === 'platform' && (
+        <CredentialOriginBanner
+          provider={provider}
+          scopeType={scopeType}
+          scopeId={scopeId}
+          onPromoted={() => {
+            queryClient.invalidateQueries({ queryKey: ['provider-account', provider, scopeType, scopeId] });
+            queryClient.invalidateQueries({ queryKey: ['legacy-gateway-fallback', provider] });
+          }}
+        />
+      )}
+
       {/* ===== 1. CREDENTIALS SECTION ===== */}
       <Card>
         <CardHeader>
