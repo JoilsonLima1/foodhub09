@@ -60,6 +60,7 @@ import { SecurityAuditPanel } from '@/components/superadmin/SecurityAuditPanel';
 import { GrowthRulesPanel } from '@/components/superadmin/GrowthRulesPanel';
 import { PlatformTemplatesManager } from '@/components/superadmin/PlatformTemplatesManager';
 import { PartnerBillingManager } from '@/components/superadmin/PartnerBillingManager';
+import { PartnerPlanApprovalManager } from '@/components/superadmin/PartnerPlanApprovalManager';
 import { 
   OpsAlertsPanel, 
   OpsReconciliationPanel, 
@@ -295,6 +296,10 @@ export default function SuperAdmin() {
             <Receipt className="h-4 w-4" />
             AR Parceiros
           </TabsTrigger>
+          <TabsTrigger value="plan-approval" className="flex items-center gap-2">
+            <Shield className="h-4 w-4" />
+            Aprovar Planos
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="organizations">
@@ -453,6 +458,10 @@ export default function SuperAdmin() {
 
         <TabsContent value="partner-billing">
           <PartnerBillingManager />
+        </TabsContent>
+
+        <TabsContent value="plan-approval">
+          <PartnerPlanApprovalManager />
         </TabsContent>
       </Tabs>
     </div>

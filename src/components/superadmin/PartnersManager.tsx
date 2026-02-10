@@ -33,11 +33,13 @@ import {
   Trash2,
   ExternalLink,
   Store,
+  Shield,
 } from 'lucide-react';
 import { usePartners, Partner } from '@/hooks/usePartners';
 import { PartnerBrandingPanel } from './PartnerBrandingPanel';
 import { PartnerDomainsPanel } from './PartnerDomainsPanel';
 import { PartnerTenantsPanel } from './PartnerTenantsPanel';
+import { PartnerPolicyOverridesPanel } from './PartnerPolicyOverridesPanel';
 
 export function PartnersManager() {
   const { partners, isLoading, stats, createPartner, updatePartner, deletePartner } = usePartners();
@@ -150,6 +152,10 @@ export function PartnersManager() {
               <Store className="h-4 w-4" />
               Lojas
             </TabsTrigger>
+            <TabsTrigger value="permissions" className="flex items-center gap-2">
+              <Shield className="h-4 w-4" />
+              Permissões
+            </TabsTrigger>
             <TabsTrigger value="settings" className="flex items-center gap-2">
               <Settings className="h-4 w-4" />
               Configurações
@@ -162,6 +168,10 @@ export function PartnersManager() {
 
           <TabsContent value="domains">
             <PartnerDomainsPanel partnerId={selectedPartner.id} />
+          </TabsContent>
+
+          <TabsContent value="permissions">
+            <PartnerPolicyOverridesPanel partnerId={selectedPartner.id} />
           </TabsContent>
 
           <TabsContent value="tenants">

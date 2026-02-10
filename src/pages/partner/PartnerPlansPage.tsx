@@ -33,7 +33,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Plus, Pencil, Trash2, Loader2, Package, AlertTriangle, Info, Download } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, Package, AlertTriangle, Info, Download, Clock, ShieldCheck, ShieldX } from 'lucide-react';
 
 // Available features (same as in PartnerPoliciesManager)
 const AVAILABLE_FEATURES = [
@@ -495,6 +495,16 @@ export default function PartnerPlansPage() {
         </div>
       </div>
 
+      {/* Approval Warnings */}
+      {plans.length > 0 && plans.every((p: any) => p.approval_status !== 'approved') && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            Você ainda não tem planos aprovados para publicar sua página. Planos aguardam revisão do Super Admin.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Limit Warning */}
       {!canCreateMore && (
         <Alert>
@@ -585,7 +595,23 @@ export default function PartnerPlansPage() {
                         </Badge>
                         {!!plan.is_featured && <Badge variant="outline">⭐</Badge>}
                         {!!plan.is_default && <Badge variant="outline">Padrão</Badge>}
+                        {/* Approval status */}
+                        {plan.approval_status === 'pending' && (
+                          <Badge variant="secondary" className="gap-1"><Clock className="h-3 w-3" />Pendente</Badge>
+                        )}
+                        {plan.approval_status === 'approved' && (
+                          <Badge variant="default" className="gap-1"><ShieldCheck className="h-3 w-3" />Aprovado</Badge>
+                        )}
+                        {plan.approval_status === 'rejected' && (
+                          <Badge variant="destructive" className="gap-1"><ShieldX className="h-3 w-3" />Rejeitado</Badge>
+                        )}
+                        {plan.approval_status === 'draft' && (
+                          <Badge variant="outline">Rascunho</Badge>
+                        )}
                       </div>
+                      {plan.rejection_reason && (
+                        <p className="text-xs text-destructive mt-1">Motivo: {plan.rejection_reason}</p>
+                      )}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
