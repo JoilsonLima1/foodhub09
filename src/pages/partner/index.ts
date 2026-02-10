@@ -26,3 +26,5 @@ export { default as PartnerLeadsPage } from './PartnerLeadsPage';
 export { default as PartnerSalesPage } from './PartnerSalesPage';
 // Partner API Keys
 export { default as PartnerApiKeysPage } from './PartnerApiKeysPage';
+// Partner Billing (AR)
+export { default as PartnerBillingPage } from './PartnerBillingPage';

@@ -146,6 +146,11 @@ const menuItems = [
     adminOnly: true,
   },
   { 
+    path: '/partner/billing', 
+    label: 'Faturamento', 
+    icon: Receipt,
+  },
+  { 
     path: '/partner/api-keys', 
     label: 'Chaves API', 
     icon: Key,
