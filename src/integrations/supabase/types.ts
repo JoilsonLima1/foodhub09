@@ -13279,6 +13279,7 @@ export type Database = {
         }
         Returns: string
       }
+      check_cron_health: { Args: { p_hours_lookback?: number }; Returns: Json }
       check_entitlement: {
         Args: { p_key: string; p_requested_value?: number; p_tenant_id: string }
         Returns: {
@@ -14024,6 +14025,10 @@ export type Database = {
         }
         Returns: Json
       }
+      process_pending_settlements_to_payouts: {
+        Args: { p_partner_id?: string }
+        Returns: Json
+      }
       publish_partner_landing: {
         Args: { p_partner_id: string; p_publish: boolean }
         Returns: boolean
@@ -14035,6 +14040,10 @@ export type Database = {
       rebuild_tenant_entitlements: {
         Args: { p_tenant_id: string }
         Returns: number
+      }
+      reconcile_payout_transfers: {
+        Args: { p_partner_id?: string }
+        Returns: Json
       }
       reconcile_provider_payments: {
         Args: { p_from_date?: string; p_provider?: string }

@@ -228,10 +228,15 @@ async function handleSyncStatus(supabase: any, partnerId: string) {
 async function handleProcessPayoutJobs(supabase: any) {
   console.log('[Payout] Processing payout jobs');
 
+  // Step 1: Auto-enqueue from approved settlements
+  const { data: enqueueResult } = await supabase.rpc('process_pending_settlements_to_payouts');
+  console.log('[Payout] Auto-enqueue result:', enqueueResult);
+
+  // Step 2: Process queued jobs
   const { data: pendingJobs } = await supabase.rpc('get_pending_payout_jobs', { p_batch_size: 5 });
 
   if (!pendingJobs?.jobs?.length) {
-    return { success: true, processed: 0, message: 'No jobs to process' };
+    return { success: true, processed: 0, enqueued: enqueueResult?.enqueued || 0, message: 'No jobs to process' };
   }
 
   const asaasConfig = await getAsaasConfig(supabase);
@@ -242,7 +247,6 @@ async function handleProcessPayoutJobs(supabase: any) {
   const results = [];
 
   for (const job of pendingJobs.jobs) {
-    // Mark as processing
     await supabase.rpc('mark_payout_job_processing', { p_job_id: job.job_id });
 
     try {
@@ -272,7 +276,27 @@ async function handleProcessPayoutJobs(supabase: any) {
     }
   }
 
-  return { success: true, processed: results.length, results };
+  return { success: true, processed: results.length, enqueued: enqueueResult?.enqueued || 0, results };
+}
+
+async function handleReconcile(supabase: any, partnerId?: string) {
+  console.log('[Reconcile] Running reconciliation', partnerId ? `for partner ${partnerId}` : 'global');
+
+  const { data, error } = await supabase.rpc('reconcile_payout_transfers', {
+    p_partner_id: partnerId || null,
+  });
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  return data;
+}
+
+async function handleCronHealth(supabase: any) {
+  const { data, error } = await supabase.rpc('check_cron_health', { p_hours_lookback: 24 });
+  if (error) return { success: false, error: error.message };
+  return data;
 }
 
 Deno.serve(async (req) => {
@@ -305,6 +329,14 @@ Deno.serve(async (req) => {
 
       case 'process_payout_jobs':
         result = await handleProcessPayoutJobs(supabase);
+        break;
+
+      case 'reconcile':
+        result = await handleReconcile(supabase, partner_id);
+        break;
+
+      case 'cron_health':
+        result = await handleCronHealth(supabase);
         break;
 
       case 'get_status':
