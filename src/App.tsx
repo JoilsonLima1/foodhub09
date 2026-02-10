@@ -52,6 +52,8 @@ import TenantBillingCoupon from "./pages/TenantBillingCoupon";
 
 // Partner pages
 import PartnerDashboardAdmin from "./pages/partner/PartnerDashboardAdmin";
+import PartnerLogin from "./pages/partner/PartnerLogin";
+import PartnerAuthCallback from "./pages/partner/PartnerAuthCallback";
 import {
   PartnerTenants,
   CreatePartnerTenant,
@@ -140,6 +142,10 @@ const App = () => (
                     <Route path="/rastrear" element={<TrackOrder />} />
                     <Route path="/rastrear/:tenantId" element={<TrackOrder />} />
                     
+                    {/* Partner Auth - dedicated flow (BEFORE PartnerRouteGuard) */}
+                    <Route path="/partner/auth" element={<PartnerLogin />} />
+                    <Route path="/partner/auth/callback" element={<ProtectedRoute><PartnerAuthCallback /></ProtectedRoute>} />
+
                     {/* Partner Panel Routes */}
                     <Route path="/partner" element={<PartnerRouteGuard><PartnerLayout /></PartnerRouteGuard>}>
                       <Route index element={<PartnerIndexRedirect />} />
