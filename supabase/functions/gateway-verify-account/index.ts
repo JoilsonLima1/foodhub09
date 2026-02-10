@@ -84,13 +84,15 @@ serve(async (req) => {
 
     if (provider === "asaas") {
       profileData = await verifyAsaas(apiKey, environment, provider, scope_type, scope_id);
-      // Bank name and agency always come from platform defaults, so only check account
+      // Check beneficiary code (bank_account) — required for "full" verification
       if (!profileData.bank_account) missingFields.push("bank_account");
       if (!profileData.legal_name && !profileData.document) {
         missingFields.push("legal_name", "document");
       }
-      // With platform defaults, verification is "full" unless name/doc are missing
-      verifiedLevel = (!profileData.legal_name && !profileData.document) ? "partial" : "full";
+      // "full" only when we have name/doc AND beneficiary_code
+      const hasIdentity = !!(profileData.legal_name || profileData.document);
+      const hasAccount = !!profileData.bank_account;
+      verifiedLevel = (hasIdentity && hasAccount) ? "full" : "partial";
     } else if (provider === "stripe") {
       profileData = await verifyStripe(apiKey, provider, scope_type, scope_id);
       if (!profileData.legal_name) missingFields.push("legal_name");
@@ -171,6 +173,38 @@ const ASAAS_PLATFORM_DEFAULTS = {
   bank_agency: "0001",
 };
 
+// Helper: safely fetch a URL and return JSON or null (never throws)
+async function safeFetchJson(url: string, headers: Record<string, string>): Promise<Record<string, unknown> | null> {
+  try {
+    const res = await fetch(url, { headers });
+    if (!res.ok) {
+      console.log(`[asaas-safe-fetch] ${url} → ${res.status}`);
+      return null;
+    }
+    return await res.json();
+  } catch (e) {
+    console.log(`[asaas-safe-fetch] ${url} → error: ${e}`);
+    return null;
+  }
+}
+
+// Helper: extract first plausible beneficiary code from an object
+function extractBeneficiaryCode(obj: Record<string, unknown> | null | undefined): string | null {
+  if (!obj) return null;
+  const candidates = ["accountNumber", "walletId", "id", "publicId", "customerId", "beneficiaryCode", "code", "account"];
+  for (const key of candidates) {
+    const val = obj[key];
+    if (val && typeof val === "object" && (val as Record<string, unknown>).number) {
+      return String((val as Record<string, unknown>).number);
+    }
+    if (val && (typeof val === "string" || typeof val === "number")) {
+      const str = String(val);
+      if (str.length >= 3) return str;
+    }
+  }
+  return null;
+}
+
 async function verifyAsaas(
   apiKey: string,
   environment: string | undefined,
@@ -182,11 +216,10 @@ async function verifyAsaas(
   const baseUrl = isProduction
     ? "https://api.asaas.com/v3"
     : "https://sandbox.asaas.com/api/v3";
+  const headers = { access_token: apiKey };
 
-  // Only fetch /myAccount/commercialInfo — the only reliable endpoint
-  const accountRes = await fetch(`${baseUrl}/myAccount/commercialInfo`, {
-    headers: { access_token: apiKey },
-  });
+  // Step 1: Primary endpoint — /myAccount/commercialInfo
+  const accountRes = await fetch(`${baseUrl}/myAccount/commercialInfo`, { headers });
 
   if (!accountRes.ok) {
     const errBody = await accountRes.text();
@@ -200,16 +233,67 @@ async function verifyAsaas(
   const accountData = await accountRes.json();
   console.log(`[gateway-verify-account] Asaas commercialInfo keys: ${Object.keys(accountData).join(", ")}`);
 
-  // Use accountNumber from API if available, otherwise null
-  const accountNumber = accountData.accountNumber?.number || accountData.accountNumber || null;
+  // Step 2: Extract beneficiary_code with multi-strategy fallback
+  let beneficiaryCode: string | null = null;
+  let beneficiarySource: string | null = null;
+
+  // PRIORITY A: from myAccount response itself
+  beneficiaryCode = extractBeneficiaryCode(accountData);
+  if (beneficiaryCode) {
+    beneficiarySource = "myAccount/commercialInfo";
+    console.log(`[gateway-verify-account] beneficiary_code from commercialInfo: ${beneficiaryCode}`);
+  }
+
+  // PRIORITY B: try secondary endpoints (safe, non-breaking)
+  if (!beneficiaryCode) {
+    const bankEndpoints = [
+      `${baseUrl}/myAccount/bankAccountInfo`,
+      `${baseUrl}/finance/bankAccount`,
+      `${baseUrl}/wallets`,
+    ];
+
+    for (const url of bankEndpoints) {
+      const data = await safeFetchJson(url, headers);
+      if (data) {
+        // Handle list responses (e.g. wallets returns { data: [...] })
+        const target = (Array.isArray((data as any).data) && (data as any).data.length > 0)
+          ? (data as any).data[0]
+          : data;
+        beneficiaryCode = extractBeneficiaryCode(target as Record<string, unknown>);
+        if (beneficiaryCode) {
+          beneficiarySource = url.replace(baseUrl, "");
+          console.log(`[gateway-verify-account] beneficiary_code from ${beneficiarySource}: ${beneficiaryCode}`);
+          break;
+        }
+      }
+    }
+  }
+
+  // PRIORITY C: fallback from most recent payment
+  if (!beneficiaryCode) {
+    const paymentsData = await safeFetchJson(`${baseUrl}/payments?limit=1&offset=0`, headers);
+    if (paymentsData && Array.isArray((paymentsData as any).data) && (paymentsData as any).data.length > 0) {
+      const payment = (paymentsData as any).data[0];
+      // Try to extract any receiver/wallet identifier from the payment
+      const paymentCode = extractBeneficiaryCode(payment);
+      if (paymentCode) {
+        beneficiaryCode = paymentCode;
+        beneficiarySource = "payments (fallback)";
+        console.log(`[gateway-verify-account] beneficiary_code from payment fallback: ${beneficiaryCode}`);
+      }
+    }
+  }
+
+  if (!beneficiaryCode) {
+    console.log(`[gateway-verify-account] No beneficiary_code found from any strategy`);
+  }
 
   return {
     legal_name: accountData.corporateName || accountData.companyName || accountData.name || null,
     document: accountData.cpfCnpj || null,
-    // Bank data: use platform defaults (Asaas API does not expose these)
     bank_name: ASAAS_PLATFORM_DEFAULTS.bank_name,
     bank_agency: ASAAS_PLATFORM_DEFAULTS.bank_agency,
-    bank_account: accountNumber,
+    bank_account: beneficiaryCode,
     wallet_id: accountData.walletId || null,
     merchant_id: accountData.walletId || accountData.id || null,
     raw_profile_json: {
@@ -220,7 +304,8 @@ async function verifyAsaas(
       fetched_at: new Date().toISOString(),
       account_data: accountData,
       platform_defaults_applied: true,
-      note: "Banco e agência são padrões da plataforma. A API do Asaas não fornece esses dados.",
+      beneficiary_code_source: beneficiarySource,
+      note: "Banco e agência são padrões da plataforma. Conta = código do beneficiário/recebedor no Asaas.",
     },
   };
 }

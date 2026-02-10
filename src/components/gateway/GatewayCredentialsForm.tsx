@@ -683,8 +683,8 @@ export function GatewayCredentialsForm({ provider, scopeType, scopeId }: Gateway
                   </div>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Conta</span>
-                  <span className="font-medium">{profile?.bank_account || '—'}</span>
+                  <span className="text-muted-foreground">Conta (Beneficiário)</span>
+                  <span className="font-medium font-mono">{profile?.bank_account || '—'}</span>
                 </div>
                 {profile?.wallet_id && (
                   <div className="flex justify-between">
@@ -707,8 +707,17 @@ export function GatewayCredentialsForm({ provider, scopeType, scopeId }: Gateway
                 <Alert className="bg-muted/50">
                   <Info className="h-4 w-4" />
                   <AlertDescription className="text-xs">
-                    Alguns dados bancários não são fornecidos pela API do Asaas.
-                    Para garantir consistência, banco e agência seguem o padrão da plataforma.
+                    Banco e agência seguem padrão da plataforma. A conta é o código do beneficiário/recebedor no Asaas.
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {/* Asaas partial: missing beneficiary code */}
+              {provider === 'asaas' && profile?.verified_level === 'partial' && !profile?.bank_account && (
+                <Alert variant="destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription className="text-xs">
+                    Código do beneficiário não encontrado. Clique em "Reverificar Dados" para tentar novamente, ou gere ao menos uma cobrança no Asaas antes de reverificar.
                   </AlertDescription>
                 </Alert>
               )}
