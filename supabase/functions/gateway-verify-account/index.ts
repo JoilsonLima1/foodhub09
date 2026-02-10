@@ -84,14 +84,13 @@ serve(async (req) => {
 
     if (provider === "asaas") {
       profileData = await verifyAsaas(apiKey, environment, provider, scope_type, scope_id);
-      // Check which fields are missing
-      if (!profileData.bank_agency) missingFields.push("bank_agency");
+      // Bank name and agency always come from platform defaults, so only check account
       if (!profileData.bank_account) missingFields.push("bank_account");
-      if (!profileData.bank_name) missingFields.push("bank_name");
       if (!profileData.legal_name && !profileData.document) {
         missingFields.push("legal_name", "document");
       }
-      verifiedLevel = missingFields.length > 0 ? "partial" : "full";
+      // With platform defaults, verification is "full" unless name/doc are missing
+      verifiedLevel = (!profileData.legal_name && !profileData.document) ? "partial" : "full";
     } else if (provider === "stripe") {
       profileData = await verifyStripe(apiKey, provider, scope_type, scope_id);
       if (!profileData.legal_name) missingFields.push("legal_name");
@@ -165,6 +164,13 @@ serve(async (req) => {
 });
 
 // ===== Asaas verification =====
+// Platform default bank values (Asaas does NOT expose full bank data via API)
+const ASAAS_PLATFORM_DEFAULTS = {
+  bank_code: "461",
+  bank_name: "Asaas IP S.A. (461)",
+  bank_agency: "0001",
+};
+
 async function verifyAsaas(
   apiKey: string,
   environment: string | undefined,
@@ -177,7 +183,7 @@ async function verifyAsaas(
     ? "https://api.asaas.com/v3"
     : "https://sandbox.asaas.com/api/v3";
 
-  // 1. Get commercial info (name, document)
+  // Only fetch /myAccount/commercialInfo — the only reliable endpoint
   const accountRes = await fetch(`${baseUrl}/myAccount/commercialInfo`, {
     headers: { access_token: apiKey },
   });
@@ -194,74 +200,17 @@ async function verifyAsaas(
   const accountData = await accountRes.json();
   console.log(`[gateway-verify-account] Asaas commercialInfo keys: ${Object.keys(accountData).join(", ")}`);
 
-  // 2. Try bank account info (multiple strategies)
-  let bankInfo: Record<string, unknown> = {};
-
-  // Strategy A: /myAccount/bankAccountInfo
-  try {
-    const bankRes = await fetch(`${baseUrl}/myAccount/bankAccountInfo`, {
-      headers: { access_token: apiKey },
-    });
-    if (bankRes.ok) {
-      const bankData = await bankRes.json();
-      console.log(`[gateway-verify-account] Asaas bankAccountInfo: ${JSON.stringify(bankData).slice(0, 300)}`);
-      bankInfo = {
-        bank_name: bankData.bank?.name || bankData.bankName || null,
-        bank_agency: bankData.agency || bankData.agencyNumber || null,
-        bank_account: bankData.account || bankData.accountNumber || null,
-        bank_code: bankData.bank?.code || bankData.bankCode || null,
-        account_digit: bankData.accountDigit || null,
-        agency_digit: bankData.agencyDigit || null,
-      };
-    }
-  } catch (e) {
-    console.log(`[gateway-verify-account] BankAccountInfo not available: ${e}`);
-  }
-
-  // Strategy B: /myAccount/wallets (get wallet_id)
-  let walletId: string | null = null;
-  try {
-    const walletRes = await fetch(`${baseUrl}/myAccount/wallets`, {
-      headers: { access_token: apiKey },
-    });
-    if (walletRes.ok) {
-      const walletData = await walletRes.json();
-      if (walletData?.data?.length > 0) {
-        walletId = walletData.data[0].id;
-      }
-    }
-  } catch (e) {
-    console.log(`[gateway-verify-account] Wallets not available: ${e}`);
-  }
-
-  // Strategy C: if walletId or accountData.walletId exists, try subaccount endpoint
-  const subaccountId = accountData.walletId || walletId;
-  if (subaccountId && !bankInfo.bank_agency) {
-    try {
-      const subRes = await fetch(`${baseUrl}/accounts/${subaccountId}`, {
-        headers: { access_token: apiKey },
-      });
-      if (subRes.ok) {
-        const subData = await subRes.json();
-        console.log(`[gateway-verify-account] Subaccount data: ${JSON.stringify(subData).slice(0, 300)}`);
-        if (subData.bankAccount) {
-          bankInfo.bank_name = bankInfo.bank_name || subData.bankAccount.bank?.name || null;
-          bankInfo.bank_agency = bankInfo.bank_agency || subData.bankAccount.agency || null;
-          bankInfo.bank_account = bankInfo.bank_account || subData.bankAccount.account || null;
-        }
-      }
-    } catch (e) {
-      console.log(`[gateway-verify-account] Subaccount not available: ${e}`);
-    }
-  }
+  // Use accountNumber from API if available, otherwise null
+  const accountNumber = accountData.accountNumber?.number || accountData.accountNumber || null;
 
   return {
     legal_name: accountData.corporateName || accountData.companyName || accountData.name || null,
     document: accountData.cpfCnpj || null,
-    bank_name: bankInfo.bank_name || null,
-    bank_agency: bankInfo.bank_agency || null,
-    bank_account: bankInfo.bank_account || null,
-    wallet_id: walletId || accountData.walletId || null,
+    // Bank data: use platform defaults (Asaas API does not expose these)
+    bank_name: ASAAS_PLATFORM_DEFAULTS.bank_name,
+    bank_agency: ASAAS_PLATFORM_DEFAULTS.bank_agency,
+    bank_account: accountNumber,
+    wallet_id: accountData.walletId || null,
     merchant_id: accountData.walletId || accountData.id || null,
     raw_profile_json: {
       provider,
@@ -270,7 +219,8 @@ async function verifyAsaas(
       environment: environment || (isProduction ? "production" : "sandbox"),
       fetched_at: new Date().toISOString(),
       account_data: accountData,
-      bank_data: bankInfo,
+      platform_defaults_applied: true,
+      note: "Banco e agência são padrões da plataforma. A API do Asaas não fornece esses dados.",
     },
   };
 }

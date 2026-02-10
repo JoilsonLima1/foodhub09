@@ -632,6 +632,8 @@ export function GatewayCredentialsForm({ provider, scopeType, scopeId }: Gateway
               >
                 {profile.verified_level === 'full' ? (
                   <><CheckCircle2 className="h-3 w-3" /> Verificado</>
+                ) : profile.verified_level === 'partial' && profile.missing_fields?.length === 0 ? (
+                  <><CheckCircle2 className="h-3 w-3" /> Verificação concluída (dados parciais)</>
                 ) : (
                   <><AlertTriangle className="h-3 w-3" /> Verificação parcial</>
                 )}
@@ -662,13 +664,23 @@ export function GatewayCredentialsForm({ provider, scopeType, scopeId }: Gateway
                   <span className="text-muted-foreground">CPF/CNPJ</span>
                   <span className="font-medium">{profile?.document || '—'}</span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">Banco</span>
-                  <span className="font-medium">{profile?.bank_name || '—'}</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-medium">{profile?.bank_name || '—'}</span>
+                    {provider === 'asaas' && profile?.bank_name && (
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0">padrão</Badge>
+                    )}
+                  </div>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">Agência</span>
-                  <span className="font-medium">{profile?.bank_agency || '—'}</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-medium">{profile?.bank_agency || '—'}</span>
+                    {provider === 'asaas' && profile?.bank_agency && (
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0">padrão</Badge>
+                    )}
+                  </div>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Conta</span>
@@ -690,15 +702,26 @@ export function GatewayCredentialsForm({ provider, scopeType, scopeId }: Gateway
                 )}
               </div>
 
-              {/* Partial verification info */}
-              {profile?.verified_level === 'partial' && profile.missing_fields?.length > 0 && (
+              {/* Platform defaults explanation for Asaas */}
+              {provider === 'asaas' && profile?.verified_at && (
+                <Alert className="bg-muted/50">
+                  <Info className="h-4 w-4" />
+                  <AlertDescription className="text-xs">
+                    Alguns dados bancários não são fornecidos pela API do Asaas.
+                    Para garantir consistência, banco e agência seguem o padrão da plataforma.
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {/* Generic partial verification for non-Asaas providers */}
+              {provider !== 'asaas' && profile?.verified_level === 'partial' && profile.missing_fields?.length > 0 && (
                 <Alert>
                   <Info className="h-4 w-4" />
                   <AlertDescription className="text-xs">
                     Verificação parcial — alguns dados não estão disponíveis via API do provedor: {(profile.missing_fields as string[]).map((f: string) => {
                       const labels: Record<string, string> = { bank_agency: 'Agência', bank_account: 'Conta', bank_name: 'Banco', legal_name: 'Nome', document: 'CPF/CNPJ' };
                       return labels[f] || f;
-                    }).join(', ')}. Isso é normal para contas principais do Asaas.
+                    }).join(', ')}.
                   </AlertDescription>
                 </Alert>
               )}
