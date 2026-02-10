@@ -5095,6 +5095,50 @@ export type Database = {
           },
         ]
       }
+      partner_ar_invoice_items: {
+        Row: {
+          ar_invoice_id: string
+          created_at: string
+          description: string | null
+          id: string
+          item_type: string
+          metadata: Json | null
+          quantity: number
+          total_cents: number
+          unit_amount_cents: number
+        }
+        Insert: {
+          ar_invoice_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          item_type: string
+          metadata?: Json | null
+          quantity?: number
+          total_cents?: number
+          unit_amount_cents?: number
+        }
+        Update: {
+          ar_invoice_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          item_type?: string
+          metadata?: Json | null
+          quantity?: number
+          total_cents?: number
+          unit_amount_cents?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_ar_invoice_items_ar_invoice_id_fkey"
+            columns: ["ar_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "partner_ar_invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       partner_ar_invoices: {
         Row: {
           amount: number
@@ -5178,6 +5222,7 @@ export type Database = {
       }
       partner_billing_config: {
         Row: {
+          billing_day: number
           collection_mode: string
           created_at: string
           credit_limit: number
@@ -5187,11 +5232,16 @@ export type Database = {
           grace_days: number
           id: string
           is_active: boolean
+          last_invoice_period: string | null
+          monthly_fee_cents: number
           notes: string | null
           partner_id: string
+          tx_fee_fixed_cents: number
+          tx_fee_percent: number
           updated_at: string
         }
         Insert: {
+          billing_day?: number
           collection_mode?: string
           created_at?: string
           credit_limit?: number
@@ -5201,11 +5251,16 @@ export type Database = {
           grace_days?: number
           id?: string
           is_active?: boolean
+          last_invoice_period?: string | null
+          monthly_fee_cents?: number
           notes?: string | null
           partner_id: string
+          tx_fee_fixed_cents?: number
+          tx_fee_percent?: number
           updated_at?: string
         }
         Update: {
+          billing_day?: number
           collection_mode?: string
           created_at?: string
           credit_limit?: number
@@ -5215,8 +5270,12 @@ export type Database = {
           grace_days?: number
           id?: string
           is_active?: boolean
+          last_invoice_period?: string | null
+          monthly_fee_cents?: number
           notes?: string | null
           partner_id?: string
+          tx_fee_fixed_cents?: number
+          tx_fee_percent?: number
           updated_at?: string
         }
         Relationships: [
@@ -5805,6 +5864,87 @@ export type Database = {
             isOneToOne: true
             referencedRelation: "v_partner_financial_kpis"
             referencedColumns: ["partner_id"]
+          },
+        ]
+      }
+      partner_fee_ledger: {
+        Row: {
+          ar_invoice_id: string | null
+          created_at: string
+          fee_calculated: number
+          id: string
+          invoice_amount: number
+          partner_id: string
+          period: string
+          status: string
+          tenant_id: string
+          tenant_invoice_id: string | null
+          tx_fee_fixed_cents: number
+          tx_fee_percent: number
+        }
+        Insert: {
+          ar_invoice_id?: string | null
+          created_at?: string
+          fee_calculated?: number
+          id?: string
+          invoice_amount?: number
+          partner_id: string
+          period: string
+          status?: string
+          tenant_id: string
+          tenant_invoice_id?: string | null
+          tx_fee_fixed_cents?: number
+          tx_fee_percent?: number
+        }
+        Update: {
+          ar_invoice_id?: string | null
+          created_at?: string
+          fee_calculated?: number
+          id?: string
+          invoice_amount?: number
+          partner_id?: string
+          period?: string
+          status?: string
+          tenant_id?: string
+          tenant_invoice_id?: string | null
+          tx_fee_fixed_cents?: number
+          tx_fee_percent?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_fee_ledger_ar_invoice_id_fkey"
+            columns: ["ar_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "partner_ar_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_fee_ledger_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_fee_ledger_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "v_partner_financial_kpis"
+            referencedColumns: ["partner_id"]
+          },
+          {
+            foreignKeyName: "partner_fee_ledger_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_fee_ledger_tenant_invoice_id_fkey"
+            columns: ["tenant_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "tenant_invoices"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -12552,6 +12692,10 @@ export type Database = {
       }
     }
     Functions: {
+      accrue_partner_tx_fees_for_period: {
+        Args: { p_partner_id: string; p_period: string }
+        Returns: Json
+      }
       activate_partner_tenant_subscription: {
         Args: {
           p_gateway_payment_id?: string
@@ -12816,6 +12960,10 @@ export type Database = {
       }
       generate_operational_alerts: { Args: never; Returns: Json }
       generate_ops_recommendations: { Args: never; Returns: number }
+      generate_partner_monthly_invoice: {
+        Args: { p_partner_id: string; p_period: string }
+        Returns: Json
+      }
       generate_partner_settlement: {
         Args: {
           p_partner_id: string
@@ -12867,6 +13015,10 @@ export type Database = {
           quota: number
           used: number
         }[]
+      }
+      get_partner_access_state: {
+        Args: { p_partner_id: string }
+        Returns: Json
       }
       get_partner_by_domain: {
         Args: { p_domain: string }

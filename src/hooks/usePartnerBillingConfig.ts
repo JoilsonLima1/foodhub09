@@ -6,22 +6,29 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
+export interface DunningPolicy {
+  L1: { days_overdue: number; action: string; description: string };
+  L2: { days_overdue: number; action: string; description: string };
+  L3: { days_overdue: number; action: string; description: string };
+  L4: { days_overdue: number; action: string; description: string };
+}
+
 export interface PartnerBillingConfig {
   id: string;
   partner_id: string;
   collection_mode: 'INVOICE' | 'PIX' | 'CARD' | 'BOLETO';
   credit_limit: number;
   grace_days: number;
-  dunning_policy: {
-    L1: { days_overdue: number; action: string; description: string };
-    L2: { days_overdue: number; action: string; description: string };
-    L3: { days_overdue: number; action: string; description: string };
-    L4: { days_overdue: number; action: string; description: string };
-  };
+  dunning_policy: DunningPolicy;
   current_dunning_level: number;
   dunning_started_at: string | null;
   is_active: boolean;
   notes: string | null;
+  monthly_fee_cents: number;
+  tx_fee_percent: number;
+  tx_fee_fixed_cents: number;
+  billing_day: number;
+  last_invoice_period: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -88,7 +95,7 @@ export function useAllPartnerBillingConfigs() {
         .select(`*, partner:partners(id, name)`)
         .order('created_at', { ascending: false });
       if (error) throw error;
-      return data as (PartnerBillingConfig & { partner: { id: string; name: string } })[];
+      return data as unknown as (PartnerBillingConfig & { partner: { id: string; name: string } })[];
     },
   });
 
