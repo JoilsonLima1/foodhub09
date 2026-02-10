@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { useActiveContext } from '@/hooks/useActiveContext';
+import { useActiveContext, setDesiredContext } from '@/hooks/useActiveContext';
 import { usePublicSettings } from '@/hooks/usePublicSettings';
 import { resetThemeToDefault } from '@/hooks/useBusinessCategory';
 import { Button } from '@/components/ui/button';
@@ -67,9 +67,13 @@ export default function AuthPage() {
 
   // IMPORTANT: Reset theme to default on auth page mount
   // Auth page colors must be controlled ONLY by system defaults, not by any tenant theme
+  // Also: if context=partner, set desired context so useActiveContext picks it up after login
   useEffect(() => {
     resetThemeToDefault();
-  }, []);
+    if (context === 'partner') {
+      setDesiredContext('partner');
+    }
+  }, [context]);
 
   // Handle redirects in useEffect to avoid loops
   useEffect(() => {

@@ -36,6 +36,7 @@ interface ActiveContextValue {
 }
 
 const STORAGE_KEY = 'active_context';
+const DESIRED_CONTEXT_KEY = 'desired_context_type';
 
 function getStoredContext(): ActiveContextType | null {
   try {
@@ -51,6 +52,24 @@ function storeContext(type: ActiveContextType) {
   try {
     localStorage.setItem(STORAGE_KEY, type);
   } catch { /* ignore */ }
+}
+
+/** Set a one-shot desired context that overrides normal resolution on next login */
+export function setDesiredContext(type: ActiveContextType) {
+  try {
+    localStorage.setItem(DESIRED_CONTEXT_KEY, type);
+  } catch { /* ignore */ }
+}
+
+function consumeDesiredContext(): ActiveContextType | null {
+  try {
+    const desired = localStorage.getItem(DESIRED_CONTEXT_KEY);
+    if (desired === 'super_admin' || desired === 'partner' || desired === 'tenant') {
+      localStorage.removeItem(DESIRED_CONTEXT_KEY);
+      return desired;
+    }
+  } catch { /* ignore */ }
+  return null;
 }
 
 export function useActiveContext(): ActiveContextValue {
@@ -87,14 +106,25 @@ export function useActiveContext(): ActiveContextValue {
   useEffect(() => {
     if (isLoading || !user) return;
 
+    // 1. Check for one-shot desired context (from "Login de parceiro" etc.)
+    const desired = consumeDesiredContext();
+    if (desired && availableContexts.includes(desired)) {
+      console.info('[CTX_PICK]', { availableContexts, desired_context_type: desired, chosenType: desired, reason: 'desired_context_type' });
+      setContextType(desired);
+      storeContext(desired);
+      return;
+    }
+
+    // 2. If stored context is valid for this user, keep it
     const stored = getStoredContext();
-    // If stored context is valid for this user, keep it
     if (stored && availableContexts.includes(stored)) {
+      console.info('[CTX_PICK]', { availableContexts, desired_context_type: null, chosenType: stored, reason: 'stored_context' });
       setContextType(stored);
       return;
     }
 
-    // Otherwise use resolved default
+    // 3. Otherwise use resolved default (super_admin > partner > tenant)
+    console.info('[CTX_PICK]', { availableContexts, desired_context_type: null, chosenType: resolvedDefault, reason: 'resolved_default' });
     setContextType(resolvedDefault);
     storeContext(resolvedDefault);
   }, [isLoading, user, availableContexts, resolvedDefault]);
