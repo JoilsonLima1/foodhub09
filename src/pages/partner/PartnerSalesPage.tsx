@@ -20,7 +20,7 @@ import { toast } from 'sonner';
 import {
   Loader2, Save, Eye, Plus, Trash2, GripVertical,
   Sparkles, MessageSquare, HelpCircle, Star, Layout,
-  Search, Globe, Image, Rocket,
+  Search, Globe, Image, Rocket, Link2, EyeOff, Copy,
 } from 'lucide-react';
 
 interface BenefitItem {
@@ -308,22 +308,49 @@ export default function PartnerSalesPage() {
             Configure a landing page pública do seu negócio
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {previewUrl && (
-            <Button variant="outline" onClick={() => window.open(previewUrl, '_blank')}>
-              <Eye className="h-4 w-4 mr-2" />
-              Preview
-            </Button>
+            <>
+              <Button variant="outline" size="sm" onClick={() => window.open(previewUrl, '_blank')}>
+                <Eye className="h-4 w-4 mr-2" />
+                Preview
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const publicUrl = `${window.location.origin}/parceiros/${currentPartner?.slug}`;
+                  navigator.clipboard.writeText(publicUrl);
+                  toast.success('Link copiado!');
+                }}
+              >
+                <Copy className="h-4 w-4 mr-2" />
+                Copiar Link
+              </Button>
+            </>
           )}
           <Button
             variant="outline"
+            size="sm"
             onClick={() => saveMutation.mutate(undefined)}
             disabled={saveMutation.isPending}
           >
             {saveMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
             Salvar Rascunho
           </Button>
+          {formData.published && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => saveMutation.mutate(false)}
+              disabled={saveMutation.isPending}
+            >
+              <EyeOff className="h-4 w-4 mr-2" />
+              Despublicar
+            </Button>
+          )}
           <Button
+            size="sm"
             onClick={() => saveMutation.mutate(true)}
             disabled={saveMutation.isPending}
           >
