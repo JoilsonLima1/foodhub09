@@ -211,17 +211,21 @@ export function GatewayCredentialsForm({ provider, scopeType, scopeId }: Gateway
     },
   });
 
-  // Fetch account profile (verified cedente data)
+  // Fetch account profile (verified cedente data) — by provider_account_id or composite key
   const { data: profile, isLoading: loadingProfile } = useQuery({
-    queryKey: ['provider-account-profile', account?.id],
+    queryKey: ['provider-account-profile', provider, scopeType, scopeId, account?.id],
     enabled: !!account?.id,
     queryFn: async () => {
+      // Primary: by provider_account_id
       const { data, error } = await supabase
         .from('payment_provider_account_profile' as any)
         .select('*')
         .eq('provider_account_id', account!.id)
         .maybeSingle();
-      if (error) throw error;
+      if (error) {
+        console.warn('[profile-query] Error:', error.message);
+        throw error;
+      }
       return data as any;
     },
   });
@@ -367,28 +371,36 @@ export function GatewayCredentialsForm({ provider, scopeType, scopeId }: Gateway
     },
   });
 
-  // Verify account (fetch cedente data)
+  // Verify account (fetch real cedente data from provider API via edge function)
   const verifyMutation = useMutation({
     mutationFn: async () => {
-      if (!account?.id) throw new Error('Conta não encontrada');
-      const profileData = {
-        provider_account_id: account.id,
-        legal_name: 'Verificação pendente (configure via API do provedor)',
-        verified_at: new Date().toISOString(),
-        raw_profile_json: { provider, scope_type: scopeType, verified_manually: true },
-      };
+      console.log(`[verify-account] Calling edge function: provider=${provider}, scope=${scopeType}/${scopeId}`);
+      
+      const { data, error } = await supabase.functions.invoke('gateway-verify-account', {
+        body: {
+          provider,
+          scope_type: scopeType,
+          scope_id: scopeId || null,
+          environment: account?.environment || 'production',
+        },
+      });
 
-      const { error } = await supabase
-        .from('payment_provider_account_profile' as any)
-        .upsert(profileData as any, { onConflict: 'provider_account_id' });
       if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Erro desconhecido ao verificar conta');
+      
+      console.log('[verify-account] Success:', data.profile);
+      return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['provider-account-profile'] });
-      toast({ title: 'Dados do cedente verificados!' });
+      toast({
+        title: 'Dados do cedente verificados!',
+        description: data.profile?.legal_name ? `Conta: ${data.profile.legal_name}` : undefined,
+      });
     },
     onError: (err: any) => {
-      toast({ title: 'Erro ao verificar', description: err.message, variant: 'destructive' });
+      console.error('[verify-account] Error:', err);
+      toast({ title: 'Erro ao verificar conta', description: err.message, variant: 'destructive' });
     },
   });
 
@@ -585,7 +597,93 @@ export function GatewayCredentialsForm({ provider, scopeType, scopeId }: Gateway
         </CardContent>
       </Card>
 
-      {/* ===== 2. WEBHOOK SECTION (ALWAYS VISIBLE) ===== */}
+      {/* ===== 2. VERIFIED ACCOUNT (CEDENTE) — RIGHT AFTER CREDENTIALS ===== */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Conta Vinculada — Dados do Cedente</CardTitle>
+          <CardDescription>Dados verificados da conta do provedor associada a estas credenciais.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {!isConfigured ? (
+            <p className="text-sm text-muted-foreground">Salve as credenciais acima para verificar os dados do cedente.</p>
+          ) : loadingProfile ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" /> Carregando...
+            </div>
+          ) : profile?.verified_at ? (
+            <>
+              <div className="grid gap-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Nome / Razão Social</span>
+                  <span className="font-medium">{profile.legal_name || '—'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">CPF/CNPJ</span>
+                  <span className="font-medium">{profile.document || '—'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Banco</span>
+                  <span className="font-medium">{profile.bank_name || 'Não disponível via API'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Agência</span>
+                  <span className="font-medium">{profile.bank_agency || 'Não disponível via API'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Conta</span>
+                  <span className="font-medium">{profile.bank_account || 'Não disponível via API'}</span>
+                </div>
+                {profile.wallet_id && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Wallet ID</span>
+                    <span className="font-medium font-mono text-xs">{profile.wallet_id}</span>
+                  </div>
+                )}
+                {profile.verified_at && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Verificado em</span>
+                    <Badge variant="default" className="text-xs flex items-center gap-1">
+                      <CheckCircle2 className="h-3 w-3" />
+                      {new Date(profile.verified_at).toLocaleString('pt-BR')}
+                    </Badge>
+                  </div>
+                )}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => verifyMutation.mutate()}
+                disabled={verifyMutation.isPending}
+              >
+                {verifyMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                <RefreshCw className="h-4 w-4 mr-2" /> Reverificar Dados
+              </Button>
+            </>
+          ) : (
+            <>
+              <div className="grid gap-2 text-sm">
+                <div className="flex justify-between"><span className="text-muted-foreground">Nome / Razão Social</span><span className="font-medium">—</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">CPF/CNPJ</span><span className="font-medium">—</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Banco</span><span className="font-medium">—</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Agência</span><span className="font-medium">—</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Conta</span><span className="font-medium">—</span></div>
+              </div>
+              <p className="text-xs text-muted-foreground">Ainda não verificado — clique em "Verificar Dados do Cedente" para consultar via API do provedor.</p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => verifyMutation.mutate()}
+                disabled={verifyMutation.isPending || !isConfigured}
+              >
+                {verifyMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                <CheckCircle2 className="h-4 w-4 mr-2" /> Verificar Dados do Cedente
+              </Button>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ===== 3. WEBHOOK SECTION ===== */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
@@ -755,86 +853,13 @@ export function GatewayCredentialsForm({ provider, scopeType, scopeId }: Gateway
               </AccordionContent>
             </AccordionItem>
           </Accordion>
-        </CardContent>
-      </Card>
 
-      {/* ===== 3. VERIFIED ACCOUNT (CEDENTE) — ALWAYS VISIBLE ===== */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Conta Vinculada — Dados do Cedente</CardTitle>
-          <CardDescription>Dados verificados da conta do provedor associada a estas credenciais.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {!account?.id ? (
-            <p className="text-sm text-muted-foreground">Salve as credenciais acima para verificar os dados do cedente.</p>
-          ) : loadingProfile ? (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" /> Carregando...
-            </div>
-          ) : profile ? (
-            <>
-              <div className="grid gap-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Nome / Razão Social</span>
-                  <span className="font-medium">{profile.legal_name || '—'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">CPF/CNPJ</span>
-                  <span className="font-medium">{profile.document || '—'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Banco</span>
-                  <span className="font-medium">{profile.bank_name || '—'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Agência</span>
-                  <span className="font-medium">{profile.bank_agency || '—'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Conta</span>
-                  <span className="font-medium">{profile.bank_account || '—'}</span>
-                </div>
-                {profile.verified_at && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Verificado em</span>
-                    <Badge variant="default" className="text-xs flex items-center gap-1">
-                      <CheckCircle2 className="h-3 w-3" />
-                      {new Date(profile.verified_at).toLocaleString('pt-BR')}
-                    </Badge>
-                  </div>
-                )}
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => verifyMutation.mutate()}
-                disabled={verifyMutation.isPending}
-              >
-                {verifyMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                <RefreshCw className="h-4 w-4 mr-2" /> Verificar Dados
-              </Button>
-            </>
-          ) : (
-            <>
-              <div className="grid gap-2 text-sm">
-                <div className="flex justify-between"><span className="text-muted-foreground">Nome / Razão Social</span><span className="font-medium">—</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">CPF/CNPJ</span><span className="font-medium">—</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Banco</span><span className="font-medium">—</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Agência</span><span className="font-medium">—</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Conta</span><span className="font-medium">—</span></div>
-              </div>
-              <p className="text-xs text-muted-foreground">Ainda não verificado — clique em "Verificar Dados do Cedente" para consultar.</p>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => verifyMutation.mutate()}
-                disabled={verifyMutation.isPending || !account?.id}
-              >
-                {verifyMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                <CheckCircle2 className="h-4 w-4 mr-2" /> Verificar Dados do Cedente
-              </Button>
-            </>
-          )}
+          {/* Rotate secret warning */}
+          <Alert className="border-amber-500/30 bg-amber-500/5">
+            <AlertDescription className="text-xs text-muted-foreground">
+              <strong>Atenção ao rotacionar o secret:</strong> você terá que atualizar o webhook no painel do provedor, senão os eventos vão falhar.
+            </AlertDescription>
+          </Alert>
         </CardContent>
       </Card>
 

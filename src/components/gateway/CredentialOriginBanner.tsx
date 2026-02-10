@@ -245,26 +245,52 @@ export function CredentialOriginBanner({ provider, scopeType, scopeId, onPromote
           {needsPromotion && (
             <Alert className="border-primary/30">
               <ArrowUpCircle className="h-4 w-4" />
-              <AlertDescription className="flex items-center justify-between gap-2 flex-wrap">
-                <span className="text-sm">
-                  {isUsingLegacy
-                    ? 'Credencial encontrada na tabela legada. Promova para o sistema atual.'
-                    : `Credencial encontrada em "${activeCredential?.scope_type}". Promova para escopo "platform".`}
-                </span>
-                <Button
-                  size="sm"
-                  variant="default"
-                  className="shrink-0"
-                  onClick={() => {
-                    setSelectedSource(activeCredential!);
-                    setShowPromoteConfirm(true);
-                  }}
-                  disabled={promoteMutation.isPending}
-                >
-                  {promoteMutation.isPending && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
-                  <ArrowUpCircle className="h-3 w-3 mr-1" />
-                  Promover para Plataforma
-                </Button>
+              <AlertDescription className="space-y-3">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <span className="text-sm">
+                    {isUsingLegacy
+                      ? 'Credencial encontrada na tabela legada. Promova para o sistema atual.'
+                      : `Credencial encontrada em "${activeCredential?.scope_type}". Promova para escopo "platform".`}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="default"
+                    className="shrink-0"
+                    onClick={() => {
+                      setSelectedSource(activeCredential!);
+                      setShowPromoteConfirm(true);
+                    }}
+                    disabled={promoteMutation.isPending}
+                  >
+                    {promoteMutation.isPending && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
+                    <ArrowUpCircle className="h-3 w-3 mr-1" />
+                    Promover para Plataforma
+                  </Button>
+                </div>
+
+                {/* Explanation block */}
+                <div className="space-y-2 text-xs text-muted-foreground border-t pt-2">
+                  <div>
+                    <p className="font-medium text-foreground mb-1">O que acontece ao promover:</p>
+                    <p>Copiamos (UPSERT) a credencial encontrada na tabela legada ou escopo atual para o escopo PLATFORM (payment_provider_accounts scope_type="platform").</p>
+                  </div>
+                  <div>
+                    <p className="font-medium text-foreground mb-1">O que NÃO acontece:</p>
+                    <ul className="list-disc list-inside space-y-0.5 pl-1">
+                      <li>Não apagamos a credencial original (legado continua funcionando).</li>
+                      <li>Não alteramos IDs do provedor nem o gateway ativo do tenant.</li>
+                      <li>Não interrompe cobranças ou checkouts em andamento.</li>
+                    </ul>
+                  </div>
+                  <div>
+                    <p className="font-medium text-foreground mb-1">Quando usar:</p>
+                    <p>Quando você quer que a plataforma use uma credencial "master" (central) para todos os tenants, ou para facilitar a gestão no Super Admin.</p>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-primary">
+                    <CheckCircle2 className="h-3 w-3" />
+                    <span className="font-medium">Segurança: exige confirmação de senha.</span>
+                  </div>
+                </div>
               </AlertDescription>
             </Alert>
           )}
