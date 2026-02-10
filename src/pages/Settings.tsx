@@ -1,3 +1,4 @@
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -29,6 +30,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PAYMENT_PROVIDER_LABELS } from '@/lib/constants';
 import { ThemeCustomizer } from '@/components/settings/ThemeCustomizer';
+import { TenantOnlineGateways } from '@/components/settings/TenantOnlineGateways';
 import { AppearanceSettings } from '@/components/settings/AppearanceSettings';
 import { IFoodIntegration } from '@/components/integrations/IFoodIntegration';
 import { BusinessCategorySelector } from '@/components/settings/BusinessCategorySelector';
@@ -47,7 +49,9 @@ import { WaiterCommissionsManager } from '@/components/settings/WaiterCommission
 
 export default function Settings() {
   const { user, profile, roles } = useAuth();
-  const isSuperAdmin = roles.includes('admin'); // In production, add proper super admin check
+  const isSuperAdmin = roles.includes('admin');
+  const [searchParams] = useSearchParams();
+  const defaultTab = searchParams.get('tab') === 'payments' ? 'payments' : 'profile';
 
   return (
     <div className="space-y-6">
@@ -62,7 +66,7 @@ export default function Settings() {
         </p>
       </div>
 
-      <Tabs defaultValue="profile" className="space-y-6">
+      <Tabs defaultValue={defaultTab} className="space-y-6">
         <TabsList className="w-full h-auto flex flex-nowrap gap-2 overflow-x-auto justify-start md:flex-wrap md:overflow-visible">
           <TabsTrigger value="profile" className="shrink-0 flex items-center gap-2 whitespace-nowrap">
             <User className="h-4 w-4" />
@@ -191,57 +195,13 @@ export default function Settings() {
           <div className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Gateway Online</CardTitle>
+                <CardTitle>Gateways Online</CardTitle>
                 <CardDescription>
-                  Configurações de pagamento online (Pix e Cartão)
+                  Configure seus gateways de pagamento online (Pix, Cartão, Boleto)
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label>Pagamentos Online</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Habilitar pagamentos via Pix e Cartão na loja online
-                    </p>
-                  </div>
-                  <Switch />
-                </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label>Pix</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Aceitar pagamentos via Pix
-                    </p>
-                  </div>
-                  <Switch />
-                </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label>Cartão de Crédito/Débito</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Aceitar pagamentos via cartão online
-                    </p>
-                  </div>
-                  <Switch />
-                </div>
-
-                {/* Stone Online Gateway */}
-                <div className="border rounded-lg p-4 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Landmark className="h-5 w-5 text-primary" />
-                      <div>
-                        <Label className="text-base font-semibold">Stone Online</Label>
-                        <p className="text-sm text-muted-foreground">
-                          Pagamentos online via Stone (cartão, PIX, boleto)
-                        </p>
-                      </div>
-                    </div>
-                    <Button variant="outline" size="sm" onClick={() => window.location.href = '/stone'}>
-                      Configurar
-                    </Button>
-                  </div>
-                </div>
+              <CardContent>
+                <TenantOnlineGateways />
               </CardContent>
             </Card>
 
@@ -284,21 +244,6 @@ export default function Settings() {
                   <Switch defaultChecked />
                 </div>
                 <Button>Salvar Configurações</Button>
-                
-                {/* Stone configuration shortcut */}
-                <div className="border-t pt-4 mt-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Landmark className="h-4 w-4 text-muted-foreground" />
-                      <p className="text-sm text-muted-foreground">
-                        Ao usar Stone Connect ou Stone TEF, configure suas credenciais Stone.
-                      </p>
-                    </div>
-                    <Button variant="link" size="sm" onClick={() => window.location.href = '/stone'}>
-                      Configurar Stone →
-                    </Button>
-                  </div>
-                </div>
               </CardContent>
             </Card>
           </div>
