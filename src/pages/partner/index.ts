@@ -22,3 +22,5 @@ export { default as PartnerNotificationsPage } from './PartnerNotificationsPage'
 export { default as PartnerOnboardingPage } from './PartnerOnboardingPage';
 // Partner Leads
 export { default as PartnerLeadsPage } from './PartnerLeadsPage';
+// Partner Sales Page
+export { default as PartnerSalesPage } from './PartnerSalesPage';

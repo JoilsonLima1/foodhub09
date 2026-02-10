@@ -5806,6 +5806,7 @@ export type Database = {
           cta_button_text: string | null
           cta_subtitle: string | null
           cta_title: string | null
+          demo_url: string | null
           faq_items: Json | null
           faq_title: string | null
           features: Json | null
@@ -5816,6 +5817,7 @@ export type Database = {
           hero_image_url: string | null
           hero_subtitle: string | null
           hero_title: string
+          hero_video_url: string | null
           id: string
           include_in_sitemap: boolean
           partner_id: string
@@ -5829,9 +5831,11 @@ export type Database = {
           show_modules_section: boolean | null
           show_pricing_section: boolean | null
           show_testimonials_section: boolean | null
+          signup_url: string | null
           social_proof_text: string | null
           testimonials: Json | null
           updated_at: string
+          whatsapp_number: string | null
         }
         Insert: {
           benefits?: Json | null
@@ -5840,6 +5844,7 @@ export type Database = {
           cta_button_text?: string | null
           cta_subtitle?: string | null
           cta_title?: string | null
+          demo_url?: string | null
           faq_items?: Json | null
           faq_title?: string | null
           features?: Json | null
@@ -5850,6 +5855,7 @@ export type Database = {
           hero_image_url?: string | null
           hero_subtitle?: string | null
           hero_title?: string
+          hero_video_url?: string | null
           id?: string
           include_in_sitemap?: boolean
           partner_id: string
@@ -5863,9 +5869,11 @@ export type Database = {
           show_modules_section?: boolean | null
           show_pricing_section?: boolean | null
           show_testimonials_section?: boolean | null
+          signup_url?: string | null
           social_proof_text?: string | null
           testimonials?: Json | null
           updated_at?: string
+          whatsapp_number?: string | null
         }
         Update: {
           benefits?: Json | null
@@ -5874,6 +5882,7 @@ export type Database = {
           cta_button_text?: string | null
           cta_subtitle?: string | null
           cta_title?: string | null
+          demo_url?: string | null
           faq_items?: Json | null
           faq_title?: string | null
           features?: Json | null
@@ -5884,6 +5893,7 @@ export type Database = {
           hero_image_url?: string | null
           hero_subtitle?: string | null
           hero_title?: string
+          hero_video_url?: string | null
           id?: string
           include_in_sitemap?: boolean
           partner_id?: string
@@ -5897,9 +5907,11 @@ export type Database = {
           show_modules_section?: boolean | null
           show_pricing_section?: boolean | null
           show_testimonials_section?: boolean | null
+          signup_url?: string | null
           social_proof_text?: string | null
           testimonials?: Json | null
           updated_at?: string
+          whatsapp_number?: string | null
         }
         Relationships: [
           {
@@ -6163,6 +6175,8 @@ export type Database = {
           included_features: string[] | null
           included_modules: string[] | null
           is_active: boolean | null
+          is_default: boolean | null
+          is_featured: boolean | null
           is_free: boolean | null
           max_orders_per_month: number | null
           max_products: number | null
@@ -6184,6 +6198,8 @@ export type Database = {
           included_features?: string[] | null
           included_modules?: string[] | null
           is_active?: boolean | null
+          is_default?: boolean | null
+          is_featured?: boolean | null
           is_free?: boolean | null
           max_orders_per_month?: number | null
           max_products?: number | null
@@ -6205,6 +6221,8 @@ export type Database = {
           included_features?: string[] | null
           included_modules?: string[] | null
           is_active?: boolean | null
+          is_default?: boolean | null
+          is_featured?: boolean | null
           is_free?: boolean | null
           max_orders_per_month?: number | null
           max_products?: number | null
