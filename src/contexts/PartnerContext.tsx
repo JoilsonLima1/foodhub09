@@ -1,8 +1,8 @@
 /**
  * PartnerContext - Manages partner authentication and context
  * 
- * This context is used by partner users (partner_admin, partner_support)
- * to access their partner data and manage tenants.
+ * Uses the partner_whoami edge function (service_role) to bypass RLS
+ * on partner_users, then fetches partner details if confirmed.
  */
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
@@ -53,23 +53,19 @@ export function PartnerProvider({ children }: { children: React.ReactNode }) {
 
     try {
       setError(null);
-      
-      // Check if user is a partner user
-      const { data: partnerUserData, error: puError } = await supabase
-        .from('partner_users')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('is_active', true)
-        .maybeSingle();
 
-      if (puError) {
-        console.error('[PartnerContext] Error fetching partner_user:', puError);
+      // Use edge function to bypass RLS on partner_users
+      const { data: whoami, error: fnError } = await supabase.functions.invoke('partner_whoami');
+
+      if (fnError) {
+        console.error('[PartnerContext] partner_whoami error:', fnError);
         setIsLoading(false);
         return;
       }
 
-      if (!partnerUserData) {
+      if (!whoami?.is_partner) {
         // User is not a partner user
+        console.info('[PartnerContext] Not a partner:', whoami?.reason);
         setCurrentPartner(null);
         setPartnerBranding(null);
         setPartnerUser(null);
@@ -77,61 +73,76 @@ export function PartnerProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      // Build partner user from whoami response
       setPartnerUser({
-        id: partnerUserData.id,
-        partner_id: partnerUserData.partner_id,
-        user_id: partnerUserData.user_id,
-        role: (partnerUserData.role || 'partner_admin') as PartnerUserRole,
-        is_active: partnerUserData.is_active ?? true,
+        id: whoami.partner_id, // we don't have partner_user.id from whoami, use partner_id as key
+        partner_id: whoami.partner_id,
+        user_id: user.id,
+        role: (whoami.role || 'partner_admin') as PartnerUserRole,
+        is_active: true,
       });
 
-      // Fetch partner data
+      // Fetch full partner data (partners table should be readable or we use the name from whoami)
       const { data: partnerData, error: pError } = await supabase
         .from('partners')
         .select('*')
-        .eq('id', partnerUserData.partner_id)
+        .eq('id', whoami.partner_id)
         .single();
 
       if (pError) {
         console.error('[PartnerContext] Error fetching partner:', pError);
-        setError('Erro ao carregar dados do parceiro');
+        // Fallback: use data from whoami
+        setCurrentPartner({
+          id: whoami.partner_id,
+          name: whoami.partner_name || 'Parceiro',
+          slug: '',
+          email: null,
+          phone: null,
+          document: null,
+          is_active: true,
+          max_tenants: 10,
+          max_users_per_tenant: 5,
+          revenue_share_percent: 0,
+          notes: null,
+          created_at: '',
+          updated_at: '',
+        });
         setIsLoading(false);
-        return;
-      }
+        // Still try branding below
+      } else {
+        if (!partnerData.is_active) {
+          setError('Parceiro inativo. Entre em contato com o suporte.');
+          setIsLoading(false);
+          return;
+        }
 
-      if (!partnerData.is_active) {
-        setError('Parceiro inativo. Entre em contato com o suporte.');
-        setIsLoading(false);
-        return;
+        setCurrentPartner({
+          id: partnerData.id,
+          name: partnerData.name,
+          slug: partnerData.slug,
+          email: partnerData.email,
+          phone: partnerData.phone,
+          document: partnerData.document,
+          is_active: partnerData.is_active ?? true,
+          max_tenants: partnerData.max_tenants ?? 10,
+          max_users_per_tenant: partnerData.max_users_per_tenant ?? 5,
+          revenue_share_percent: partnerData.revenue_share_percent ?? 0,
+          notes: partnerData.notes,
+          created_at: partnerData.created_at ?? '',
+          updated_at: partnerData.updated_at ?? '',
+        });
       }
-
-      setCurrentPartner({
-        id: partnerData.id,
-        name: partnerData.name,
-        slug: partnerData.slug,
-        email: partnerData.email,
-        phone: partnerData.phone,
-        document: partnerData.document,
-        is_active: partnerData.is_active ?? true,
-        max_tenants: partnerData.max_tenants ?? 10,
-        max_users_per_tenant: partnerData.max_users_per_tenant ?? 5,
-        revenue_share_percent: partnerData.revenue_share_percent ?? 0,
-        notes: partnerData.notes,
-        created_at: partnerData.created_at ?? '',
-        updated_at: partnerData.updated_at ?? '',
-      });
 
       // Fetch partner branding
       const { data: brandingData } = await supabase
         .from('partner_branding')
         .select('*')
-        .eq('partner_id', partnerUserData.partner_id)
+        .eq('partner_id', whoami.partner_id)
         .maybeSingle();
 
       if (brandingData) {
         setPartnerBranding(brandingData as PartnerBranding);
       }
-
     } catch (err: any) {
       console.error('[PartnerContext] Exception:', err);
       setError(err.message || 'Erro desconhecido');
