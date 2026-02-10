@@ -2,14 +2,8 @@
  * PartnerAuthCallback - Post-login gate for partner users.
  * Route: /partner/auth/callback
  * 
- * Responsibilities:
- * 1. Wait for auth session
- * 2. Check if the user is a partner_user
- * 3. If yes → force partner context & navigate to /partner/dashboard
- * 4. If no → show error with logout option
- * 
- * This component does NOT depend on useActiveContext resolution timing.
- * It directly queries partner_users and forces the context.
+ * Uses the partner_whoami edge function (service_role) to verify
+ * partner status, bypassing RLS restrictions on partner_users.
  */
 
 import { useEffect, useState } from 'react';
@@ -19,8 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-
-const CONTEXT_STORAGE_KEY = 'active_context';
+import { setDesiredContext } from '@/hooks/useActiveContext';
 
 export default function PartnerAuthCallback() {
   const navigate = useNavigate();
@@ -32,47 +25,39 @@ export default function PartnerAuthCallback() {
     if (authLoading) return;
 
     if (!user) {
-      // Not logged in — send back to partner login
       navigate('/partner/auth', { replace: true });
       return;
     }
 
-    // Check if this user is a partner
     const verifyPartner = async () => {
       try {
-        const { data, error: queryError } = await supabase
-          .from('partner_users')
-          .select('id, partner_id, is_active')
-          .eq('user_id', user.id)
-          .eq('is_active', true)
-          .maybeSingle();
+        const { data, error: fnError } = await supabase.functions.invoke('partner_whoami');
 
-        if (queryError) {
-          console.error('[PARTNER_CALLBACK] Query error:', queryError);
-          setError('Erro ao verificar conta de parceiro.');
+        if (fnError) {
+          console.error('[PARTNER_CALLBACK] Edge function error:', fnError);
+          setError('Erro ao verificar conta de parceiro. Tente novamente.');
           setChecking(false);
           return;
         }
 
-        if (!data) {
-          console.info('[PARTNER_CALLBACK] User is NOT a partner:', user.id);
-          setError('Esta conta não está vinculada a nenhum parceiro. Use o login padrão.');
+        if (!data?.is_partner) {
+          console.info('[PARTNER_CALLBACK] Not a partner:', data?.reason);
+          const msg = data?.reason === 'partner_inactive'
+            ? 'O parceiro vinculado a esta conta está inativo.'
+            : 'Esta conta não está vinculada a nenhum parceiro. Use o login padrão.';
+          setError(msg);
           setChecking(false);
           return;
         }
 
-        // User IS a partner — force context
-        console.info('[PARTNER_CALLBACK] Partner confirmed. Forcing context.', {
+        // User IS a partner — force context via the app's existing mechanism
+        console.info('[PARTNER_CALLBACK] Partner confirmed.', {
           userId: user.id,
           partnerId: data.partner_id,
         });
 
-        // Force active_context to 'partner' in localStorage
-        try {
-          localStorage.setItem(CONTEXT_STORAGE_KEY, 'partner');
-        } catch { /* ignore */ }
+        setDesiredContext('partner');
 
-        // Navigate to partner dashboard
         navigate('/partner/dashboard', { replace: true });
       } catch (err) {
         console.error('[PARTNER_CALLBACK] Exception:', err);
@@ -89,11 +74,18 @@ export default function PartnerAuthCallback() {
     navigate('/partner/auth', { replace: true });
   };
 
+  const handleRetry = () => {
+    setError(null);
+    setChecking(true);
+    // Re-trigger the effect by forcing a re-render won't work; navigate to self
+    navigate('/partner/auth/callback', { replace: true });
+    window.location.reload();
+  };
+
   const handleGoToTenantLogin = () => {
     navigate('/auth?intent=login', { replace: true });
   };
 
-  // Loading state
   if (authLoading || checking) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-3">
@@ -103,7 +95,6 @@ export default function PartnerAuthCallback() {
     );
   }
 
-  // Error state
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background px-4">
@@ -113,8 +104,11 @@ export default function PartnerAuthCallback() {
             <AlertDescription>{error}</AlertDescription>
           </Alert>
           <div className="flex gap-3">
+            <Button variant="outline" onClick={handleRetry} className="flex-1">
+              Tentar novamente
+            </Button>
             <Button variant="outline" onClick={handleGoToTenantLogin} className="flex-1">
-              Ir para login padrão
+              Login padrão
             </Button>
             <Button variant="destructive" onClick={handleLogout} className="flex-1">
               Sair
