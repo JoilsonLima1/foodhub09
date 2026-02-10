@@ -9,3 +9,4 @@ export { OpsPartnersPaymentsPanel } from './OpsPartnersPaymentsPanel';
 export { OpsBillingPanel } from './OpsBillingPanel';
 export { OpsNotificationsPanel } from './OpsNotificationsPanel';
 export { OpsCronStatusPanel } from './OpsCronStatusPanel';
+export { OpsGoLiveChecklistPanel } from './OpsGoLiveChecklistPanel';
