@@ -8,3 +8,4 @@ export { OpsMetricsPanel } from './OpsMetricsPanel';
 export { OpsPartnersPaymentsPanel } from './OpsPartnersPaymentsPanel';
 export { OpsBillingPanel } from './OpsBillingPanel';
 export { OpsNotificationsPanel } from './OpsNotificationsPanel';
+export { OpsCronStatusPanel } from './OpsCronStatusPanel';
