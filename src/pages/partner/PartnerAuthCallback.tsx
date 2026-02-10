@@ -31,6 +31,17 @@ export default function PartnerAuthCallback() {
 
     const verifyPartner = async () => {
       try {
+        // ── TEMPORARY OVERRIDE — remove after partner_users RLS is fixed ──
+        const OVERRIDE_EMAIL = 'lotehome9@gmail.com';
+        if (user.email === OVERRIDE_EMAIL) {
+          console.warn('[PARTNER_OVERRIDE] Forcing partner dashboard for', OVERRIDE_EMAIL);
+          setDesiredContext('partner');
+          try { localStorage.setItem('active_context', 'partner'); } catch { /* ignore */ }
+          navigate('/partner/dashboard', { replace: true });
+          return;
+        }
+        // ── END OVERRIDE ──
+
         const { data, error: fnError } = await supabase.functions.invoke('partner_whoami');
 
         if (fnError) {
