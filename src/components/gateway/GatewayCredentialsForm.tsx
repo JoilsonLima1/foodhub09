@@ -372,9 +372,11 @@ export function GatewayCredentialsForm({ provider, scopeType, scopeId }: Gateway
   });
 
   // Verify account (fetch real cedente data from provider API via edge function)
+  const [verifyError, setVerifyError] = useState<{ message: string; details?: string } | null>(null);
   const verifyMutation = useMutation({
     mutationFn: async () => {
-      console.log(`[verify-account] Calling edge function: provider=${provider}, scope=${scopeType}/${scopeId}`);
+      setVerifyError(null);
+      console.log(`[verify-account] Calling edge function: provider=${provider}, scope=${scopeType}/${scopeId}, env=${account?.environment || 'production'}`);
       
       const { data, error } = await supabase.functions.invoke('gateway-verify-account', {
         body: {
@@ -385,8 +387,22 @@ export function GatewayCredentialsForm({ provider, scopeType, scopeId }: Gateway
         },
       });
 
-      if (error) throw error;
-      if (!data?.success) throw new Error(data?.error || 'Erro desconhecido ao verificar conta');
+      if (error) {
+        console.error('[verify-account] Invoke error:', error);
+        const msg = error.message || String(error);
+        // Detect common issues
+        if (msg.includes('Failed to send') || msg.includes('FunctionsHttpError') || msg.includes('FunctionsFetchError')) {
+          throw new Error(`Não foi possível acessar a função de verificação. Possíveis causas: função não publicada, erro de rede ou CORS. (Detalhe: ${msg})`);
+        }
+        if (msg.includes('not found') || msg.includes('404')) {
+          throw new Error('Função de verificação não encontrada (gateway-verify-account). Verifique se foi publicada.');
+        }
+        throw new Error(msg);
+      }
+      
+      if (!data?.success) {
+        throw new Error(data?.error || 'Erro desconhecido ao verificar conta');
+      }
       
       console.log('[verify-account] Success:', data.profile);
       return data;
@@ -400,6 +416,10 @@ export function GatewayCredentialsForm({ provider, scopeType, scopeId }: Gateway
     },
     onError: (err: any) => {
       console.error('[verify-account] Error:', err);
+      setVerifyError({
+        message: err.message || 'Erro desconhecido',
+        details: `Função: gateway-verify-account | Provider: ${provider} | Scope: ${scopeType}/${scopeId || 'null'} | ${new Date().toISOString()}`,
+      });
       toast({ title: 'Erro ao verificar conta', description: err.message, variant: 'destructive' });
     },
   });
@@ -658,6 +678,17 @@ export function GatewayCredentialsForm({ provider, scopeType, scopeId }: Gateway
                 {verifyMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 <RefreshCw className="h-4 w-4 mr-2" /> Reverificar Dados
               </Button>
+              {verifyError && (
+                <Alert variant="destructive" className="mt-2">
+                  <AlertDescription className="space-y-1">
+                    <p className="text-sm">{verifyError.message}</p>
+                    <details className="text-xs font-mono text-muted-foreground cursor-pointer">
+                      <summary>Detalhes técnicos</summary>
+                      <p className="mt-1">{verifyError.details}</p>
+                    </details>
+                  </AlertDescription>
+                </Alert>
+              )}
             </>
           ) : (
             <>
@@ -678,6 +709,17 @@ export function GatewayCredentialsForm({ provider, scopeType, scopeId }: Gateway
                 {verifyMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 <CheckCircle2 className="h-4 w-4 mr-2" /> Verificar Dados do Cedente
               </Button>
+              {verifyError && (
+                <Alert variant="destructive" className="mt-2">
+                  <AlertDescription className="space-y-1">
+                    <p className="text-sm">{verifyError.message}</p>
+                    <details className="text-xs font-mono text-muted-foreground cursor-pointer">
+                      <summary>Detalhes técnicos</summary>
+                      <p className="mt-1">{verifyError.details}</p>
+                    </details>
+                  </AlertDescription>
+                </Alert>
+              )}
             </>
           )}
         </CardContent>
