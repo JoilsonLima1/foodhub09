@@ -216,6 +216,53 @@ export default function PublicParceiroProfile() {
 
   const seoTitle = page?.seo_title || `${partnerName} — Sistema completo para seu negócio`;
   const seoDesc = page?.seo_description || page?.hero_subtitle || `Conheça os planos e benefícios de ${partnerName}.`;
+  const isPublished = !!marketingPage?.published;
+
+  // Canonical: use partner's marketing domain if available, otherwise platform URL
+  const marketingDomain = profile.domains?.marketing;
+  const canonicalUrl = marketingDomain
+    ? `https://${marketingDomain}`
+    : `${window.location.origin}/parceiros/${slug}`;
+
+  // Structured data
+  const structuredData = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'Organization',
+        name: partnerName,
+        url: canonicalUrl,
+        ...(partnerLogo ? { logo: partnerLogo } : {}),
+        ...(profile.branding?.support_email ? { email: profile.branding.support_email } : {}),
+        ...(profile.branding?.support_phone ? { telephone: profile.branding.support_phone } : {}),
+      },
+      {
+        '@type': 'SoftwareApplication',
+        name: `${partnerName} — Sistema de Gestão`,
+        applicationCategory: 'BusinessApplication',
+        operatingSystem: 'Web',
+        url: canonicalUrl,
+        description: seoDesc,
+        ...(plans && plans.length > 0 ? {
+          offers: plans.map((plan: any) => ({
+            '@type': 'Offer',
+            name: plan.name,
+            price: plan.is_free ? '0' : String(plan.monthly_price || 0),
+            priceCurrency: 'BRL',
+            ...(plan.description ? { description: plan.description } : {}),
+          })),
+        } : {}),
+      },
+      ...(faqItems.length > 0 ? [{
+        '@type': 'FAQPage',
+        mainEntity: faqItems.map((faq: any) => ({
+          '@type': 'Question',
+          name: faq.question,
+          acceptedAnswer: { '@type': 'Answer', text: faq.answer },
+        })),
+      }] : []),
+    ],
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -223,10 +270,18 @@ export default function PublicParceiroProfile() {
       <Helmet>
         <title>{seoTitle}</title>
         <meta name="description" content={seoDesc} />
+        {!isPublished && <meta name="robots" content="noindex, nofollow" />}
+        <link rel="canonical" href={canonicalUrl} />
+        <meta property="og:type" content="website" />
         <meta property="og:title" content={seoTitle} />
         <meta property="og:description" content={seoDesc} />
+        <meta property="og:url" content={canonicalUrl} />
         {partnerLogo && <meta property="og:image" content={partnerLogo} />}
-        <link rel="canonical" href={`${window.location.origin}/parceiros/${slug}`} />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={seoTitle} />
+        <meta name="twitter:description" content={seoDesc} />
+        {partnerLogo && <meta name="twitter:image" content={partnerLogo} />}
+        <script type="application/ld+json">{JSON.stringify(structuredData)}</script>
       </Helmet>
 
       {/* Header with Install + Login */}

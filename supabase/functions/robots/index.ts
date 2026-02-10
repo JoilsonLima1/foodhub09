@@ -83,6 +83,7 @@ Allow: /
 Allow: /recursos
 Allow: /planos
 Allow: /clientes
+Allow: /parceiros
 
 # Disallow admin and authenticated areas
 Disallow: /dashboard
