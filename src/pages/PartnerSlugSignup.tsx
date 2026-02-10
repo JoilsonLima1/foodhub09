@@ -136,12 +136,20 @@ export default function PartnerSlugSignup() {
 
       if (fnError) throw fnError;
 
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
       if (data?.requiresPayment && data?.checkoutUrl) {
+        // Redirect to payment gateway (platform or partner)
         window.location.href = data.checkoutUrl;
+      } else if (data?.pendingPartnerBilling) {
+        // Partner billing but gateway not ready - show success with message
+        navigate(`/login?signup=success&msg=${encodeURIComponent(data.message || 'Conta criada!')}`, { replace: true });
       } else if (data?.success) {
         navigate('/login?signup=success', { replace: true });
       } else {
-        throw new Error(data?.error || 'Erro ao criar conta');
+        throw new Error('Erro ao criar conta');
       }
     } catch (err: any) {
       console.error('[PartnerSlugSignup] Error:', err);

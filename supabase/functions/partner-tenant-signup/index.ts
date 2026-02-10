@@ -2,10 +2,12 @@
  * partner-tenant-signup - Creates a new tenant under a partner
  * 
  * Handles:
+ * - Anti-fraud: validates plan belongs to partner
  * - Tenant creation with partner association
  * - User creation with admin role
  * - Subscription creation (trial or paid)
- * - Payment checkout via Asaas if needed
+ * - Billing owner routing (platform vs partner gateway)
+ * - Observability: logs events to operational_logs
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
@@ -25,8 +27,28 @@ interface SignupRequest {
   businessCategory?: string;
 }
 
+type EventType = 'landing_view' | 'start_signup' | 'signup_created' | 'checkout_started' | 'checkout_failed' | 'subscribed';
+
+async function logEvent(
+  supabase: any,
+  event: EventType,
+  partnerId: string,
+  metadata?: Record<string, unknown>
+) {
+  try {
+    await supabase.from('operational_logs').insert({
+      level: 'info',
+      scope: 'partner_signup',
+      message: event,
+      partner_id: partnerId,
+      metadata: { ...metadata, timestamp: new Date().toISOString() },
+    });
+  } catch (e) {
+    console.warn('[partner-tenant-signup] Log event failed:', e);
+  }
+}
+
 Deno.serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
@@ -43,6 +65,7 @@ Deno.serve(async (req) => {
     const { partnerId, planId, tenantName, adminName, adminEmail, adminPassword, businessCategory } = body;
 
     console.log('[partner-tenant-signup] Starting signup for:', { partnerId, planId, tenantName, adminEmail });
+    await logEvent(supabase, 'start_signup', partnerId, { planId, adminEmail });
 
     // Validate required fields
     if (!partnerId || !planId || !tenantName || !adminName || !adminEmail || !adminPassword) {
@@ -87,7 +110,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Get plan details
+    // Get plan details - ANTI-FRAUD: validate plan belongs to this partner
     const { data: plan, error: planError } = await supabase
       .from('partner_plans')
       .select('*')
@@ -97,16 +120,51 @@ Deno.serve(async (req) => {
       .single();
 
     if (planError || !plan) {
-      console.error('[partner-tenant-signup] Plan not found:', planError);
+      console.error('[partner-tenant-signup] Plan not found or does not belong to partner:', planError);
       return new Response(
-        JSON.stringify({ error: 'Plano não encontrado' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: 'Plano inválido ou não pertence a este parceiro' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // Fetch billing policy
+    const { data: partnerPolicy } = await supabase
+      .from('partner_policies')
+      .select('billing_owner, allow_partner_gateway')
+      .eq('partner_id', partnerId)
+      .maybeSingle();
+
+    // Fallback to global policy if no partner-specific one
+    let billingOwner = partnerPolicy?.billing_owner || 'platform';
+    if (!partnerPolicy) {
+      const { data: globalPolicy } = await supabase
+        .from('partner_policies')
+        .select('billing_owner')
+        .is('partner_id', null)
+        .maybeSingle();
+      billingOwner = globalPolicy?.billing_owner || 'platform';
+    }
+
+    console.log('[partner-tenant-signup] Billing owner:', billingOwner);
+
+    // If partner is billing owner, check gateway readiness
+    let partnerGatewayReady = false;
+    let partnerGateway: any = null;
+    if (billingOwner === 'partner') {
+      const { data: paymentAccount } = await supabase
+        .from('partner_payment_accounts')
+        .select('*')
+        .eq('partner_id', partnerId)
+        .eq('status', 'active')
+        .maybeSingle();
+
+      partnerGateway = paymentAccount;
+      partnerGatewayReady = !!paymentAccount?.api_key_encrypted;
     }
 
     // Check if email is already registered
     const { data: existingUser } = await supabase.auth.admin.listUsers();
-    const emailExists = existingUser?.users?.some(u => u.email === adminEmail);
+    const emailExists = existingUser?.users?.some((u: any) => u.email === adminEmail);
     
     if (emailExists) {
       return new Response(
@@ -119,7 +177,7 @@ Deno.serve(async (req) => {
     const { data: authData, error: authError } = await supabase.auth.admin.createUser({
       email: adminEmail,
       password: adminPassword,
-      email_confirm: true, // Auto-confirm for partner signups
+      email_confirm: true,
       user_metadata: {
         full_name: adminName,
         tenant_name: tenantName,
@@ -129,6 +187,7 @@ Deno.serve(async (req) => {
 
     if (authError || !authData.user) {
       console.error('[partner-tenant-signup] Auth error:', authError);
+      await logEvent(supabase, 'checkout_failed', partnerId, { error: authError?.message, stage: 'user_creation' });
       return new Response(
         JSON.stringify({ error: 'Erro ao criar usuário: ' + (authError?.message || 'Unknown') }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -138,6 +197,11 @@ Deno.serve(async (req) => {
     const userId = authData.user.id;
     console.log('[partner-tenant-signup] User created:', userId);
 
+    // Determine initial subscription status
+    const hasTrial = plan.trial_days > 0;
+    const isFree = plan.is_free;
+    const needsPayment = !isFree && !hasTrial;
+
     // Create tenant
     const { data: tenant, error: tenantError } = await supabase
       .from('tenants')
@@ -145,7 +209,7 @@ Deno.serve(async (req) => {
         name: tenantName,
         email: adminEmail,
         is_active: true,
-        subscription_status: plan.trial_days > 0 ? 'trialing' : (plan.is_free ? 'active' : 'pending'),
+        subscription_status: hasTrial ? 'trialing' : (isFree ? 'active' : 'pending'),
         subscription_plan: plan.slug,
         partner_id: partnerId,
         business_category: businessCategory || 'restaurant',
@@ -155,8 +219,8 @@ Deno.serve(async (req) => {
 
     if (tenantError || !tenant) {
       console.error('[partner-tenant-signup] Tenant creation error:', tenantError);
-      // Cleanup: delete the user we just created
       await supabase.auth.admin.deleteUser(userId);
+      await logEvent(supabase, 'checkout_failed', partnerId, { error: tenantError?.message, stage: 'tenant_creation' });
       return new Response(
         JSON.stringify({ error: 'Erro ao criar estabelecimento' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -194,22 +258,25 @@ Deno.serve(async (req) => {
     }
 
     // Calculate trial end date
-    const trialEndsAt = plan.trial_days > 0
+    const trialEndsAt = hasTrial
       ? new Date(Date.now() + plan.trial_days * 24 * 60 * 60 * 1000).toISOString()
       : null;
 
     // Create subscription record
-    const subscriptionStatus = plan.trial_days > 0 ? 'trial' : (plan.is_free ? 'active' : 'pending');
+    const subscriptionStatus = hasTrial ? 'trial' : (isFree ? 'active' : 'pending');
     
     const { data: subscription, error: subError } = await supabase
       .from('tenant_subscriptions')
       .insert({
         tenant_id: tenant.id,
         partner_plan_id: plan.id,
+        billing_mode: billingOwner === 'partner' ? 'offline' : 'automatic',
         status: subscriptionStatus,
         trial_ends_at: trialEndsAt,
         current_period_start: new Date().toISOString(),
         current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        monthly_amount: plan.monthly_price || 0,
+        currency: 'BRL',
       })
       .select()
       .single();
@@ -226,53 +293,9 @@ Deno.serve(async (req) => {
       is_active: true,
     });
 
-    // If plan requires payment (not free and no trial), generate checkout
-    if (!plan.is_free && plan.trial_days === 0) {
-      const asaasApiKey = Deno.env.get('ASAAS_API_KEY');
-      
-      if (asaasApiKey) {
-        try {
-          // Call partner-tenant-checkout to generate payment link
-          const checkoutResponse = await fetch(`${supabaseUrl}/functions/v1/partner-tenant-checkout`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${supabaseServiceKey}`,
-            },
-            body: JSON.stringify({
-              subscriptionId: subscription?.id,
-              tenantId: tenant.id,
-              email: adminEmail,
-              name: adminName,
-              planName: plan.name,
-              amount: plan.monthly_price,
-            }),
-          });
-
-          const checkoutData = await checkoutResponse.json();
-
-          if (checkoutData.paymentUrl) {
-            return new Response(
-              JSON.stringify({
-                success: true,
-                requiresPayment: true,
-                checkoutUrl: checkoutData.paymentUrl,
-                tenantId: tenant.id,
-              }),
-              { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            );
-          }
-        } catch (checkoutError) {
-          console.error('[partner-tenant-signup] Checkout error:', checkoutError);
-          // Continue without payment - admin can handle manually
-        }
-      }
-    }
-
     // Sync modules from plan
     if (plan.included_modules && plan.included_modules.length > 0) {
       for (const moduleSlug of plan.included_modules) {
-        // Find module in catalog
         const { data: addonModule } = await supabase
           .from('addon_modules')
           .select('id')
@@ -290,7 +313,144 @@ Deno.serve(async (req) => {
       }
     }
 
+    await logEvent(supabase, 'signup_created', partnerId, {
+      tenantId: tenant.id,
+      planId: plan.id,
+      hasTrial,
+      isFree,
+      billingOwner,
+    });
+
+    // If plan requires payment (not free and no trial), generate checkout
+    if (needsPayment) {
+      // Route based on billing_owner
+      if (billingOwner === 'platform') {
+        // Platform handles billing - use platform's Asaas gateway
+        const asaasApiKey = Deno.env.get('ASAAS_API_KEY');
+        
+        if (asaasApiKey) {
+          try {
+            await logEvent(supabase, 'checkout_started', partnerId, { billingOwner: 'platform', tenantId: tenant.id });
+
+            const checkoutResponse = await fetch(`${supabaseUrl}/functions/v1/partner-tenant-checkout`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${supabaseServiceKey}`,
+              },
+              body: JSON.stringify({
+                subscriptionId: subscription?.id,
+                tenantId: tenant.id,
+                email: adminEmail,
+                name: adminName,
+                planName: plan.name,
+                amount: plan.monthly_price,
+              }),
+            });
+
+            const checkoutData = await checkoutResponse.json();
+
+            if (checkoutData.paymentUrl) {
+              return new Response(
+                JSON.stringify({
+                  success: true,
+                  requiresPayment: true,
+                  checkoutUrl: checkoutData.paymentUrl,
+                  tenantId: tenant.id,
+                  billingOwner: 'platform',
+                }),
+                { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+              );
+            }
+          } catch (checkoutError) {
+            console.error('[partner-tenant-signup] Platform checkout error:', checkoutError);
+            await logEvent(supabase, 'checkout_failed', partnerId, { billingOwner: 'platform', error: String(checkoutError) });
+          }
+        }
+      } else if (billingOwner === 'partner') {
+        // Partner handles billing
+        if (!partnerGatewayReady) {
+          console.warn('[partner-tenant-signup] Partner gateway not ready, registering as lead');
+          await logEvent(supabase, 'checkout_failed', partnerId, {
+            billingOwner: 'partner',
+            reason: 'gateway_not_configured',
+            tenantId: tenant.id,
+          });
+
+          // Still create the tenant but mark as pending payment
+          // The partner will handle billing offline
+          return new Response(
+            JSON.stringify({
+              success: true,
+              requiresPayment: false,
+              pendingPartnerBilling: true,
+              tenantId: tenant.id,
+              message: 'Conta criada! O parceiro entrará em contato para configurar o pagamento.',
+              billingOwner: 'partner',
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Partner gateway is ready - use partner's credentials
+        try {
+          await logEvent(supabase, 'checkout_started', partnerId, { billingOwner: 'partner', tenantId: tenant.id });
+
+          // Use partner's Asaas key for checkout
+          const checkoutResponse = await fetch(`${supabaseUrl}/functions/v1/partner-tenant-checkout`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${supabaseServiceKey}`,
+            },
+            body: JSON.stringify({
+              subscriptionId: subscription?.id,
+              tenantId: tenant.id,
+              email: adminEmail,
+              name: adminName,
+              planName: plan.name,
+              amount: plan.monthly_price,
+              partnerGatewayId: partnerGateway.id,
+              usePartnerGateway: true,
+            }),
+          });
+
+          const checkoutData = await checkoutResponse.json();
+
+          if (checkoutData.paymentUrl) {
+            return new Response(
+              JSON.stringify({
+                success: true,
+                requiresPayment: true,
+                checkoutUrl: checkoutData.paymentUrl,
+                tenantId: tenant.id,
+                billingOwner: 'partner',
+              }),
+              { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+        } catch (checkoutError) {
+          console.error('[partner-tenant-signup] Partner checkout error:', checkoutError);
+          await logEvent(supabase, 'checkout_failed', partnerId, { billingOwner: 'partner', error: String(checkoutError) });
+          
+          // Fallback: tenant created but payment pending
+          return new Response(
+            JSON.stringify({
+              success: true,
+              requiresPayment: false,
+              pendingPartnerBilling: true,
+              tenantId: tenant.id,
+              message: 'Conta criada! O parceiro entrará em contato para configurar o pagamento.',
+              billingOwner: 'partner',
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      }
+    }
+
     console.log('[partner-tenant-signup] Signup completed successfully');
+    await logEvent(supabase, 'subscribed', partnerId, { tenantId: tenant.id, status: subscriptionStatus });
 
     return new Response(
       JSON.stringify({
@@ -298,6 +458,7 @@ Deno.serve(async (req) => {
         requiresPayment: false,
         tenantId: tenant.id,
         subscriptionId: subscription?.id,
+        billingOwner,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
