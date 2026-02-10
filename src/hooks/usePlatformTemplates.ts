@@ -179,10 +179,18 @@ export function useImportTemplates() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['partner-plans'] });
       queryClient.invalidateQueries({ queryKey: ['partner-marketing-page'] });
-      toast({
-        title: 'Templates importados!',
-        description: `${data.plans_imported} planos importados${data.page_imported ? ' + página de vendas' : ''}.`,
-      });
+      if (data.plans_imported === 0) {
+        toast({
+          title: 'Nenhum template encontrado',
+          description: 'Não existem templates ativos configurados pela plataforma. Contate o administrador.',
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Templates importados!',
+          description: `${data.plans_imported} plano(s) importado(s)${data.page_imported ? ' + página de vendas' : ''}.`,
+        });
+      }
     },
     onError: (e: any) => toast({ title: 'Erro ao importar', description: e.message, variant: 'destructive' }),
   });
