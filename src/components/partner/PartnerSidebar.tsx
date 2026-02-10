@@ -25,6 +25,7 @@ import {
   Puzzle,
   Bell,
   ClipboardCheck,
+  FileText,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -99,6 +100,12 @@ const menuItems = [
     path: '/partner/publication', 
     label: 'Publicação', 
     icon: Rocket,
+    adminOnly: true,
+  },
+  {
+    path: '/partner/sales-page',
+    label: 'Página de Vendas',
+    icon: FileText,
     adminOnly: true,
   },
   { 

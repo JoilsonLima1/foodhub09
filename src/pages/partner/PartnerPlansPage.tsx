@@ -61,6 +61,8 @@ interface PlanFormData {
   max_products: number | null;
   max_orders_per_month: number | null;
   is_active: boolean;
+  is_featured: boolean;
+  is_default: boolean;
   display_order: number;
   trial_days: number;
   is_free: boolean;
@@ -87,6 +89,8 @@ export default function PartnerPlansPage() {
     max_products: 100,
     max_orders_per_month: 1000,
     is_active: true,
+    is_featured: false,
+    is_default: false,
     display_order: 0,
     trial_days: 14,
     is_free: false,
@@ -119,6 +123,8 @@ export default function PartnerPlansPage() {
       max_products: 100,
       max_orders_per_month: 1000,
       is_active: true,
+      is_featured: false,
+      is_default: false,
       display_order: plans.length,
       trial_days: 14,
       is_free: false,
@@ -159,6 +165,8 @@ export default function PartnerPlansPage() {
       max_products: plan.max_products || 100,
       max_orders_per_month: plan.max_orders_per_month || 1000,
       is_active: plan.is_active,
+      is_featured: plan.is_featured || false,
+      is_default: plan.is_default || false,
       display_order: plan.display_order || 0,
       trial_days: plan.trial_days || 14,
       is_free: plan.is_free || false,
@@ -394,13 +402,29 @@ export default function PartnerPlansPage() {
         </div>
       )}
 
-      {/* Active Toggle */}
-      <div className="flex items-center gap-2">
-        <Switch
-          checked={formData.is_active}
-          onCheckedChange={(v) => setFormData(prev => ({ ...prev, is_active: v }))}
-        />
-        <Label>Plano Ativo</Label>
+      {/* Toggles */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="flex items-center gap-2">
+          <Switch
+            checked={formData.is_active}
+            onCheckedChange={(v) => setFormData(prev => ({ ...prev, is_active: v }))}
+          />
+          <Label>Plano Ativo</Label>
+        </div>
+        <div className="flex items-center gap-2">
+          <Switch
+            checked={formData.is_featured}
+            onCheckedChange={(v) => setFormData(prev => ({ ...prev, is_featured: v }))}
+          />
+          <Label>Destaque</Label>
+        </div>
+        <div className="flex items-center gap-2">
+          <Switch
+            checked={formData.is_default}
+            onCheckedChange={(v) => setFormData(prev => ({ ...prev, is_default: v }))}
+          />
+          <Label>Padrão</Label>
+        </div>
       </div>
     </div>
   );
@@ -523,9 +547,13 @@ export default function PartnerPlansPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={plan.is_active ? 'default' : 'secondary'}>
-                        {plan.is_active ? 'Ativo' : 'Inativo'}
-                      </Badge>
+                      <div className="flex items-center gap-1">
+                        <Badge variant={plan.is_active ? 'default' : 'secondary'}>
+                          {plan.is_active ? 'Ativo' : 'Inativo'}
+                        </Badge>
+                        {plan.is_featured && <Badge variant="outline">⭐</Badge>}
+                        {plan.is_default && <Badge variant="outline">Padrão</Badge>}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">

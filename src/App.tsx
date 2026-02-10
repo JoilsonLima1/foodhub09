@@ -73,6 +73,7 @@ import {
   PartnerNotificationsPage,
   PartnerOnboardingPage,
   PartnerLeadsPage,
+  PartnerSalesPage,
 } from "./pages/partner";
 // Public partner pages
 import PublicParceiros from "./pages/PublicParceiros";
@@ -156,6 +157,7 @@ const App = () => (
                       <Route path="branding" element={<PartnerBrandingPage />} />
                       <Route path="domains" element={<PartnerDomainsPage />} />
                       <Route path="publication" element={<PartnerPublicationPage />} />
+                      <Route path="sales-page" element={<PartnerSalesPage />} />
                       <Route path="plans" element={<PartnerPlansPage />} />
                       <Route path="invoices" element={<PartnerInvoicesPage />} />
                       <Route path="fees" element={<PartnerFeesPage />} />
