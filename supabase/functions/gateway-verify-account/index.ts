@@ -34,7 +34,9 @@ serve(async (req) => {
     // 1. Find the credential
     let apiKey: string | null = null;
     let accountId: string | null = null;
+    let credentialSource: "new_structure" | "legacy" | "none" = "none";
 
+    // Priority: payment_provider_accounts (new structure, scoped)
     let query = supabase
       .from("payment_provider_accounts")
       .select("*")
@@ -55,10 +57,22 @@ serve(async (req) => {
       if (provider === "asaas") apiKey = creds?.api_key || null;
       else if (provider === "stripe") apiKey = creds?.secret_key || null;
       else apiKey = creds?.api_key || creds?.client_id || null;
-      console.log(`[gateway-verify-account] Found account id=${accountId}, hasKey=${!!apiKey}`);
+      if (apiKey) credentialSource = "new_structure";
+      console.log(`[gateway-verify-account] Found account id=${accountId}, hasKey=${!!apiKey}, source=new_structure`);
     }
 
-    // Fallback to legacy
+    // Check if the key from new structure is masked (contains ****)
+    const isMasked = (key: string | null): boolean => {
+      if (!key) return false;
+      return key.includes("****") || key.includes("***");
+    };
+
+    if (apiKey && isMasked(apiKey)) {
+      console.warn(`[gateway-verify-account] Key from new_structure is MASKED — treating as invalid`);
+      apiKey = null;
+    }
+
+    // Fallback to legacy payment_gateways
     if (!apiKey) {
       const { data: legacy } = await supabase
         .from("payment_gateways")
@@ -68,13 +82,19 @@ serve(async (req) => {
         .maybeSingle();
 
       if (legacy?.api_key_masked) {
-        apiKey = legacy.api_key_masked;
-        console.log(`[gateway-verify-account] Using legacy key (masked: ${apiKey!.slice(0, 8)}...)`);
+        const legacyKey = legacy.api_key_masked;
+        if (isMasked(legacyKey)) {
+          console.warn(`[gateway-verify-account] Legacy key is MASKED — cannot use for verification`);
+        } else {
+          apiKey = legacyKey;
+          credentialSource = "legacy";
+          console.log(`[gateway-verify-account] Using legacy key, source=legacy`);
+        }
       }
     }
 
     if (!apiKey) {
-      throw new Error("Nenhuma credencial encontrada para este provedor/escopo. Salve as credenciais primeiro.");
+      throw new Error("Nenhuma credencial válida encontrada. A Secret Key pode estar mascarada ou ausente. Re-salve a chave no painel de credenciais.");
     }
 
     // 2. Call provider API
@@ -94,27 +114,47 @@ serve(async (req) => {
       const hasAccount = !!profileData.bank_account;
       verifiedLevel = (hasIdentity && hasAccount) ? "full" : "partial";
     } else if (provider === "stripe") {
-      const trimmedKey = apiKey.trim();
-      // Validate key type
-      if (trimmedKey.startsWith("pk_")) {
-        throw new Error("Informe uma Secret Key (sk_…) — Publishable Key (pk_…) não funciona para verificação.");
+      const resolvedSecretKey = (apiKey || "").trim();
+
+      // Reject publishable keys
+      if (resolvedSecretKey.startsWith("pk_")) {
+        throw new Error("Você informou uma Publishable Key (pk_…). Informe a Secret Key (sk_live_… ou sk_test_…).");
       }
-      if (!trimmedKey.startsWith("sk_")) {
-        throw new Error("Chave Stripe inválida. Informe uma Secret Key (sk_live_… ou sk_test_…).");
+
+      // Accept sk_ (standard Secret Key) and rk_ (Restricted Key) — both are valid for API calls
+      const isSecretKey = resolvedSecretKey.startsWith("sk_");
+      const isRestrictedKey = resolvedSecretKey.startsWith("rk_");
+      if (!isSecretKey && !isRestrictedKey) {
+        throw new Error("Chave Stripe inválida. Informe uma Secret Key (sk_live_…) ou Restricted Key (rk_live_…).");
       }
-      // Validate environment compatibility
+
+      // Detect masked keys that slipped through
+      if (resolvedSecretKey.includes("****") || resolvedSecretKey.includes("***")) {
+        throw new Error("A Secret Key está mascarada (contém ****). Re-salve a chave real no painel de credenciais.");
+      }
+
+      // Determine key environment
       const resolvedEnv = environment || "production";
-      const isLiveKey = trimmedKey.startsWith("sk_live_");
-      const isTestKey = trimmedKey.startsWith("sk_test_");
-      if (resolvedEnv === "production" && !isLiveKey) {
-        throw new Error("Ambiente production requer uma Secret Key live (sk_live_…). A chave informada é de teste.");
+      const isLiveKey = resolvedSecretKey.includes("_live_");
+      const isTestKey = resolvedSecretKey.includes("_test_");
+      const keyPrefix = resolvedSecretKey.slice(0, resolvedSecretKey.indexOf("_", 3) + 1) || "unknown";
+
+      // Validate environment compatibility
+      if (resolvedEnv === "production" && isTestKey) {
+        throw new Error(`Ambiente production requer chave live (*_live_…). A chave informada é de teste (${keyPrefix}…).`);
       }
-      if ((resolvedEnv === "test" || resolvedEnv === "sandbox") && !isTestKey) {
-        throw new Error("Ambiente sandbox/test requer uma Secret Key de teste (sk_test_…). A chave informada é live.");
+      if ((resolvedEnv === "test" || resolvedEnv === "sandbox") && isLiveKey) {
+        throw new Error(`Ambiente sandbox/test requer chave de teste (*_test_…). A chave informada é live (${keyPrefix}…).`);
       }
-      const maskedKey = trimmedKey.slice(0, 8) + "****";
-      console.log(`[gateway-verify-account] Stripe key prefix=${maskedKey} env=${resolvedEnv}`);
-      profileData = await verifyStripe(trimmedKey, provider, scope_type, scope_id);
+
+      // Secure log — never leak the full key
+      console.log(
+        `[gateway-verify-account] stripe_verify: source=${credentialSource} env=${resolvedEnv} ` +
+        `scope=${scope_type || "platform"}/${scope_id || "null"} ` +
+        `key_prefix=${keyPrefix} key_len=${resolvedSecretKey.length} masked=false`
+      );
+
+      profileData = await verifyStripe(resolvedSecretKey, provider, scope_type, scope_id);
       if (!profileData.legal_name) missingFields.push("legal_name");
       verifiedLevel = missingFields.length > 0 ? "partial" : "full";
     } else {
