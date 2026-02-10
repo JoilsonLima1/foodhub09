@@ -7636,6 +7636,246 @@ export type Database = {
           },
         ]
       }
+      payment_provider_accounts: {
+        Row: {
+          allow_partial_refund: boolean
+          auto_capture: boolean
+          created_at: string
+          created_by: string | null
+          credentials_encrypted: Json
+          display_name: string | null
+          environment: string
+          id: string
+          integration_type: string
+          last_error: string | null
+          last_tested_at: string | null
+          payment_timeout_seconds: number
+          provider: string
+          scope_id: string | null
+          scope_type: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          allow_partial_refund?: boolean
+          auto_capture?: boolean
+          created_at?: string
+          created_by?: string | null
+          credentials_encrypted?: Json
+          display_name?: string | null
+          environment?: string
+          id?: string
+          integration_type: string
+          last_error?: string | null
+          last_tested_at?: string | null
+          payment_timeout_seconds?: number
+          provider?: string
+          scope_id?: string | null
+          scope_type: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          allow_partial_refund?: boolean
+          auto_capture?: boolean
+          created_at?: string
+          created_by?: string | null
+          credentials_encrypted?: Json
+          display_name?: string | null
+          environment?: string
+          id?: string
+          integration_type?: string
+          last_error?: string | null
+          last_tested_at?: string | null
+          payment_timeout_seconds?: number
+          provider?: string
+          scope_id?: string | null
+          scope_type?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      payment_provider_events: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          event_type: string
+          id: string
+          idempotency_key: string | null
+          max_retries: number
+          next_retry_at: string | null
+          payload: Json | null
+          process_status: string
+          processed_at: string | null
+          provider_account_id: string | null
+          provider_event_id: string | null
+          retry_count: number
+          tenant_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          event_type: string
+          id?: string
+          idempotency_key?: string | null
+          max_retries?: number
+          next_retry_at?: string | null
+          payload?: Json | null
+          process_status?: string
+          processed_at?: string | null
+          provider_account_id?: string | null
+          provider_event_id?: string | null
+          retry_count?: number
+          tenant_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          event_type?: string
+          id?: string
+          idempotency_key?: string | null
+          max_retries?: number
+          next_retry_at?: string | null
+          payload?: Json | null
+          process_status?: string
+          processed_at?: string | null
+          provider_account_id?: string | null
+          provider_event_id?: string | null
+          retry_count?: number
+          tenant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_provider_events_provider_account_id_fkey"
+            columns: ["provider_account_id"]
+            isOneToOne: false
+            referencedRelation: "payment_provider_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_provider_transactions: {
+        Row: {
+          amount: number
+          captured_at: string | null
+          created_at: string
+          currency: string
+          error_message: string | null
+          id: string
+          idempotency_key: string | null
+          internal_reference: string | null
+          internal_reference_type: string | null
+          method: string | null
+          partner_id: string | null
+          provider_account_id: string
+          provider_reference: string | null
+          raw_provider_payload: Json | null
+          refunded_at: string | null
+          status: string
+          tenant_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          captured_at?: string | null
+          created_at?: string
+          currency?: string
+          error_message?: string | null
+          id?: string
+          idempotency_key?: string | null
+          internal_reference?: string | null
+          internal_reference_type?: string | null
+          method?: string | null
+          partner_id?: string | null
+          provider_account_id: string
+          provider_reference?: string | null
+          raw_provider_payload?: Json | null
+          refunded_at?: string | null
+          status?: string
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          captured_at?: string | null
+          created_at?: string
+          currency?: string
+          error_message?: string | null
+          id?: string
+          idempotency_key?: string | null
+          internal_reference?: string | null
+          internal_reference_type?: string | null
+          method?: string | null
+          partner_id?: string | null
+          provider_account_id?: string
+          provider_reference?: string | null
+          raw_provider_payload?: Json | null
+          refunded_at?: string | null
+          status?: string
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_provider_transactions_provider_account_id_fkey"
+            columns: ["provider_account_id"]
+            isOneToOne: false
+            referencedRelation: "payment_provider_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_provider_webhooks: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          events_filter: string[] | null
+          id: string
+          last_received_at: string | null
+          provider_account_id: string
+          total_failed: number
+          total_received: number
+          updated_at: string
+          webhook_secret_hash: string | null
+          webhook_url: string | null
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          events_filter?: string[] | null
+          id?: string
+          last_received_at?: string | null
+          provider_account_id: string
+          total_failed?: number
+          total_received?: number
+          updated_at?: string
+          webhook_secret_hash?: string | null
+          webhook_url?: string | null
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          events_filter?: string[] | null
+          id?: string
+          last_received_at?: string | null
+          provider_account_id?: string
+          total_failed?: number
+          total_received?: number
+          updated_at?: string
+          webhook_secret_hash?: string | null
+          webhook_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_provider_webhooks_provider_account_id_fkey"
+            columns: ["provider_account_id"]
+            isOneToOne: false
+            referencedRelation: "payment_provider_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payment_terms: {
         Row: {
           clauses: Json
@@ -9612,6 +9852,75 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      stone_audit_log: {
+        Row: {
+          action: string
+          created_at: string
+          details: Json | null
+          id: string
+          ip_address: string | null
+          scope_id: string | null
+          scope_type: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          scope_id?: string | null
+          scope_type?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          scope_id?: string | null
+          scope_type?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      stone_global_settings: {
+        Row: {
+          allow_partner_credentials: boolean
+          allow_tenant_credentials: boolean
+          created_at: string
+          enabled_integration_types: string[]
+          force_master_credentials: boolean
+          id: string
+          platform_fee_enabled: boolean
+          platform_fee_percent: number
+          updated_at: string
+        }
+        Insert: {
+          allow_partner_credentials?: boolean
+          allow_tenant_credentials?: boolean
+          created_at?: string
+          enabled_integration_types?: string[]
+          force_master_credentials?: boolean
+          id?: string
+          platform_fee_enabled?: boolean
+          platform_fee_percent?: number
+          updated_at?: string
+        }
+        Update: {
+          allow_partner_credentials?: boolean
+          allow_tenant_credentials?: boolean
+          created_at?: string
+          enabled_integration_types?: string[]
+          force_master_credentials?: boolean
+          id?: string
+          platform_fee_enabled?: boolean
+          platform_fee_percent?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       store_products: {
         Row: {
