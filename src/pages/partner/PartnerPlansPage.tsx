@@ -71,7 +71,7 @@ interface PlanFormData {
 }
 
 export default function PartnerPlansPage() {
-  const { plans, isLoading, createPlan, updatePlan, deletePlan } = usePartnerPlansData();
+  const { plans, isLoading, error: plansError, refetch, createPlan, updatePlan, deletePlan, setDefaultPlan } = usePartnerPlansData();
   const { policy, validatePlan } = usePartnerPolicy();
   const { modules } = useAddonModules();
   
@@ -134,18 +134,25 @@ export default function PartnerPlansPage() {
     setValidationErrors([]);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (validationErrors.length > 0) return;
 
+    const payload = { ...formData } as any;
+
     if (editingPlan) {
-      updatePlan.mutate({ id: editingPlan.id, ...formData }, {
+      // If toggling is_default ON, use transactional helper
+      if (payload.is_default && !editingPlan.is_default) {
+        setDefaultPlan.mutate(editingPlan.id);
+        delete payload.is_default; // already handled
+      }
+      updatePlan.mutate({ id: editingPlan.id, ...payload }, {
         onSuccess: () => {
           setEditingPlan(null);
           resetForm();
         },
       });
     } else {
-      createPlan.mutate(formData as any, {
+      createPlan.mutate(payload, {
         onSuccess: () => {
           setIsAddOpen(false);
           resetForm();
@@ -485,7 +492,16 @@ export default function PartnerPlansPage() {
       {/* Plans Table */}
       <Card>
         <CardContent className="p-0">
-          {isLoading ? (
+          {plansError ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <AlertTriangle className="h-12 w-12 text-destructive/50 mb-4" />
+              <h3 className="font-medium">Erro ao carregar planos</h3>
+              <p className="text-sm text-muted-foreground mt-1">{(plansError as any)?.message || 'Erro desconhecido'}</p>
+              <Button className="mt-4" variant="outline" onClick={() => refetch()}>
+                Tentar novamente
+              </Button>
+            </div>
+          ) : isLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
@@ -547,12 +563,12 @@ export default function PartnerPlansPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1 flex-wrap">
                         <Badge variant={plan.is_active ? 'default' : 'secondary'}>
                           {plan.is_active ? 'Ativo' : 'Inativo'}
                         </Badge>
-                        {plan.is_featured && <Badge variant="outline">⭐</Badge>}
-                        {plan.is_default && <Badge variant="outline">Padrão</Badge>}
+                        {!!plan.is_featured && <Badge variant="outline">⭐</Badge>}
+                        {!!plan.is_default && <Badge variant="outline">Padrão</Badge>}
                       </div>
                     </TableCell>
                     <TableCell>
