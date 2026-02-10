@@ -123,6 +123,7 @@ export default function PublicParceiroProfile() {
         .select('*')
         .eq('partner_id', profile.partner_id)
         .eq('is_active', true)
+        .eq('approval_status', 'approved' as any)
         .order('display_order');
       if (error) throw error;
       return data || [];

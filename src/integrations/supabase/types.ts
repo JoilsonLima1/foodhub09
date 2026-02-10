@@ -6571,6 +6571,9 @@ export type Database = {
       }
       partner_plans: {
         Row: {
+          approval_status: Database["public"]["Enums"]["plan_approval_status"]
+          approved_at: string | null
+          approved_by: string | null
           base_plan_id: string | null
           created_at: string | null
           currency: string | null
@@ -6589,11 +6592,15 @@ export type Database = {
           monthly_price: number
           name: string
           partner_id: string
+          rejection_reason: string | null
           slug: string
           trial_days: number | null
           updated_at: string | null
         }
         Insert: {
+          approval_status?: Database["public"]["Enums"]["plan_approval_status"]
+          approved_at?: string | null
+          approved_by?: string | null
           base_plan_id?: string | null
           created_at?: string | null
           currency?: string | null
@@ -6612,11 +6619,15 @@ export type Database = {
           monthly_price: number
           name: string
           partner_id: string
+          rejection_reason?: string | null
           slug: string
           trial_days?: number | null
           updated_at?: string | null
         }
         Update: {
+          approval_status?: Database["public"]["Enums"]["plan_approval_status"]
+          approved_at?: string | null
+          approved_by?: string | null
           base_plan_id?: string | null
           created_at?: string | null
           currency?: string | null
@@ -6635,6 +6646,7 @@ export type Database = {
           monthly_price?: number
           name?: string
           partner_id?: string
+          rejection_reason?: string | null
           slug?: string
           trial_days?: number | null
           updated_at?: string | null
@@ -6770,6 +6782,75 @@ export type Database = {
           },
           {
             foreignKeyName: "partner_policies_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: true
+            referencedRelation: "v_partner_financial_kpis"
+            referencedColumns: ["partner_id"]
+          },
+        ]
+      }
+      partner_policy_overrides: {
+        Row: {
+          allow_free_plan: boolean | null
+          allow_offline_billing: boolean | null
+          allow_partner_gateway: boolean | null
+          billing_owner: string | null
+          created_at: string
+          max_features_per_plan: number | null
+          max_modules_per_plan: number | null
+          max_plans: number | null
+          max_trial_days: number | null
+          min_paid_price: number | null
+          notes: string | null
+          partner_id: string
+          tx_fee_max_fixed_cents: number | null
+          tx_fee_max_percent: number | null
+          updated_at: string
+        }
+        Insert: {
+          allow_free_plan?: boolean | null
+          allow_offline_billing?: boolean | null
+          allow_partner_gateway?: boolean | null
+          billing_owner?: string | null
+          created_at?: string
+          max_features_per_plan?: number | null
+          max_modules_per_plan?: number | null
+          max_plans?: number | null
+          max_trial_days?: number | null
+          min_paid_price?: number | null
+          notes?: string | null
+          partner_id: string
+          tx_fee_max_fixed_cents?: number | null
+          tx_fee_max_percent?: number | null
+          updated_at?: string
+        }
+        Update: {
+          allow_free_plan?: boolean | null
+          allow_offline_billing?: boolean | null
+          allow_partner_gateway?: boolean | null
+          billing_owner?: string | null
+          created_at?: string
+          max_features_per_plan?: number | null
+          max_modules_per_plan?: number | null
+          max_plans?: number | null
+          max_trial_days?: number | null
+          min_paid_price?: number | null
+          notes?: string | null
+          partner_id?: string
+          tx_fee_max_fixed_cents?: number | null
+          tx_fee_max_percent?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_policy_overrides_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: true
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_policy_overrides_partner_id_fkey"
             columns: ["partner_id"]
             isOneToOne: true
             referencedRelation: "v_partner_financial_kpis"
@@ -13034,6 +13115,10 @@ export type Database = {
           proration_enabled: boolean
         }[]
       }
+      get_effective_partner_policy: {
+        Args: { p_partner_id: string }
+        Returns: Json
+      }
       get_feature_flag: { Args: { p_flag_key: string }; Returns: boolean }
       get_ifood_integration_safe: {
         Args: { p_tenant_id: string }
@@ -13987,6 +14072,7 @@ export type Database = {
         | "rejected"
         | "refunded"
         | "cancelled"
+      plan_approval_status: "draft" | "pending" | "approved" | "rejected"
       service_call_status:
         | "pending"
         | "acknowledged"
@@ -14229,6 +14315,7 @@ export const Constants = {
         "refunded",
         "cancelled",
       ],
+      plan_approval_status: ["draft", "pending", "approved", "rejected"],
       service_call_status: [
         "pending",
         "acknowledged",
