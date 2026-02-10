@@ -24,3 +24,5 @@ export { default as PartnerOnboardingPage } from './PartnerOnboardingPage';
 export { default as PartnerLeadsPage } from './PartnerLeadsPage';
 // Partner Sales Page
 export { default as PartnerSalesPage } from './PartnerSalesPage';
+// Partner API Keys
+export { default as PartnerApiKeysPage } from './PartnerApiKeysPage';
