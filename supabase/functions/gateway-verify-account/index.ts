@@ -157,10 +157,12 @@ serve(async (req) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
-    console.error(`[gateway-verify-account] Error: ${err.message}`);
+    const message = err.message || String(err);
+    console.error(`[gateway-verify-account] Error: ${message}`);
+    // Always return 200 so supabase.functions.invoke delivers JSON to the client
     return new Response(
-      JSON.stringify({ success: false, error: err.message }),
-      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({ success: false, error: message }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
