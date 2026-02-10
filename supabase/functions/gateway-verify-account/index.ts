@@ -129,7 +129,7 @@ serve(async (req) => {
       };
 
       // Merge fields: only overwrite if new value is non-null
-      const mergeableFields = ["legal_name", "document", "bank_name", "bank_agency", "bank_account", "wallet_id", "merchant_id", "raw_profile_json"];
+      const mergeableFields = ["legal_name", "document", "bank_name", "bank_agency", "bank_account", "account_number", "wallet_id", "merchant_id", "raw_profile_json"];
       for (const field of mergeableFields) {
         const newVal = profileData[field];
         const oldVal = existingProfile?.[field];
@@ -290,12 +290,35 @@ async function verifyAsaas(
     console.log(`[gateway-verify-account] No beneficiary_code found from any strategy`);
   }
 
+  // Step 3: Fetch bank account number from /myAccount/accountNumber
+  let accountNumber: string | null = null;
+  let accountNumberSource: string | null = null;
+  try {
+    const accNumRes = await fetch(`${baseUrl}/myAccount/accountNumber`, { headers });
+    if (accNumRes.ok) {
+      const accNumData = await accNumRes.json();
+      console.log(`[gateway-verify-account] accountNumber response: ${JSON.stringify(accNumData)}`);
+      if (accNumData.account) {
+        accountNumber = accNumData.accountDigit
+          ? `${accNumData.account}-${accNumData.accountDigit}`
+          : accNumData.account;
+        accountNumberSource = "/myAccount/accountNumber";
+        console.log(`[gateway-verify-account] account_number: ${accountNumber}`);
+      }
+    } else {
+      console.log(`[gateway-verify-account] /myAccount/accountNumber failed: ${accNumRes.status}`);
+    }
+  } catch (e) {
+    console.log(`[gateway-verify-account] /myAccount/accountNumber error: ${e}`);
+  }
+
   return {
     legal_name: accountData.corporateName || accountData.companyName || accountData.name || null,
     document: accountData.cpfCnpj || null,
     bank_name: ASAAS_PLATFORM_DEFAULTS.bank_name,
     bank_agency: ASAAS_PLATFORM_DEFAULTS.bank_agency,
     bank_account: beneficiaryCode,
+    account_number: accountNumber,
     wallet_id: accountData.walletId || null,
     merchant_id: accountData.walletId || accountData.id || null,
     raw_profile_json: {
@@ -307,7 +330,8 @@ async function verifyAsaas(
       account_data: accountData,
       platform_defaults_applied: true,
       beneficiary_code_source: beneficiarySource,
-      note: "Banco e agência são padrões da plataforma. Conta = código do beneficiário/recebedor no Asaas.",
+      account_number_source: accountNumberSource,
+      note: "Banco e agência são padrões da plataforma. Conta = código do beneficiário/recebedor no Asaas. Conta Bancária = número da conta do titular.",
     },
   };
 }
