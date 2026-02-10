@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { CreditCard, Banknote, QrCode, FileText, Loader2, CheckCircle, ExternalLink, Copy, X, Wifi, WifiOff, AlertCircle } from 'lucide-react';
 import type { PaymentMethod } from '@/types/database';
-import type { POSPaymentIntent, POSBillingType } from '@/hooks/usePOSPayment';
+import type { POSPaymentIntent, POSBillingType, POSGatewayError } from '@/hooks/usePOSPayment';
 import { toast } from '@/hooks/use-toast';
 
 interface PaymentDialogProps {
@@ -32,6 +32,7 @@ interface PaymentDialogProps {
   onCancelOnlinePayment?: () => void;
   onResetOnlinePayment?: () => void;
   onFallbackToManual?: (method: PaymentMethod) => void;
+  gatewayError?: POSGatewayError | null;
 }
 
 type CpfPromptTarget = 'PIX' | 'BOLETO' | null;
@@ -53,6 +54,7 @@ export function PaymentDialog({
   onCancelOnlinePayment,
   onResetOnlinePayment,
   onFallbackToManual,
+  gatewayError,
 }: PaymentDialogProps) {
   const [activeTab, setActiveTab] = useState<string>('online');
   const [cpfPromptTarget, setCpfPromptTarget] = useState<CpfPromptTarget>(null);
@@ -237,7 +239,7 @@ export function PaymentDialog({
               {hasOnlineSupport && (
                 <TabsContent value="online" className="space-y-3 mt-3">
                   {/* Billing type selection */}
-                  {!paymentIntent && !isCreatingOnline && (
+                  {!paymentIntent && !isCreatingOnline && !gatewayError && (
                     <div className="space-y-3">
                       <p className="text-sm text-muted-foreground">Selecione o meio de pagamento online:</p>
                       <Button
@@ -284,6 +286,48 @@ export function PaymentDialog({
                     <div className="flex flex-col items-center gap-3 py-8">
                       <Loader2 className="h-10 w-10 animate-spin text-primary" />
                       <p className="text-sm text-muted-foreground">Gerando cobrança...</p>
+                    </div>
+                  )}
+
+                  {/* Gateway error with fallback actions */}
+                  {gatewayError && !paymentIntent && !isCreatingOnline && (
+                    <div className="space-y-3 p-4 border border-destructive/30 rounded-lg bg-destructive/5">
+                      <div className="flex items-start gap-3">
+                        <AlertCircle className="h-5 w-5 text-destructive mt-0.5 shrink-0" />
+                        <div>
+                          <p className="font-medium text-sm">Erro no pagamento online</p>
+                          <p className="text-xs text-muted-foreground mt-1">{gatewayError.message}</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          className="flex-1"
+                          onClick={() => {
+                            const methodMap: Record<string, PaymentMethod> = {
+                              pix: 'pix',
+                              credit_card: 'credit_card',
+                              cash: 'cash',
+                              pix_external: 'pix',
+                              card_external: 'credit_card',
+                            };
+                            const method = methodMap[gatewayError.suggestedManualMethod] || 'cash';
+                            setActiveTab('manual');
+                            onSelectMethod(method);
+                            onResetOnlinePayment?.();
+                            onFallbackToManual?.(method);
+                          }}
+                        >
+                          <WifiOff className="h-4 w-4 mr-2" />
+                          Usar pagamento manual
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="flex-1"
+                          onClick={() => onResetOnlinePayment?.()}
+                        >
+                          Tentar novamente
+                        </Button>
+                      </div>
                     </div>
                   )}
 
