@@ -29,6 +29,9 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { InstallAppButton } from '@/components/pwa/InstallAppButton';
+import { PlanComparisonTable } from '@/components/partner-profile/PlanComparisonTable';
+import { StickyCTA } from '@/components/partner-profile/StickyCTA';
+import { InlineCTA } from '@/components/partner-profile/InlineCTA';
 import fallbackLogo from '@/assets/logo.png';
 
 interface PartnerProfile {
@@ -81,7 +84,7 @@ export default function PublicParceiroProfile() {
 
   const [formData, setFormData] = useState({ name: '', contact: '', message: '' });
   const [isSubmitted, setIsSubmitted] = useState(false);
-
+  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(searchParams.get('plan'));
   // Fetch partner profile
   const { data: profile, isLoading: profileLoading } = useQuery({
     queryKey: ['public-partner-profile', slug],
@@ -127,16 +130,25 @@ export default function PublicParceiroProfile() {
     enabled: !!profile?.partner_id,
   });
 
-  // Submit lead
+  // Submit lead with UTM tags
   const submitLead = useMutation({
     mutationFn: async () => {
       if (!profile?.partner_id) throw new Error('Partner not found');
-      const { error } = await supabase.rpc('submit_partner_lead', {
+      const utmSource = searchParams.get('utm_source') || '';
+      const utmCampaign = searchParams.get('utm_campaign') || '';
+      const { error } = await (supabase as any).rpc('submit_partner_lead', {
         p_partner_id: profile.partner_id,
         p_name: formData.name,
         p_contact: formData.contact,
         p_message: formData.message || null,
         p_source_url: window.location.href,
+        p_metadata: {
+          utm_source: utmSource,
+          utm_campaign: utmCampaign,
+          referrer: document.referrer || null,
+          page_path: window.location.pathname,
+          selected_plan_id: selectedPlanId,
+        },
       });
       if (error) throw error;
     },
@@ -187,6 +199,20 @@ export default function PublicParceiroProfile() {
   const whatsapp = (page as any)?.whatsapp_number;
   const demoUrl = (page as any)?.demo_url;
   const signupUrl = (page as any)?.signup_url || (slug ? `/parceiros/${slug}/começar` : '/auth?intent=signup');
+
+  // Featured or first plan for default CTA
+  const defaultPlan = plans?.find((p: any) => p.is_featured) || plans?.[0];
+  const defaultSignupUrl = defaultPlan ? `${signupUrl}${signupUrl.includes('?') ? '&' : '?'}plan=${defaultPlan.id}` : signupUrl;
+
+  // WhatsApp with pre-filled message
+  const buildWhatsappUrl = (planName?: string) => {
+    if (!whatsapp) return '';
+    const msg = planName
+      ? `Olá! Tenho interesse no plano *${planName}* do ${partnerName}. Vi no site: ${window.location.href}`
+      : `Olá! Tenho interesse nos serviços do ${partnerName}. Vi no site: ${window.location.href}`;
+    return `https://wa.me/${whatsapp}?text=${encodeURIComponent(msg)}`;
+  };
+  const defaultWhatsappUrl = buildWhatsappUrl();
 
   const seoTitle = page?.seo_title || `${partnerName} — Sistema completo para seu negócio`;
   const seoDesc = page?.seo_description || page?.hero_subtitle || `Conheça os planos e benefícios de ${partnerName}.`;
@@ -254,14 +280,14 @@ export default function PublicParceiroProfile() {
           </p>
           <div className="flex flex-wrap gap-3 justify-center">
             <Button size="lg" asChild>
-              <Link to={signupUrl}>
+              <Link to={defaultSignupUrl}>
                 {page?.hero_cta_text || 'Começar Agora'}
                 <ArrowRight className="h-4 w-4 ml-2" />
               </Link>
             </Button>
             {whatsapp && (
               <Button size="lg" variant="outline" asChild>
-                <a href={`https://wa.me/${whatsapp}`} target="_blank" rel="noopener noreferrer">
+                <a href={defaultWhatsappUrl} target="_blank" rel="noopener noreferrer">
                   <MessageCircle className="h-4 w-4 mr-2" />
                   WhatsApp
                 </a>
@@ -303,6 +329,8 @@ export default function PublicParceiroProfile() {
           </div>
         </section>
       )}
+      {/* Inline CTA after benefits */}
+      {benefits.length > 0 && <InlineCTA signupUrl={defaultSignupUrl} whatsappUrl={whatsapp ? defaultWhatsappUrl : undefined} />}
 
       {/* ===== PLANS ===== */}
       {page?.show_pricing_section !== false && plans && plans.length > 0 && (
@@ -360,6 +388,14 @@ export default function PublicParceiroProfile() {
         </section>
       )}
 
+      {/* ===== PLAN COMPARISON TABLE ===== */}
+      {page?.show_pricing_section !== false && plans && plans.length >= 2 && (
+        <PlanComparisonTable plans={plans} />
+      )}
+
+      {/* Inline CTA after plans */}
+      {plans && plans.length > 0 && <InlineCTA signupUrl={defaultSignupUrl} whatsappUrl={whatsapp ? defaultWhatsappUrl : undefined} />}
+
       {/* ===== TESTIMONIALS ===== */}
       {page?.show_testimonials_section && testimonials.length > 0 && (
         <section className="py-16">
@@ -386,8 +422,9 @@ export default function PublicParceiroProfile() {
           </div>
         </section>
       )}
+      {/* Inline CTA after testimonials */}
+      {page?.show_testimonials_section && testimonials.length > 0 && <InlineCTA signupUrl={defaultSignupUrl} whatsappUrl={whatsapp ? defaultWhatsappUrl : undefined} />}
 
-      {/* ===== FAQ ===== */}
       {page?.show_faq_section !== false && faqItems.length > 0 && (
         <section className="py-16 bg-muted/30">
           <div className="container px-4 mx-auto max-w-2xl">
@@ -403,8 +440,9 @@ export default function PublicParceiroProfile() {
           </div>
         </section>
       )}
+      {/* Inline CTA after FAQ */}
+      {page?.show_faq_section !== false && faqItems.length > 0 && <InlineCTA signupUrl={defaultSignupUrl} whatsappUrl={whatsapp ? defaultWhatsappUrl : undefined} />}
 
-      {/* ===== LEAD FORM + CTA ===== */}
       <section className="py-16">
         <div className="container px-4 mx-auto max-w-md text-center">
           <h2 className="text-3xl font-bold mb-2">{page?.cta_title || 'Pronto para começar?'}</h2>
@@ -412,14 +450,14 @@ export default function PublicParceiroProfile() {
 
           <div className="flex flex-wrap gap-3 justify-center mb-10">
             <Button size="lg" asChild>
-              <Link to={signupUrl}>
+              <Link to={defaultSignupUrl}>
                 <UserPlus className="h-4 w-4 mr-2" />
                 {page?.cta_button_text || 'Criar minha conta grátis'}
               </Link>
             </Button>
             {whatsapp && (
               <Button size="lg" variant="outline" asChild>
-                <a href={`https://wa.me/${whatsapp}`} target="_blank" rel="noopener noreferrer">
+                <a href={defaultWhatsappUrl} target="_blank" rel="noopener noreferrer">
                   <MessageCircle className="h-4 w-4 mr-2" />
                   WhatsApp
                 </a>
@@ -482,7 +520,7 @@ export default function PublicParceiroProfile() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t py-8">
+      <footer className="border-t py-8 pb-24">
         <div className="container px-4 mx-auto">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-3">
@@ -505,6 +543,9 @@ export default function PublicParceiroProfile() {
           </div>
         </div>
       </footer>
+
+      {/* Sticky CTA */}
+      <StickyCTA signupUrl={defaultSignupUrl} ctaText={page?.hero_cta_text || 'Começar Agora'} />
     </div>
   );
 }

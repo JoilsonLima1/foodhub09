@@ -5955,6 +5955,7 @@ export type Database = {
           created_at: string
           id: string
           message: string | null
+          metadata: Json | null
           name: string
           notes: string | null
           partner_id: string
@@ -5967,6 +5968,7 @@ export type Database = {
           created_at?: string
           id?: string
           message?: string | null
+          metadata?: Json | null
           name: string
           notes?: string | null
           partner_id: string
@@ -5979,6 +5981,7 @@ export type Database = {
           created_at?: string
           id?: string
           message?: string | null
+          metadata?: Json | null
           name?: string
           notes?: string | null
           partner_id?: string
@@ -13507,16 +13510,28 @@ export type Database = {
         Args: { p_partner_id: string }
         Returns: Json
       }
-      submit_partner_lead: {
-        Args: {
-          p_contact: string
-          p_message?: string
-          p_name: string
-          p_partner_id: string
-          p_source_url?: string
-        }
-        Returns: Json
-      }
+      submit_partner_lead:
+        | {
+            Args: {
+              p_contact: string
+              p_message?: string
+              p_name: string
+              p_partner_id: string
+              p_source_url?: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_contact: string
+              p_message?: string
+              p_metadata?: Json
+              p_name: string
+              p_partner_id: string
+              p_source_url?: string
+            }
+            Returns: Json
+          }
       subscribe_tenant_addon: {
         Args: { p_addon_id: string; p_tenant_id: string }
         Returns: string
