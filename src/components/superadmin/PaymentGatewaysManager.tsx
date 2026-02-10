@@ -36,7 +36,7 @@ import { Plus, Pencil, Trash2, CreditCard, Save, CheckCircle2, Info, ArrowLeft, 
 import { usePaymentGateways, PaymentGateway } from '@/hooks/usePaymentGateways';
 import { StoneAdminPanel } from '@/components/superadmin/stone';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { GatewaySetupGuide, GatewayWebhookPanel, GatewayAutoSetupButton } from '@/components/gateway';
+import { GatewaySetupGuide, GatewayWebhookPanel, GatewayAutoSetupButton, GatewayCredentialsForm } from '@/components/gateway';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -157,41 +157,47 @@ export function PaymentGatewaysManager() {
     );
   }
 
-  // Detail view for Stripe/Asaas
-  if (detailProvider === 'stripe' || detailProvider === 'asaas') {
-    const providerLabel = detailProvider === 'stripe' ? 'Stripe' : 'Asaas';
+  // Detail view for Stripe/Asaas/other providers
+  if (detailProvider && detailProvider !== 'stone') {
+    const providerLabel = detailProvider === 'stripe' ? 'Stripe' : detailProvider === 'asaas' ? 'Asaas' : detailProvider;
+    const validProvider = detailProvider === 'stripe' || detailProvider === 'asaas'
+      ? detailProvider as 'stripe' | 'asaas'
+      : null;
+
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <Button variant="ghost" size="sm" onClick={() => setDetailProvider(null)}>
             <ArrowLeft className="h-4 w-4 mr-2" /> Voltar para Gateways
           </Button>
-          <GatewayAutoSetupButton provider={detailProvider} scopeType="platform" />
+          {validProvider && (
+            <GatewayAutoSetupButton provider={validProvider} scopeType="platform" />
+          )}
         </div>
 
         <div>
           <h2 className="text-2xl font-bold">{providerLabel} — Painel Super Admin</h2>
-          <p className="text-muted-foreground">Configuração, webhooks e guia da integração {providerLabel}.</p>
+          <p className="text-muted-foreground">Configuração completa da integração {providerLabel}.</p>
         </div>
 
-        <Tabs defaultValue="webhooks" className="space-y-4">
+        <Tabs defaultValue="credentials" className="space-y-4">
           <TabsList>
-            <TabsTrigger value="webhooks" className="flex items-center gap-2">
-              <Webhook className="h-4 w-4" /> Webhooks & Eventos
-            </TabsTrigger>
+            <TabsTrigger value="credentials">Configuração</TabsTrigger>
             <TabsTrigger value="guide" className="flex items-center gap-2">
-              <BookOpen className="h-4 w-4" /> Guia
+              <BookOpen className="h-4 w-4" /> Guia Completo
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="webhooks">
-            <GatewayWebhookPanel
-              provider={detailProvider}
-              providerAccountId={platformAccount?.id || null}
-            />
+          <TabsContent value="credentials">
+            {validProvider && (
+              <GatewayCredentialsForm
+                provider={validProvider}
+                scopeType="platform"
+              />
+            )}
           </TabsContent>
           <TabsContent value="guide">
-            <GatewaySetupGuide provider={detailProvider} />
+            {validProvider && <GatewaySetupGuide provider={validProvider} />}
           </TabsContent>
         </Tabs>
       </div>

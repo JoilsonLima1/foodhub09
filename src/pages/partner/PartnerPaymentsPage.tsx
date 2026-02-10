@@ -19,7 +19,7 @@ import { usePartnerPaymentAccount } from '@/hooks/usePartnerPaymentAccount';
 import { usePartnerSettlementConfig } from '@/hooks/usePartnerSettlementConfig';
 import { usePartnerTransfers } from '@/hooks/usePartnerTransfers';
 import { useActivePaymentGateways } from '@/hooks/useActivePaymentGateways';
-import { GatewaySetupGuide, GatewayWebhookPanel, GatewayAutoSetupButton } from '@/components/gateway';
+import { GatewaySetupGuide, GatewayWebhookPanel, GatewayAutoSetupButton, GatewayCredentialsForm } from '@/components/gateway';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { 
@@ -161,24 +161,22 @@ function PartnerGatewaysSection() {
 
         <div>
           <h3 className="text-lg font-semibold">{detailProvider.charAt(0).toUpperCase() + detailProvider.slice(1)} — Configuração do Parceiro</h3>
-          <p className="text-sm text-muted-foreground">Webhooks, guia e configuração automática.</p>
+          <p className="text-sm text-muted-foreground">Credenciais, webhooks e guia de configuração.</p>
         </div>
 
         {validProvider && (
-          <Tabs defaultValue="webhooks" className="space-y-4">
+          <Tabs defaultValue="config" className="space-y-4">
             <TabsList>
-              <TabsTrigger value="webhooks" className="flex items-center gap-2">
-                <Webhook className="h-4 w-4" /> Webhooks
-              </TabsTrigger>
+              <TabsTrigger value="config">Configuração</TabsTrigger>
               <TabsTrigger value="guide" className="flex items-center gap-2">
-                <BookOpen className="h-4 w-4" /> Guia
+                <BookOpen className="h-4 w-4" /> Guia Completo
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="webhooks">
-              <GatewayWebhookPanel
+            <TabsContent value="config">
+              <GatewayCredentialsForm
                 provider={validProvider}
-                providerAccountId={partnerAccount?.id || null}
+                scopeType="partner"
               />
             </TabsContent>
             <TabsContent value="guide">
