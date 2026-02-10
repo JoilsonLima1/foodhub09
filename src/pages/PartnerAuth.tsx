@@ -15,6 +15,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useAuth } from '@/contexts/AuthContext';
+import { setDesiredContext } from '@/hooks/useActiveContext';
 import { usePublicPartner } from '@/contexts/PublicPartnerContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -53,14 +54,17 @@ export default function PartnerAuthPage() {
   const searchParams = new URLSearchParams(location.search);
   const intent = searchParams.get('intent') || 'login';
 
+  // Set desired context on mount - PartnerAuth always means partner intent
+  useEffect(() => {
+    setDesiredContext('partner');
+  }, []);
+
   // Handle redirects after auth - ALWAYS send to /partner for partner auth page
   useEffect(() => {
     if (authLoading) return;
     
     if (user) {
-      // PartnerAuth is ONLY used on partner app domains, so always redirect to /partner
       const from = location.state?.from?.pathname;
-      // CRITICAL: Never send partner users to /dashboard from partner auth
       const safeFrom = from && !from.startsWith('/dashboard') ? from : null;
       console.info('[PARTNER_AUTH_REDIRECT]', { from, safeFrom, target: safeFrom || '/partner' });
       navigate(safeFrom || '/partner', { replace: true });
