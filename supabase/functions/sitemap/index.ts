@@ -184,12 +184,65 @@ function getDefaultPartnerPages(): PartnerPage[] {
   ];
 }
 
+// ==================== Published Partner Profiles (for platform sitemap) ====================
+
+interface PublishedPartnerSlug {
+  slug: string;
+  updated_at: string;
+  marketing_domain: string | null;
+}
+
+async function fetchPublishedPartnerSlugs(supabase: ReturnType<typeof createClient>): Promise<PublishedPartnerSlug[]> {
+  try {
+    const { data, error } = await supabase
+      .from("partners")
+      .select("slug, updated_at, domains")
+      .eq("is_active", true)
+      .eq("is_suspended", false);
+
+    if (error || !data) return [];
+
+    // Filter to only those with published marketing pages
+    const slugs: string[] = data.map((p: any) => p.slug).filter(Boolean);
+    if (slugs.length === 0) return [];
+
+    const { data: pages } = await supabase
+      .from("partner_marketing_pages")
+      .select("partner_id")
+      .eq("published", true);
+
+    if (!pages || pages.length === 0) return [];
+
+    const publishedPartnerIds = new Set(pages.map((p: any) => p.partner_id));
+
+    // Also need partner_id for cross-ref
+    const { data: partners } = await supabase
+      .from("partners")
+      .select("id, slug, updated_at, domains")
+      .eq("is_active", true)
+      .eq("is_suspended", false);
+
+    if (!partners) return [];
+
+    return partners
+      .filter((p: any) => publishedPartnerIds.has(p.id) && p.slug)
+      .map((p: any) => ({
+        slug: p.slug,
+        updated_at: p.updated_at || new Date().toISOString(),
+        marketing_domain: p.domains?.marketing || null,
+      }));
+  } catch (err) {
+    console.error("[sitemap] Error fetching published partner slugs:", err);
+    return [];
+  }
+}
+
 // ==================== Sitemap Generation ====================
 
-function generatePlatformSitemap(baseUrl: string, pages: PlatformPage[]): string {
+function generatePlatformSitemap(baseUrl: string, pages: PlatformPage[], partnerSlugs: PublishedPartnerSlug[] = []): string {
   const today = new Date().toISOString().split("T")[0];
   
-  const urls = pages.map(
+  const pageUrls = pages.map(
     (page) => `  <url>
     <loc>${baseUrl}${page.path === "/" ? "" : page.path}</loc>
     <lastmod>${today}</lastmod>
@@ -198,9 +251,27 @@ function generatePlatformSitemap(baseUrl: string, pages: PlatformPage[]): string
   </url>`
   ).join("\n");
 
+  const partnerUrls = partnerSlugs.map(
+    (p) => {
+      // If partner has own marketing domain, use that as canonical
+      const loc = p.marketing_domain
+        ? `https://${p.marketing_domain}`
+        : `${baseUrl}/parceiros/${p.slug}`;
+      const lastmod = p.updated_at.split("T")[0];
+      return `  <url>
+    <loc>${loc}</loc>
+    <lastmod>${lastmod}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>`;
+    }
+  ).join("\n");
+
+  const allUrls = [pageUrls, partnerUrls].filter(Boolean).join("\n");
+
   return `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${urls}
+${allUrls}
 </urlset>`;
 }
 
@@ -255,10 +326,13 @@ serve(async (req: Request) => {
     let sitemap: string;
     
     if (domainInfo.type === "platform") {
-      // Platform sitemap
-      const pages = await fetchPlatformPages(supabase);
-      sitemap = generatePlatformSitemap(domainInfo.canonicalDomain, pages);
-      console.log(`[sitemap] Generated platform sitemap for ${domainInfo.canonicalDomain} with ${pages.length} pages`);
+      // Platform sitemap - includes published partner profile pages
+      const [pages, partnerSlugs] = await Promise.all([
+        fetchPlatformPages(supabase),
+        fetchPublishedPartnerSlugs(supabase),
+      ]);
+      sitemap = generatePlatformSitemap(domainInfo.canonicalDomain, pages, partnerSlugs);
+      console.log(`[sitemap] Generated platform sitemap for ${domainInfo.canonicalDomain} with ${pages.length} pages + ${partnerSlugs.length} partner profiles`);
     } else {
       // Partner sitemap
       if (!domainInfo.isPublished) {
