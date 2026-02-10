@@ -77,3 +77,6 @@ verify_jwt = false
 
 [functions.site-verification]
 verify_jwt = false
+
+[functions.partner_whoami]
+verify_jwt = false
