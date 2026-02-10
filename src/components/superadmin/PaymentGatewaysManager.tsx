@@ -32,8 +32,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { Plus, Pencil, Trash2, CreditCard, Save, CheckCircle2, Info } from 'lucide-react';
+import { Plus, Pencil, Trash2, CreditCard, Save, CheckCircle2, Info, ArrowLeft, Landmark } from 'lucide-react';
 import { usePaymentGateways, PaymentGateway } from '@/hooks/usePaymentGateways';
+import { StoneAdminPanel } from '@/components/superadmin/stone';
 
 const gatewayProviders = [
   { value: 'stripe', label: 'Stripe' },
@@ -48,6 +49,7 @@ export function PaymentGatewaysManager() {
   const { gateways, isLoading, createGateway, updateGateway, deleteGateway } = usePaymentGateways();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingGateway, setEditingGateway] = useState<PaymentGateway | null>(null);
+  const [detailProvider, setDetailProvider] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     provider: '',
@@ -123,6 +125,18 @@ export function PaymentGatewaysManager() {
     );
   }
 
+  // Detail view for Stone provider
+  if (detailProvider === 'stone') {
+    return (
+      <div className="space-y-4">
+        <Button variant="ghost" size="sm" onClick={() => setDetailProvider(null)}>
+          <ArrowLeft className="h-4 w-4 mr-2" /> Voltar para Gateways
+        </Button>
+        <StoneAdminPanel />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -159,11 +173,11 @@ export function PaymentGatewaysManager() {
             const configured = isApiKeyConfigured(gateway);
             
             return (
-              <Card key={gateway.id} className={!gateway.is_active ? 'opacity-60' : ''}>
+              <Card key={gateway.id} className={`${!gateway.is_active ? 'opacity-60' : ''} ${gateway.provider === 'stone' ? 'cursor-pointer hover:ring-2 hover:ring-primary/30 transition-shadow' : ''}`} onClick={gateway.provider === 'stone' ? () => setDetailProvider('stone') : undefined}>
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-lg flex items-center gap-2">
-                      <CreditCard className="h-5 w-5" />
+                      {gateway.provider === 'stone' ? <Landmark className="h-5 w-5" /> : <CreditCard className="h-5 w-5" />}
                       {gateway.name}
                     </CardTitle>
                     <div className="flex gap-1">
@@ -243,6 +257,12 @@ export function PaymentGatewaysManager() {
                         <li>Boleto Bancário</li>
                       </ul>
                     </div>
+                  )}
+
+                  {gateway.provider === 'stone' && (
+                    <Button variant="outline" size="sm" className="w-full" onClick={(e) => { e.stopPropagation(); setDetailProvider('stone'); }}>
+                      <Landmark className="h-4 w-4 mr-2" /> Detalhes & Configuração
+                    </Button>
                   )}
                 </CardContent>
               </Card>
