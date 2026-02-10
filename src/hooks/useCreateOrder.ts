@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import type { CartItem, PaymentMethod, OrderOrigin } from '@/types/database';
+import type { CartItem, PaymentMethod, OrderOrigin, OrderStatus, PaymentStatus } from '@/types/database';
 import { toast } from '@/hooks/use-toast';
 import { reduceStockForOrder } from './useStockReduction';
 
@@ -14,6 +14,8 @@ interface CreateOrderInput {
   deliveryAddress?: string;
   deliveryFee?: number;
   notes?: string;
+  orderStatus?: OrderStatus;
+  paymentStatus?: PaymentStatus;
 }
 
 interface CreateOrderResult {
@@ -39,12 +41,13 @@ export function useCreateOrder() {
       const total = subtotal + deliveryFee;
 
       // Create order
+      const orderStatus = (input.orderStatus || 'paid') as OrderStatus;
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert({
           tenant_id: tenantId,
           origin: 'pos' as OrderOrigin,
-          status: 'paid',
+          status: orderStatus,
           subtotal,
           delivery_fee: deliveryFee,
           total,
@@ -80,6 +83,7 @@ export function useCreateOrder() {
       if (itemsError) throw itemsError;
 
       // Create payment record
+      const paymentStatus = (input.paymentStatus || 'approved') as PaymentStatus;
       const { error: paymentError } = await supabase
         .from('payments')
         .insert({
@@ -87,8 +91,8 @@ export function useCreateOrder() {
           tenant_id: tenantId,
           amount: total,
           payment_method: input.paymentMethod,
-          status: 'approved',
-          paid_at: new Date().toISOString(),
+          status: paymentStatus,
+          paid_at: paymentStatus === 'approved' ? new Date().toISOString() : null,
         });
 
       if (paymentError) throw paymentError;
