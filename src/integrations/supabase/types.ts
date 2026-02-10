@@ -5095,6 +5095,147 @@ export type Database = {
           },
         ]
       }
+      partner_ar_invoices: {
+        Row: {
+          amount: number
+          canceled_at: string | null
+          created_at: string
+          currency: string
+          description: string | null
+          due_date: string
+          gateway_invoice_url: string | null
+          gateway_payment_id: string | null
+          id: string
+          invoice_number: string
+          line_items: Json | null
+          notes: string | null
+          paid_at: string | null
+          partner_id: string
+          payment_method: string | null
+          reference_period_end: string | null
+          reference_period_start: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          canceled_at?: string | null
+          created_at?: string
+          currency?: string
+          description?: string | null
+          due_date: string
+          gateway_invoice_url?: string | null
+          gateway_payment_id?: string | null
+          id?: string
+          invoice_number: string
+          line_items?: Json | null
+          notes?: string | null
+          paid_at?: string | null
+          partner_id: string
+          payment_method?: string | null
+          reference_period_end?: string | null
+          reference_period_start?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          canceled_at?: string | null
+          created_at?: string
+          currency?: string
+          description?: string | null
+          due_date?: string
+          gateway_invoice_url?: string | null
+          gateway_payment_id?: string | null
+          id?: string
+          invoice_number?: string
+          line_items?: Json | null
+          notes?: string | null
+          paid_at?: string | null
+          partner_id?: string
+          payment_method?: string | null
+          reference_period_end?: string | null
+          reference_period_start?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_ar_invoices_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_ar_invoices_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "v_partner_financial_kpis"
+            referencedColumns: ["partner_id"]
+          },
+        ]
+      }
+      partner_billing_config: {
+        Row: {
+          collection_mode: string
+          created_at: string
+          credit_limit: number
+          current_dunning_level: number | null
+          dunning_policy: Json
+          dunning_started_at: string | null
+          grace_days: number
+          id: string
+          is_active: boolean
+          notes: string | null
+          partner_id: string
+          updated_at: string
+        }
+        Insert: {
+          collection_mode?: string
+          created_at?: string
+          credit_limit?: number
+          current_dunning_level?: number | null
+          dunning_policy?: Json
+          dunning_started_at?: string | null
+          grace_days?: number
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          partner_id: string
+          updated_at?: string
+        }
+        Update: {
+          collection_mode?: string
+          created_at?: string
+          credit_limit?: number
+          current_dunning_level?: number | null
+          dunning_policy?: Json
+          dunning_started_at?: string | null
+          grace_days?: number
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          partner_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_billing_config_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: true
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_billing_config_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: true
+            referencedRelation: "v_partner_financial_kpis"
+            referencedColumns: ["partner_id"]
+          },
+        ]
+      }
       partner_branding: {
         Row: {
           accent_color: string | null
@@ -5355,6 +5496,70 @@ export type Database = {
           },
           {
             foreignKeyName: "partner_domains_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "v_partner_financial_kpis"
+            referencedColumns: ["partner_id"]
+          },
+        ]
+      }
+      partner_dunning_log: {
+        Row: {
+          action: string
+          created_at: string
+          description: string | null
+          dunning_level: number
+          executed_at: string
+          id: string
+          invoice_id: string | null
+          metadata: Json | null
+          partner_id: string
+          reversed_at: string | null
+          reversed_by: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          description?: string | null
+          dunning_level: number
+          executed_at?: string
+          id?: string
+          invoice_id?: string | null
+          metadata?: Json | null
+          partner_id: string
+          reversed_at?: string | null
+          reversed_by?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          description?: string | null
+          dunning_level?: number
+          executed_at?: string
+          id?: string
+          invoice_id?: string | null
+          metadata?: Json | null
+          partner_id?: string
+          reversed_at?: string | null
+          reversed_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_dunning_log_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "partner_ar_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_dunning_log_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_dunning_log_partner_id_fkey"
             columns: ["partner_id"]
             isOneToOne: false
             referencedRelation: "v_partner_financial_kpis"
@@ -5995,11 +6200,15 @@ export type Database = {
       }
       partner_payment_accounts: {
         Row: {
+          api_key_encrypted: string | null
           capabilities: Json
           created_at: string
+          gateway_type: string | null
           id: string
+          is_primary: boolean | null
           kyc_level: string
           last_sync_at: string | null
+          metadata: Json | null
           onboarding_url: string | null
           partner_id: string
           provider: string
@@ -6008,13 +6217,18 @@ export type Database = {
           status: string
           sync_error: string | null
           updated_at: string
+          webhook_secret_encrypted: string | null
         }
         Insert: {
+          api_key_encrypted?: string | null
           capabilities?: Json
           created_at?: string
+          gateway_type?: string | null
           id?: string
+          is_primary?: boolean | null
           kyc_level?: string
           last_sync_at?: string | null
+          metadata?: Json | null
           onboarding_url?: string | null
           partner_id: string
           provider?: string
@@ -6023,13 +6237,18 @@ export type Database = {
           status?: string
           sync_error?: string | null
           updated_at?: string
+          webhook_secret_encrypted?: string | null
         }
         Update: {
+          api_key_encrypted?: string | null
           capabilities?: Json
           created_at?: string
+          gateway_type?: string | null
           id?: string
+          is_primary?: boolean | null
           kyc_level?: string
           last_sync_at?: string | null
+          metadata?: Json | null
           onboarding_url?: string | null
           partner_id?: string
           provider?: string
@@ -6038,6 +6257,7 @@ export type Database = {
           status?: string
           sync_error?: string | null
           updated_at?: string
+          webhook_secret_encrypted?: string | null
         }
         Relationships: [
           {
@@ -6262,8 +6482,10 @@ export type Database = {
         Row: {
           allow_free_plan: boolean
           allow_offline_billing: boolean
+          allow_partner_gateway: boolean
           allowed_features_catalog: string[] | null
           allowed_modules_catalog: string[] | null
+          billing_owner: string
           created_at: string
           free_plan_constraints: Json | null
           free_plan_max_features: number
@@ -6281,6 +6503,9 @@ export type Database = {
           max_trial_days_allowed: number
           min_paid_plan_price: number
           partner_id: string | null
+          platform_fee_fixed: number
+          platform_fee_mode: string
+          platform_fee_percent: number
           require_plan_hierarchy: boolean
           trial_allowed_features: string[] | null
           trial_allowed_modules: string[] | null
@@ -6289,8 +6514,10 @@ export type Database = {
         Insert: {
           allow_free_plan?: boolean
           allow_offline_billing?: boolean
+          allow_partner_gateway?: boolean
           allowed_features_catalog?: string[] | null
           allowed_modules_catalog?: string[] | null
+          billing_owner?: string
           created_at?: string
           free_plan_constraints?: Json | null
           free_plan_max_features?: number
@@ -6308,6 +6535,9 @@ export type Database = {
           max_trial_days_allowed?: number
           min_paid_plan_price?: number
           partner_id?: string | null
+          platform_fee_fixed?: number
+          platform_fee_mode?: string
+          platform_fee_percent?: number
           require_plan_hierarchy?: boolean
           trial_allowed_features?: string[] | null
           trial_allowed_modules?: string[] | null
@@ -6316,8 +6546,10 @@ export type Database = {
         Update: {
           allow_free_plan?: boolean
           allow_offline_billing?: boolean
+          allow_partner_gateway?: boolean
           allowed_features_catalog?: string[] | null
           allowed_modules_catalog?: string[] | null
+          billing_owner?: string
           created_at?: string
           free_plan_constraints?: Json | null
           free_plan_max_features?: number
@@ -6335,6 +6567,9 @@ export type Database = {
           max_trial_days_allowed?: number
           min_paid_plan_price?: number
           partner_id?: string | null
+          platform_fee_fixed?: number
+          platform_fee_mode?: string
+          platform_fee_percent?: number
           require_plan_hierarchy?: boolean
           trial_allowed_features?: string[] | null
           trial_allowed_modules?: string[] | null
@@ -7524,6 +7759,90 @@ export type Database = {
         }
         Relationships: []
       }
+      platform_partner_page_template: {
+        Row: {
+          benefits: Json | null
+          benefits_title: string | null
+          created_at: string
+          cta_button_text: string | null
+          cta_subtitle: string | null
+          cta_title: string | null
+          faq_items: Json | null
+          faq_title: string | null
+          features: Json | null
+          features_title: string | null
+          hero_badge: string | null
+          hero_cta_text: string | null
+          hero_image_url: string | null
+          hero_subtitle: string | null
+          hero_title: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          show_faq_section: boolean | null
+          show_modules_section: boolean | null
+          show_pricing_section: boolean | null
+          show_testimonials_section: boolean | null
+          social_proof_text: string | null
+          testimonials: Json | null
+          updated_at: string
+        }
+        Insert: {
+          benefits?: Json | null
+          benefits_title?: string | null
+          created_at?: string
+          cta_button_text?: string | null
+          cta_subtitle?: string | null
+          cta_title?: string | null
+          faq_items?: Json | null
+          faq_title?: string | null
+          features?: Json | null
+          features_title?: string | null
+          hero_badge?: string | null
+          hero_cta_text?: string | null
+          hero_image_url?: string | null
+          hero_subtitle?: string | null
+          hero_title?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          show_faq_section?: boolean | null
+          show_modules_section?: boolean | null
+          show_pricing_section?: boolean | null
+          show_testimonials_section?: boolean | null
+          social_proof_text?: string | null
+          testimonials?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          benefits?: Json | null
+          benefits_title?: string | null
+          created_at?: string
+          cta_button_text?: string | null
+          cta_subtitle?: string | null
+          cta_title?: string | null
+          faq_items?: Json | null
+          faq_title?: string | null
+          features?: Json | null
+          features_title?: string | null
+          hero_badge?: string | null
+          hero_cta_text?: string | null
+          hero_image_url?: string | null
+          hero_subtitle?: string | null
+          hero_title?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          show_faq_section?: boolean | null
+          show_modules_section?: boolean | null
+          show_pricing_section?: boolean | null
+          show_testimonials_section?: boolean | null
+          social_proof_text?: string | null
+          testimonials?: Json | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       platform_partner_revenue: {
         Row: {
           amount: number
@@ -7606,6 +7925,72 @@ export type Database = {
             referencedColumns: ["partner_id"]
           },
         ]
+      }
+      platform_plan_templates: {
+        Row: {
+          created_at: string
+          currency: string
+          description: string | null
+          display_order: number | null
+          id: string
+          included_features: string[] | null
+          included_modules: string[] | null
+          is_active: boolean | null
+          is_default: boolean | null
+          is_featured: boolean | null
+          is_free: boolean | null
+          max_orders_per_month: number | null
+          max_products: number | null
+          max_users: number | null
+          monthly_price: number
+          name: string
+          slug: string
+          trial_days: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          currency?: string
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          included_features?: string[] | null
+          included_modules?: string[] | null
+          is_active?: boolean | null
+          is_default?: boolean | null
+          is_featured?: boolean | null
+          is_free?: boolean | null
+          max_orders_per_month?: number | null
+          max_products?: number | null
+          max_users?: number | null
+          monthly_price?: number
+          name: string
+          slug: string
+          trial_days?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          included_features?: string[] | null
+          included_modules?: string[] | null
+          is_active?: boolean | null
+          is_default?: boolean | null
+          is_featured?: boolean | null
+          is_free?: boolean | null
+          max_orders_per_month?: number | null
+          max_products?: number | null
+          max_users?: number | null
+          monthly_price?: number
+          name?: string
+          slug?: string
+          trial_days?: number | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       platform_seo_pages: {
         Row: {
@@ -12493,6 +12878,10 @@ export type Database = {
           partner_slug: string
         }[]
       }
+      get_partner_dunning_status: {
+        Args: { p_partner_id: string }
+        Returns: Json
+      }
       get_partner_financial_summary: {
         Args: { p_partner_id: string }
         Returns: Json
@@ -12522,8 +12911,10 @@ export type Database = {
         Returns: {
           allow_free_plan: boolean
           allow_offline_billing: boolean
+          allow_partner_gateway: boolean
           allowed_features_catalog: string[] | null
           allowed_modules_catalog: string[] | null
+          billing_owner: string
           created_at: string
           free_plan_constraints: Json | null
           free_plan_max_features: number
@@ -12541,6 +12932,9 @@ export type Database = {
           max_trial_days_allowed: number
           min_paid_plan_price: number
           partner_id: string | null
+          platform_fee_fixed: number
+          platform_fee_mode: string
+          platform_fee_percent: number
           require_plan_hierarchy: boolean
           trial_allowed_features: string[] | null
           trial_allowed_modules: string[] | null
@@ -12796,6 +13190,10 @@ export type Database = {
       }
       housekeeping_all: {
         Args: { p_archive_before_days?: number; p_log_retention_days?: number }
+        Returns: Json
+      }
+      import_platform_templates_for_partner: {
+        Args: { p_partner_id: string }
         Returns: Json
       }
       increment_module_usage: {
