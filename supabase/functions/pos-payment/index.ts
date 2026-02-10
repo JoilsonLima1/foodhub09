@@ -154,8 +154,9 @@ async function handleCreate(supabase: any, body: any, userId: string) {
     throw new Error("tenant_id, order_id, amount, billing_type são obrigatórios");
   }
 
-  if (!customer_cpf_cnpj) {
-    throw new Error("CPF ou CNPJ do cliente é obrigatório para pagamentos online");
+  // CPF is required for PIX and BOLETO, optional for CREDIT_CARD
+  if ((billing_type === 'PIX' || billing_type === 'BOLETO') && !customer_cpf_cnpj) {
+    throw new Error("CPF ou CNPJ do cliente é obrigatório para PIX e Boleto");
   }
 
   // Idempotency check
