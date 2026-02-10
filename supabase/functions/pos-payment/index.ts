@@ -11,6 +11,29 @@ const logStep = (step: string, details?: any) => {
   console.log(`[POS-PAYMENT] ${step}${detailsStr}`);
 };
 
+// Standardized error response builder
+function errorResponse(
+  statusCode: number,
+  errorCode: string,
+  message: string,
+  opts?: { suggestedManualMethod?: string }
+) {
+  return new Response(
+    JSON.stringify({
+      error: message,
+      error_code: errorCode,
+      message,
+      fallback_allowed: true,
+      should_switch_to_manual: true,
+      suggested_manual_method: opts?.suggestedManualMethod || "cash",
+    }),
+    {
+      status: statusCode,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    }
+  );
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -24,9 +47,7 @@ serve(async (req) => {
     // Authenticate user
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return errorResponse(401, "UNAUTHORIZED", "Não autorizado");
     }
 
     const supabaseUser = createClient(supabaseUrl, supabaseAnonKey, {
@@ -36,9 +57,7 @@ serve(async (req) => {
     const token = authHeader.replace("Bearer ", "");
     const { data: claimsData, error: claimsError } = await supabaseUser.auth.getClaims(token);
     if (claimsError || !claimsData?.claims) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return errorResponse(401, "UNAUTHORIZED", "Não autorizado");
     }
 
     const userId = claimsData.claims.sub;
@@ -57,18 +76,14 @@ serve(async (req) => {
       return await handleCancel(supabase, body);
     }
 
-    return new Response(
-      JSON.stringify({ error: "Invalid action. Use: create, status, cancel" }),
-      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return errorResponse(400, "INVALID_ACTION", "Ação inválida. Use: create, status, cancel");
 
   } catch (error) {
-    const msg = error instanceof Error ? error.message : "Internal error";
-    logStep("ERROR", { message: msg });
-    return new Response(
-      JSON.stringify({ error: msg }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    const msg = error instanceof Error ? error.message : "Erro interno";
+    const errorCode = (error as any)?.errorCode || "INTERNAL_ERROR";
+    const suggestedManualMethod = (error as any)?.suggestedManualMethod;
+    logStep("ERROR", { message: msg, errorCode });
+    return errorResponse(500, errorCode, msg, { suggestedManualMethod });
   }
 });
 
@@ -121,7 +136,10 @@ async function getAsaasCredentials(supabase: any, tenantId: string) {
     return resolveAsaasEnv(apiKey);
   }
 
-  throw new Error("Nenhuma credencial Asaas configurada para este tenant");
+  const err = new Error("Nenhuma credencial Asaas configurada para este tenant");
+  (err as any).errorCode = "NO_CREDENTIALS";
+  (err as any).suggestedManualMethod = "cash";
+  throw err;
 }
 
 function resolveAsaasEnv(apiKey: string) {
@@ -141,7 +159,7 @@ async function handleCreate(supabase: any, body: any, userId: string) {
     tenant_id,
     order_id,
     amount,
-    billing_type, // PIX, CREDIT_CARD, BOLETO
+    billing_type,
     customer_name,
     customer_cpf_cnpj,
     customer_email,
@@ -151,12 +169,15 @@ async function handleCreate(supabase: any, body: any, userId: string) {
   } = body;
 
   if (!tenant_id || !order_id || !amount || !billing_type) {
-    throw new Error("tenant_id, order_id, amount, billing_type são obrigatórios");
+    return errorResponse(400, "VALIDATION_ERROR", "tenant_id, order_id, amount, billing_type são obrigatórios");
   }
 
-  // CPF is required for PIX and BOLETO, optional for CREDIT_CARD
+  // CPF is required for PIX and BOLETO
   if ((billing_type === 'PIX' || billing_type === 'BOLETO') && !customer_cpf_cnpj) {
-    throw new Error("CPF ou CNPJ do cliente é obrigatório para PIX e Boleto");
+    const suggested = billing_type === 'PIX' ? 'pix' : 'cash';
+    return errorResponse(400, "CPF_REQUIRED", "CPF ou CNPJ do cliente é obrigatório para PIX e Boleto", {
+      suggestedManualMethod: suggested,
+    });
   }
 
   // Idempotency check
@@ -189,40 +210,53 @@ async function handleCreate(supabase: any, body: any, userId: string) {
     }
   }
 
-  const { apiKey, baseUrl } = await getAsaasCredentials(supabase, tenant_id);
+  let apiKey: string, baseUrl: string;
+  try {
+    const creds = await getAsaasCredentials(supabase, tenant_id);
+    apiKey = creds.apiKey;
+    baseUrl = creds.baseUrl;
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Falha ao obter credenciais";
+    return errorResponse(500, "NO_CREDENTIALS", msg, { suggestedManualMethod: "cash" });
+  }
 
   // Find or create customer
-  const searchEmail = customer_email || `pos-${tenant_id.substring(0, 8)}@noemail.local`;
-  const searchRes = await fetch(
-    `${baseUrl}/customers?email=${encodeURIComponent(searchEmail)}`,
-    { headers: { access_token: apiKey } }
-  );
-  if (!searchRes.ok) throw new Error("Falha ao buscar cliente no Asaas");
-  const searchResult = await searchRes.json();
-
   let customerId: string;
-  if (searchResult.data?.length > 0) {
-    customerId = searchResult.data[0].id;
-  } else {
-    const custBody: any = {
-      name: customer_name || "Cliente PDV",
-      email: searchEmail,
-      externalReference: `pdv:${tenant_id.substring(0, 8)}`,
-    };
-    if (customer_cpf_cnpj) custBody.cpfCnpj = customer_cpf_cnpj.replace(/\D/g, "");
-    if (customer_phone) custBody.phone = customer_phone.replace(/\D/g, "");
+  try {
+    const searchEmail = customer_email || `pos-${tenant_id.substring(0, 8)}@noemail.local`;
+    const searchRes = await fetch(
+      `${baseUrl}/customers?email=${encodeURIComponent(searchEmail)}`,
+      { headers: { access_token: apiKey } }
+    );
+    if (!searchRes.ok) throw new Error("Falha ao buscar cliente no Asaas");
+    const searchResult = await searchRes.json();
 
-    const createRes = await fetch(`${baseUrl}/customers`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", access_token: apiKey },
-      body: JSON.stringify(custBody),
-    });
-    if (!createRes.ok) {
-      const err = await createRes.json();
-      throw new Error(err.errors?.[0]?.description || "Falha ao criar cliente");
+    if (searchResult.data?.length > 0) {
+      customerId = searchResult.data[0].id;
+    } else {
+      const custBody: any = {
+        name: customer_name || "Cliente PDV",
+        email: searchEmail,
+        externalReference: `pdv:${tenant_id.substring(0, 8)}`,
+      };
+      if (customer_cpf_cnpj) custBody.cpfCnpj = customer_cpf_cnpj.replace(/\D/g, "");
+      if (customer_phone) custBody.phone = customer_phone.replace(/\D/g, "");
+
+      const createRes = await fetch(`${baseUrl}/customers`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", access_token: apiKey },
+        body: JSON.stringify(custBody),
+      });
+      if (!createRes.ok) {
+        const err = await createRes.json();
+        throw new Error(err.errors?.[0]?.description || "Falha ao criar cliente");
+      }
+      const newCust = await createRes.json();
+      customerId = newCust.id;
     }
-    const newCust = await createRes.json();
-    customerId = newCust.id;
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Falha ao resolver cliente no Asaas";
+    return errorResponse(502, "ASAAS_UNAVAILABLE", msg, { suggestedManualMethod: "cash" });
   }
 
   logStep("Customer resolved", { customerId });
@@ -248,19 +282,29 @@ async function handleCreate(supabase: any, body: any, userId: string) {
 
   logStep("Creating Asaas payment", { customerId, value: amount, billingType: finalBillingType });
 
-  const paymentRes = await fetch(`${baseUrl}/payments`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", access_token: apiKey },
-    body: JSON.stringify(paymentBody),
-  });
+  let payment: any;
+  try {
+    const paymentRes = await fetch(`${baseUrl}/payments`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", access_token: apiKey },
+      body: JSON.stringify(paymentBody),
+    });
 
-  if (!paymentRes.ok) {
-    const errData = await paymentRes.json();
-    logStep("Asaas payment failed", errData);
-    throw new Error(errData.errors?.[0]?.description || "Falha ao criar cobrança");
+    if (!paymentRes.ok) {
+      const errData = await paymentRes.json();
+      logStep("Asaas payment failed", errData);
+      throw new Error(errData.errors?.[0]?.description || "Falha ao criar cobrança");
+    }
+
+    payment = await paymentRes.json();
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Falha ao criar cobrança no Asaas";
+    const billingMap: Record<string, string> = { PIX: "pix", CREDIT_CARD: "credit_card", BOLETO: "cash" };
+    return errorResponse(502, "ASAAS_UNAVAILABLE", msg, {
+      suggestedManualMethod: billingMap[finalBillingType] || "cash",
+    });
   }
 
-  const payment = await paymentRes.json();
   logStep("Asaas payment created", { id: payment.id, status: payment.status });
 
   // Get PIX QR Code if billing type is PIX
@@ -295,7 +339,7 @@ async function handleCreate(supabase: any, body: any, userId: string) {
   const paymentMethodMap: Record<string, string> = {
     PIX: "pix",
     CREDIT_CARD: "credit_card",
-    BOLETO: "voucher", // using voucher as closest match
+    BOLETO: "voucher",
   };
 
   // Update payments table with gateway info
@@ -346,20 +390,34 @@ async function handleStatus(supabase: any, body: any) {
   const { tenant_id, gateway_payment_id } = body;
 
   if (!tenant_id || !gateway_payment_id) {
-    throw new Error("tenant_id and gateway_payment_id are required");
+    return errorResponse(400, "VALIDATION_ERROR", "tenant_id e gateway_payment_id são obrigatórios");
   }
 
-  const { apiKey, baseUrl } = await getAsaasCredentials(supabase, tenant_id);
-
-  const res = await fetch(`${baseUrl}/payments/${gateway_payment_id}`, {
-    headers: { access_token: apiKey },
-  });
-
-  if (!res.ok) {
-    throw new Error("Falha ao consultar status do pagamento");
+  let apiKey: string, baseUrl: string;
+  try {
+    const creds = await getAsaasCredentials(supabase, tenant_id);
+    apiKey = creds.apiKey;
+    baseUrl = creds.baseUrl;
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Falha ao obter credenciais";
+    return errorResponse(500, "NO_CREDENTIALS", msg);
   }
 
-  const payment = await res.json();
+  let payment: any;
+  try {
+    const res = await fetch(`${baseUrl}/payments/${gateway_payment_id}`, {
+      headers: { access_token: apiKey },
+    });
+
+    if (!res.ok) {
+      throw new Error("Falha ao consultar status do pagamento");
+    }
+    payment = await res.json();
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Falha ao consultar status";
+    return errorResponse(502, "ASAAS_UNAVAILABLE", msg);
+  }
+
   logStep("Payment status checked", { id: payment.id, status: payment.status });
 
   // Map Asaas status to our status
@@ -424,19 +482,32 @@ async function handleCancel(supabase: any, body: any) {
   const { tenant_id, gateway_payment_id } = body;
 
   if (!tenant_id || !gateway_payment_id) {
-    throw new Error("tenant_id and gateway_payment_id are required");
+    return errorResponse(400, "VALIDATION_ERROR", "tenant_id e gateway_payment_id são obrigatórios");
   }
 
-  const { apiKey, baseUrl } = await getAsaasCredentials(supabase, tenant_id);
+  let apiKey: string, baseUrl: string;
+  try {
+    const creds = await getAsaasCredentials(supabase, tenant_id);
+    apiKey = creds.apiKey;
+    baseUrl = creds.baseUrl;
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Falha ao obter credenciais";
+    return errorResponse(500, "NO_CREDENTIALS", msg);
+  }
 
-  const res = await fetch(`${baseUrl}/payments/${gateway_payment_id}`, {
-    method: "DELETE",
-    headers: { access_token: apiKey },
-  });
+  try {
+    const res = await fetch(`${baseUrl}/payments/${gateway_payment_id}`, {
+      method: "DELETE",
+      headers: { access_token: apiKey },
+    });
 
-  if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.errors?.[0]?.description || "Falha ao cancelar pagamento");
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.errors?.[0]?.description || "Falha ao cancelar pagamento");
+    }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Falha ao cancelar pagamento";
+    return errorResponse(502, "ASAAS_UNAVAILABLE", msg);
   }
 
   logStep("Payment cancelled", { gateway_payment_id });

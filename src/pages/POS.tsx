@@ -477,6 +477,7 @@ export default function POS() {
         isPolling={posPayment.isPolling}
         onCancelOnlinePayment={posPayment.cancelPayment}
         onResetOnlinePayment={posPayment.reset}
+        gatewayError={posPayment.lastGatewayError}
         onFallbackToManual={(method) => {
           setSelectedPaymentMethod(method);
           toast({ title: 'Modo manual selecionado', description: 'Confirme o pagamento manualmente.' });
