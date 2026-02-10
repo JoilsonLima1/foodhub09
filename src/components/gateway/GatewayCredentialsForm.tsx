@@ -9,12 +9,13 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import {
   Save, Eye, EyeOff, CheckCircle2, Info, Loader2, Copy,
   RefreshCw, Key, ExternalLink, TestTube, QrCode, Webhook,
+  Clock,
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { PasswordConfirmDialog } from './PasswordConfirmDialog';
-import { GatewayWebhookPanel } from './GatewayWebhookPanel';
+import { format } from 'date-fns';
 
 // ===== Provider metadata =====
 
@@ -37,16 +38,24 @@ const PROVIDER_META: Record<string, {
       { key: 'secret_key', label: 'Secret Key', placeholder: 'sk_live_...', secret: true },
     ],
     credentialGuide: [
-      'Acesse dashboard.stripe.com e faça login.',
-      'Vá em Developers → API Keys.',
-      'Copie a Publishable Key (pk_live_...) e a Secret Key (sk_live_...).',
-      'Para sandbox, use as chaves de teste (pk_test_, sk_test_).',
+      'Acesse dashboard.stripe.com e faça login com sua conta.',
+      'No menu lateral, clique em "Developers" (Desenvolvedores).',
+      'Clique em "API Keys" (Chaves de API).',
+      'Na seção "Standard keys", você verá duas chaves:',
+      '  → Publishable key (pk_live_...): copie e cole no campo "Publishable Key" acima.',
+      '  → Secret key (sk_live_...): clique em "Reveal live key" para ver, copie e cole no campo "Secret Key" acima.',
+      'Para ambiente de TESTES, alterne o toggle "Test mode" no canto superior direito do dashboard e copie as chaves de teste (pk_test_, sk_test_).',
+      'Permissões: as chaves padrão já possuem todas as permissões necessárias. Se usar "Restricted keys", marque pelo menos: Charges (Read/Write), Customers (Read/Write), Webhooks (Read/Write) e PaymentIntents (Read/Write).',
     ],
     webhookGuide: [
-      'No Stripe, vá em Developers → Webhooks.',
-      'Clique em "Add endpoint" e cole a URL abaixo.',
-      'No campo "Signing Secret", copie o secret gerado aqui.',
-      'Selecione os eventos recomendados abaixo.',
+      'No dashboard do Stripe, vá em "Developers" → "Webhooks".',
+      'Clique em "+ Add endpoint" (Adicionar endpoint).',
+      'No campo "Endpoint URL", cole a URL de webhook exibida acima (copie com o botão).',
+      'Em "Select events to listen to", clique em "+ Select events".',
+      'Marque os eventos recomendados listados abaixo (checkout.session.completed, payment_intent.succeeded, etc.).',
+      'Clique em "Add endpoint" para salvar.',
+      'Após criar, clique no endpoint criado e em "Signing secret" → "Reveal" para obter o secret. Gere ou rotacione o secret nesta tela e cole no Stripe se necessário.',
+      'Para testar, use a aba "Send test webhook" no Stripe para enviar um evento de teste e verifique se aparece na tabela de eventos abaixo.',
     ],
     webhookEvents: [
       'checkout.session.completed', 'payment_intent.succeeded',
@@ -62,16 +71,25 @@ const PROVIDER_META: Record<string, {
       { key: 'wallet_id', label: 'Wallet ID (opcional)', placeholder: '' },
     ],
     credentialGuide: [
-      'Acesse asaas.com e faça login.',
-      'Vá em Configurações → Integrações → API.',
-      'Gere ou copie sua API Key ($aact_prod_... para produção).',
-      'Para sandbox, acesse sandbox.asaas.com e gere uma chave de teste.',
+      'Acesse asaas.com e faça login na sua conta.',
+      'No menu lateral esquerdo, clique em "Integrações" (ou vá em Configurações → Integrações).',
+      'Na aba "API", você verá sua chave de API.',
+      'Se não houver uma chave, clique em "Gerar nova chave".',
+      'Copie a chave gerada (começa com $aact_prod_ para produção) e cole no campo "API Key" acima.',
+      'Para ambiente de TESTES: acesse sandbox.asaas.com, crie uma conta separada e gere uma chave de API Sandbox.',
+      'O sistema detecta automaticamente se é Produção ou Sandbox pelo prefixo da chave ($aact_prod_ = Produção).',
+      'Wallet ID é opcional — preencha apenas se sua conta Asaas possui múltiplas carteiras.',
     ],
     webhookGuide: [
-      'No Asaas, vá em Configurações → Integrações → Webhooks.',
-      'Clique em "Adicionar" e cole a URL abaixo.',
-      'No campo de autenticação, cole o secret gerado aqui.',
-      'Selecione os eventos de pagamento recomendados.',
+      'No painel do Asaas, vá em "Integrações" → aba "Webhooks".',
+      'Clique em "Adicionar webhook" (ou "Nova configuração").',
+      'No campo "URL", cole a URL de webhook exibida acima.',
+      'Em "Autenticação", selecione "Access Token" e cole o secret gerado nesta tela.',
+      'Na seção "Eventos", marque os eventos recomendados listados abaixo (PAYMENT_CONFIRMED, PAYMENT_RECEIVED, etc.).',
+      'Em "Versão da API", selecione a versão mais recente (v3).',
+      'Clique em "Salvar" para ativar o webhook.',
+      'Para testar: crie uma cobrança de teste no Asaas e verifique se o evento aparece na tabela abaixo.',
+      'Dica: no Sandbox (sandbox.asaas.com), você pode simular pagamentos de cobranças para gerar eventos de webhook automaticamente.',
     ],
     webhookEvents: [
       'PAYMENT_RECEIVED', 'PAYMENT_CONFIRMED', 'PAYMENT_OVERDUE',
@@ -83,20 +101,36 @@ const PROVIDER_META: Record<string, {
     label: 'Stone',
     docsUrl: 'https://docs.openfinance.stone.com.br/',
     fields: [
-      { key: 'client_id', label: 'Client ID', placeholder: '' },
-      { key: 'client_secret', label: 'Client Secret', placeholder: '', secret: true },
-      { key: 'stone_code', label: 'Stone Code', placeholder: '' },
-      { key: 'merchant_id', label: 'Merchant ID', placeholder: '' },
+      { key: 'client_id', label: 'Client ID', placeholder: 'Seu Client ID OAuth' },
+      { key: 'client_secret', label: 'Client Secret', placeholder: 'Seu Client Secret', secret: true },
+      { key: 'stone_code', label: 'Stone Code', placeholder: 'Ex: 123456789' },
+      { key: 'merchant_id', label: 'Merchant ID', placeholder: 'ID do merchant (se aplicável)' },
     ],
     credentialGuide: [
-      'Entre em contato com a equipe Stone para obter suas credenciais.',
-      'Você receberá Client ID, Client Secret e Stone Code.',
-      'Para sandbox, solicite credenciais do ambiente de testes.',
+      'Para obter credenciais da Stone, siga estes passos:',
+      '1. Acesse o Portal do Parceiro Stone (portal.stone.com.br) ou entre em contato com seu gerente de conta Stone.',
+      '2. Solicite acesso à API Stone OpenFinance informando que deseja integrar via API.',
+      '3. Após aprovação, você receberá por e-mail:',
+      '   → Client ID: identificador da sua aplicação OAuth.',
+      '   → Client Secret: chave secreta para autenticação OAuth2.',
+      '   → Stone Code: código numérico que identifica seu estabelecimento na Stone.',
+      '4. Para ambiente de TESTES (Sandbox): solicite ao seu gerente credenciais separadas do ambiente de homologação.',
+      '5. O Merchant ID é necessário apenas para integrações do tipo Connect/Marketplace — preencha se aplicável.',
+      '6. Dica: a Stone utiliza autenticação OAuth2. O sistema gerencia tokens automaticamente após salvar as credenciais.',
+      '7. Se tiver dúvidas, consulte a documentação: docs.openfinance.stone.com.br ou ligue para o suporte Stone.',
     ],
     webhookGuide: [
-      'No painel Stone, cadastre a URL de webhook fornecida.',
-      'Configure o secret de validação.',
-      'Selecione os eventos de transação.',
+      'Para configurar webhooks na Stone, siga estes passos:',
+      '1. Acesse o Portal do Parceiro Stone (portal.stone.com.br) ou o painel de desenvolvedores.',
+      '2. Navegue até a seção "Webhooks" ou "Notificações".',
+      '3. Clique em "Adicionar webhook" ou "Novo endpoint".',
+      '4. No campo "URL de callback", cole a URL de webhook exibida acima.',
+      '5. No campo "Secret/Token de validação", cole o secret gerado nesta tela.',
+      '6. Selecione os eventos recomendados listados abaixo.',
+      '7. Salve a configuração.',
+      '8. Para testar: solicite ao seu gerente Stone a realização de uma transação de teste no Sandbox.',
+      '9. Verifique se o evento aparece na tabela de eventos abaixo.',
+      'Dica: caso não encontre a seção de webhooks, entre em contato com o suporte Stone para solicitar a habilitação de notificações via webhook na sua conta.',
     ],
     webhookEvents: [
       'PAYMENT_CREATED', 'PAYMENT_CONFIRMED', 'PAYMENT_CANCELED', 'PAYMENT_REFUNDED',
@@ -111,6 +145,13 @@ const WEBHOOK_URLS: Record<string, string> = {
   stone: `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stone-webhook`,
 };
 
+const STATUS_ICONS: Record<string, typeof CheckCircle2> = {
+  ok: CheckCircle2,
+  pending: Clock,
+  retry: RefreshCw,
+  failed: Info,
+};
+
 // ===== Component =====
 
 interface GatewayCredentialsFormProps {
@@ -123,11 +164,13 @@ export function GatewayCredentialsForm({ provider, scopeType, scopeId }: Gateway
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const meta = PROVIDER_META[provider];
+  const webhookUrl = WEBHOOK_URLS[provider] || '';
 
   const [formValues, setFormValues] = useState<Record<string, string>>({});
   const [showFields, setShowFields] = useState<Record<string, boolean>>({});
   const [passwordAction, setPasswordAction] = useState<'save' | 'rotate' | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [showSecret, setShowSecret] = useState(false);
 
   // Fetch existing account
   const { data: account, isLoading } = useQuery({
@@ -163,6 +206,37 @@ export function GatewayCredentialsForm({ provider, scopeType, scopeId }: Gateway
         .maybeSingle();
       if (error) throw error;
       return data as any;
+    },
+  });
+
+  // Fetch webhook config
+  const { data: webhookConfig } = useQuery({
+    queryKey: ['gateway-webhook-config', account?.id],
+    enabled: !!account?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('payment_provider_webhooks')
+        .select('*')
+        .eq('provider_account_id', account!.id)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Fetch recent events
+  const { data: events, isLoading: loadingEvents } = useQuery({
+    queryKey: ['gateway-webhook-events', account?.id],
+    enabled: !!account?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('payment_provider_events')
+        .select('*')
+        .eq('provider_account_id', account!.id)
+        .order('created_at', { ascending: false })
+        .limit(10);
+      if (error) throw error;
+      return data || [];
     },
   });
 
@@ -202,7 +276,7 @@ export function GatewayCredentialsForm({ provider, scopeType, scopeId }: Gateway
             provider,
             scope_type: scopeType,
             scope_id: scopeId || null,
-            integration_type: provider.startsWith('stone') ? 'stone_online' : 'online',
+            integration_type: provider === 'stone' ? 'stone_online' : 'online',
             credentials_encrypted: merged as any,
             status: 'active',
             environment: 'production',
@@ -222,11 +296,55 @@ export function GatewayCredentialsForm({ provider, scopeType, scopeId }: Gateway
     },
   });
 
+  // Generate/rotate webhook secret
+  const generateSecret = useMutation({
+    mutationFn: async () => {
+      const secret = `whsec_${crypto.randomUUID().replace(/-/g, '')}`;
+      const secretHash = `${secret.slice(0, 8)}...${secret.slice(-4)}`;
+
+      if (!account?.id) throw new Error('Salve as credenciais primeiro.');
+
+      if (webhookConfig) {
+        const { error } = await supabase
+          .from('payment_provider_webhooks')
+          .update({
+            webhook_secret_hash: secretHash,
+            webhook_url: webhookUrl,
+            enabled: true,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', webhookConfig.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('payment_provider_webhooks')
+          .insert({
+            provider_account_id: account.id,
+            webhook_secret_hash: secretHash,
+            webhook_url: webhookUrl,
+            enabled: true,
+          });
+        if (error) throw error;
+      }
+
+      return secret;
+    },
+    onSuccess: (secret) => {
+      queryClient.invalidateQueries({ queryKey: ['gateway-webhook-config'] });
+      toast({
+        title: 'Webhook Secret gerado!',
+        description: `Copie agora: ${secret}`,
+      });
+    },
+    onError: (err: Error) => {
+      toast({ title: 'Erro ao gerar secret', description: err.message, variant: 'destructive' });
+    },
+  });
+
   // Verify account (fetch cedente data)
   const verifyMutation = useMutation({
     mutationFn: async () => {
       if (!account?.id) throw new Error('Conta não encontrada');
-      // For now, save a placeholder profile — real API verification would call the provider
       const profileData = {
         provider_account_id: account.id,
         legal_name: 'Verificação pendente (configure via API do provedor)',
@@ -248,11 +366,30 @@ export function GatewayCredentialsForm({ provider, scopeType, scopeId }: Gateway
     },
   });
 
+  // Reprocess event
+  const reprocessEvent = useMutation({
+    mutationFn: async (eventId: string) => {
+      const { error } = await supabase
+        .from('payment_provider_events')
+        .update({
+          process_status: 'pending',
+          retry_count: 0,
+          error_message: null,
+          processed_at: null,
+        })
+        .eq('id', eventId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['gateway-webhook-events'] });
+      toast({ title: 'Evento marcado para reprocessamento' });
+    },
+  });
+
   // Test charge
   const [testResult, setTestResult] = useState<any>(null);
   const testChargeMutation = useMutation({
     mutationFn: async () => {
-      // Call edge function to create test charge
       const { data, error } = await supabase.functions.invoke('gateway-test-charge', {
         body: { provider, provider_account_id: account?.id, amount: 500 },
       });
@@ -277,7 +414,7 @@ export function GatewayCredentialsForm({ provider, scopeType, scopeId }: Gateway
 
   return (
     <div className="space-y-6">
-      {/* ===== CREDENTIALS SECTION ===== */}
+      {/* ===== 1. CREDENTIALS SECTION ===== */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -303,7 +440,6 @@ export function GatewayCredentialsForm({ provider, scopeType, scopeId }: Gateway
             </div>
           ) : (
             <>
-              {/* Credential fields */}
               {(!isConfigured || isEditing) ? (
                 <>
                   {meta.fields.map((field) => (
@@ -335,7 +471,6 @@ export function GatewayCredentialsForm({ provider, scopeType, scopeId }: Gateway
 
                   <div className="flex gap-2 pt-2">
                     {isConfigured ? (
-                      // Editing existing — require password
                       <Button
                         onClick={() => setPasswordAction('save')}
                         disabled={saveMutation.isPending}
@@ -362,7 +497,6 @@ export function GatewayCredentialsForm({ provider, scopeType, scopeId }: Gateway
                 </>
               ) : (
                 <>
-                  {/* Show masked values */}
                   {meta.fields.map((field) => {
                     const val = getFieldValue(field.key);
                     return (
@@ -384,9 +518,9 @@ export function GatewayCredentialsForm({ provider, scopeType, scopeId }: Gateway
             </>
           )}
 
-          {/* Contextual guide: how to obtain keys */}
+          {/* Inline guide: how to obtain keys */}
           <Accordion type="single" collapsible className="mt-2">
-            <AccordionItem value="credential-guide" className="border-none">
+            <AccordionItem value="credential-guide" className="border rounded-lg px-4">
               <AccordionTrigger className="text-sm text-muted-foreground hover:text-foreground py-2">
                 <span className="flex items-center gap-2">
                   <Info className="h-4 w-4" /> Como obter esta chave?
@@ -412,94 +546,149 @@ export function GatewayCredentialsForm({ provider, scopeType, scopeId }: Gateway
         </CardContent>
       </Card>
 
-      {/* ===== VERIFIED ACCOUNT (CEDENTE) ===== */}
-      {isConfigured && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Conta Vinculada a esta API</CardTitle>
-            <CardDescription>Dados verificados do cedente / conta do provedor.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {loadingProfile ? (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" /> Carregando...
+      {/* ===== 2. WEBHOOK SECTION (ALWAYS VISIBLE) ===== */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Webhook className="h-5 w-5" /> Webhook
+          </CardTitle>
+          <CardDescription>Configure a URL e o secret no painel do {meta.label} para receber eventos.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Webhook URL */}
+          <div className="space-y-1">
+            <Label>URL do Webhook (copie para o painel do provedor)</Label>
+            <div className="flex items-center gap-2">
+              <Input value={webhookUrl} readOnly className="font-mono text-xs" />
+              <Button variant="outline" size="icon" onClick={() => copyToClipboard(webhookUrl)}>
+                <Copy className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
+          {/* Webhook Secret */}
+          <div className="space-y-2">
+            <Label>Webhook Secret</Label>
+            {webhookConfig?.webhook_secret_hash ? (
+              <div className="flex items-center gap-2">
+                <Input
+                  value={showSecret ? (webhookConfig.webhook_secret_hash || '') : '••••••••••••••••'}
+                  readOnly
+                  className="font-mono text-xs"
+                />
+                <Button variant="outline" size="icon" onClick={() => setShowSecret(!showSecret)}>
+                  {showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </Button>
+                <Button variant="outline" size="icon" onClick={() => copyToClipboard(webhookConfig.webhook_secret_hash || '')}>
+                  <Copy className="h-4 w-4" />
+                </Button>
               </div>
-            ) : profile ? (
-              <>
-                <div className="grid gap-2 text-sm">
-                  {profile.legal_name && (
-                    <div className="flex justify-between"><span className="text-muted-foreground">Nome / Razão Social</span><span className="font-medium">{profile.legal_name}</span></div>
-                  )}
-                  {profile.document && (
-                    <div className="flex justify-between"><span className="text-muted-foreground">CPF/CNPJ</span><span className="font-medium">{profile.document}</span></div>
-                  )}
-                  {profile.bank_name && (
-                    <div className="flex justify-between"><span className="text-muted-foreground">Banco</span><span className="font-medium">{profile.bank_name}</span></div>
-                  )}
-                  {profile.bank_agency && (
-                    <div className="flex justify-between"><span className="text-muted-foreground">Agência</span><span className="font-medium">{profile.bank_agency}</span></div>
-                  )}
-                  {profile.bank_account && (
-                    <div className="flex justify-between"><span className="text-muted-foreground">Conta</span><span className="font-medium">{profile.bank_account}</span></div>
-                  )}
-                  {profile.wallet_id && (
-                    <div className="flex justify-between"><span className="text-muted-foreground">Wallet ID</span><span className="font-medium">{profile.wallet_id}</span></div>
-                  )}
-                  {profile.merchant_id && (
-                    <div className="flex justify-between"><span className="text-muted-foreground">Merchant ID</span><span className="font-medium">{profile.merchant_id}</span></div>
-                  )}
-                  {profile.verified_at && (
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Verificado em</span>
-                      <Badge variant="default" className="text-xs flex items-center gap-1">
-                        <CheckCircle2 className="h-3 w-3" />
-                        {new Date(profile.verified_at).toLocaleString('pt-BR')}
-                      </Badge>
-                    </div>
-                  )}
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => verifyMutation.mutate()}
-                  disabled={verifyMutation.isPending}
-                >
-                  {verifyMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  <RefreshCw className="h-4 w-4 mr-2" /> Verificar Dados
-                </Button>
-              </>
             ) : (
-              <>
-                <p className="text-sm text-muted-foreground">Nenhuma verificação realizada ainda.</p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => verifyMutation.mutate()}
-                  disabled={verifyMutation.isPending}
-                >
-                  {verifyMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  <CheckCircle2 className="h-4 w-4 mr-2" /> Verificar Dados do Cedente
-                </Button>
-              </>
+              <p className="text-sm text-muted-foreground">
+                {isConfigured
+                  ? 'Nenhum secret configurado. Clique em "Gerar Secret" abaixo.'
+                  : 'Salve as credenciais primeiro para poder gerar o secret do webhook.'}
+              </p>
             )}
-          </CardContent>
-        </Card>
-      )}
 
-      {/* ===== WEBHOOKS SECTION (inline, not separate tab) ===== */}
-      {isConfigured && (
-        <div className="space-y-2">
-          <GatewayWebhookPanel
-            provider={provider}
-            providerAccountId={account?.id || null}
-          />
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (webhookConfig?.webhook_secret_hash) {
+                    setPasswordAction('rotate');
+                  } else {
+                    generateSecret.mutate();
+                  }
+                }}
+                disabled={generateSecret.isPending || !account?.id}
+              >
+                {generateSecret.isPending ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Key className="h-4 w-4 mr-2" />
+                )}
+                {webhookConfig?.webhook_secret_hash ? 'Rotacionar Secret' : 'Gerar Secret'}
+              </Button>
 
-          {/* Contextual guide for webhooks */}
+              {webhookConfig?.enabled !== undefined && (
+                <Badge variant={webhookConfig.enabled ? 'default' : 'secondary'}>
+                  {webhookConfig.enabled ? 'Habilitado' : 'Desabilitado'}
+                </Badge>
+              )}
+            </div>
+
+            {webhookConfig?.last_received_at && (
+              <p className="text-xs text-muted-foreground">
+                Último evento: {format(new Date(webhookConfig.last_received_at), 'dd/MM/yyyy HH:mm:ss')}
+              </p>
+            )}
+            {webhookConfig && (
+              <p className="text-xs text-muted-foreground">
+                Total recebidos: {webhookConfig.total_received} · Falhas: {webhookConfig.total_failed}
+              </p>
+            )}
+          </div>
+
+          {/* Recent events mini-table */}
+          {events && events.length > 0 && (
+            <div className="space-y-2 pt-2 border-t">
+              <p className="text-sm font-medium">Últimos eventos recebidos</p>
+              <div className="max-h-48 overflow-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left py-1 font-medium">Tipo</th>
+                      <th className="text-left py-1 font-medium">Status</th>
+                      <th className="text-left py-1 font-medium">Data</th>
+                      <th className="py-1"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {events.map(event => {
+                      const StatusIcon = STATUS_ICONS[event.process_status] || Clock;
+                      return (
+                        <tr key={event.id} className="border-b last:border-0">
+                          <td className="py-1 font-mono">{event.event_type}</td>
+                          <td className="py-1">
+                            <Badge
+                              variant={event.process_status === 'ok' ? 'default' : event.process_status === 'failed' ? 'destructive' : 'secondary'}
+                              className="text-[10px] px-1 py-0"
+                            >
+                              <StatusIcon className="h-2.5 w-2.5 mr-0.5" />
+                              {event.process_status}
+                            </Badge>
+                          </td>
+                          <td className="py-1">{format(new Date(event.created_at), 'dd/MM HH:mm')}</td>
+                          <td className="py-1">
+                            {(event.process_status === 'failed' || event.process_status === 'retry') && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-5 px-1 text-[10px]"
+                                onClick={() => reprocessEvent.mutate(event.id)}
+                                disabled={reprocessEvent.isPending}
+                              >
+                                <RefreshCw className="h-2.5 w-2.5 mr-0.5" /> Reprocessar
+                              </Button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Inline guide for webhook */}
           <Accordion type="single" collapsible>
             <AccordionItem value="webhook-guide" className="border rounded-lg px-4">
               <AccordionTrigger className="text-sm text-muted-foreground hover:text-foreground py-3">
                 <span className="flex items-center gap-2">
-                  <Webhook className="h-4 w-4" /> Como configurar o webhook no painel do {meta.label}?
+                  <Info className="h-4 w-4" /> Como configurar o webhook no painel do {meta.label}?
                 </span>
               </AccordionTrigger>
               <AccordionContent className="space-y-3">
@@ -527,77 +716,185 @@ export function GatewayCredentialsForm({ provider, scopeType, scopeId }: Gateway
               </AccordionContent>
             </AccordionItem>
           </Accordion>
-        </div>
-      )}
+        </CardContent>
+      </Card>
 
-      {/* ===== TEST CHARGE ===== */}
-      {isConfigured && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <TestTube className="h-5 w-5" /> Testar Integração
-            </CardTitle>
-            <CardDescription>Crie uma cobrança de teste (R$ 5,00) para verificar a integração.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Button
-              variant="outline"
-              onClick={() => testChargeMutation.mutate()}
-              disabled={testChargeMutation.isPending}
-            >
-              {testChargeMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              <TestTube className="h-4 w-4 mr-2" />
-              Criar Cobrança Teste (R$ 5,00)
-            </Button>
-
-            {testResult && (
-              <div className="space-y-3 p-4 bg-muted rounded-lg">
-                <div className="flex items-center gap-2">
-                  <Badge variant={testResult.status === 'success' ? 'default' : 'destructive'}>
-                    {testResult.status === 'success' ? 'Sucesso' : 'Erro'}
-                  </Badge>
-                  {testResult.charge_id && (
-                    <span className="text-xs font-mono text-muted-foreground">ID: {testResult.charge_id}</span>
-                  )}
+      {/* ===== 3. VERIFIED ACCOUNT (CEDENTE) — ALWAYS VISIBLE ===== */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Conta Vinculada — Dados do Cedente</CardTitle>
+          <CardDescription>Dados verificados da conta do provedor associada a estas credenciais.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {!account?.id ? (
+            <p className="text-sm text-muted-foreground">Salve as credenciais acima para verificar os dados do cedente.</p>
+          ) : loadingProfile ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" /> Carregando...
+            </div>
+          ) : profile ? (
+            <>
+              <div className="grid gap-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Nome / Razão Social</span>
+                  <span className="font-medium">{profile.legal_name || '—'}</span>
                 </div>
-
-                {testResult.boleto_url && (
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium">Boleto:</p>
-                    <div className="flex items-center gap-2">
-                      <Input value={testResult.boleto_url} readOnly className="text-xs font-mono" />
-                      <Button variant="outline" size="icon" onClick={() => copyToClipboard(testResult.boleto_url)}>
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                    </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">CPF/CNPJ</span>
+                  <span className="font-medium">{profile.document || '—'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Banco</span>
+                  <span className="font-medium">{profile.bank_name || '—'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Agência</span>
+                  <span className="font-medium">{profile.bank_agency || '—'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Conta</span>
+                  <span className="font-medium">{profile.bank_account || '—'}</span>
+                </div>
+                {profile.verified_at && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Verificado em</span>
+                    <Badge variant="default" className="text-xs flex items-center gap-1">
+                      <CheckCircle2 className="h-3 w-3" />
+                      {new Date(profile.verified_at).toLocaleString('pt-BR')}
+                    </Badge>
                   </div>
-                )}
-
-                {testResult.pix_qrcode && (
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium flex items-center gap-1"><QrCode className="h-4 w-4" /> PIX QR Code:</p>
-                    {testResult.pix_qrcode_image && (
-                      <img src={testResult.pix_qrcode_image} alt="QR Code PIX" className="h-32 w-32 border rounded" />
-                    )}
-                    <div className="flex items-center gap-2">
-                      <Input value={testResult.pix_qrcode} readOnly className="text-xs font-mono" />
-                      <Button variant="outline" size="icon" onClick={() => copyToClipboard(testResult.pix_qrcode)}>
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                )}
-
-                {testResult.error && (
-                  <Alert variant="destructive">
-                    <AlertDescription className="text-xs">{testResult.error}</AlertDescription>
-                  </Alert>
                 )}
               </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => verifyMutation.mutate()}
+                disabled={verifyMutation.isPending}
+              >
+                {verifyMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                <RefreshCw className="h-4 w-4 mr-2" /> Verificar Dados
+              </Button>
+            </>
+          ) : (
+            <>
+              <div className="grid gap-2 text-sm">
+                <div className="flex justify-between"><span className="text-muted-foreground">Nome / Razão Social</span><span className="font-medium">—</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">CPF/CNPJ</span><span className="font-medium">—</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Banco</span><span className="font-medium">—</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Agência</span><span className="font-medium">—</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Conta</span><span className="font-medium">—</span></div>
+              </div>
+              <p className="text-xs text-muted-foreground">Ainda não verificado — clique em "Verificar Dados do Cedente" para consultar.</p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => verifyMutation.mutate()}
+                disabled={verifyMutation.isPending || !account?.id}
+              >
+                {verifyMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                <CheckCircle2 className="h-4 w-4 mr-2" /> Verificar Dados do Cedente
+              </Button>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ===== 4. TEST CHARGE ===== */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <TestTube className="h-5 w-5" /> Testar Integração
+          </CardTitle>
+          <CardDescription>
+            {isConfigured
+              ? 'Crie uma cobrança de teste (R$ 5,00) para verificar a integração.'
+              : 'Salve as credenciais acima para poder testar a integração.'}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Button
+            variant="outline"
+            onClick={() => testChargeMutation.mutate()}
+            disabled={testChargeMutation.isPending || !isConfigured}
+          >
+            {testChargeMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            <TestTube className="h-4 w-4 mr-2" />
+            Criar Cobrança Teste (R$ 5,00)
+          </Button>
+
+          {testResult && (
+            <div className="space-y-3 p-4 bg-muted rounded-lg">
+              <div className="flex items-center gap-2">
+                <Badge variant={testResult.status === 'success' ? 'default' : 'destructive'}>
+                  {testResult.status === 'success' ? 'Sucesso' : 'Erro'}
+                </Badge>
+                {testResult.charge_id && (
+                  <span className="text-xs font-mono text-muted-foreground">ID: {testResult.charge_id}</span>
+                )}
+              </div>
+
+              {testResult.pix_qrcode && (
+                <div className="space-y-1">
+                  <p className="text-sm font-medium flex items-center gap-1"><QrCode className="h-4 w-4" /> PIX QR Code:</p>
+                  {testResult.pix_qrcode_image && (
+                    <img src={testResult.pix_qrcode_image} alt="QR Code PIX" className="h-32 w-32 border rounded" />
+                  )}
+                  <div className="flex items-center gap-2">
+                    <Input value={testResult.pix_qrcode} readOnly className="text-xs font-mono" />
+                    <Button variant="outline" size="icon" onClick={() => copyToClipboard(testResult.pix_qrcode)}>
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {testResult.error && (
+                <Alert variant="destructive">
+                  <AlertDescription className="text-xs">{testResult.error}</AlertDescription>
+                </Alert>
+              )}
+            </div>
+          )}
+
+          <Accordion type="single" collapsible>
+            <AccordionItem value="test-guide" className="border rounded-lg px-4">
+              <AccordionTrigger className="text-sm text-muted-foreground hover:text-foreground py-2">
+                <span className="flex items-center gap-2">
+                  <Info className="h-4 w-4" /> Como testar a integração?
+                </span>
+              </AccordionTrigger>
+              <AccordionContent>
+                <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground pl-2">
+                  {provider === 'stripe' && (
+                    <>
+                      <li>Use chaves de teste (pk_test_, sk_test_) para não gerar cobranças reais.</li>
+                      <li>Clique em "Criar Cobrança Teste" acima.</li>
+                      <li>Use o cartão de teste: 4242 4242 4242 4242, qualquer data futura e CVC.</li>
+                      <li>Verifique se o evento aparece na tabela de webhook acima.</li>
+                    </>
+                  )}
+                  {provider === 'asaas' && (
+                    <>
+                      <li>Use uma chave de API Sandbox (sandbox.asaas.com) para testes.</li>
+                      <li>Clique em "Criar Cobrança Teste" para gerar uma cobrança PIX de R$ 5,00.</li>
+                      <li>No Sandbox do Asaas, simule o pagamento da cobrança.</li>
+                      <li>Verifique se o evento PAYMENT_CONFIRMED aparece na tabela acima.</li>
+                    </>
+                  )}
+                  {provider === 'stone' && (
+                    <>
+                      <li>Solicite ao seu gerente Stone credenciais do ambiente Sandbox.</li>
+                      <li>Clique em "Criar Cobrança Teste" para simular uma transação.</li>
+                      <li>No ambiente de homologação da Stone, confirme a transação.</li>
+                      <li>Verifique se o evento aparece na tabela de webhook acima.</li>
+                    </>
+                  )}
+                </ol>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </CardContent>
+      </Card>
 
       {/* ===== PASSWORD CONFIRM DIALOGS ===== */}
       <PasswordConfirmDialog
@@ -606,6 +903,14 @@ export function GatewayCredentialsForm({ provider, scopeType, scopeId }: Gateway
         title="Confirmar alteração de credenciais"
         description="Digite sua senha para alterar as credenciais do gateway."
         onConfirm={() => saveMutation.mutateAsync()}
+      />
+      <PasswordConfirmDialog
+        open={passwordAction === 'rotate'}
+        onOpenChange={(v) => !v && setPasswordAction(null)}
+        title="Rotacionar Webhook Secret"
+        description="Isso invalidará o secret atual. Configure o novo secret no painel do provedor."
+        warning="O secret atual deixará de funcionar imediatamente."
+        onConfirm={async () => { await generateSecret.mutateAsync(); }}
       />
     </div>
   );
