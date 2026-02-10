@@ -79,6 +79,7 @@ import {
 import PublicParceiros from "./pages/PublicParceiros";
 import PublicParceiroCadastro from "./pages/PublicParceiroCadastro";
 import PublicParceiroProfile from "./pages/PublicParceiroProfile";
+import PartnerSlugSignup from "./pages/PartnerSlugSignup";
 import PartnerAuth from "./pages/PartnerAuth";
 import PartnerIndexRedirect from "./components/partner/PartnerIndexRedirect";
 
@@ -123,6 +124,7 @@ const App = () => (
                     <Route path="/parceiros" element={<PublicParceiros />} />
                     <Route path="/parceiros/cadastrar" element={<PublicParceiroCadastro />} />
                     <Route path="/parceiros/:slug" element={<PublicParceiroProfile />} />
+                    <Route path="/parceiros/:slug/começar" element={<PartnerSlugSignup />} />
                     <Route path="/auth" element={<Auth />} />
                     
                     {/* Partner public routes */}

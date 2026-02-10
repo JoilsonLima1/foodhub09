@@ -5,7 +5,7 @@
  * Route: /parceiros/:slug
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -52,6 +52,25 @@ export default function PublicParceiroProfile() {
   const { slug } = useParams<{ slug: string }>();
   const [searchParams] = useSearchParams();
   const isPreview = searchParams.get('preview') === '1';
+
+  // Check if current user is the partner owner (for preview auth)
+  const { data: isOwner } = useQuery({
+    queryKey: ['partner-preview-auth', slug],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return false;
+      const { count } = await (supabase as any)
+        .from('partners')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('slug', slug || '');
+      return (count || 0) > 0;
+    },
+    enabled: isPreview,
+  });
+
+  // Only allow preview if user is the partner owner
+  const canPreview = isPreview && isOwner === true;
 
   useEffect(() => { resetThemeToDefault(); }, []);
   usePublicTheme();
@@ -155,7 +174,7 @@ export default function PublicParceiroProfile() {
   }
 
   // If page is not published and not preview mode, show minimal page
-  if (marketingPage && !marketingPage.published && !isPreview) {
+  if (marketingPage && !marketingPage.published && !canPreview) {
     // fall through to generic page
   }
 
@@ -167,7 +186,7 @@ export default function PublicParceiroProfile() {
   const testimonials = (page?.testimonials as any[]) || [];
   const whatsapp = (page as any)?.whatsapp_number;
   const demoUrl = (page as any)?.demo_url;
-  const signupUrl = (page as any)?.signup_url || (profile.slug ? `/signup?partner=${profile.slug}` : '/auth?intent=signup');
+  const signupUrl = (page as any)?.signup_url || (slug ? `/parceiros/${slug}/começar` : '/auth?intent=signup');
 
   const seoTitle = page?.seo_title || `${partnerName} — Sistema completo para seu negócio`;
   const seoDesc = page?.seo_description || page?.hero_subtitle || `Conheça os planos e benefícios de ${partnerName}.`;
@@ -213,14 +232,14 @@ export default function PublicParceiroProfile() {
         </div>
       </header>
 
-      {isPreview && (
+      {canPreview && (
         <div className="fixed top-16 left-0 right-0 z-40 bg-accent text-accent-foreground text-center text-sm py-1 font-medium">
           ⚠️ Modo Preview — esta página não está publicada
         </div>
       )}
 
       {/* ===== HERO ===== */}
-      <section className={`pt-32 pb-20 bg-gradient-to-b from-primary/10 to-background ${isPreview ? 'pt-40' : ''}`}>
+      <section className={`pt-32 pb-20 bg-gradient-to-b from-primary/10 to-background ${canPreview ? 'pt-40' : ''}`}>
         <div className="container px-4 mx-auto text-center max-w-3xl">
           {page?.hero_badge && (
             <Badge variant="secondary" className="mb-4 text-sm px-4 py-1">
@@ -329,7 +348,7 @@ export default function PublicParceiroProfile() {
                       )}
                     </ul>
                     <Button className="w-full" variant={plan.is_featured ? 'default' : 'outline'} asChild>
-                      <Link to={signupUrl + (signupUrl.includes('?') ? '&' : '?') + `plan=${plan.slug}`}>
+                      <Link to={`/parceiros/${slug}/começar?plan=${plan.id}`}>
                         Escolher Plano
                       </Link>
                     </Button>
