@@ -237,7 +237,7 @@ export default function Settings() {
                         </p>
                       </div>
                     </div>
-                    <Button variant="outline" size="sm" onClick={() => window.location.href = '/app/stone'}>
+                    <Button variant="outline" size="sm" onClick={() => window.location.href = '/stone'}>
                       Configurar
                     </Button>
                   </div>
@@ -294,7 +294,7 @@ export default function Settings() {
                         Ao usar Stone Connect ou Stone TEF, configure suas credenciais Stone.
                       </p>
                     </div>
-                    <Button variant="link" size="sm" onClick={() => window.location.href = '/app/stone'}>
+                    <Button variant="link" size="sm" onClick={() => window.location.href = '/stone'}>
                       Configurar Stone →
                     </Button>
                   </div>
