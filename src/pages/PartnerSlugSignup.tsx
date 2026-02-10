@@ -2,6 +2,7 @@
  * PartnerSlugSignup - Signup page accessed via /parceiros/:slug/começar
  * 
  * Resolves partner from URL slug (not domain), creates tenant linked to partner.
+ * Handles all next_action states from the edge function.
  */
 
 import { useState, useEffect } from 'react';
@@ -15,8 +16,9 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, ArrowLeft, Check, AlertCircle, Star } from 'lucide-react';
+import { Loader2, ArrowLeft, Check, AlertCircle, Star, MessageCircle, Clock, Copy } from 'lucide-react';
 import { z } from 'zod';
+import { toast } from 'sonner';
 import fallbackLogo from '@/assets/logo.png';
 
 const signupSchema = z.object({
@@ -39,7 +41,26 @@ interface PartnerProfile {
     logo_url?: string;
     platform_name?: string;
     primary_color?: string;
+    support_phone?: string;
+    support_email?: string;
   };
+}
+
+type NextAction = 'REDIRECT_DASHBOARD' | 'REDIRECT_CHECKOUT' | 'PENDING_BILLING' | 'ERROR';
+
+interface SignupResult {
+  ok: boolean;
+  tenant_id?: string;
+  user_id?: string;
+  partner_id?: string;
+  plan_id?: string;
+  billing_owner?: string;
+  trial_days?: number;
+  next_action: NextAction;
+  checkout_url?: string;
+  pending_reason?: string;
+  error?: string;
+  correlation_id?: string;
 }
 
 export default function PartnerSlugSignup() {
@@ -78,8 +99,23 @@ export default function PartnerSlugSignup() {
     enabled: !!profile?.partner_id,
   });
 
+  // Fetch partner marketing page (for whatsapp number)
+  const { data: marketingPage } = useQuery({
+    queryKey: ['partner-marketing-whatsapp', profile?.partner_id],
+    queryFn: async () => {
+      if (!profile?.partner_id) return null;
+      const { data } = await supabase
+        .from('partner_marketing_pages')
+        .select('whatsapp_number')
+        .eq('partner_id', profile.partner_id)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!profile?.partner_id,
+  });
+
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
-  const [step, setStep] = useState<'plan' | 'form'>('plan');
+  const [step, setStep] = useState<'plan' | 'form' | 'pending'>('plan');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tenantName, setTenantName] = useState('');
@@ -87,6 +123,7 @@ export default function PartnerSlugSignup() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [pendingResult, setPendingResult] = useState<SignupResult | null>(null);
 
   // Auto-select plan from URL
   useEffect(() => {
@@ -102,6 +139,7 @@ export default function PartnerSlugSignup() {
   const platformName = profile?.branding?.platform_name || profile?.name || 'Sistema';
   const logoUrl = profile?.branding?.logo_url || fallbackLogo;
   const selectedPlan = plans.find(p => p.id === selectedPlanId);
+  const whatsappNumber = (marketingPage as any)?.whatsapp_number || profile?.branding?.support_phone;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -136,20 +174,44 @@ export default function PartnerSlugSignup() {
 
       if (fnError) throw fnError;
 
-      if (data?.error) {
-        throw new Error(data.error);
+      const result = data as SignupResult;
+
+      if (!result.ok && result.next_action === 'ERROR') {
+        throw new Error(result.error || 'Erro ao criar conta');
       }
 
-      if (data?.requiresPayment && data?.checkoutUrl) {
-        // Redirect to payment gateway (platform or partner)
-        window.location.href = data.checkoutUrl;
-      } else if (data?.pendingPartnerBilling) {
-        // Partner billing but gateway not ready - show success with message
-        navigate(`/login?signup=success&msg=${encodeURIComponent(data.message || 'Conta criada!')}`, { replace: true });
-      } else if (data?.success) {
-        navigate('/login?signup=success', { replace: true });
-      } else {
-        throw new Error('Erro ao criar conta');
+      switch (result.next_action) {
+        case 'REDIRECT_CHECKOUT':
+          if (result.checkout_url) {
+            // Hard redirect to payment gateway
+            window.location.href = result.checkout_url;
+          } else {
+            throw new Error('URL de checkout não disponível');
+          }
+          break;
+
+        case 'REDIRECT_DASHBOARD':
+          // Sign in the user and redirect to dashboard
+          toast.success('Conta criada com sucesso!');
+          const { error: signInError } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+          });
+          if (signInError) {
+            // If auto-login fails, redirect to login page
+            navigate('/login?signup=success', { replace: true });
+          } else {
+            navigate('/dashboard', { replace: true });
+          }
+          break;
+
+        case 'PENDING_BILLING':
+          setPendingResult(result);
+          setStep('pending');
+          break;
+
+        default:
+          throw new Error('Resposta inesperada do servidor');
       }
     } catch (err: any) {
       console.error('[PartnerSlugSignup] Error:', err);
@@ -157,6 +219,11 @@ export default function PartnerSlugSignup() {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success('Copiado!');
   };
 
   if (profileLoading || plansLoading) {
@@ -206,9 +273,13 @@ export default function PartnerSlugSignup() {
 
         <main className="container mx-auto px-4 py-8 max-w-4xl">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold mb-2">Crie sua conta</h1>
+            <h1 className="text-3xl font-bold mb-2">
+              {step === 'pending' ? 'Quase lá!' : 'Crie sua conta'}
+            </h1>
             <p className="text-muted-foreground">
-              {step === 'plan' ? 'Escolha o plano ideal para seu negócio' : 'Complete seu cadastro'}
+              {step === 'plan' && 'Escolha o plano ideal para seu negócio'}
+              {step === 'form' && 'Complete seu cadastro'}
+              {step === 'pending' && 'Sua conta foi criada, aguarde a configuração do pagamento'}
             </p>
           </div>
 
@@ -328,6 +399,93 @@ export default function PartnerSlugSignup() {
                     {selectedPlan.is_free || selectedPlan.trial_days > 0 ? 'Criar Conta' : 'Continuar para Pagamento'}
                   </Button>
                 </form>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Step 3: Pending Billing */}
+          {step === 'pending' && pendingResult && (
+            <Card className="max-w-md mx-auto">
+              <CardHeader className="text-center">
+                <div className="mx-auto mb-4 h-16 w-16 rounded-full bg-accent flex items-center justify-center">
+                  <Clock className="h-8 w-8 text-accent-foreground" />
+                </div>
+                <CardTitle>Configuração de Pagamento Pendente</CardTitle>
+                <CardDescription>
+                  Sua conta foi criada com sucesso! O parceiro precisa finalizar a configuração do meio de pagamento antes de ativar seu acesso.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Reference info */}
+                <div className="bg-muted rounded-lg p-4 space-y-2 text-sm">
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">ID da conta:</span>
+                    <div className="flex items-center gap-1">
+                      <code className="text-xs font-mono">{pendingResult.tenant_id?.slice(0, 8)}...</code>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0"
+                        onClick={() => copyToClipboard(pendingResult.tenant_id || '')}
+                      >
+                        <Copy className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                  {pendingResult.correlation_id && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">Protocolo:</span>
+                      <div className="flex items-center gap-1">
+                        <code className="text-xs font-mono">{pendingResult.correlation_id}</code>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0"
+                          onClick={() => copyToClipboard(pendingResult.correlation_id || '')}
+                        >
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Plano:</span>
+                    <span className="font-medium">{selectedPlan?.name}</span>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex flex-col gap-3">
+                  {whatsappNumber && (
+                    <Button asChild size="lg" className="w-full">
+                      <a
+                        href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
+                          `Olá! Acabei de criar minha conta (ID: ${pendingResult.tenant_id?.slice(0, 8)}) no plano ${selectedPlan?.name}. Preciso de ajuda para configurar o pagamento. Protocolo: ${pendingResult.correlation_id || 'N/A'}`
+                        )}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <MessageCircle className="h-4 w-4 mr-2" />
+                        Falar com {platformName} via WhatsApp
+                      </a>
+                    </Button>
+                  )}
+                  {profile?.branding?.support_email && (
+                    <Button variant="outline" asChild className="w-full">
+                      <a href={`mailto:${profile.branding.support_email}?subject=Pagamento pendente - ${pendingResult.tenant_id?.slice(0, 8)}`}>
+                        Enviar Email
+                      </a>
+                    </Button>
+                  )}
+                  <Button
+                    variant="ghost"
+                    onClick={() => navigate(`/parceiros/${slug}`)}
+                    className="w-full"
+                  >
+                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    Voltar para a página do parceiro
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           )}
