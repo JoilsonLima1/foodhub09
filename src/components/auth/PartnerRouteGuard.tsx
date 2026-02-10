@@ -36,20 +36,24 @@ export function PartnerRouteGuard({ children, requireAdmin = false }: PartnerRou
     // Wait for loading to complete
     if (isLoading) return;
 
-    // Not logged in - redirect to auth
+    // Not logged in - redirect to partner auth (NOT generic /auth)
     if (!user) {
-      navigate('/auth', { replace: true, state: { from: '/partner' } });
+      navigate('/partner/auth', { replace: true });
       return;
     }
 
-    // Not a partner user - redirect to home or dashboard
-    if (!isPartnerUser) {
+    // Check localStorage for partner context as fallback while PartnerContext resolves
+    const storedContext = (() => { try { return localStorage.getItem('active_context'); } catch { return null; } })();
+    
+    // Not a partner user AND no stored partner context - redirect
+    if (!isPartnerUser && storedContext !== 'partner') {
+      console.warn('[PARTNER_GUARD] Not a partner, redirecting to /');
       navigate('/', { replace: true });
       return;
     }
 
-    // Partner not active - show error (handled in render)
-    if (!currentPartner) {
+    // If isPartnerUser is true but partner not loaded yet, wait (don't redirect)
+    if (isPartnerUser && !currentPartner) {
       return;
     }
 
@@ -92,8 +96,9 @@ export function PartnerRouteGuard({ children, requireAdmin = false }: PartnerRou
     );
   }
 
-  // Not a partner user
-  if (!isPartnerUser || !currentPartner) {
+  // Not a partner user - but check stored context before showing error
+  const storedCtx = (() => { try { return localStorage.getItem('active_context'); } catch { return null; } })();
+  if ((!isPartnerUser || !currentPartner) && storedCtx !== 'partner') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Alert className="max-w-md">
@@ -112,6 +117,18 @@ export function PartnerRouteGuard({ children, requireAdmin = false }: PartnerRou
             </div>
           </AlertDescription>
         </Alert>
+      </div>
+    );
+  }
+
+  // If stored context says partner but PartnerContext still loading data, show loader
+  if (!isPartnerUser || !currentPartner) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Carregando painel do parceiro...</p>
+        </div>
       </div>
     );
   }

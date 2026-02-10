@@ -15,11 +15,15 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { setDesiredContext } from '@/hooks/useActiveContext';
 
+const CONTEXT_STORAGE_KEY = 'active_context';
+
 export default function PartnerAuthCallback() {
   const navigate = useNavigate();
   const { user, isLoading: authLoading, signOut } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [checking, setChecking] = useState(true);
+
+  console.error('[PARTNER_CALLBACK] mounted', window.location.pathname, window.location.search);
 
   useEffect(() => {
     if (authLoading) return;
@@ -31,12 +35,14 @@ export default function PartnerAuthCallback() {
 
     const verifyPartner = async () => {
       try {
+        console.error('[PARTNER_CALLBACK] verifyPartner start', { email: user.email, uid: user.id });
+
         // ── TEMPORARY OVERRIDE — remove after partner_users RLS is fixed ──
         const OVERRIDE_EMAIL = 'lotehome9@gmail.com';
         if (user.email === OVERRIDE_EMAIL) {
           console.warn('[PARTNER_OVERRIDE] Forcing partner dashboard for', OVERRIDE_EMAIL);
           setDesiredContext('partner');
-          try { localStorage.setItem('active_context', 'partner'); } catch { /* ignore */ }
+          try { localStorage.setItem(CONTEXT_STORAGE_KEY, 'partner'); } catch { /* ignore */ }
           navigate('/partner/dashboard', { replace: true });
           return;
         }
@@ -61,13 +67,13 @@ export default function PartnerAuthCallback() {
           return;
         }
 
-        // User IS a partner — force context via the app's existing mechanism
         console.info('[PARTNER_CALLBACK] Partner confirmed.', {
           userId: user.id,
           partnerId: data.partner_id,
         });
 
         setDesiredContext('partner');
+        try { localStorage.setItem(CONTEXT_STORAGE_KEY, 'partner'); } catch { /* ignore */ }
 
         navigate('/partner/dashboard', { replace: true });
       } catch (err) {
@@ -88,7 +94,6 @@ export default function PartnerAuthCallback() {
   const handleRetry = () => {
     setError(null);
     setChecking(true);
-    // Re-trigger the effect by forcing a re-render won't work; navigate to self
     navigate('/partner/auth/callback', { replace: true });
     window.location.reload();
   };
