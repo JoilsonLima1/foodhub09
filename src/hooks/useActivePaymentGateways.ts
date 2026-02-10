@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 export interface PublicPaymentGateway {
   id: string;
   name: string;
-  provider: 'stripe' | 'pix' | 'asaas';
+  provider: 'stripe' | 'pix' | 'asaas' | 'stone';
   is_default: boolean;
   config: {
     pix_key?: string;
@@ -30,7 +30,7 @@ export function useActivePaymentGateways() {
       return (data || []).map((gateway: any) => ({
         id: gateway.id,
         name: gateway.name,
-        provider: gateway.provider as 'stripe' | 'pix' | 'asaas',
+        provider: gateway.provider as 'stripe' | 'pix' | 'asaas' | 'stone',
         is_default: gateway.is_default,
         config: gateway.config,
       }));
