@@ -24,6 +24,7 @@ import {
   DollarSign,
   Smartphone,
   UserCheck,
+  Landmark,
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PAYMENT_PROVIDER_LABELS } from '@/lib/constants';
@@ -223,6 +224,24 @@ export default function Settings() {
                   </div>
                   <Switch />
                 </div>
+
+                {/* Stone Online Gateway */}
+                <div className="border rounded-lg p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Landmark className="h-5 w-5 text-primary" />
+                      <div>
+                        <Label className="text-base font-semibold">Stone Online</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Pagamentos online via Stone (cartão, PIX, boleto)
+                        </p>
+                      </div>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={() => window.location.href = '/app/stone'}>
+                      Configurar
+                    </Button>
+                  </div>
+                </div>
               </CardContent>
             </Card>
 
@@ -265,6 +284,21 @@ export default function Settings() {
                   <Switch defaultChecked />
                 </div>
                 <Button>Salvar Configurações</Button>
+                
+                {/* Stone configuration shortcut */}
+                <div className="border-t pt-4 mt-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Landmark className="h-4 w-4 text-muted-foreground" />
+                      <p className="text-sm text-muted-foreground">
+                        Ao usar Stone Connect ou Stone TEF, configure suas credenciais Stone.
+                      </p>
+                    </div>
+                    <Button variant="link" size="sm" onClick={() => window.location.href = '/app/stone'}>
+                      Configurar Stone →
+                    </Button>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </div>

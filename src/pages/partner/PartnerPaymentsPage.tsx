@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Label } from '@/components/ui/label';
@@ -17,6 +18,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { usePartnerPaymentAccount } from '@/hooks/usePartnerPaymentAccount';
 import { usePartnerSettlementConfig } from '@/hooks/usePartnerSettlementConfig';
 import { usePartnerTransfers } from '@/hooks/usePartnerTransfers';
+import { useActivePaymentGateways } from '@/hooks/useActivePaymentGateways';
 import { 
   CreditCard, 
   Settings, 
@@ -57,8 +59,12 @@ export default function PartnerPaymentsPage() {
         </p>
       </div>
 
-      <Tabs defaultValue="status" className="space-y-6">
+      <Tabs defaultValue="gateways" className="space-y-6">
         <TabsList>
+          <TabsTrigger value="gateways" className="flex items-center gap-2">
+            <Landmark className="h-4 w-4" />
+            Gateways
+          </TabsTrigger>
           <TabsTrigger value="status" className="flex items-center gap-2">
             <CreditCard className="h-4 w-4" />
             Status do Onboarding
@@ -73,6 +79,10 @@ export default function PartnerPaymentsPage() {
           </TabsTrigger>
         </TabsList>
 
+        <TabsContent value="gateways">
+          <PartnerGatewaysSection />
+        </TabsContent>
+
         <TabsContent value="status">
           <OnboardingStatusSection />
         </TabsContent>
@@ -85,6 +95,92 @@ export default function PartnerPaymentsPage() {
           <TransferHistorySection />
         </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+// ============================================
+// Partner Gateways Section
+// ============================================
+
+function PartnerGatewaysSection() {
+  const { data: gateways, isLoading } = useActivePaymentGateways();
+
+  if (isLoading) {
+    return (
+      <div className="grid gap-4 md:grid-cols-3">
+        {[1, 2, 3].map(i => (
+          <Card key={i}><CardContent className="p-6"><Skeleton className="h-24 w-full" /></CardContent></Card>
+        ))}
+      </div>
+    );
+  }
+
+  const providerLabels: Record<string, string> = {
+    stripe: 'Stripe',
+    asaas: 'Asaas',
+    stone: 'Stone',
+    pix: 'PIX Manual',
+  };
+
+  // Always show Stone even if not in active gateways
+  const hasStone = gateways?.some(g => g.provider === 'stone');
+  const displayGateways = gateways || [];
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h3 className="text-lg font-semibold">Gateways de Pagamento</h3>
+        <p className="text-sm text-muted-foreground">Provedores de pagamento disponíveis para o seu escopo</p>
+      </div>
+      <div className="grid gap-4 md:grid-cols-3">
+        {displayGateways.map(gateway => (
+          <Card key={gateway.id}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                {gateway.provider === 'stone' ? <Landmark className="h-5 w-5" /> : <CreditCard className="h-5 w-5" />}
+                {gateway.name}
+              </CardTitle>
+              <CardDescription>{providerLabels[gateway.provider] || gateway.provider}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <Badge variant="default">Ativo</Badge>
+              {gateway.is_default && <Badge variant="secondary" className="ml-1">Padrão</Badge>}
+              {gateway.provider === 'stone' && (
+                <Button variant="outline" size="sm" className="w-full mt-2" onClick={() => window.location.href = '/partner/stone'}>
+                  <Landmark className="h-4 w-4 mr-2" /> Configurar Stone
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        ))}
+
+        {/* Always show Stone card if not already in the list */}
+        {!hasStone && (
+          <Card className="opacity-60">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Landmark className="h-5 w-5" />
+                Stone
+              </CardTitle>
+              <CardDescription>Stone (Repasse/Conta)</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <Badge variant="secondary">Não habilitado</Badge>
+              <p className="text-xs text-muted-foreground">Habilitação requerida pelo Super Admin</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {displayGateways.length === 0 && hasStone === false && (
+          <Card className="col-span-full">
+            <CardContent className="text-center py-8">
+              <CreditCard className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
+              <p className="text-muted-foreground">Nenhum gateway ativo. Contate o Super Admin.</p>
+            </CardContent>
+          </Card>
+        )}
+      </div>
     </div>
   );
 }
