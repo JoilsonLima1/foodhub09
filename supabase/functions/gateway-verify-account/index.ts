@@ -94,7 +94,27 @@ serve(async (req) => {
       const hasAccount = !!profileData.bank_account;
       verifiedLevel = (hasIdentity && hasAccount) ? "full" : "partial";
     } else if (provider === "stripe") {
-      profileData = await verifyStripe(apiKey, provider, scope_type, scope_id);
+      const trimmedKey = apiKey.trim();
+      // Validate key type
+      if (trimmedKey.startsWith("pk_")) {
+        throw new Error("Informe uma Secret Key (sk_…) — Publishable Key (pk_…) não funciona para verificação.");
+      }
+      if (!trimmedKey.startsWith("sk_")) {
+        throw new Error("Chave Stripe inválida. Informe uma Secret Key (sk_live_… ou sk_test_…).");
+      }
+      // Validate environment compatibility
+      const resolvedEnv = environment || "production";
+      const isLiveKey = trimmedKey.startsWith("sk_live_");
+      const isTestKey = trimmedKey.startsWith("sk_test_");
+      if (resolvedEnv === "production" && !isLiveKey) {
+        throw new Error("Ambiente production requer uma Secret Key live (sk_live_…). A chave informada é de teste.");
+      }
+      if ((resolvedEnv === "test" || resolvedEnv === "sandbox") && !isTestKey) {
+        throw new Error("Ambiente sandbox/test requer uma Secret Key de teste (sk_test_…). A chave informada é live.");
+      }
+      const maskedKey = trimmedKey.slice(0, 8) + "****";
+      console.log(`[gateway-verify-account] Stripe key prefix=${maskedKey} env=${resolvedEnv}`);
+      profileData = await verifyStripe(trimmedKey, provider, scope_type, scope_id);
       if (!profileData.legal_name) missingFields.push("legal_name");
       verifiedLevel = missingFields.length > 0 ? "partial" : "full";
     } else {
@@ -348,10 +368,16 @@ async function verifyStripe(
   });
 
   if (!accountRes.ok) {
-    if (accountRes.status === 401) {
-      throw new Error("Chave de API Stripe inválida. Verifique no dashboard do Stripe.");
+    const requestId = accountRes.headers.get("request-id");
+    const maskedKey = apiKey.slice(0, 8) + "****";
+    let errBody: Record<string, unknown> = {};
+    try { errBody = await accountRes.json(); } catch (_) { /* ignore */ }
+    const stripeCode = (errBody as any)?.error?.code || "";
+    console.error(`[gateway-verify-account] Stripe error: status=${accountRes.status} code=${stripeCode} key=${maskedKey} request-id=${requestId}`);
+    if (accountRes.status === 401 || stripeCode === "invalid_api_key") {
+      throw new Error(`Secret Key inválida (${maskedKey}). Verifique no dashboard da Stripe.`);
     }
-    throw new Error(`Erro ao consultar Stripe (HTTP ${accountRes.status})`);
+    throw new Error(`Erro ao consultar Stripe (HTTP ${accountRes.status}).`);
   }
 
   const s = await accountRes.json();
