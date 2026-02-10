@@ -272,10 +272,9 @@ export default function POS() {
   };
 
   // Online payment handler - creates order as pending_payment, then creates gateway charge
-  const handleCreateOnlinePayment = async (billingType: POSBillingType) => {
+  const handleCreateOnlinePayment = async (billingType: POSBillingType, customerCpfCnpj?: string) => {
     if (cart.length === 0) return;
 
-    // Map billing type to our payment method
     const methodMap: Record<POSBillingType, PaymentMethod> = {
       PIX: 'pix',
       CREDIT_CARD: 'credit_card',
@@ -283,7 +282,6 @@ export default function POS() {
     };
 
     try {
-      // Create order as pending_payment
       const result = await createOrder.mutateAsync({
         items: cart,
         paymentMethod: methodMap[billingType],
@@ -293,12 +291,12 @@ export default function POS() {
         paymentStatus: 'pending',
       });
 
-      // Create online payment via edge function
       const intent = await posPayment.createPayment({
         orderId: result.orderId,
         amount: result.total,
         billingType,
         customerName: customerName.trim() || undefined,
+        customerCpfCnpj: customerCpfCnpj || undefined,
         description: `Pedido #${result.orderNumber}`,
       });
 

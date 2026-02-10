@@ -6,6 +6,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { CreditCard, Banknote, QrCode, FileText, Loader2, CheckCircle, ExternalLink, Copy, X, Wifi, WifiOff } from 'lucide-react';
@@ -23,7 +25,7 @@ interface PaymentDialogProps {
   formatCurrency: (value: number) => string;
   isProcessing?: boolean;
   // Online payment props
-  onCreateOnlinePayment?: (billingType: POSBillingType) => Promise<void>;
+  onCreateOnlinePayment?: (billingType: POSBillingType, customerCpfCnpj?: string) => Promise<void>;
   paymentIntent?: POSPaymentIntent | null;
   paymentConfirmed?: boolean;
   isCreatingOnline?: boolean;
@@ -50,7 +52,23 @@ export function PaymentDialog({
   onResetOnlinePayment,
 }: PaymentDialogProps) {
   const [activeTab, setActiveTab] = useState<string>('online');
+  const [customerCpf, setCustomerCpf] = useState('');
   const hasOnlineSupport = !!onCreateOnlinePayment;
+
+  const formatCpfCnpj = (value: string) => {
+    const digits = value.replace(/\D/g, '').slice(0, 14);
+    if (digits.length <= 11) {
+      return digits.replace(/(\d{3})(\d{3})?(\d{3})?(\d{2})?/, (_, a, b, c, d) =>
+        [a, b, c].filter(Boolean).join('.') + (d ? `-${d}` : '')
+      );
+    }
+    return digits.replace(/(\d{2})(\d{3})?(\d{3})?(\d{4})?(\d{2})?/, (_, a, b, c, d, e) =>
+      [a, b, c].filter(Boolean).join('.') + (d ? `/${d}` : '') + (e ? `-${e}` : '')
+    );
+  };
+
+  const cpfDigits = customerCpf.replace(/\D/g, '');
+  const isCpfValid = cpfDigits.length === 11 || cpfDigits.length === 14;
 
   const handleCopyPixCode = async () => {
     if (paymentIntent?.pixQrCode) {
@@ -126,13 +144,30 @@ export function PaymentDialog({
                 <TabsContent value="online" className="space-y-3 mt-3">
                   {/* If no payment intent yet, show billing type selection */}
                   {!paymentIntent && !isCreatingOnline && (
-                    <div className="space-y-2">
+                    <div className="space-y-3">
+                      {/* CPF/CNPJ field */}
+                      <div className="space-y-1.5">
+                        <Label htmlFor="cpf-cnpj" className="text-sm font-medium">
+                          CPF/CNPJ do cliente <span className="text-destructive">*</span>
+                        </Label>
+                        <Input
+                          id="cpf-cnpj"
+                          placeholder="000.000.000-00"
+                          value={customerCpf}
+                          onChange={(e) => setCustomerCpf(formatCpfCnpj(e.target.value))}
+                          className="font-mono"
+                        />
+                        {customerCpf && !isCpfValid && (
+                          <p className="text-xs text-destructive">CPF (11 dígitos) ou CNPJ (14 dígitos)</p>
+                        )}
+                      </div>
+
                       <p className="text-sm text-muted-foreground">Selecione o meio de pagamento online:</p>
                       <Button
                         variant="outline"
                         className="w-full justify-start h-14"
-                        onClick={() => onCreateOnlinePayment?.('PIX')}
-                        disabled={isCreatingOnline}
+                        onClick={() => onCreateOnlinePayment?.('PIX', cpfDigits)}
+                        disabled={isCreatingOnline || !isCpfValid}
                       >
                         <QrCode className="h-5 w-5 mr-3 text-green-600" />
                         <div className="text-left">
@@ -143,8 +178,8 @@ export function PaymentDialog({
                       <Button
                         variant="outline"
                         className="w-full justify-start h-14"
-                        onClick={() => onCreateOnlinePayment?.('CREDIT_CARD')}
-                        disabled={isCreatingOnline}
+                        onClick={() => onCreateOnlinePayment?.('CREDIT_CARD', cpfDigits)}
+                        disabled={isCreatingOnline || !isCpfValid}
                       >
                         <CreditCard className="h-5 w-5 mr-3 text-blue-600" />
                         <div className="text-left">
@@ -155,8 +190,8 @@ export function PaymentDialog({
                       <Button
                         variant="outline"
                         className="w-full justify-start h-14"
-                        onClick={() => onCreateOnlinePayment?.('BOLETO')}
-                        disabled={isCreatingOnline}
+                        onClick={() => onCreateOnlinePayment?.('BOLETO', cpfDigits)}
+                        disabled={isCreatingOnline || !isCpfValid}
                       >
                         <FileText className="h-5 w-5 mr-3 text-orange-600" />
                         <div className="text-left">
