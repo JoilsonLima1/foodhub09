@@ -21,6 +21,7 @@ import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { usePOSSettings } from '@/hooks/usePOSSettings';
 import { useBarcodeScanner, BarcodeScanResult } from '@/hooks/useBarcodeScanner';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
+import { usePOSPayment, type POSBillingType } from '@/hooks/usePOSPayment';
 import type { CartItem, PaymentMethod } from '@/types/database';
 import fallbackLogo from '@/assets/logo.png';
 import { toast } from '@/hooks/use-toast';
@@ -39,6 +40,7 @@ export default function POS() {
   const { data: products = [], isLoading: isLoadingProducts } = useProducts();
   const { data: categories = [], isLoading: isLoadingCategories } = useCategories();
   const createOrder = useCreateOrder();
+  const posPayment = usePOSPayment();
   const { settings } = useSystemSettings();
   const { 
     displayMode, 
@@ -239,6 +241,7 @@ export default function POS() {
     setIsPaymentOpen(true);
   };
 
+  // Manual payment handler (cash, debit, manual pix, etc.)
   const handlePayment = async () => {
     if (!selectedPaymentMethod || cart.length === 0) return;
 
@@ -265,6 +268,63 @@ export default function POS() {
     setOrderNotes('');
     
     // Show receipt dialog
+    setIsReceiptOpen(true);
+  };
+
+  // Online payment handler - creates order as pending_payment, then creates gateway charge
+  const handleCreateOnlinePayment = async (billingType: POSBillingType) => {
+    if (cart.length === 0) return;
+
+    // Map billing type to our payment method
+    const methodMap: Record<POSBillingType, PaymentMethod> = {
+      PIX: 'pix',
+      CREDIT_CARD: 'credit_card',
+      BOLETO: 'voucher',
+    };
+
+    try {
+      // Create order as pending_payment
+      const result = await createOrder.mutateAsync({
+        items: cart,
+        paymentMethod: methodMap[billingType],
+        customerName: customerName.trim() || undefined,
+        notes: orderNotes.trim() || undefined,
+        orderStatus: 'pending_payment',
+        paymentStatus: 'pending',
+      });
+
+      // Create online payment via edge function
+      const intent = await posPayment.createPayment({
+        orderId: result.orderId,
+        amount: result.total,
+        billingType,
+        customerName: customerName.trim() || undefined,
+        description: `Pedido #${result.orderNumber}`,
+      });
+
+      if (intent) {
+        // Store for receipt when confirmed
+        setCompletedOrder({
+          orderNumber: result.orderNumber,
+          items: result.items,
+          subtotal: result.subtotal,
+          total: result.total,
+          paymentMethod: methodMap[billingType],
+        });
+      }
+    } catch (e) {
+      console.error('Error creating online payment:', e);
+    }
+  };
+
+  // Handle online payment confirmation (after polling detects payment)
+  const handleOnlinePaymentConfirm = () => {
+    setIsPaymentOpen(false);
+    clearCart();
+    setSelectedPaymentMethod(null);
+    setCustomerName('');
+    setOrderNotes('');
+    posPayment.reset();
     setIsReceiptOpen(true);
   };
 
@@ -409,9 +469,16 @@ export default function POS() {
         total={total}
         selectedMethod={selectedPaymentMethod}
         onSelectMethod={setSelectedPaymentMethod}
-        onConfirm={handlePayment}
+        onConfirm={posPayment.paymentConfirmed ? handleOnlinePaymentConfirm : handlePayment}
         formatCurrency={formatCurrency}
         isProcessing={createOrder.isPending}
+        onCreateOnlinePayment={handleCreateOnlinePayment}
+        paymentIntent={posPayment.paymentIntent}
+        paymentConfirmed={posPayment.paymentConfirmed}
+        isCreatingOnline={posPayment.isCreating}
+        isPolling={posPayment.isPolling}
+        onCancelOnlinePayment={posPayment.cancelPayment}
+        onResetOnlinePayment={posPayment.reset}
       />
 
       {/* Receipt Dialog */}
