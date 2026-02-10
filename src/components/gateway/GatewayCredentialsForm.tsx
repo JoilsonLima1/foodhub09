@@ -390,12 +390,18 @@ export function GatewayCredentialsForm({ provider, scopeType, scopeId }: Gateway
       if (error) {
         console.error('[verify-account] Invoke error:', error);
         const msg = error.message || String(error);
-        // Detect common issues
-        if (msg.includes('Failed to send') || msg.includes('FunctionsHttpError') || msg.includes('FunctionsFetchError')) {
-          throw new Error(`Não foi possível acessar a função de verificação. Possíveis causas: função não publicada, erro de rede ou CORS. (Detalhe: ${msg})`);
+        // Try to extract JSON body from FunctionsHttpError
+        if (error.context?.body) {
+          try {
+            const body = typeof error.context.body === 'string' ? JSON.parse(error.context.body) : error.context.body;
+            if (body?.error) throw new Error(body.error);
+          } catch (_) { /* fall through */ }
         }
-        if (msg.includes('not found') || msg.includes('404')) {
-          throw new Error('Função de verificação não encontrada (gateway-verify-account). Verifique se foi publicada.');
+        if (msg.includes('Failed to send') || msg.includes('FunctionsFetchError')) {
+          throw new Error('Não foi possível acessar a função de verificação. Verifique sua conexão ou tente novamente.');
+        }
+        if (msg.includes('non-2xx')) {
+          throw new Error('Erro ao verificar conta. A função retornou um erro — verifique se as credenciais estão corretas.');
         }
         throw new Error(msg);
       }
@@ -662,12 +668,12 @@ export function GatewayCredentialsForm({ provider, scopeType, scopeId }: Gateway
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">CPF/CNPJ</span>
-                  <span className="font-medium">{profile?.document || '—'}</span>
+                  <span className="font-medium">{profile?.document || (provider === 'stripe' ? 'Não disponível via API' : '—')}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">Banco</span>
                   <div className="flex items-center gap-1.5">
-                    <span className="font-medium">{profile?.bank_name || '—'}</span>
+                    <span className="font-medium">{profile?.bank_name || (provider === 'stripe' ? 'Não disponível via API' : '—')}</span>
                     {provider === 'asaas' && profile?.bank_name && (
                       <Badge variant="outline" className="text-[10px] px-1.5 py-0">padrão</Badge>
                     )}
@@ -676,16 +682,22 @@ export function GatewayCredentialsForm({ provider, scopeType, scopeId }: Gateway
                 <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">Agência</span>
                   <div className="flex items-center gap-1.5">
-                    <span className="font-medium">{profile?.bank_agency || '—'}</span>
+                    <span className="font-medium">{profile?.bank_agency || (provider === 'stripe' ? 'Não disponível via API' : '—')}</span>
                     {provider === 'asaas' && profile?.bank_agency && (
                       <Badge variant="outline" className="text-[10px] px-1.5 py-0">padrão</Badge>
                     )}
                   </div>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Conta (Beneficiário)</span>
-                  <span className="font-medium font-mono">{profile?.bank_account || '—'}</span>
+                  <span className="text-muted-foreground">{provider === 'asaas' ? 'Conta (Beneficiário)' : 'Conta'}</span>
+                  <span className="font-medium font-mono">{profile?.bank_account || (provider === 'stripe' ? 'Não disponível via API' : '—')}</span>
                 </div>
+                {profile?.merchant_id && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">{provider === 'stripe' ? 'Stripe Account ID' : 'Merchant ID'}</span>
+                    <span className="font-medium font-mono text-xs">{profile.merchant_id}</span>
+                  </div>
+                )}
                 {profile?.wallet_id && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Wallet ID</span>
@@ -708,6 +720,16 @@ export function GatewayCredentialsForm({ provider, scopeType, scopeId }: Gateway
                   <Info className="h-4 w-4" />
                   <AlertDescription className="text-xs">
                     Banco e agência seguem padrão da plataforma. A conta é o código do beneficiário/recebedor no Asaas.
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {/* Stripe explanation */}
+              {provider === 'stripe' && profile?.verified_at && (
+                <Alert className="bg-muted/50">
+                  <Info className="h-4 w-4" />
+                  <AlertDescription className="text-xs">
+                    Dados bancários e CPF/CNPJ não são expostos pela API do Stripe. Apenas nome, país e status da conta estão disponíveis.
                   </AlertDescription>
                 </Alert>
               )}
