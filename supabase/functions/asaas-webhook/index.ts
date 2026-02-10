@@ -249,14 +249,47 @@ serve(async (req) => {
     );
 
     // ============================================================
-    // STEP 4: Handle legacy module/subscription activation
+    // STEP 4: Record ledger entries (fee breakdown)
+    // ============================================================
+    if (PAYMENT_SUCCESS_EVENTS.includes(event) && insertResult?.is_new) {
+      // Resolve tenant from event if not found in initial context
+      let ledgerTenantId = tenantId;
+      let ledgerPartnerId = partnerId;
+      
+      if (!ledgerTenantId && insertResult?.event_id) {
+        const { data: eventRow } = await supabase
+          .from('payment_events')
+          .select('tenant_id, partner_id')
+          .eq('id', insertResult.event_id)
+          .maybeSingle();
+        
+        ledgerTenantId = eventRow?.tenant_id || null;
+        ledgerPartnerId = eventRow?.partner_id || null;
+      }
+
+      if (ledgerTenantId) {
+        await recordLedgerEntries(supabase, {
+          tenantId: ledgerTenantId,
+          partnerId: ledgerPartnerId,
+          paymentId,
+          amountGross: payment.value || 0,
+          paymentMethod: getPaymentMethodFromAsaas(payment.billingType),
+          eventId: insertResult?.event_id,
+        });
+      } else {
+        logStep("Skipping ledger: no tenant context", { paymentId });
+      }
+    }
+
+    // ============================================================
+    // STEP 5: Handle legacy module/subscription activation
     // ============================================================
     if (PAYMENT_SUCCESS_EVENTS.includes(event)) {
       await handleLegacyActivations(supabase, paymentId, payment);
     }
 
     // ============================================================
-    // STEP 5: Handle legacy reversals for module purchases
+    // STEP 6: Handle legacy reversals for module purchases
     // ============================================================
     if (PAYMENT_REVERSAL_EVENTS.includes(event)) {
       await handleLegacyReversals(supabase, paymentId, event);
@@ -300,6 +333,139 @@ serve(async (req) => {
     );
   }
 });
+
+// ============================================================
+// LEDGER: Record fee breakdown entries
+// ============================================================
+interface LedgerContext {
+  tenantId: string;
+  partnerId: string | null;
+  paymentId: string;
+  amountGross: number;
+  paymentMethod: string;
+  eventId: string | null;
+}
+
+async function recordLedgerEntries(supabase: any, ctx: LedgerContext) {
+  try {
+    logStep("Recording ledger entries", { tenantId: ctx.tenantId, amount: ctx.amountGross });
+
+    // Calculate platform fee breakdown
+    const { data: feeData, error: feeError } = await supabase
+      .rpc('calculate_platform_fee', {
+        p_amount: ctx.amountGross,
+        p_payment_method: ctx.paymentMethod,
+        p_tenant_id: ctx.tenantId,
+      });
+
+    if (feeError) {
+      logStep("Fee calculation error", { error: feeError.message });
+      await writeOperationalLog(supabase, 'warn', 'Ledger fee calculation failed', 
+        { error: feeError.message }, ctx.partnerId, ctx.tenantId, ctx.paymentId);
+      return;
+    }
+
+    const transactionId = `txn_${ctx.paymentId}`;
+    // order_id is nullable - only set when linked to an actual order
+
+    // Gateway fee entry
+    const gatewayFee = feeData?.gateway_fee || 0;
+    if (gatewayFee > 0) {
+      const { error: gfErr } = await supabase.rpc('record_ledger_entry', {
+        p_tenant_id: ctx.tenantId,
+        p_transaction_id: transactionId,
+        p_order_id: null,
+        p_entry_type: 'gateway_fee',
+        p_amount: gatewayFee,
+        p_payment_method: ctx.paymentMethod,
+        p_gateway_provider: 'asaas',
+        p_metadata: { event_id: ctx.eventId, source: 'webhook_auto' },
+      });
+      if (gfErr) logStep("Ledger gateway_fee error", { error: gfErr.message });
+    }
+
+    // Platform fee entry
+    const platformFee = feeData?.platform_fee || 0;
+    if (platformFee > 0) {
+      const { error: pfErr } = await supabase.rpc('record_ledger_entry', {
+        p_tenant_id: ctx.tenantId,
+        p_transaction_id: transactionId,
+        p_order_id: null,
+        p_entry_type: 'platform_fee',
+        p_amount: platformFee,
+        p_payment_method: ctx.paymentMethod,
+        p_gateway_provider: 'asaas',
+        p_metadata: { event_id: ctx.eventId, source: 'webhook_auto' },
+      });
+      if (pfErr) logStep("Ledger platform_fee error", { error: pfErr.message });
+    }
+
+    // Merchant net entry
+    const merchantNet = ctx.amountGross - gatewayFee - platformFee;
+    if (merchantNet > 0) {
+      const { error: mnErr } = await supabase.rpc('record_ledger_entry', {
+        p_tenant_id: ctx.tenantId,
+        p_transaction_id: transactionId,
+        p_order_id: null,
+        p_entry_type: 'merchant_net',
+        p_amount: merchantNet,
+        p_payment_method: ctx.paymentMethod,
+        p_gateway_provider: 'asaas',
+        p_metadata: { event_id: ctx.eventId, source: 'webhook_auto' },
+      });
+      if (mnErr) logStep("Ledger merchant_net error", { error: mnErr.message });
+    }
+
+    // Partner fee split (if partner context exists)
+    if (ctx.partnerId) {
+      const { data: partnerFeeData } = await supabase
+        .rpc('calculate_partner_transaction_fee', {
+          p_gross_amount: ctx.amountGross,
+          p_partner_id: ctx.partnerId,
+          p_payment_method: ctx.paymentMethod,
+          p_tenant_id: ctx.tenantId,
+        });
+
+      if (partnerFeeData) {
+        // Record partner transaction for earnings tracking
+        await supabase.rpc('record_partner_transaction', {
+          p_transaction_id: transactionId,
+          p_order_id: ctx.eventId || crypto.randomUUID(),
+          p_tenant_id: ctx.tenantId,
+          p_partner_id: ctx.partnerId,
+          p_gross_amount: ctx.amountGross,
+          p_payment_method: ctx.paymentMethod,
+          p_external_payment_id: ctx.paymentId,
+          p_settlement_mode: 'invoice',
+        });
+
+        logStep("Partner transaction recorded", { partnerId: ctx.partnerId });
+      }
+    }
+
+    // Audit trail
+    await writeFinancialAudit(supabase, 'LEDGER_ENTRIES_CREATED', 'ledger_entries',
+      transactionId, null, {
+        amount_gross: ctx.amountGross,
+        gateway_fee: gatewayFee,
+        platform_fee: platformFee,
+        merchant_net: merchantNet,
+        payment_method: ctx.paymentMethod,
+      });
+
+    logStep("Ledger entries recorded", {
+      transactionId,
+      gatewayFee,
+      platformFee,
+      merchantNet,
+    });
+
+  } catch (e) {
+    logStep("Ledger recording error (non-blocking)", { error: String(e) });
+    await writeOperationalLog(supabase, 'error', 'Ledger recording failed',
+      { error: String(e) }, ctx.partnerId, ctx.tenantId, ctx.paymentId);
+  }
+}
 
 // ============================================================
 // LEGACY: Handle module and subscription activations
@@ -627,13 +793,4 @@ async function activatePartnerTenantSubscriptionLegacy(supabase: any, metadata: 
 
   logStep("Partner tenant subscription activated (legacy)", result);
 }
-
-function getPaymentMethodFromAsaas(billingType: string | undefined): string {
-  switch (billingType) {
-    case 'PIX': return 'pix';
-    case 'CREDIT_CARD': return 'credit_card';
-    case 'BOLETO': return 'boleto';
-    case 'UNDEFINED': return 'multiple';
-    default: return billingType?.toLowerCase() || 'unknown';
-  }
-}
+// (getPaymentMethodFromAsaas defined at line ~92)

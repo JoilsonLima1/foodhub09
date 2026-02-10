@@ -14061,11 +14061,11 @@ export type Database = {
       }
       record_ledger_entry: {
         Args: {
-          p_amount: number
-          p_entry_type: string
+          p_amount?: number
+          p_entry_type?: string
           p_gateway_provider?: string
           p_metadata?: Json
-          p_order_id: string
+          p_order_id?: string
           p_payment_method?: string
           p_tenant_id: string
           p_transaction_id: string
