@@ -26,6 +26,7 @@ import {
   Bell,
   ClipboardCheck,
   FileText,
+  Key,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -142,6 +143,12 @@ const menuItems = [
     path: '/partner/users', 
     label: 'Usuários', 
     icon: Users,
+    adminOnly: true,
+  },
+  { 
+    path: '/partner/api-keys', 
+    label: 'Chaves API', 
+    icon: Key,
     adminOnly: true,
   },
 ];
