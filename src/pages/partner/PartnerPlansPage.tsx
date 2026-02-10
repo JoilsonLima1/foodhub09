@@ -73,7 +73,7 @@ interface PlanFormData {
 export default function PartnerPlansPage() {
   const { plans, isLoading, error: plansError, refetch, createPlan, updatePlan, deletePlan, setDefaultPlan } = usePartnerPlansData();
   const { policy, validatePlan } = usePartnerPolicy();
-  const { modules } = useAddonModules();
+  const { modules = [] } = useAddonModules();
   
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingPlan, setEditingPlan] = useState<any>(null);
@@ -208,7 +208,7 @@ export default function PartnerPlansPage() {
   };
 
   // Filter available modules/features based on policy
-  const allowedModules = modules.filter(m => policy?.allowed_modules_catalog?.includes(m.slug));
+  const allowedModules = (modules || []).filter(m => policy?.allowed_modules_catalog?.includes(m.slug));
   const allowedFeatures = AVAILABLE_FEATURES.filter(f => policy?.allowed_features_catalog?.includes(f.key));
 
   const canCreateMore = policy ? plans.length < policy.max_plans_per_partner : true;
