@@ -19,6 +19,9 @@ import { usePartnerPaymentAccount } from '@/hooks/usePartnerPaymentAccount';
 import { usePartnerSettlementConfig } from '@/hooks/usePartnerSettlementConfig';
 import { usePartnerTransfers } from '@/hooks/usePartnerTransfers';
 import { useActivePaymentGateways } from '@/hooks/useActivePaymentGateways';
+import { GatewaySetupGuide, GatewayWebhookPanel, GatewayAutoSetupButton } from '@/components/gateway';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { 
   CreditCard, 
   Settings, 
@@ -33,6 +36,9 @@ import {
   Landmark,
   Zap,
   Ban,
+  ArrowLeft,
+  BookOpen,
+  Webhook,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -105,6 +111,23 @@ export default function PartnerPaymentsPage() {
 
 function PartnerGatewaysSection() {
   const { data: gateways, isLoading } = useActivePaymentGateways();
+  const [detailProvider, setDetailProvider] = useState<string | null>(null);
+
+  // Fetch partner provider account for detail view
+  const { data: partnerAccount } = useQuery({
+    queryKey: ['partner-provider-account', detailProvider],
+    enabled: !!detailProvider,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('payment_provider_accounts')
+        .select('*')
+        .eq('provider', detailProvider!)
+        .eq('scope_type', 'partner')
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
 
   if (isLoading) {
     return (
@@ -116,6 +139,57 @@ function PartnerGatewaysSection() {
     );
   }
 
+  // Detail view for a specific provider
+  if (detailProvider) {
+    const validProvider = detailProvider === 'stripe' || detailProvider === 'asaas' || detailProvider === 'stone'
+      ? detailProvider as 'stripe' | 'asaas' | 'stone'
+      : null;
+
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <Button variant="ghost" size="sm" onClick={() => setDetailProvider(null)}>
+            <ArrowLeft className="h-4 w-4 mr-2" /> Voltar para Gateways
+          </Button>
+          {validProvider && (
+            <GatewayAutoSetupButton
+              provider={validProvider}
+              scopeType="partner"
+            />
+          )}
+        </div>
+
+        <div>
+          <h3 className="text-lg font-semibold">{detailProvider.charAt(0).toUpperCase() + detailProvider.slice(1)} — Configuração do Parceiro</h3>
+          <p className="text-sm text-muted-foreground">Webhooks, guia e configuração automática.</p>
+        </div>
+
+        {validProvider && (
+          <Tabs defaultValue="webhooks" className="space-y-4">
+            <TabsList>
+              <TabsTrigger value="webhooks" className="flex items-center gap-2">
+                <Webhook className="h-4 w-4" /> Webhooks
+              </TabsTrigger>
+              <TabsTrigger value="guide" className="flex items-center gap-2">
+                <BookOpen className="h-4 w-4" /> Guia
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="webhooks">
+              <GatewayWebhookPanel
+                provider={validProvider}
+                providerAccountId={partnerAccount?.id || null}
+              />
+            </TabsContent>
+            <TabsContent value="guide">
+              <GatewaySetupGuide provider={validProvider} />
+            </TabsContent>
+          </Tabs>
+        )}
+      </div>
+    );
+  }
+
   const providerLabels: Record<string, string> = {
     stripe: 'Stripe',
     asaas: 'Asaas',
@@ -123,7 +197,6 @@ function PartnerGatewaysSection() {
     pix: 'PIX Manual',
   };
 
-  // Always show Stone even if not in active gateways
   const hasStone = gateways?.some(g => g.provider === 'stone');
   const displayGateways = gateways || [];
 
@@ -135,7 +208,7 @@ function PartnerGatewaysSection() {
       </div>
       <div className="grid gap-4 md:grid-cols-3">
         {displayGateways.map(gateway => (
-          <Card key={gateway.id}>
+          <Card key={gateway.id} className="cursor-pointer hover:ring-2 hover:ring-primary/30 transition-shadow" onClick={() => setDetailProvider(gateway.provider)}>
             <CardHeader className="pb-2">
               <CardTitle className="text-base flex items-center gap-2">
                 {gateway.provider === 'stone' ? <Landmark className="h-5 w-5" /> : <CreditCard className="h-5 w-5" />}
@@ -146,16 +219,10 @@ function PartnerGatewaysSection() {
             <CardContent className="space-y-2">
               <Badge variant="default">Ativo</Badge>
               {gateway.is_default && <Badge variant="secondary" className="ml-1">Padrão</Badge>}
-              {gateway.provider === 'stone' && (
-                <Button variant="outline" size="sm" className="w-full mt-2" onClick={() => window.location.href = '/partner/stone'}>
-                  <Landmark className="h-4 w-4 mr-2" /> Configurar Stone
-                </Button>
-              )}
             </CardContent>
           </Card>
         ))}
 
-        {/* Always show Stone card if not already in the list */}
         {!hasStone && (
           <Card className="opacity-60">
             <CardHeader className="pb-2">

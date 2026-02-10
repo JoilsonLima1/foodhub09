@@ -32,9 +32,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { Plus, Pencil, Trash2, CreditCard, Save, CheckCircle2, Info, ArrowLeft, Landmark } from 'lucide-react';
+import { Plus, Pencil, Trash2, CreditCard, Save, CheckCircle2, Info, ArrowLeft, Landmark, BookOpen, Webhook } from 'lucide-react';
 import { usePaymentGateways, PaymentGateway } from '@/hooks/usePaymentGateways';
 import { StoneAdminPanel } from '@/components/superadmin/stone';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { GatewaySetupGuide, GatewayWebhookPanel, GatewayAutoSetupButton } from '@/components/gateway';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 const gatewayProviders = [
   { value: 'stripe', label: 'Stripe' },
@@ -117,6 +121,22 @@ export function PaymentGatewaysManager() {
     return 'sandbox';
   };
 
+  // Fetch platform provider account for detail view
+  const { data: platformAccount } = useQuery({
+    queryKey: ['platform-provider-account', detailProvider],
+    enabled: !!detailProvider && detailProvider !== 'stone',
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('payment_provider_accounts')
+        .select('*')
+        .eq('provider', detailProvider!)
+        .eq('scope_type', 'platform')
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -133,6 +153,47 @@ export function PaymentGatewaysManager() {
           <ArrowLeft className="h-4 w-4 mr-2" /> Voltar para Gateways
         </Button>
         <StoneAdminPanel />
+      </div>
+    );
+  }
+
+  // Detail view for Stripe/Asaas
+  if (detailProvider === 'stripe' || detailProvider === 'asaas') {
+    const providerLabel = detailProvider === 'stripe' ? 'Stripe' : 'Asaas';
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <Button variant="ghost" size="sm" onClick={() => setDetailProvider(null)}>
+            <ArrowLeft className="h-4 w-4 mr-2" /> Voltar para Gateways
+          </Button>
+          <GatewayAutoSetupButton provider={detailProvider} scopeType="platform" />
+        </div>
+
+        <div>
+          <h2 className="text-2xl font-bold">{providerLabel} — Painel Super Admin</h2>
+          <p className="text-muted-foreground">Configuração, webhooks e guia da integração {providerLabel}.</p>
+        </div>
+
+        <Tabs defaultValue="webhooks" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="webhooks" className="flex items-center gap-2">
+              <Webhook className="h-4 w-4" /> Webhooks & Eventos
+            </TabsTrigger>
+            <TabsTrigger value="guide" className="flex items-center gap-2">
+              <BookOpen className="h-4 w-4" /> Guia
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="webhooks">
+            <GatewayWebhookPanel
+              provider={detailProvider}
+              providerAccountId={platformAccount?.id || null}
+            />
+          </TabsContent>
+          <TabsContent value="guide">
+            <GatewaySetupGuide provider={detailProvider} />
+          </TabsContent>
+        </Tabs>
       </div>
     );
   }
@@ -173,7 +234,7 @@ export function PaymentGatewaysManager() {
             const configured = isApiKeyConfigured(gateway);
             
             return (
-              <Card key={gateway.id} className={`${!gateway.is_active ? 'opacity-60' : ''} ${gateway.provider === 'stone' ? 'cursor-pointer hover:ring-2 hover:ring-primary/30 transition-shadow' : ''}`} onClick={gateway.provider === 'stone' ? () => setDetailProvider('stone') : undefined}>
+              <Card key={gateway.id} className={`${!gateway.is_active ? 'opacity-60' : ''} cursor-pointer hover:ring-2 hover:ring-primary/30 transition-shadow`} onClick={() => setDetailProvider(gateway.provider)}>
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-lg flex items-center gap-2">

@@ -3,12 +3,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, Save, TestTube } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ArrowLeft, Save, BookOpen, Webhook, Zap } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
+import { GatewaySetupGuide, GatewayWebhookPanel, GatewayAutoSetupButton } from '@/components/gateway';
 
 const PROVIDER_META: Record<string, { label: string; fields: { key: string; label: string; placeholder: string; secret?: boolean }[] }> = {
   stripe: {
@@ -36,6 +38,7 @@ export default function TenantGatewayConfigPage() {
   const queryClient = useQueryClient();
 
   const meta = provider ? PROVIDER_META[provider] : null;
+  const validProvider = provider === 'stripe' || provider === 'asaas' ? provider : null;
 
   const { data: account, isLoading } = useQuery({
     queryKey: ['tenant-provider-account', provider, tenantId],
@@ -55,7 +58,6 @@ export default function TenantGatewayConfigPage() {
 
   const [formValues, setFormValues] = useState<Record<string, string>>({});
 
-  // Merge existing credentials into form
   const getFieldValue = (key: string) => {
     if (formValues[key] !== undefined) return formValues[key];
     const creds = account?.credentials_encrypted as Record<string, string> | null;
@@ -113,60 +115,103 @@ export default function TenantGatewayConfigPage() {
 
   return (
     <div className="space-y-4">
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => navigate('/settings?tab=payments')}
-      >
-        <ArrowLeft className="h-4 w-4 mr-2" />
-        Voltar para Pagamentos
-      </Button>
+      <div className="flex items-center justify-between">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => navigate('/settings?tab=payments')}
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Voltar para Pagamentos
+        </Button>
+        {validProvider && tenantId && (
+          <GatewayAutoSetupButton
+            provider={validProvider}
+            scopeType="tenant"
+            scopeId={tenantId}
+            onComplete={() => queryClient.invalidateQueries({ queryKey: ['tenant-provider-account'] })}
+          />
+        )}
+      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Configurar {meta.label}</CardTitle>
-          <CardDescription>
-            Insira suas credenciais para habilitar pagamentos via {meta.label}.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {isLoading ? (
-            <p className="text-sm text-muted-foreground">Carregando...</p>
-          ) : (
+      <Tabs defaultValue="credentials" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="credentials">Credenciais</TabsTrigger>
+          {validProvider && (
             <>
-              {meta.fields.map((field) => (
-                <div key={field.key} className="space-y-1">
-                  <Label>{field.label}</Label>
-                  <Input
-                    type={field.secret ? 'password' : 'text'}
-                    placeholder={field.placeholder}
-                    value={getFieldValue(field.key)}
-                    onChange={(e) =>
-                      setFormValues((prev) => ({ ...prev, [field.key]: e.target.value }))
-                    }
-                  />
-                </div>
-              ))}
-
-              {account && (
-                <div className="text-xs text-muted-foreground">
-                  Status: <span className="font-medium">{account.status}</span>
-                  {account.last_tested_at && (
-                    <> · Último teste: {new Date(account.last_tested_at).toLocaleString('pt-BR')}</>
-                  )}
-                </div>
-              )}
-
-              <div className="flex gap-2 pt-2">
-                <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
-                  <Save className="h-4 w-4 mr-2" />
-                  {saveMutation.isPending ? 'Salvando...' : 'Salvar Credenciais'}
-                </Button>
-              </div>
+              <TabsTrigger value="webhooks" className="flex items-center gap-2">
+                <Webhook className="h-4 w-4" /> Webhooks
+              </TabsTrigger>
+              <TabsTrigger value="guide" className="flex items-center gap-2">
+                <BookOpen className="h-4 w-4" /> Guia
+              </TabsTrigger>
             </>
           )}
-        </CardContent>
-      </Card>
+        </TabsList>
+
+        <TabsContent value="credentials">
+          <Card>
+            <CardHeader>
+              <CardTitle>Configurar {meta.label}</CardTitle>
+              <CardDescription>
+                Insira suas credenciais para habilitar pagamentos via {meta.label}.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {isLoading ? (
+                <p className="text-sm text-muted-foreground">Carregando...</p>
+              ) : (
+                <>
+                  {meta.fields.map((field) => (
+                    <div key={field.key} className="space-y-1">
+                      <Label>{field.label}</Label>
+                      <Input
+                        type={field.secret ? 'password' : 'text'}
+                        placeholder={field.placeholder}
+                        value={getFieldValue(field.key)}
+                        onChange={(e) =>
+                          setFormValues((prev) => ({ ...prev, [field.key]: e.target.value }))
+                        }
+                      />
+                    </div>
+                  ))}
+
+                  {account && (
+                    <div className="text-xs text-muted-foreground">
+                      Status: <span className="font-medium">{account.status}</span>
+                      {account.last_tested_at && (
+                        <> · Último teste: {new Date(account.last_tested_at).toLocaleString('pt-BR')}</>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="flex gap-2 pt-2">
+                    <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
+                      <Save className="h-4 w-4 mr-2" />
+                      {saveMutation.isPending ? 'Salvando...' : 'Salvar Credenciais'}
+                    </Button>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {validProvider && (
+          <TabsContent value="webhooks">
+            <GatewayWebhookPanel
+              provider={validProvider}
+              providerAccountId={account?.id || null}
+            />
+          </TabsContent>
+        )}
+
+        {validProvider && (
+          <TabsContent value="guide">
+            <GatewaySetupGuide provider={validProvider} />
+          </TabsContent>
+        )}
+      </Tabs>
     </div>
   );
 }
