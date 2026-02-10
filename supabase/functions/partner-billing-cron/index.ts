@@ -1,8 +1,10 @@
 /**
- * partner-billing-cron - Scheduled job for:
- * 1. Partner AR invoice generation (monthly fees + tx fees from ledger)
- * 2. Partner dunning escalation (L1→L4)
- * 3. Tenant trial expiration and delinquency
+ * partner-billing-cron — Hardened scheduled job with:
+ * - Phase-level locking (cron_runs table)
+ * - Idempotent invoice generation (RPC-based)
+ * - State-based dunning (only log on change)
+ * - Reversal handling for refunds
+ * - Tenant trial + delinquency management
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
@@ -17,389 +19,417 @@ const log = (step: string, details?: any) => {
   console.log(`[BILLING-CRON] ${step}${d}`);
 };
 
+interface PhaseResult {
+  phase: string;
+  skipped: boolean;
+  counts: Record<string, number>;
+  errors: string[];
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
-  const results = {
-    partnerInvoicesGenerated: 0,
-    dunningEscalations: 0,
-    dunningReversals: 0,
-    trialsExpired: 0,
-    tenantChargesGenerated: 0,
-    tenantsChecked: 0,
-    errors: [] as string[],
-  };
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const supabase = createClient(supabaseUrl, serviceKey);
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayStr = today.toISOString().split('T')[0];
+  const currentPeriod = todayStr.substring(0, 7); // YYYY-MM
+  const correlationId = crypto.randomUUID();
+
+  const phaseResults: PhaseResult[] = [];
+
+  // ── Helper: acquire phase lock ──
+  async function acquirePhaseLock(phase: string): Promise<boolean> {
+    // Check if already ran successfully
+    const { data: existing } = await supabase
+      .from('cron_runs')
+      .select('id')
+      .eq('job_name', 'partner-billing-cron')
+      .eq('phase', phase)
+      .eq('period', currentPeriod)
+      .eq('status', 'success')
+      .limit(1);
+
+    if (existing && existing.length > 0) {
+      log(`Phase ${phase}: already ran successfully for ${currentPeriod}, skipping`);
+      return false;
+    }
+
+    // Insert running record (unique index will prevent races)
+    const { error } = await supabase.from('cron_runs').insert({
+      job_name: 'partner-billing-cron',
+      phase,
+      period: currentPeriod,
+      correlation_id: correlationId,
+      status: 'running',
+    });
+
+    if (error) {
+      // Could be a race or already running
+      log(`Phase ${phase}: lock acquisition failed`, { error: error.message });
+      return false;
+    }
+
+    return true;
+  }
+
+  async function completePhaseLock(phase: string, status: 'success' | 'failed', results?: any, errorMsg?: string) {
+    await supabase
+      .from('cron_runs')
+      .update({
+        status,
+        finished_at: new Date().toISOString(),
+        results: results || null,
+        error_message: errorMsg || null,
+      })
+      .eq('job_name', 'partner-billing-cron')
+      .eq('phase', phase)
+      .eq('period', currentPeriod)
+      .eq('correlation_id', correlationId);
+  }
 
   try {
-    log('Cron started');
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, serviceKey);
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayStr = today.toISOString().split('T')[0];
-    const currentPeriod = todayStr.substring(0, 7); // YYYY-MM
+    log('Cron started', { correlationId, period: currentPeriod });
 
     // ========================================
-    // PHASE A: Partner AR Invoice Generation
+    // PHASE A: Partner AR Invoice Generation (Idempotent via RPC)
     // ========================================
-    log('Phase A: Partner AR invoice generation');
+    const phaseA: PhaseResult = { phase: 'A_invoice_gen', skipped: false, counts: { generated: 0, idempotent_skips: 0 }, errors: [] };
 
-    const { data: billingConfigs } = await supabase
-      .from('partner_billing_config')
-      .select('*, partner:partners(id, name, email)')
-      .eq('is_active', true);
-
-    for (const cfg of billingConfigs || []) {
+    if (await acquirePhaseLock('A_invoice_gen')) {
       try {
-        // Skip if already invoiced for this period
-        if (cfg.last_invoice_period === currentPeriod) continue;
+        log('Phase A: Partner AR invoice generation');
 
-        // Check if today is the billing day
-        const billingDay = cfg.billing_day || 1;
-        if (today.getDate() !== billingDay) continue;
+        const { data: billingConfigs } = await supabase
+          .from('partner_billing_config')
+          .select('partner_id, billing_day, is_active')
+          .eq('is_active', true);
 
-        // Calculate amounts
-        let totalAmount = 0;
-        const lineItems: any[] = [];
+        for (const cfg of billingConfigs || []) {
+          try {
+            const billingDay = cfg.billing_day || 1;
+            if (today.getDate() !== billingDay) continue;
 
-        // Monthly fee
-        if (cfg.monthly_fee_cents > 0) {
-          const monthlyFee = cfg.monthly_fee_cents / 100;
-          totalAmount += monthlyFee;
-          lineItems.push({
-            description: 'Mensalidade da plataforma',
-            amount: monthlyFee,
-            type: 'monthly_fee',
-          });
-        }
-
-        // Transaction fees from unbilled ledger entries
-        const { data: unbilledFees } = await supabase
-          .from('partner_fee_ledger')
-          .select('*')
-          .eq('partner_id', cfg.partner_id)
-          .is('ar_invoice_id', null)
-          .eq('status', 'pending');
-
-        if (unbilledFees && unbilledFees.length > 0) {
-          const txTotal = unbilledFees.reduce((s: number, f: any) => s + (f.platform_fee || 0), 0);
-          if (txTotal > 0) {
-            totalAmount += txTotal;
-            lineItems.push({
-              description: `Taxas de transação (${unbilledFees.length} transações)`,
-              amount: txTotal,
-              type: 'tx_fees',
-              count: unbilledFees.length,
+            // Use idempotent RPC (returns existing if already created)
+            const { data, error } = await supabase.rpc('generate_partner_monthly_invoice', {
+              p_partner_id: cfg.partner_id,
+              p_period: currentPeriod,
             });
+
+            if (error) {
+              phaseA.errors.push(`RPC ${cfg.partner_id}: ${error.message}`);
+              continue;
+            }
+
+            const result = data as any;
+            if (result?.error) {
+              if (result.error !== 'no_billing_config') {
+                phaseA.errors.push(`RPC ${cfg.partner_id}: ${result.error}`);
+              }
+              continue;
+            }
+
+            if (result?.idempotent) {
+              phaseA.counts.idempotent_skips++;
+              log('Phase A: invoice already exists (idempotent)', { partnerId: cfg.partner_id });
+            } else {
+              phaseA.counts.generated++;
+              log('Phase A: AR invoice created', { partnerId: cfg.partner_id, total: result?.total });
+            }
+          } catch (err) {
+            phaseA.errors.push(`Partner ${cfg.partner_id}: ${err instanceof Error ? err.message : String(err)}`);
           }
         }
 
-        // Skip if nothing to invoice
-        if (totalAmount <= 0) continue;
-
-        // Generate invoice number
-        const invoiceNumber = `AR-${cfg.partner_id.substring(0, 6).toUpperCase()}-${currentPeriod.replace('-', '')}`;
-
-        // Calculate due date based on grace days
-        const dueDate = new Date(today);
-        dueDate.setDate(dueDate.getDate() + (cfg.grace_days || 10));
-
-        // Period boundaries
-        const periodStart = new Date(today.getFullYear(), today.getMonth(), 1);
-        const periodEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-
-        // Create AR invoice
-        const { data: newInvoice, error: invErr } = await supabase
-          .from('partner_ar_invoices')
-          .insert({
-            partner_id: cfg.partner_id,
-            invoice_number: invoiceNumber,
-            amount: totalAmount,
-            currency: 'BRL',
-            description: `Faturamento ${currentPeriod}`,
-            reference_period_start: periodStart.toISOString().split('T')[0],
-            reference_period_end: periodEnd.toISOString().split('T')[0],
-            due_date: dueDate.toISOString().split('T')[0],
-            status: 'pending',
-            line_items: lineItems,
-          })
-          .select()
-          .single();
-
-        if (invErr) {
-          results.errors.push(`Invoice gen ${cfg.partner_id}: ${invErr.message}`);
-          continue;
-        }
-
-        // Link ledger entries to this invoice
-        if (unbilledFees && unbilledFees.length > 0 && newInvoice) {
-          const ledgerIds = unbilledFees.map((f: any) => f.id);
-          await supabase
-            .from('partner_fee_ledger')
-            .update({ ar_invoice_id: newInvoice.id, status: 'invoiced' })
-            .in('id', ledgerIds);
-        }
-
-        // Update last invoice period
-        await supabase
-          .from('partner_billing_config')
-          .update({ last_invoice_period: currentPeriod })
-          .eq('partner_id', cfg.partner_id);
-
-        results.partnerInvoicesGenerated++;
-        log('AR invoice created', { partnerId: cfg.partner_id, amount: totalAmount, invoiceNumber });
-
+        await completePhaseLock('A_invoice_gen', phaseA.errors.length > 0 ? 'failed' : 'success', phaseA.counts);
       } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        results.errors.push(`Partner ${cfg.partner_id}: ${msg}`);
+        await completePhaseLock('A_invoice_gen', 'failed', null, err instanceof Error ? err.message : String(err));
+        phaseA.errors.push(err instanceof Error ? err.message : String(err));
       }
+    } else {
+      phaseA.skipped = true;
     }
+    phaseResults.push(phaseA);
 
     // ========================================
-    // PHASE B: Partner Dunning Escalation
+    // PHASE B: Partner Dunning (State-Based)
     // ========================================
-    log('Phase B: Dunning escalation');
+    const phaseB: PhaseResult = { phase: 'B_dunning', skipped: false, counts: { escalations: 0, reversals: 0, checked: 0 }, errors: [] };
 
-    const { data: overdueInvoices } = await supabase
-      .from('partner_ar_invoices')
-      .select('*')
-      .in('status', ['pending', 'overdue'])
-      .lt('due_date', todayStr);
-
-    // Group overdue by partner
-    const partnerOverdue = new Map<string, { maxDays: number; totalAmount: number; count: number; invoiceIds: string[] }>();
-
-    for (const inv of overdueInvoices || []) {
-      const dueDate = new Date(inv.due_date);
-      const daysOverdue = Math.floor((today.getTime() - dueDate.getTime()) / (86400000));
-      const existing = partnerOverdue.get(inv.partner_id) || { maxDays: 0, totalAmount: 0, count: 0, invoiceIds: [] };
-      existing.maxDays = Math.max(existing.maxDays, daysOverdue);
-      existing.totalAmount += inv.amount;
-      existing.count++;
-      existing.invoiceIds.push(inv.id);
-      partnerOverdue.set(inv.partner_id, existing);
-
-      // Mark as overdue if still pending
-      if (inv.status === 'pending') {
-        await supabase
-          .from('partner_ar_invoices')
-          .update({ status: 'overdue' })
-          .eq('id', inv.id);
-      }
-    }
-
-    for (const [partnerId, info] of partnerOverdue.entries()) {
+    if (await acquirePhaseLock('B_dunning')) {
       try {
-        const { data: cfg } = await supabase
+        log('Phase B: Dunning state check');
+
+        const { data: allConfigs } = await supabase
           .from('partner_billing_config')
-          .select('dunning_policy, current_dunning_level')
-          .eq('partner_id', partnerId)
-          .single();
+          .select('partner_id, current_dunning_level, dunning_policy, dunning_started_at')
+          .eq('is_active', true);
 
-        const policy = (cfg?.dunning_policy as any) || {
-          L1: { days_overdue: 1 },
-          L2: { days_overdue: 8 },
-          L3: { days_overdue: 16 },
-          L4: { days_overdue: 31 },
-        };
+        for (const cfg of allConfigs || []) {
+          try {
+            phaseB.counts.checked++;
 
-        let newLevel = 0;
-        if (info.maxDays >= (policy.L4?.days_overdue || 31)) newLevel = 4;
-        else if (info.maxDays >= (policy.L3?.days_overdue || 16)) newLevel = 3;
-        else if (info.maxDays >= (policy.L2?.days_overdue || 8)) newLevel = 2;
-        else if (info.maxDays >= (policy.L1?.days_overdue || 1)) newLevel = 1;
+            // Get overdue data for this partner
+            const { data: overdueData } = await supabase
+              .from('partner_ar_invoices')
+              .select('id, amount, due_date')
+              .eq('partner_id', cfg.partner_id)
+              .in('status', ['pending', 'overdue'])
+              .lt('due_date', todayStr);
 
-        const currentLevel = cfg?.current_dunning_level || 0;
+            // Mark pending as overdue
+            if (overdueData) {
+              for (const inv of overdueData) {
+                // We mark overdue only if pending and past due (this is safe to repeat)
+                await supabase
+                  .from('partner_ar_invoices')
+                  .update({ status: 'overdue' })
+                  .eq('id', inv.id)
+                  .eq('status', 'pending');
+              }
+            }
 
-        if (newLevel > currentLevel) {
-          // Escalate
-          await supabase
-            .from('partner_billing_config')
-            .update({
-              current_dunning_level: newLevel,
-              dunning_started_at: currentLevel === 0 ? new Date().toISOString() : undefined,
-            })
-            .eq('partner_id', partnerId);
+            const overdue = overdueData || [];
+            const maxDays = overdue.reduce((max, inv) => {
+              const days = Math.floor((today.getTime() - new Date(inv.due_date).getTime()) / 86400000);
+              return Math.max(max, days);
+            }, 0);
+            const totalAmount = overdue.reduce((s, inv) => s + inv.amount, 0);
 
-          const actionMap: Record<number, string> = {
-            1: 'warning',
-            2: 'read_only',
-            3: 'partial_block',
-            4: 'full_block',
-          };
+            // Compute level from policy
+            const policy = (cfg.dunning_policy as any) || {
+              L1: { days_overdue: 1 }, L2: { days_overdue: 8 },
+              L3: { days_overdue: 16 }, L4: { days_overdue: 31 },
+            };
 
-          await supabase.from('partner_dunning_log').insert({
-            partner_id: partnerId,
-            invoice_id: info.invoiceIds[0],
-            dunning_level: newLevel,
-            action: actionMap[newLevel] || 'escalation',
-            description: `Escalado para L${newLevel}: ${info.count} fatura(s) vencida(s), ${info.maxDays} dias, total ${info.totalAmount.toFixed(2)}`,
-            executed_at: new Date().toISOString(),
-            metadata: { max_days: info.maxDays, total: info.totalAmount, count: info.count },
-          });
+            let computedLevel = 0;
+            if (overdue.length > 0) {
+              if (maxDays >= (policy.L4?.days_overdue || 31)) computedLevel = 4;
+              else if (maxDays >= (policy.L3?.days_overdue || 16)) computedLevel = 3;
+              else if (maxDays >= (policy.L2?.days_overdue || 8)) computedLevel = 2;
+              else if (maxDays >= (policy.L1?.days_overdue || 1)) computedLevel = 1;
+            }
 
-          results.dunningEscalations++;
-          log('Dunning escalated', { partnerId, from: currentLevel, to: newLevel });
+            const currentLevel = cfg.current_dunning_level || 0;
+
+            // Only act on change
+            if (computedLevel !== currentLevel) {
+              const isEscalation = computedLevel > currentLevel;
+
+              await supabase
+                .from('partner_billing_config')
+                .update({
+                  current_dunning_level: computedLevel,
+                  dunning_started_at: computedLevel > 0 && !cfg.dunning_started_at
+                    ? new Date().toISOString()
+                    : computedLevel === 0 ? null : cfg.dunning_started_at,
+                })
+                .eq('partner_id', cfg.partner_id);
+
+              const actionMap: Record<number, string> = {
+                0: 'reversal', 1: 'warning', 2: 'read_only', 3: 'partial_block', 4: 'full_block',
+              };
+
+              await supabase.from('partner_dunning_log').insert({
+                partner_id: cfg.partner_id,
+                invoice_id: overdue.length > 0 ? overdue[0].id : null,
+                dunning_level: computedLevel,
+                action: actionMap[computedLevel] || 'change',
+                description: isEscalation
+                  ? `Escalado L${currentLevel}→L${computedLevel}: ${overdue.length} fatura(s), ${maxDays} dias, R$ ${totalAmount.toFixed(2)}`
+                  : `Revertido L${currentLevel}→L${computedLevel}: ${overdue.length === 0 ? 'todas quitadas' : `${overdue.length} fatura(s) restantes`}`,
+                executed_at: new Date().toISOString(),
+                metadata: { max_days: maxDays, total: totalAmount, count: overdue.length, from: currentLevel, to: computedLevel },
+              });
+
+              if (isEscalation) phaseB.counts.escalations++;
+              else phaseB.counts.reversals++;
+
+              log(`Dunning ${isEscalation ? 'escalated' : 'reversed'}`, { partnerId: cfg.partner_id, from: currentLevel, to: computedLevel });
+            }
+          } catch (err) {
+            phaseB.errors.push(`Dunning ${cfg.partner_id}: ${err instanceof Error ? err.message : String(err)}`);
+          }
         }
+
+        await completePhaseLock('B_dunning', phaseB.errors.length > 0 ? 'failed' : 'success', phaseB.counts);
       } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        results.errors.push(`Dunning ${partnerId}: ${msg}`);
+        await completePhaseLock('B_dunning', 'failed', null, err instanceof Error ? err.message : String(err));
+        phaseB.errors.push(err instanceof Error ? err.message : String(err));
       }
+    } else {
+      phaseB.skipped = true;
     }
-
-    // Check for partners that should have dunning reversed (all invoices paid)
-    if (billingConfigs) {
-      for (const cfg of billingConfigs) {
-        if ((cfg.current_dunning_level || 0) === 0) continue;
-        if (partnerOverdue.has(cfg.partner_id)) continue; // still has overdue
-
-        // No overdue invoices — reverse dunning
-        await supabase
-          .from('partner_billing_config')
-          .update({ current_dunning_level: 0, dunning_started_at: null })
-          .eq('partner_id', cfg.partner_id);
-
-        await supabase.from('partner_dunning_log').insert({
-          partner_id: cfg.partner_id,
-          dunning_level: 0,
-          action: 'reversal',
-          description: 'Todas as faturas quitadas — acesso restaurado',
-          executed_at: new Date().toISOString(),
-        });
-
-        results.dunningReversals++;
-        log('Dunning reversed', { partnerId: cfg.partner_id });
-      }
-    }
+    phaseResults.push(phaseB);
 
     // ========================================
     // PHASE C: Tenant Trial Expiration
     // ========================================
-    log('Phase C: Tenant trials');
+    const phaseC: PhaseResult = { phase: 'C_trials', skipped: false, counts: { expired: 0, charges: 0 }, errors: [] };
 
-    const { data: expiredTrials } = await supabase
-      .from('tenant_subscriptions')
-      .select(`
-        id, tenant_id, partner_plan_id, status, trial_ends_at, monthly_amount,
-        plan:partner_plans!partner_plan_id (id, name, monthly_price, partner_id)
-      `)
-      .eq('status', 'trial')
-      .lte('trial_ends_at', today.toISOString());
-
-    for (const sub of expiredTrials || []) {
+    if (await acquirePhaseLock('C_trials')) {
       try {
-        const plan = sub.plan as any;
-        if (plan?.monthly_price === 0) {
-          await supabase.from('tenant_subscriptions').update({
-            status: 'active',
-            current_period_start: today.toISOString(),
-            current_period_end: new Date(today.getTime() + 30 * 86400000).toISOString(),
-          }).eq('id', sub.id);
-          results.trialsExpired++;
-          continue;
+        log('Phase C: Tenant trials');
+
+        const { data: expiredTrials } = await supabase
+          .from('tenant_subscriptions')
+          .select(`
+            id, tenant_id, partner_plan_id, status, trial_ends_at, monthly_amount,
+            plan:partner_plans!partner_plan_id (id, name, monthly_price, partner_id)
+          `)
+          .eq('status', 'trial')
+          .lte('trial_ends_at', today.toISOString());
+
+        for (const sub of expiredTrials || []) {
+          try {
+            const plan = sub.plan as any;
+            if (plan?.monthly_price === 0) {
+              await supabase.from('tenant_subscriptions').update({
+                status: 'active',
+                current_period_start: today.toISOString(),
+                current_period_end: new Date(today.getTime() + 30 * 86400000).toISOString(),
+              }).eq('id', sub.id);
+              phaseC.counts.expired++;
+              continue;
+            }
+
+            const amount = plan?.monthly_price || sub.monthly_amount || 0;
+            if (amount > 0) {
+              const dueDate = new Date(today.getTime() + 3 * 86400000);
+
+              // Idempotency: check if charge already exists
+              const { data: existingCharge } = await supabase
+                .from('partner_invoices')
+                .select('id')
+                .eq('tenant_subscription_id', sub.id)
+                .eq('status', 'pending')
+                .limit(1);
+
+              if (!existingCharge || existingCharge.length === 0) {
+                await supabase.from('partner_invoices').insert({
+                  tenant_subscription_id: sub.id,
+                  tenant_id: sub.tenant_id,
+                  partner_id: plan?.partner_id,
+                  partner_plan_id: plan?.id,
+                  amount,
+                  currency: 'BRL',
+                  description: `Assinatura ${plan?.name || 'Plano'} — Após período de teste`,
+                  due_date: dueDate.toISOString().split('T')[0],
+                  status: 'pending',
+                });
+                phaseC.counts.charges++;
+              }
+
+              await supabase.from('tenant_subscriptions').update({
+                status: 'past_due',
+                updated_at: new Date().toISOString(),
+              }).eq('id', sub.id);
+            }
+            phaseC.counts.expired++;
+          } catch (err) {
+            phaseC.errors.push(`Trial ${sub.id}: ${err instanceof Error ? err.message : String(err)}`);
+          }
         }
 
-        const amount = plan?.monthly_price || sub.monthly_amount || 0;
-        if (amount > 0) {
-          const dueDate = new Date(today.getTime() + 3 * 86400000);
-          await supabase.from('partner_invoices').insert({
-            tenant_subscription_id: sub.id,
-            tenant_id: sub.tenant_id,
-            partner_id: plan?.partner_id,
-            partner_plan_id: plan?.id,
-            amount,
-            currency: 'BRL',
-            description: `Assinatura ${plan?.name || 'Plano'} — Após período de teste`,
-            due_date: dueDate.toISOString().split('T')[0],
-            status: 'pending',
-          });
-          results.tenantChargesGenerated++;
-
-          await supabase.from('tenant_subscriptions').update({
-            status: 'past_due',
-            updated_at: new Date().toISOString(),
-          }).eq('id', sub.id);
-        }
-        results.trialsExpired++;
+        await completePhaseLock('C_trials', phaseC.errors.length > 0 ? 'failed' : 'success', phaseC.counts);
       } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        results.errors.push(`Trial ${sub.id}: ${msg}`);
+        await completePhaseLock('C_trials', 'failed', null, err instanceof Error ? err.message : String(err));
+        phaseC.errors.push(err instanceof Error ? err.message : String(err));
       }
+    } else {
+      phaseC.skipped = true;
     }
+    phaseResults.push(phaseC);
 
     // ========================================
     // PHASE D: Tenant Delinquency
     // ========================================
-    log('Phase D: Tenant delinquency');
+    const phaseD: PhaseResult = { phase: 'D_delinquency', skipped: false, counts: { checked: 0, canceled: 0 }, errors: [] };
 
-    const { data: tenantOverdue } = await supabase
-      .from('partner_invoices')
-      .select('id, tenant_subscription_id, tenant_id, partner_id, due_date, status')
-      .in('status', ['pending', 'overdue'])
-      .lt('due_date', todayStr);
+    if (await acquirePhaseLock('D_delinquency')) {
+      try {
+        log('Phase D: Tenant delinquency');
 
-    if (tenantOverdue) {
-      const partnerIds = [...new Set(tenantOverdue.map(i => i.partner_id).filter(Boolean))];
-      const { data: delConfigs } = await supabase
-        .from('partner_delinquency_config')
-        .select('*')
-        .in('partner_id', partnerIds);
+        const { data: tenantOverdue } = await supabase
+          .from('partner_invoices')
+          .select('id, tenant_subscription_id, tenant_id, partner_id, due_date, status')
+          .in('status', ['pending', 'overdue'])
+          .lt('due_date', todayStr);
 
-      const cfgMap = new Map(delConfigs?.map(c => [c.partner_id, c]) || []);
+        if (tenantOverdue && tenantOverdue.length > 0) {
+          const partnerIds = [...new Set(tenantOverdue.map(i => i.partner_id).filter(Boolean))];
+          const { data: delConfigs } = await supabase
+            .from('partner_delinquency_config')
+            .select('*')
+            .in('partner_id', partnerIds);
 
-      for (const inv of tenantOverdue) {
-        try {
-          results.tenantsChecked++;
-          const config = cfgMap.get(inv.partner_id) || { warning_days: 1, partial_block_days: 7, full_block_days: 15 };
-          const dueDate = new Date(inv.due_date!);
-          const daysOverdue = Math.floor((today.getTime() - dueDate.getTime()) / 86400000);
+          const cfgMap = new Map(delConfigs?.map((c: any) => [c.partner_id, c]) || []);
 
-          if (inv.status === 'pending') {
-            await supabase.from('partner_invoices').update({ status: 'overdue' }).eq('id', inv.id);
+          for (const inv of tenantOverdue) {
+            try {
+              phaseD.counts.checked++;
+              const config = cfgMap.get(inv.partner_id) || { warning_days: 1, partial_block_days: 7, full_block_days: 15 };
+              const dueDate = new Date(inv.due_date!);
+              const daysOverdue = Math.floor((today.getTime() - dueDate.getTime()) / 86400000);
+
+              if (inv.status === 'pending') {
+                await supabase.from('partner_invoices').update({ status: 'overdue' }).eq('id', inv.id);
+              }
+
+              let newStatus = 'past_due';
+              if (daysOverdue >= (config as any).full_block_days) {
+                newStatus = 'canceled';
+                await supabase.from('tenants').update({ subscription_status: 'canceled', is_active: false }).eq('id', inv.tenant_id);
+                phaseD.counts.canceled++;
+              }
+
+              await supabase.from('tenant_subscriptions').update({
+                status: newStatus,
+                updated_at: new Date().toISOString(),
+              }).eq('id', inv.tenant_subscription_id);
+            } catch (err) {
+              phaseD.errors.push(`Delinquency ${inv.id}: ${err instanceof Error ? err.message : String(err)}`);
+            }
           }
-
-          let newStatus = 'past_due';
-          if (daysOverdue >= (config as any).full_block_days) {
-            newStatus = 'canceled';
-            await supabase.from('tenants').update({ subscription_status: 'canceled', is_active: false }).eq('id', inv.tenant_id);
-          }
-
-          await supabase.from('tenant_subscriptions').update({
-            status: newStatus,
-            updated_at: new Date().toISOString(),
-          }).eq('id', inv.tenant_subscription_id);
-
-        } catch (err) {
-          const msg = err instanceof Error ? err.message : String(err);
-          results.errors.push(`TenantDelinquency ${inv.id}: ${msg}`);
         }
+
+        await completePhaseLock('D_delinquency', phaseD.errors.length > 0 ? 'failed' : 'success', phaseD.counts);
+      } catch (err) {
+        await completePhaseLock('D_delinquency', 'failed', null, err instanceof Error ? err.message : String(err));
+        phaseD.errors.push(err instanceof Error ? err.message : String(err));
       }
+    } else {
+      phaseD.skipped = true;
     }
+    phaseResults.push(phaseD);
 
     // ========================================
     // Audit Log
     // ========================================
+    const allErrors = phaseResults.flatMap(p => p.errors);
+
     await supabase.from('cron_job_logs').insert({
       job_name: 'partner-billing-cron',
       executed_at: new Date().toISOString(),
-      results: results as any,
-      status: results.errors.length > 0 ? 'partial' : 'success',
+      results: { correlationId, phases: phaseResults } as any,
+      status: allErrors.length > 0 ? 'partial' : 'success',
     });
 
-    log('Cron completed', results);
+    log('Cron completed', { correlationId, phases: phaseResults.map(p => ({ phase: p.phase, skipped: p.skipped, counts: p.counts, errorCount: p.errors.length })) });
 
-    return new Response(JSON.stringify({ success: true, results }), {
+    return new Response(JSON.stringify({ success: true, correlationId, phases: phaseResults }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Fatal error';
-    log('FATAL', { message: msg });
-    return new Response(JSON.stringify({ success: false, error: msg, results }), {
+    log('FATAL', { message: msg, correlationId });
+    return new Response(JSON.stringify({ success: false, error: msg, correlationId }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

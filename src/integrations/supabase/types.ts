@@ -1502,6 +1502,48 @@ export type Database = {
         }
         Relationships: []
       }
+      cron_runs: {
+        Row: {
+          correlation_id: string
+          created_at: string
+          error_message: string | null
+          finished_at: string | null
+          id: string
+          job_name: string
+          period: string
+          phase: string
+          results: Json | null
+          started_at: string
+          status: string
+        }
+        Insert: {
+          correlation_id?: string
+          created_at?: string
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          job_name: string
+          period: string
+          phase?: string
+          results?: Json | null
+          started_at?: string
+          status?: string
+        }
+        Update: {
+          correlation_id?: string
+          created_at?: string
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          job_name?: string
+          period?: string
+          phase?: string
+          results?: Json | null
+          started_at?: string
+          status?: string
+        }
+        Relationships: []
+      }
       customer_push_subscriptions: {
         Row: {
           auth: string
