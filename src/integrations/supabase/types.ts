@@ -12481,6 +12481,7 @@ export type Database = {
       }
       get_partner_for_tenant: { Args: { p_tenant_id: string }; Returns: string }
       get_partner_guides: { Args: { p_category?: string }; Returns: Json }
+      get_partner_id_for_user: { Args: { _user_id: string }; Returns: string }
       get_partner_leads: {
         Args: {
           p_limit?: number
@@ -12811,6 +12812,10 @@ export type Database = {
         Returns: boolean
       }
       is_partner_admin: {
+        Args: { _partner_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_partner_user: {
         Args: { _partner_id: string; _user_id: string }
         Returns: boolean
       }
