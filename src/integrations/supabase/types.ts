@@ -7638,6 +7638,7 @@ export type Database = {
       }
       payment_provider_account_profile: {
         Row: {
+          account_number: string | null
           bank_account: string | null
           bank_agency: string | null
           bank_name: string | null
@@ -7655,6 +7656,7 @@ export type Database = {
           wallet_id: string | null
         }
         Insert: {
+          account_number?: string | null
           bank_account?: string | null
           bank_agency?: string | null
           bank_name?: string | null
@@ -7672,6 +7674,7 @@ export type Database = {
           wallet_id?: string | null
         }
         Update: {
+          account_number?: string | null
           bank_account?: string | null
           bank_agency?: string | null
           bank_name?: string | null
