@@ -75,6 +75,7 @@ import {
   PartnerLeadsPage,
   PartnerSalesPage,
   PartnerApiKeysPage,
+  PartnerBillingPage,
 } from "./pages/partner";
 // Public partner pages
 import PublicParceiros from "./pages/PublicParceiros";
@@ -175,6 +176,7 @@ const App = () => (
                       <Route path="leads" element={<PartnerLeadsPage />} />
                       <Route path="users" element={<PartnerUsersPage />} />
                       <Route path="api-keys" element={<PartnerApiKeysPage />} />
+                      <Route path="billing" element={<PartnerBillingPage />} />
                       <Route path="*" element={<Navigate to="/partner/dashboard" replace />} />
                     </Route>
                     
