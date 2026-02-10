@@ -55,7 +55,7 @@ export function useAddonModules() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: modules, isLoading, error } = useQuery({
+  const { data: modules = [], isLoading, error } = useQuery({
     queryKey: ['addon-modules'],
     queryFn: async () => {
       const { data, error } = await supabase
