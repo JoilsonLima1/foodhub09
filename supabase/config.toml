@@ -89,3 +89,9 @@ verify_jwt = false
 
 [functions.partner-payment-ops]
 verify_jwt = false
+
+[functions.pos-payment]
+verify_jwt = false
+
+[functions.pwa-manifest]
+verify_jwt = false
