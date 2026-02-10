@@ -9,16 +9,40 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Loader2, DollarSign, TrendingDown, Receipt, Info, FileText } from 'lucide-react';
+import { Loader2, DollarSign, TrendingDown, Receipt, Info, FileText, Percent } from 'lucide-react';
 import { useTenantFees } from '@/hooks/useTenantFees';
 import { usePaymentTerms } from '@/hooks/usePaymentTerms';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { PaymentTermsAcceptanceDialog } from './PaymentTermsAcceptanceDialog';
+import { useEffect, useState } from 'react';
 
 export function TenantFeesView() {
-  const { ledgerEntries, summary, hasOverride, isLoading } = useTenantFees();
+  const { ledgerEntries, summary, hasOverride, isLoading, calculateFee } = useTenantFees();
   const { activeTerms, needsAcceptance, acceptance } = usePaymentTerms();
+  const [feeBreakdown, setFeeBreakdown] = useState<{
+    pix: { percent: number; fixed: number } | null;
+    credit_card: { percent: number; fixed: number } | null;
+    boleto: { percent: number; fixed: number } | null;
+    plan: string | null;
+  }>({ pix: null, credit_card: null, boleto: null, plan: null });
+
+  useEffect(() => {
+    async function loadFees() {
+      const [pixFee, cardFee, boletoFee] = await Promise.all([
+        calculateFee(100, 'pix'),
+        calculateFee(100, 'credit_card'),
+        calculateFee(100, 'boleto'),
+      ]);
+      setFeeBreakdown({
+        pix: pixFee ? { percent: pixFee.percent_applied, fixed: pixFee.fixed_applied } : null,
+        credit_card: cardFee ? { percent: cardFee.percent_applied, fixed: cardFee.fixed_applied } : null,
+        boleto: boletoFee ? { percent: boletoFee.percent_applied, fixed: boletoFee.fixed_applied } : null,
+        plan: pixFee?.tenant_plan || null,
+      });
+    }
+    loadFees();
+  }, []);
 
   if (isLoading) {
     return (
@@ -54,14 +78,52 @@ export function TenantFeesView() {
         </p>
       </div>
 
+      {/* Fee Breakdown by Method */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Percent className="h-4 w-4" />
+            Suas Taxas por Método de Pagamento
+          </CardTitle>
+          <CardDescription>
+            Taxas aplicadas conforme seu plano{' '}
+            {feeBreakdown.plan && (
+              <Badge variant="secondary" className="ml-1 capitalize">{feeBreakdown.plan}</Badge>
+            )}
+            {hasOverride && (
+              <Badge variant="outline" className="ml-1">Personalizada</Badge>
+            )}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-3 md:grid-cols-3">
+            {[
+              { key: 'pix', label: 'PIX', data: feeBreakdown.pix },
+              { key: 'credit_card', label: 'Cartão de Crédito', data: feeBreakdown.credit_card },
+              { key: 'boleto', label: 'Boleto', data: feeBreakdown.boleto },
+            ].map(({ key, label, data }) => (
+              <div key={key} className="rounded-lg border p-4 text-center">
+                <p className="text-sm font-medium text-muted-foreground mb-1">{label}</p>
+                <p className="text-2xl font-bold">
+                  {data ? `${data.percent}%` : '—'}
+                </p>
+                {data && data.fixed > 0 && (
+                  <p className="text-xs text-muted-foreground">+ R$ {data.fixed.toFixed(2)}</p>
+                )}
+                {data && data.percent === 0 && data.fixed === 0 && (
+                  <p className="text-xs text-green-600 font-medium">Isento</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Info Alert */}
       <Alert>
         <Info className="h-4 w-4" />
         <AlertDescription>
           Taxa operacional conforme plano contratado. Para detalhes sobre sua taxa específica, consulte seu plano de assinatura.
-          {hasOverride && (
-            <Badge variant="secondary" className="ml-2">Taxa Personalizada</Badge>
-          )}
         </AlertDescription>
       </Alert>
 

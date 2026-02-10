@@ -86,3 +86,6 @@ verify_jwt = false
 
 [functions.gateway-verify-account]
 verify_jwt = false
+
+[functions.partner-payment-ops]
+verify_jwt = false
