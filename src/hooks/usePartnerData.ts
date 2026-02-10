@@ -133,6 +133,8 @@ export interface PartnerPlanData {
   included_modules: string[] | null;
   included_features: string[] | null;
   is_active: boolean;
+  is_featured: boolean;
+  is_default: boolean;
   display_order: number;
   trial_days: number;
   is_free: boolean;
@@ -143,7 +145,7 @@ export function usePartnerPlansData() {
   const queryClient = useQueryClient();
   const { currentPartner } = usePartnerContext();
 
-  const { data: plans = [], isLoading } = useQuery({
+  const { data: plans = [], isLoading, error, refetch } = useQuery({
     queryKey: ['partner-plans-data', currentPartner?.id],
     queryFn: async () => {
       if (!currentPartner?.id) return [];
@@ -155,7 +157,11 @@ export function usePartnerPlansData() {
         .order('display_order', { ascending: true });
 
       if (error) throw error;
-      return (data || []) as PartnerPlanData[];
+      return (data || []).map((p: any) => ({
+        ...p,
+        is_featured: !!p.is_featured,
+        is_default: !!p.is_default,
+      })) as PartnerPlanData[];
     },
     enabled: !!currentPartner?.id,
   });
@@ -229,12 +235,45 @@ export function usePartnerPlansData() {
     },
   });
 
+  // Set default plan (ensures only 1 default per partner)
+  const setDefaultPlan = useMutation({
+    mutationFn: async (planId: string) => {
+      if (!currentPartner?.id) throw new Error('Partner not found');
+      // Clear all defaults first
+      const { error: clearError } = await supabase
+        .from('partner_plans')
+        .update({ is_default: false } as any)
+        .eq('partner_id', currentPartner.id);
+      if (clearError) throw clearError;
+      // Set the chosen one
+      const { error: setError } = await supabase
+        .from('partner_plans')
+        .update({ is_default: true } as any)
+        .eq('id', planId);
+      if (setError) throw setError;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['partner-plans-data'] });
+      toast({ title: 'Plano padrão atualizado' });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Erro ao definir plano padrão',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
   return {
     plans,
     isLoading,
+    error,
+    refetch,
     createPlan,
     updatePlan,
     deletePlan,
+    setDefaultPlan,
   };
 }
 
