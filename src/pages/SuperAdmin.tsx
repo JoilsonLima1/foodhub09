@@ -72,6 +72,7 @@ import {
   OpsPartnersPaymentsPanel,
   OpsBillingPanel,
   OpsNotificationsPanel,
+  OpsCronStatusPanel,
 } from '@/components/superadmin/ops';
 import { useSubscribers } from '@/hooks/useSubscribers';
 import { useOrganizations } from '@/hooks/useOrganizations';
@@ -421,6 +422,7 @@ export default function SuperAdmin() {
               <TabsTrigger value="partners-payments">Parceiros</TabsTrigger>
               <TabsTrigger value="billing">Faturamento</TabsTrigger>
               <TabsTrigger value="notifications-queue">Fila de Notificações</TabsTrigger>
+              <TabsTrigger value="cron-status">Status Cron</TabsTrigger>
               <TabsTrigger value="settings">Configurações</TabsTrigger>
             </TabsList>
             <TabsContent value="alerts">
@@ -449,6 +451,9 @@ export default function SuperAdmin() {
             </TabsContent>
             <TabsContent value="settings">
               <OpsSettingsPanel />
+            </TabsContent>
+            <TabsContent value="cron-status">
+              <OpsCronStatusPanel />
             </TabsContent>
           </Tabs>
         </TabsContent>
