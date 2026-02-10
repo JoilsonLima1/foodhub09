@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { CreditCard, Banknote, QrCode, FileText, Loader2, CheckCircle, ExternalLink, Copy, X, Wifi, WifiOff } from 'lucide-react';
+import { CreditCard, Banknote, QrCode, FileText, Loader2, CheckCircle, ExternalLink, Copy, X, Wifi, WifiOff, AlertCircle } from 'lucide-react';
 import type { PaymentMethod } from '@/types/database';
 import type { POSPaymentIntent, POSBillingType } from '@/hooks/usePOSPayment';
 import { toast } from '@/hooks/use-toast';
@@ -24,7 +24,6 @@ interface PaymentDialogProps {
   onConfirm: () => void;
   formatCurrency: (value: number) => string;
   isProcessing?: boolean;
-  // Online payment props
   onCreateOnlinePayment?: (billingType: POSBillingType, customerCpfCnpj?: string) => Promise<void>;
   paymentIntent?: POSPaymentIntent | null;
   paymentConfirmed?: boolean;
@@ -32,7 +31,10 @@ interface PaymentDialogProps {
   isPolling?: boolean;
   onCancelOnlinePayment?: () => void;
   onResetOnlinePayment?: () => void;
+  onFallbackToManual?: (method: PaymentMethod) => void;
 }
+
+type CpfPromptTarget = 'PIX' | 'BOLETO' | null;
 
 export function PaymentDialog({
   open,
@@ -50,9 +52,11 @@ export function PaymentDialog({
   isPolling = false,
   onCancelOnlinePayment,
   onResetOnlinePayment,
+  onFallbackToManual,
 }: PaymentDialogProps) {
   const [activeTab, setActiveTab] = useState<string>('online');
-  const [customerCpf, setCustomerCpf] = useState('');
+  const [cpfPromptTarget, setCpfPromptTarget] = useState<CpfPromptTarget>(null);
+  const [cpfInput, setCpfInput] = useState('');
   const hasOnlineSupport = !!onCreateOnlinePayment;
 
   const formatCpfCnpj = (value: string) => {
@@ -67,8 +71,36 @@ export function PaymentDialog({
     );
   };
 
-  const cpfDigits = customerCpf.replace(/\D/g, '');
+  const cpfDigits = cpfInput.replace(/\D/g, '');
   const isCpfValid = cpfDigits.length === 11 || cpfDigits.length === 14;
+
+  const handleOnlineMethodClick = (billingType: POSBillingType) => {
+    if (billingType === 'CREDIT_CARD') {
+      // Credit card doesn't require CPF
+      onCreateOnlinePayment?.(billingType);
+    } else {
+      // PIX and Boleto require CPF - show prompt
+      setCpfPromptTarget(billingType);
+      setCpfInput('');
+    }
+  };
+
+  const handleCpfConfirm = () => {
+    if (cpfPromptTarget && isCpfValid) {
+      onCreateOnlinePayment?.(cpfPromptTarget, cpfDigits);
+      setCpfPromptTarget(null);
+      setCpfInput('');
+    }
+  };
+
+  const handleFallbackToManual = () => {
+    const manualMethod: PaymentMethod = cpfPromptTarget === 'PIX' ? 'pix' : 'voucher';
+    setCpfPromptTarget(null);
+    setCpfInput('');
+    setActiveTab('manual');
+    onSelectMethod(manualMethod);
+    onFallbackToManual?.(manualMethod);
+  };
 
   const handleCopyPixCode = async () => {
     if (paymentIntent?.pixQrCode) {
@@ -89,11 +121,12 @@ export function PaymentDialog({
 
   const handleClose = (open: boolean) => {
     if (!open) {
-      // Reset online payment state when closing without confirmation
       if (paymentIntent && !paymentConfirmed) {
         onCancelOnlinePayment?.();
       }
       onResetOnlinePayment?.();
+      setCpfPromptTarget(null);
+      setCpfInput('');
     }
     onOpenChange(open);
   };
@@ -123,8 +156,69 @@ export function PaymentDialog({
             </div>
           )}
 
-          {/* Payment flow (only show when not confirmed) */}
-          {!paymentConfirmed && (
+          {/* CPF Prompt Modal (inline) */}
+          {cpfPromptTarget && !paymentConfirmed && (
+            <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="h-5 w-5 text-amber-500 mt-0.5 shrink-0" />
+                <div>
+                  <p className="font-medium text-sm">
+                    CPF/CNPJ necessário para {cpfPromptTarget === 'PIX' ? 'PIX Online' : 'Boleto'}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    O gateway de pagamento exige CPF ou CNPJ do pagador.
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="cpf-prompt" className="text-sm font-medium">
+                  CPF/CNPJ do pagador
+                </Label>
+                <Input
+                  id="cpf-prompt"
+                  placeholder="000.000.000-00"
+                  value={cpfInput}
+                  onChange={(e) => setCpfInput(formatCpfCnpj(e.target.value))}
+                  className="font-mono"
+                  autoFocus
+                />
+                {cpfInput && !isCpfValid && (
+                  <p className="text-xs text-destructive">CPF (11 dígitos) ou CNPJ (14 dígitos)</p>
+                )}
+              </div>
+
+              <div className="flex gap-2">
+                <Button
+                  className="flex-1"
+                  disabled={!isCpfValid}
+                  onClick={handleCpfConfirm}
+                >
+                  Confirmar e Gerar {cpfPromptTarget === 'PIX' ? 'PIX' : 'Boleto'}
+                </Button>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={handleFallbackToManual}
+                >
+                  <WifiOff className="h-3.5 w-3.5 mr-1.5" />
+                  Usar {cpfPromptTarget === 'PIX' ? 'PIX Manual' : 'Pagamento Manual'}
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="flex-1"
+                  onClick={() => { setCpfPromptTarget(null); setCpfInput(''); }}
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Payment flow (only show when not confirmed and no CPF prompt) */}
+          {!paymentConfirmed && !cpfPromptTarget && (
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className={`grid w-full ${hasOnlineSupport ? 'grid-cols-2' : 'grid-cols-1'}`}>
                 {hasOnlineSupport && (
@@ -142,32 +236,15 @@ export function PaymentDialog({
               {/* ====== ONLINE PAYMENT TAB ====== */}
               {hasOnlineSupport && (
                 <TabsContent value="online" className="space-y-3 mt-3">
-                  {/* If no payment intent yet, show billing type selection */}
+                  {/* Billing type selection */}
                   {!paymentIntent && !isCreatingOnline && (
                     <div className="space-y-3">
-                      {/* CPF/CNPJ field */}
-                      <div className="space-y-1.5">
-                        <Label htmlFor="cpf-cnpj" className="text-sm font-medium">
-                          CPF/CNPJ do cliente <span className="text-destructive">*</span>
-                        </Label>
-                        <Input
-                          id="cpf-cnpj"
-                          placeholder="000.000.000-00"
-                          value={customerCpf}
-                          onChange={(e) => setCustomerCpf(formatCpfCnpj(e.target.value))}
-                          className="font-mono"
-                        />
-                        {customerCpf && !isCpfValid && (
-                          <p className="text-xs text-destructive">CPF (11 dígitos) ou CNPJ (14 dígitos)</p>
-                        )}
-                      </div>
-
                       <p className="text-sm text-muted-foreground">Selecione o meio de pagamento online:</p>
                       <Button
                         variant="outline"
                         className="w-full justify-start h-14"
-                        onClick={() => onCreateOnlinePayment?.('PIX', cpfDigits)}
-                        disabled={isCreatingOnline || !isCpfValid}
+                        onClick={() => handleOnlineMethodClick('PIX')}
+                        disabled={isCreatingOnline}
                       >
                         <QrCode className="h-5 w-5 mr-3 text-green-600" />
                         <div className="text-left">
@@ -178,8 +255,8 @@ export function PaymentDialog({
                       <Button
                         variant="outline"
                         className="w-full justify-start h-14"
-                        onClick={() => onCreateOnlinePayment?.('CREDIT_CARD', cpfDigits)}
-                        disabled={isCreatingOnline || !isCpfValid}
+                        onClick={() => handleOnlineMethodClick('CREDIT_CARD')}
+                        disabled={isCreatingOnline}
                       >
                         <CreditCard className="h-5 w-5 mr-3 text-blue-600" />
                         <div className="text-left">
@@ -190,8 +267,8 @@ export function PaymentDialog({
                       <Button
                         variant="outline"
                         className="w-full justify-start h-14"
-                        onClick={() => onCreateOnlinePayment?.('BOLETO', cpfDigits)}
-                        disabled={isCreatingOnline || !isCpfValid}
+                        onClick={() => handleOnlineMethodClick('BOLETO')}
+                        disabled={isCreatingOnline}
                       >
                         <FileText className="h-5 w-5 mr-3 text-orange-600" />
                         <div className="text-left">
@@ -213,7 +290,6 @@ export function PaymentDialog({
                   {/* Payment intent created - show details */}
                   {paymentIntent && !isCreatingOnline && (
                     <div className="space-y-4">
-                      {/* Status badge */}
                       <div className="flex items-center justify-between">
                         <Badge variant="outline" className="gap-1">
                           {paymentIntent.billingType === 'PIX' && <QrCode className="h-3 w-3" />}
@@ -240,12 +316,7 @@ export function PaymentDialog({
                             />
                           </div>
                           {paymentIntent.pixQrCode && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={handleCopyPixCode}
-                              className="gap-1"
-                            >
+                            <Button variant="outline" size="sm" onClick={handleCopyPixCode} className="gap-1">
                               <Copy className="h-3.5 w-3.5" />
                               Copiar código PIX
                             </Button>
