@@ -337,7 +337,7 @@ export default function PublicParceiroProfile() {
         <div className="container px-4 mx-auto text-center">
           <p className="text-sm text-muted-foreground">
             É parceiro?{' '}
-            <Link to="/login?context=partner" className="text-primary hover:underline font-medium">
+            <Link to="/partner/auth" className="text-primary hover:underline font-medium">
               Entrar no painel
             </Link>
           </p>

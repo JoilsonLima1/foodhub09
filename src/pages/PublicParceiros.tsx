@@ -162,7 +162,7 @@ export default function PublicParceiros() {
               </Link>
             </Button>
             <Button asChild variant="outline" size="lg" className="text-lg px-8">
-              <Link to="/login?context=partner">
+              <Link to="/partner/auth">
                 <LogIn className="h-5 w-5 mr-2" />
                 Entrar como parceiro
               </Link>
@@ -303,7 +303,7 @@ export default function PublicParceiros() {
           </p>
           <p className="text-sm opacity-80 mt-3">
             Já é parceiro?{' '}
-            <Link to="/login?context=partner" className="underline font-medium hover:opacity-100">
+            <Link to="/partner/auth" className="underline font-medium hover:opacity-100">
               Entrar
             </Link>
           </p>
