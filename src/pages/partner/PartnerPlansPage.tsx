@@ -6,6 +6,8 @@ import { useState, useEffect } from 'react';
 import { usePartnerPlansData } from '@/hooks/usePartnerData';
 import { usePartnerPolicy } from '@/hooks/usePartnerPolicy';
 import { useAddonModules } from '@/hooks/useAddonModules';
+import { useImportTemplates } from '@/hooks/usePlatformTemplates';
+import { usePartnerContext } from '@/contexts/PartnerContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,7 +33,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Plus, Pencil, Trash2, Loader2, Package, AlertTriangle, Info } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, Package, AlertTriangle, Info, Download } from 'lucide-react';
 
 // Available features (same as in PartnerPoliciesManager)
 const AVAILABLE_FEATURES = [
@@ -74,6 +76,8 @@ export default function PartnerPlansPage() {
   const { plans, isLoading, error: plansError, refetch, createPlan, updatePlan, deletePlan, setDefaultPlan } = usePartnerPlansData();
   const { policy, validatePlan } = usePartnerPolicy();
   const { modules = [] } = useAddonModules();
+  const { currentPartner } = usePartnerContext();
+  const importTemplates = useImportTemplates();
   
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingPlan, setEditingPlan] = useState<any>(null);
@@ -448,13 +452,24 @@ export default function PartnerPlansPage() {
           </p>
         </div>
 
-        <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={resetForm} disabled={!canCreateMore}>
-              <Plus className="h-4 w-4 mr-2" />
-              Novo Plano
+        <div className="flex gap-2">
+          {plans.length === 0 && currentPartner?.id && (
+            <Button
+              variant="outline"
+              onClick={() => importTemplates.mutate(currentPartner.id)}
+              disabled={importTemplates.isPending}
+            >
+              {importTemplates.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+              Importar Modelo Padrão
             </Button>
-          </DialogTrigger>
+          )}
+          <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={resetForm} disabled={!canCreateMore}>
+                <Plus className="h-4 w-4 mr-2" />
+                Novo Plano
+              </Button>
+            </DialogTrigger>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>Criar Plano</DialogTitle>
@@ -477,6 +492,7 @@ export default function PartnerPlansPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* Limit Warning */}

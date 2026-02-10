@@ -486,12 +486,97 @@ export function PartnerPoliciesManager() {
           <TabsContent value="billing">
             <Card>
               <CardHeader>
-                <CardTitle>Opções de Cobrança</CardTitle>
+                <CardTitle>Opções de Cobrança e Pagamento</CardTitle>
                 <CardDescription>
-                  Configure as opções de cobrança disponíveis para parceiros
+                  Configure quem cobra (plataforma ou parceiro) e opções de gateway
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-6">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Responsável pela Cobrança</Label>
+                    <select
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      value={(activePolicy as any).billing_owner || 'PLATFORM'}
+                      onChange={(e) => editingPolicy && setEditingPolicy({
+                        ...editingPolicy,
+                        billing_owner: e.target.value,
+                      } as any)}
+                      disabled={!editingPolicy}
+                    >
+                      <option value="PLATFORM">Plataforma cobra</option>
+                      <option value="PARTNER">Parceiro cobra</option>
+                    </select>
+                    <p className="text-xs text-muted-foreground">
+                      Define se a plataforma ou o parceiro é responsável por cobrar os tenants
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Modo da Taxa</Label>
+                    <select
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      value={(activePolicy as any).platform_fee_mode || 'percent'}
+                      onChange={(e) => editingPolicy && setEditingPolicy({
+                        ...editingPolicy,
+                        platform_fee_mode: e.target.value,
+                      } as any)}
+                      disabled={!editingPolicy}
+                    >
+                      <option value="percent">Percentual</option>
+                      <option value="fixed">Fixo</option>
+                      <option value="both">Percentual + Fixo</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Taxa da Plataforma (%)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={(activePolicy as any).platform_fee_percent ?? 0}
+                      onChange={(e) => editingPolicy && setEditingPolicy({
+                        ...editingPolicy,
+                        platform_fee_percent: parseFloat(e.target.value) || 0,
+                      } as any)}
+                      disabled={!editingPolicy}
+                      min={0}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Taxa Fixa da Plataforma (R$)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={(activePolicy as any).platform_fee_fixed ?? 0}
+                      onChange={(e) => editingPolicy && setEditingPolicy({
+                        ...editingPolicy,
+                        platform_fee_fixed: parseFloat(e.target.value) || 0,
+                      } as any)}
+                      disabled={!editingPolicy}
+                      min={0}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between p-4 border rounded-lg">
+                  <div>
+                    <p className="font-medium">Permitir Gateway Próprio do Parceiro</p>
+                    <p className="text-sm text-muted-foreground">
+                      Parceiro pode cadastrar sua própria API de pagamento
+                    </p>
+                  </div>
+                  <Switch
+                    checked={(activePolicy as any).allow_partner_gateway ?? false}
+                    onCheckedChange={(checked) => editingPolicy && setEditingPolicy({
+                      ...editingPolicy,
+                      allow_partner_gateway: checked,
+                    } as any)}
+                    disabled={!editingPolicy}
+                  />
+                </div>
+
                 <div className="flex items-center justify-between p-4 border rounded-lg">
                   <div>
                     <p className="font-medium">Permitir Cobrança Offline/Manual</p>

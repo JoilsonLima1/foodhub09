@@ -30,6 +30,8 @@ import {
   Wrench,
   Gauge,
   Lock,
+  Copy,
+  Receipt,
 } from 'lucide-react';
 import { PlanEditor } from '@/components/superadmin/PlanEditor';
 import { FeatureComparison } from '@/components/superadmin/FeatureComparison';
@@ -56,6 +58,8 @@ import { PartnerPoliciesManager } from '@/components/superadmin/PartnerPoliciesM
 import { BusinessKPIsPanel } from '@/components/superadmin/BusinessKPIsPanel';
 import { SecurityAuditPanel } from '@/components/superadmin/SecurityAuditPanel';
 import { GrowthRulesPanel } from '@/components/superadmin/GrowthRulesPanel';
+import { PlatformTemplatesManager } from '@/components/superadmin/PlatformTemplatesManager';
+import { PartnerBillingManager } from '@/components/superadmin/PartnerBillingManager';
 import { 
   OpsAlertsPanel, 
   OpsReconciliationPanel, 
@@ -283,6 +287,14 @@ export default function SuperAdmin() {
             <Wrench className="h-4 w-4" />
             Backoffice Ops
           </TabsTrigger>
+          <TabsTrigger value="templates" className="flex items-center gap-2">
+            <Copy className="h-4 w-4" />
+            Templates
+          </TabsTrigger>
+          <TabsTrigger value="partner-billing" className="flex items-center gap-2">
+            <Receipt className="h-4 w-4" />
+            AR Parceiros
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="organizations">
@@ -433,6 +445,14 @@ export default function SuperAdmin() {
               <OpsSettingsPanel />
             </TabsContent>
           </Tabs>
+        </TabsContent>
+
+        <TabsContent value="templates">
+          <PlatformTemplatesManager />
+        </TabsContent>
+
+        <TabsContent value="partner-billing">
+          <PartnerBillingManager />
         </TabsContent>
       </Tabs>
     </div>
