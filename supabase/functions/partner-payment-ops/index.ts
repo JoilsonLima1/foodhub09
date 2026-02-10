@@ -27,16 +27,23 @@ async function getAsaasConfig(supabase: any): Promise<AsaasConfig | null> {
   const { data: gateway } = await supabase
     .from('payment_gateways')
     .select('*')
-    .eq('gateway_id', 'asaas')
+    .eq('provider', 'asaas')
     .eq('is_active', true)
     .single();
 
   if (!gateway) return null;
 
-  const isProduction = gateway.environment === 'production';
+  // The actual API key is stored in api_key_masked (not truly masked in DB)
+  // Config may optionally contain sandbox_api_key, production_api_key, environment, wallet_id
+  const environment = gateway.config?.environment || 'production';
+  const isProduction = environment === 'production';
+  
+  // Priority: config-specific key > api_key_masked
   const apiKey = isProduction 
-    ? gateway.config?.production_api_key 
-    : gateway.config?.sandbox_api_key;
+    ? (gateway.config?.production_api_key || gateway.api_key_masked)
+    : (gateway.config?.sandbox_api_key || gateway.api_key_masked);
+
+  if (!apiKey) return null;
 
   return {
     apiKey,
@@ -60,15 +67,8 @@ async function createAsaasSubaccount(config: AsaasConfig, partnerData: any): Pro
       name: partnerData.partner_name,
       email: partnerData.partner_email,
       cpfCnpj: partnerData.partner_document?.replace(/\D/g, ''),
-      companyType: partnerData.partner_document?.length > 14 ? 'MEI' : null,
+      companyType: partnerData.partner_document?.replace(/\D/g, '').length > 11 ? 'MEI' : null,
       mobilePhone: partnerData.partner_phone?.replace(/\D/g, ''),
-      site: partnerData.site || null,
-      webhooks: {
-        transfer: {
-          url: `${Deno.env.get('SUPABASE_URL')}/functions/v1/asaas-webhook`,
-          enabled: true,
-        },
-      },
     }),
   });
 
