@@ -7636,6 +7636,62 @@ export type Database = {
           },
         ]
       }
+      payment_provider_account_profile: {
+        Row: {
+          bank_account: string | null
+          bank_agency: string | null
+          bank_name: string | null
+          created_at: string
+          document: string | null
+          id: string
+          legal_name: string | null
+          merchant_id: string | null
+          provider_account_id: string
+          raw_profile_json: Json | null
+          updated_at: string
+          verified_at: string | null
+          wallet_id: string | null
+        }
+        Insert: {
+          bank_account?: string | null
+          bank_agency?: string | null
+          bank_name?: string | null
+          created_at?: string
+          document?: string | null
+          id?: string
+          legal_name?: string | null
+          merchant_id?: string | null
+          provider_account_id: string
+          raw_profile_json?: Json | null
+          updated_at?: string
+          verified_at?: string | null
+          wallet_id?: string | null
+        }
+        Update: {
+          bank_account?: string | null
+          bank_agency?: string | null
+          bank_name?: string | null
+          created_at?: string
+          document?: string | null
+          id?: string
+          legal_name?: string | null
+          merchant_id?: string | null
+          provider_account_id?: string
+          raw_profile_json?: Json | null
+          updated_at?: string
+          verified_at?: string | null
+          wallet_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_provider_account_profile_provider_account_id_fkey"
+            columns: ["provider_account_id"]
+            isOneToOne: true
+            referencedRelation: "payment_provider_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payment_provider_accounts: {
         Row: {
           allow_partial_refund: boolean
