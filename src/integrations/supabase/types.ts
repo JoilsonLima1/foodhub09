@@ -8407,6 +8407,42 @@ export type Database = {
         }
         Relationships: []
       }
+      pix_split_settings: {
+        Row: {
+          auto_create_subaccounts: boolean
+          auto_split_enabled: boolean
+          created_at: string
+          default_commission_fixed: number
+          default_commission_percent: number
+          id: string
+          manual_fallback_enabled: boolean
+          platform_woovi_account_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          auto_create_subaccounts?: boolean
+          auto_split_enabled?: boolean
+          created_at?: string
+          default_commission_fixed?: number
+          default_commission_percent?: number
+          id?: string
+          manual_fallback_enabled?: boolean
+          platform_woovi_account_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          auto_create_subaccounts?: boolean
+          auto_split_enabled?: boolean
+          created_at?: string
+          default_commission_fixed?: number
+          default_commission_percent?: number
+          id?: string
+          manual_fallback_enabled?: boolean
+          platform_woovi_account_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       pix_transactions: {
         Row: {
           amount: number
@@ -8644,6 +8680,62 @@ export type Database = {
           },
           {
             foreignKeyName: "plan_change_prorations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_commissions: {
+        Row: {
+          commission_amount: number
+          commission_rate: number | null
+          commission_type: string
+          created_at: string
+          gross_amount: number
+          id: string
+          metadata: Json | null
+          net_amount: number
+          order_id: string | null
+          pix_transaction_id: string | null
+          status: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          commission_amount: number
+          commission_rate?: number | null
+          commission_type?: string
+          created_at?: string
+          gross_amount: number
+          id?: string
+          metadata?: Json | null
+          net_amount: number
+          order_id?: string | null
+          pix_transaction_id?: string | null
+          status?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          commission_amount?: number
+          commission_rate?: number | null
+          commission_type?: string
+          created_at?: string
+          gross_amount?: number
+          id?: string
+          metadata?: Json | null
+          net_amount?: number
+          order_id?: string | null
+          pix_transaction_id?: string | null
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_commissions_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -12088,6 +12180,9 @@ export type Database = {
           asaas_payment_id: string | null
           business_category: string | null
           city: string | null
+          commission_fixed: number
+          commission_type: string
+          commission_value: number
           created_at: string | null
           email: string | null
           fallback_to_manual: boolean | null
@@ -12107,6 +12202,7 @@ export type Database = {
           online_gateway_enabled: boolean | null
           online_gateway_pix: boolean | null
           phone: string | null
+          pix_split_enabled: boolean
           pos_allow_cashier_mode_change: boolean | null
           pos_display_mode: string | null
           slug: string
@@ -12118,6 +12214,7 @@ export type Database = {
           trial_ends_at: string | null
           updated_at: string | null
           whatsapp_number: string | null
+          woovi_subaccount_id: string | null
           zip_code: string | null
         }
         Insert: {
@@ -12126,6 +12223,9 @@ export type Database = {
           asaas_payment_id?: string | null
           business_category?: string | null
           city?: string | null
+          commission_fixed?: number
+          commission_type?: string
+          commission_value?: number
           created_at?: string | null
           email?: string | null
           fallback_to_manual?: boolean | null
@@ -12145,6 +12245,7 @@ export type Database = {
           online_gateway_enabled?: boolean | null
           online_gateway_pix?: boolean | null
           phone?: string | null
+          pix_split_enabled?: boolean
           pos_allow_cashier_mode_change?: boolean | null
           pos_display_mode?: string | null
           slug: string
@@ -12156,6 +12257,7 @@ export type Database = {
           trial_ends_at?: string | null
           updated_at?: string | null
           whatsapp_number?: string | null
+          woovi_subaccount_id?: string | null
           zip_code?: string | null
         }
         Update: {
@@ -12164,6 +12266,9 @@ export type Database = {
           asaas_payment_id?: string | null
           business_category?: string | null
           city?: string | null
+          commission_fixed?: number
+          commission_type?: string
+          commission_value?: number
           created_at?: string | null
           email?: string | null
           fallback_to_manual?: boolean | null
@@ -12183,6 +12288,7 @@ export type Database = {
           online_gateway_enabled?: boolean | null
           online_gateway_pix?: boolean | null
           phone?: string | null
+          pix_split_enabled?: boolean
           pos_allow_cashier_mode_change?: boolean | null
           pos_display_mode?: string | null
           slug?: string
@@ -12194,6 +12300,7 @@ export type Database = {
           trial_ends_at?: string | null
           updated_at?: string | null
           whatsapp_number?: string | null
+          woovi_subaccount_id?: string | null
           zip_code?: string | null
         }
         Relationships: [
