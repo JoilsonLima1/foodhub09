@@ -217,6 +217,38 @@ export function PixSplitSettingsTab() {
           })()}
         </CardContent>
       </Card>
+
+      {/* Tax Model Info */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm font-medium flex items-center gap-2">
+            <Shield className="h-4 w-4" />
+            Modelo Tributário Recomendado
+          </CardTitle>
+          <CardDescription className="text-xs">
+            Informativo — não altera configurações do sistema.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3 text-sm text-muted-foreground">
+          <div className="space-y-2">
+            <p className="font-medium text-foreground">CNAE sugerido:</p>
+            <p>• 6311-9/00 — Tratamento de dados, provedores de serviços de aplicação e hospedagem</p>
+            <p>• 6319-4/00 — Portais, provedores de conteúdo e outros serviços de informação</p>
+            <p>• 7490-1/04 — Atividades de intermediação e agenciamento de serviços</p>
+          </div>
+          <div className="space-y-2">
+            <p className="font-medium text-foreground">Classificação da receita:</p>
+            <p>✅ Prestação de serviço de intermediação digital</p>
+            <p>✅ Comissão de marketplace</p>
+          </div>
+          <div className="space-y-2">
+            <p className="font-medium text-foreground">NÃO classificar como:</p>
+            <p>❌ Receita financeira</p>
+            <p>❌ Spread bancário</p>
+            <p>❌ Intermediação de pagamento</p>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

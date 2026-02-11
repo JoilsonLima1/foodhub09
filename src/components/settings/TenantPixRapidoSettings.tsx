@@ -147,6 +147,21 @@ export function TenantPixRapidoSettings() {
         </CardContent>
       </Card>
 
+      {/* MED / Chargeback warning */}
+      <Card className="border-destructive/30 bg-destructive/5">
+        <CardContent className="py-4">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <p className="text-sm font-medium">Contestação Pix / MED</p>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Em caso de contestação Pix (MED), chargeback ou estorno judicial, a responsabilidade é exclusiva do estabelecimento conforme contrato aceito. A Plataforma poderá reter valores futuros para compensação de prejuízos.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {!usePlatform && tenantId && wooviProvider && (
         <WooviCredentialsPanel
           scope="tenant"
