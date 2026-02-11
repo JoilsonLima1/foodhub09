@@ -232,6 +232,25 @@ async function handleCreate(supabase: any, body: any, userId: string) {
 
     if (searchResult.data?.length > 0) {
       customerId = searchResult.data[0].id;
+
+      // Update customer with CPF if provided and not already set
+      const existingCpf = searchResult.data[0].cpfCnpj;
+      if (customer_cpf_cnpj && !existingCpf) {
+        const updateBody: any = { cpfCnpj: customer_cpf_cnpj.replace(/\D/g, "") };
+        if (customer_name) updateBody.name = customer_name;
+        if (customer_phone) updateBody.phone = customer_phone.replace(/\D/g, "");
+
+        const updateRes = await fetch(`${baseUrl}/customers/${customerId}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", access_token: apiKey },
+          body: JSON.stringify(updateBody),
+        });
+        if (updateRes.ok) {
+          logStep("Updated existing customer with CPF");
+        } else {
+          logStep("Failed to update customer CPF (non-critical)");
+        }
+      }
     } else {
       const custBody: any = {
         name: customer_name || "Cliente PDV",
