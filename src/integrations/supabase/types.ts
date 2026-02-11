@@ -8174,6 +8174,301 @@ export type Database = {
           },
         ]
       }
+      pix_availability_rules: {
+        Row: {
+          created_at: string
+          id: string
+          is_enabled: boolean
+          notes: string | null
+          pricing_plan_id: string | null
+          priority: number
+          psp_provider_id: string | null
+          scope: string
+          scope_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          notes?: string | null
+          pricing_plan_id?: string | null
+          priority?: number
+          psp_provider_id?: string | null
+          scope: string
+          scope_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          notes?: string | null
+          pricing_plan_id?: string | null
+          priority?: number
+          psp_provider_id?: string | null
+          scope?: string
+          scope_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pix_availability_rules_pricing_plan_id_fkey"
+            columns: ["pricing_plan_id"]
+            isOneToOne: false
+            referencedRelation: "pix_pricing_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pix_availability_rules_psp_provider_id_fkey"
+            columns: ["psp_provider_id"]
+            isOneToOne: false
+            referencedRelation: "pix_psp_providers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pix_pricing_plans: {
+        Row: {
+          created_at: string
+          description: string | null
+          display_order: number
+          fixed_rate: number
+          free_until: string | null
+          id: string
+          is_active: boolean
+          is_subsidized: boolean
+          max_fee: number | null
+          min_fee: number
+          name: string
+          percent_rate: number
+          pricing_type: string
+          slug: string
+          subsidy_percent: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          fixed_rate?: number
+          free_until?: string | null
+          id?: string
+          is_active?: boolean
+          is_subsidized?: boolean
+          max_fee?: number | null
+          min_fee?: number
+          name: string
+          percent_rate?: number
+          pricing_type?: string
+          slug: string
+          subsidy_percent?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          fixed_rate?: number
+          free_until?: string | null
+          id?: string
+          is_active?: boolean
+          is_subsidized?: boolean
+          max_fee?: number | null
+          min_fee?: number
+          name?: string
+          percent_rate?: number
+          pricing_type?: string
+          slug?: string
+          subsidy_percent?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      pix_psp_providers: {
+        Row: {
+          api_docs_url: string | null
+          created_at: string
+          default_fixed_fee: number
+          default_percent_fee: number
+          description: string | null
+          display_name: string
+          id: string
+          is_active: boolean
+          logo_url: string | null
+          name: string
+          pricing_model: string
+          supports_split: boolean
+          supports_subaccount: boolean
+          supports_txid: boolean
+          supports_webhook: boolean
+          updated_at: string
+          webhook_path: string | null
+        }
+        Insert: {
+          api_docs_url?: string | null
+          created_at?: string
+          default_fixed_fee?: number
+          default_percent_fee?: number
+          description?: string | null
+          display_name: string
+          id?: string
+          is_active?: boolean
+          logo_url?: string | null
+          name: string
+          pricing_model?: string
+          supports_split?: boolean
+          supports_subaccount?: boolean
+          supports_txid?: boolean
+          supports_webhook?: boolean
+          updated_at?: string
+          webhook_path?: string | null
+        }
+        Update: {
+          api_docs_url?: string | null
+          created_at?: string
+          default_fixed_fee?: number
+          default_percent_fee?: number
+          description?: string | null
+          display_name?: string
+          id?: string
+          is_active?: boolean
+          logo_url?: string | null
+          name?: string
+          pricing_model?: string
+          supports_split?: boolean
+          supports_subaccount?: boolean
+          supports_txid?: boolean
+          supports_webhook?: boolean
+          updated_at?: string
+          webhook_path?: string | null
+        }
+        Relationships: []
+      }
+      pix_transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          e2e_id: string | null
+          error_message: string | null
+          expires_at: string | null
+          id: string
+          metadata: Json | null
+          net_amount: number | null
+          order_id: string | null
+          paid_at: string | null
+          pix_key: string | null
+          platform_fee: number | null
+          pricing_plan_id: string | null
+          psp_fee: number | null
+          psp_provider_id: string
+          qr_code: string | null
+          qr_code_url: string | null
+          status: string
+          store_id: string | null
+          tenant_id: string
+          txid: string
+          updated_at: string
+          webhook_payload: Json | null
+          webhook_received_at: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          e2e_id?: string | null
+          error_message?: string | null
+          expires_at?: string | null
+          id?: string
+          metadata?: Json | null
+          net_amount?: number | null
+          order_id?: string | null
+          paid_at?: string | null
+          pix_key?: string | null
+          platform_fee?: number | null
+          pricing_plan_id?: string | null
+          psp_fee?: number | null
+          psp_provider_id: string
+          qr_code?: string | null
+          qr_code_url?: string | null
+          status?: string
+          store_id?: string | null
+          tenant_id: string
+          txid: string
+          updated_at?: string
+          webhook_payload?: Json | null
+          webhook_received_at?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          e2e_id?: string | null
+          error_message?: string | null
+          expires_at?: string | null
+          id?: string
+          metadata?: Json | null
+          net_amount?: number | null
+          order_id?: string | null
+          paid_at?: string | null
+          pix_key?: string | null
+          platform_fee?: number | null
+          pricing_plan_id?: string | null
+          psp_fee?: number | null
+          psp_provider_id?: string
+          qr_code?: string | null
+          qr_code_url?: string | null
+          status?: string
+          store_id?: string | null
+          tenant_id?: string
+          txid?: string
+          updated_at?: string
+          webhook_payload?: Json | null
+          webhook_received_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pix_transactions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pix_transactions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pix_transactions_pricing_plan_id_fkey"
+            columns: ["pricing_plan_id"]
+            isOneToOne: false
+            referencedRelation: "pix_pricing_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pix_transactions_psp_provider_id_fkey"
+            columns: ["psp_provider_id"]
+            isOneToOne: false
+            referencedRelation: "pix_psp_providers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pix_transactions_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pix_transactions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       plan_addon_modules: {
         Row: {
           addon_module_id: string
@@ -11433,6 +11728,66 @@ export type Database = {
           },
         ]
       }
+      tenant_psp_accounts: {
+        Row: {
+          api_key_encrypted: string | null
+          config: Json | null
+          created_at: string
+          id: string
+          is_enabled: boolean
+          kyc_approved_at: string | null
+          kyc_status: string
+          kyc_submitted_at: string | null
+          psp_provider_id: string
+          subaccount_id: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          api_key_encrypted?: string | null
+          config?: Json | null
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          kyc_approved_at?: string | null
+          kyc_status?: string
+          kyc_submitted_at?: string | null
+          psp_provider_id: string
+          subaccount_id?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          api_key_encrypted?: string | null
+          config?: Json | null
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          kyc_approved_at?: string | null
+          kyc_status?: string
+          kyc_submitted_at?: string | null
+          psp_provider_id?: string
+          subaccount_id?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_psp_accounts_psp_provider_id_fkey"
+            columns: ["psp_provider_id"]
+            isOneToOne: false
+            referencedRelation: "pix_psp_providers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_psp_accounts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_service_config: {
         Row: {
           allow_customer_ordering: boolean | null
@@ -14143,6 +14498,23 @@ export type Database = {
       resolve_payment_context: {
         Args: { p_provider_payment_id: string }
         Returns: Json
+      }
+      resolve_pix_config: {
+        Args: { p_tenant_id: string }
+        Returns: {
+          fixed_rate: number
+          is_subsidized: boolean
+          max_fee: number
+          min_fee: number
+          percent_rate: number
+          pricing_plan_id: string
+          pricing_plan_name: string
+          psp_display_name: string
+          psp_name: string
+          psp_provider_id: string
+          rule_priority: number
+          rule_scope: string
+        }[]
       }
       reverse_partner_transaction: {
         Args: {

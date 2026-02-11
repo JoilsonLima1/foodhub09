@@ -32,6 +32,7 @@ import {
   Lock,
   Copy,
   Receipt,
+  Zap,
 } from 'lucide-react';
 import { PlanEditor } from '@/components/superadmin/PlanEditor';
 import { FeatureComparison } from '@/components/superadmin/FeatureComparison';
@@ -61,6 +62,7 @@ import { GrowthRulesPanel } from '@/components/superadmin/GrowthRulesPanel';
 import { PlatformTemplatesManager } from '@/components/superadmin/PlatformTemplatesManager';
 import { PartnerBillingManager } from '@/components/superadmin/PartnerBillingManager';
 import { PartnerPlanApprovalManager } from '@/components/superadmin/PartnerPlanApprovalManager';
+import { PixAutomaticoManager } from '@/components/superadmin/pix/PixAutomaticoManager';
 
 import { 
   OpsAlertsPanel, 
@@ -303,6 +305,10 @@ export default function SuperAdmin() {
             <Shield className="h-4 w-4" />
             Aprovar Planos
           </TabsTrigger>
+          <TabsTrigger value="pix-automatico" className="flex items-center gap-2">
+            <Zap className="h-4 w-4" />
+            PIX Automático
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="organizations">
@@ -473,6 +479,10 @@ export default function SuperAdmin() {
 
         <TabsContent value="plan-approval">
           <PartnerPlanApprovalManager />
+        </TabsContent>
+
+        <TabsContent value="pix-automatico">
+          <PixAutomaticoManager />
         </TabsContent>
 
       </Tabs>
