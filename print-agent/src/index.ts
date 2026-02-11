@@ -1,5 +1,9 @@
 import express from 'express';
+import https from 'https';
+import http from 'http';
+import fs from 'fs';
 import { loadConfig } from './config';
+import { ensureCertificates } from './cert-manager';
 import { healthRouter } from './routes/health';
 import { printersRouter } from './routes/printers';
 import { printRouter } from './routes/print';
@@ -64,12 +68,42 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
   res.status(500).json({ error: err.message || 'Internal error' });
 });
 
-const port = config.port;
-app.listen(port, '0.0.0.0', () => {
-  console.log(`\n  ╔══════════════════════════════════════════╗`);
-  console.log(`  ║  FoodHub Print Agent v${config.version}            ║`);
-  console.log(`  ║  Modo: ESC/POS via Spooler              ║`);
-  console.log(`  ║  Rodando em http://localhost:${port}        ║`);
-  console.log(`  ║  Pronto para impressão térmica!          ║`);
-  console.log(`  ╚══════════════════════════════════════════╝\n`);
+// ----- Start servers -----
+const HTTPS_PORT = config.port; // 8123
+const HTTP_PORT = config.port + 1; // 8124 (debug only)
+
+// Try HTTPS
+const certs = ensureCertificates(config.configDir);
+
+if (certs.exists) {
+  const tlsOptions = {
+    cert: fs.readFileSync(certs.certFile),
+    key: fs.readFileSync(certs.keyFile),
+  };
+
+  https.createServer(tlsOptions, app).listen(HTTPS_PORT, '0.0.0.0', () => {
+    console.log(`\n  ╔══════════════════════════════════════════╗`);
+    console.log(`  ║  FoodHub Print Agent v${config.version}            ║`);
+    console.log(`  ║  Modo: ESC/POS via Spooler              ║`);
+    console.log(`  ║  HTTPS: https://127.0.0.1:${HTTPS_PORT}       ║`);
+    console.log(`  ║  HTTP debug: http://127.0.0.1:${HTTP_PORT}    ║`);
+    console.log(`  ║  Pronto para impressão térmica!          ║`);
+    console.log(`  ╚══════════════════════════════════════════╝\n`);
+  });
+} else {
+  // Fallback: HTTP only if certs could not be generated
+  console.warn('[WARN] HTTPS indisponível — rodando somente HTTP.');
+}
+
+// Always start HTTP on debug port
+http.createServer(app).listen(HTTP_PORT, '0.0.0.0', () => {
+  if (!certs.exists) {
+    console.log(`\n  ╔══════════════════════════════════════════╗`);
+    console.log(`  ║  FoodHub Print Agent v${config.version}            ║`);
+    console.log(`  ║  ⚠ Somente HTTP (sem certificado)       ║`);
+    console.log(`  ║  HTTP: http://127.0.0.1:${HTTP_PORT}          ║`);
+    console.log(`  ╚══════════════════════════════════════════╝\n`);
+  } else {
+    console.log(`  [HTTP Debug] http://127.0.0.1:${HTTP_PORT}`);
+  }
 });

@@ -37,6 +37,10 @@ sc config FoodHubPrintAgent start= delayed-auto >nul 2>&1
 echo.
 echo ==========================================
 echo  Servico instalado e iniciado com sucesso!
-echo  O Agent esta rodando em http://127.0.0.1:8123
+echo  HTTPS: https://127.0.0.1:8123
+echo  HTTP debug: http://127.0.0.1:8124
+echo.
+echo  IMPORTANTE: Execute install-cert.bat para
+echo  instalar o certificado no navegador!
 echo ==========================================
 pause
