@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
-import { createHmac } from "https://deno.land/std@0.190.0/crypto/mod.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -73,11 +73,14 @@ async function wooviGetCharge(apiKey: string, correlationID: string) {
   return data;
 }
 
-function verifyWooviWebhook(payload: string, signature: string, webhookSecret: string): boolean {
+async function verifyWooviWebhook(payload: string, signature: string, webhookSecret: string): Promise<boolean> {
   try {
-    const hmac = createHmac("sha256", webhookSecret);
-    hmac.update(payload);
-    const expected = hmac.toString();
+    const encoder = new TextEncoder();
+    const key = await crypto.subtle.importKey(
+      "raw", encoder.encode(webhookSecret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
+    );
+    const sig = await crypto.subtle.sign("HMAC", key, encoder.encode(payload));
+    const expected = Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('');
     return expected === signature;
   } catch {
     return false;
