@@ -1,0 +1,2 @@
+ALTER TABLE public.tenant_print_settings DROP CONSTRAINT tenant_print_settings_print_mode_check;
+ALTER TABLE public.tenant_print_settings ADD CONSTRAINT tenant_print_settings_print_mode_check CHECK (print_mode = ANY (ARRAY['BROWSER'::text, 'AGENT'::text, 'KIOSK'::text]));
