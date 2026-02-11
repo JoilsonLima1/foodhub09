@@ -11978,6 +11978,41 @@ export type Database = {
           },
         ]
       }
+      tenant_print_settings: {
+        Row: {
+          agent_endpoint: string | null
+          paper_width: string
+          print_mode: string
+          printer_profile: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          agent_endpoint?: string | null
+          paper_width?: string
+          print_mode?: string
+          printer_profile?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          agent_endpoint?: string | null
+          paper_width?: string
+          print_mode?: string
+          printer_profile?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_print_settings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_psp_accounts: {
         Row: {
           api_key_encrypted: string | null
@@ -14158,6 +14193,23 @@ export type Database = {
           quota: number
           used: number
         }[]
+      }
+      get_or_create_tenant_print_settings: {
+        Args: { p_tenant_id: string }
+        Returns: {
+          agent_endpoint: string | null
+          paper_width: string
+          print_mode: string
+          printer_profile: string
+          tenant_id: string
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "tenant_print_settings"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       get_partner_access_state: {
         Args: { p_partner_id: string }
