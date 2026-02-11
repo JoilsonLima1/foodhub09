@@ -137,14 +137,29 @@ export function LegalAcceptanceModal({ tenantId, open, onAccepted, onCancel }: P
             Modelo de Retenção Automática
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed">
-            A comissão será aplicada automaticamente via divisão (split) no momento da liquidação do Pix.
-            O valor é dividido pela instituição de pagamento — a Plataforma não realiza custódia de valores.
+            A Plataforma <strong>não recebe integralmente</strong> os valores das vendas. A divisão ocorre automaticamente na liquidação via instituição de pagamento. A Plataforma não realiza custódia de valores.
           </p>
           {commissionPercent !== null && (
             <p className="text-xs font-medium text-primary">
               Comissão vigente: {commissionPercent}% por transação
             </p>
           )}
+        </div>
+
+        {/* Arbitration & Liability warnings */}
+        <div className="space-y-2">
+          <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3">
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              <span className="font-medium text-foreground">⚖️ Arbitragem Privada:</span>{' '}
+              Conflitos contratuais serão resolvidos exclusivamente por arbitragem privada (Lei nº 9.307/96), ficando afastada a jurisdição estatal, salvo medidas cautelares urgentes.
+            </p>
+          </div>
+          <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3">
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              <span className="font-medium text-foreground">🛡️ Limitação de Responsabilidade:</span>{' '}
+              A responsabilidade da Plataforma fica limitada ao valor das comissões recebidas nos últimos 3 meses anteriores ao evento.
+            </p>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto space-y-4 py-2">
