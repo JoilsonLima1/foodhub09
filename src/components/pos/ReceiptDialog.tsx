@@ -6,7 +6,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Printer, X, CheckCircle, Loader2 } from 'lucide-react';
+import { Printer, X, CheckCircle, Loader2, Stethoscope } from 'lucide-react';
 import { ReceiptPrint } from './ReceiptPrint';
 import type { CartItem } from '@/types/database';
 import { getPrinterConfig } from '@/components/settings/PrinterSettings';
@@ -50,10 +50,11 @@ export function ReceiptDialog({
   tenantLogo,
 }: ReceiptDialogProps) {
   const receiptRef = useRef<HTMLDivElement>(null);
-  const { printViaAgent, settings } = useTenantPrintSettings();
+  const { settings } = useTenantPrintSettings();
   const { routes } = usePrinterRoutes();
   const { toast } = useToast();
   const [isPrinting, setIsPrinting] = useState(false);
+  const [isDiagnosing, setIsDiagnosing] = useState(false);
 
   // Apply paper width CSS variable from config
   useEffect(() => {
@@ -62,6 +63,8 @@ export function ReceiptDialog({
       document.documentElement.style.setProperty('--receipt-width', config.paperWidth);
     }
   }, [open]);
+
+  const getAgentEndpoint = () => settings?.agent_endpoint || 'http://127.0.0.1:8123';
 
   const buildHTML = () => {
     const config = getPrinterConfig();
@@ -93,50 +96,182 @@ export function ReceiptDialog({
     };
   };
 
+  /** Find the "caixa" route: prefer route_type 'recibo', fallback to label 'caixa' */
+  const findCaixaRoute = () => {
+    // First try route_type ilike 'recibo'
+    const recibo = routes.find(r => r.route_type.toLowerCase() === 'recibo');
+    if (recibo) return recibo;
+    // Fallback: label ilike 'caixa' or route_type 'caixa'
+    const caixa = routes.find(
+      r => r.route_type.toLowerCase() === 'caixa' || r.label.toLowerCase() === 'caixa'
+    );
+    return caixa || null;
+  };
+
   const handlePrint = async () => {
+    console.log('[PRINT] click imprimir');
     setIsPrinting(true);
+
     try {
       const { html, paperWidth } = buildHTML();
+      const endpoint = getAgentEndpoint();
 
-      // Find "caixa" printer route
-      const caixaRoute = routes.find(
-        r => r.route_type === 'caixa' || r.label.toLowerCase() === 'caixa'
-      );
+      // 1. Find caixa route
+      const caixaRoute = findCaixaRoute();
+      console.log('[PRINT] rota caixa:', caixaRoute);
+      console.log('[PRINT] settings.print_mode:', settings?.print_mode);
+      console.log('[PRINT] agent_endpoint:', endpoint);
 
-      // Attempt agent print if mode is AGENT
-      if (settings?.print_mode === 'AGENT' && settings?.agent_endpoint) {
-        const result = await printViaAgent(html, {
-          printerName: caixaRoute?.printer_name,
-          paperWidth: caixaRoute?.paper_width || String(paperWidth),
-        });
-
-        if (result.ok) {
-          toast({
-            title: '✓ Enviado para impressão (Agent)',
-            description: caixaRoute?.printer_name
-              ? `Impressora: ${caixaRoute.printer_name}`
-              : 'Impressora padrão',
+      // 2. Only attempt agent if mode is AGENT
+      if (settings?.print_mode === 'AGENT') {
+        // Health check
+        let agentOnline = false;
+        try {
+          toast({ title: 'Agent check...' });
+          const healthResp = await fetch(`${endpoint}/health`, {
+            method: 'GET',
+            signal: AbortSignal.timeout(1500),
           });
+          agentOnline = healthResp.ok;
+          const healthData = await healthResp.json().catch(() => ({}));
+          console.log('[PRINT] health ok?', agentOnline, 'status', healthResp.status, 'data', healthData);
+        } catch (err) {
+          console.log('[PRINT] health FAIL:', err);
+          agentOnline = false;
+        }
+
+        if (agentOnline) {
+          // Agent is online — NEVER call window.print from here
+          toast({ title: 'Agent online ✅ enviando impressão...' });
+
+          if (!caixaRoute?.printer_name) {
+            console.log('[PRINT] Rota Caixa sem printer_name, tentando impressora padrão');
+          }
+
+          const pw = Number(caixaRoute?.paper_width || paperWidth) === 58 ? 58 : 80;
+          const body: Record<string, unknown> = {
+            html,
+            larguraDoPapel: pw,
+          };
+          if (caixaRoute?.printer_name) {
+            body.nomeDaImpressora = caixaRoute.printer_name;
+          }
+
+          console.log('[PRINT] POST /imprimir/recibo body keys:', Object.keys(body), 'printer:', body.nomeDaImpressora, 'pw:', pw);
+
+          try {
+            const postResp = await fetch(`${endpoint}/imprimir/recibo`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(body),
+              signal: AbortSignal.timeout(15000),
+            });
+
+            const postData = await postResp.json().catch(() => ({}));
+            console.log('[PRINT] post status:', postResp.status);
+            console.log('[PRINT] post body:', postData);
+
+            if (postResp.ok) {
+              toast({
+                title: '✓ Enviado para impressão (Agent)',
+                description: caixaRoute?.printer_name
+                  ? `Impressora: ${caixaRoute.printer_name}`
+                  : 'Impressora padrão do sistema',
+              });
+            } else {
+              // POST failed but agent IS online — do NOT fallback to browser
+              const errMsg = (postData as any)?.message || (postData as any)?.error || `HTTP ${postResp.status}`;
+              toast({
+                title: 'Falhou em: POST /imprimir/recibo',
+                description: errMsg,
+                variant: 'destructive',
+              });
+            }
+          } catch (postErr) {
+            console.error('[PRINT] POST /imprimir/recibo exception:', postErr);
+            toast({
+              title: 'Falhou em: POST /imprimir/recibo',
+              description: 'Timeout ou erro de rede ao enviar para o Agent.',
+              variant: 'destructive',
+            });
+          }
+
+          // Agent was online — return WITHOUT calling browser print
           return;
         }
 
-        // Show error and fallback
-        if (result.error) {
-          const isOffline = result.error === 'AGENT_OFFLINE';
-          toast({
-            title: isOffline ? 'Agent offline' : 'Erro na impressão',
-            description: isOffline
-              ? 'Usando impressão pelo navegador como fallback.'
-              : result.error,
-            variant: 'destructive',
-          });
-        }
+        // Agent offline — fallback to browser
+        console.log('[PRINT] Agent offline, fallback para navegador');
+        toast({
+          title: 'Falhou em: HEALTH',
+          description: 'Agent offline. Usando impressão pelo navegador.',
+          variant: 'destructive',
+        });
       }
 
-      // Fallback: browser print
+      // Fallback: browser print (only reached if agent offline or mode != AGENT)
+      console.log('[PRINT] Usando impressão do navegador (fallback)');
       printReceiptHTML(html, paperWidth);
     } finally {
       setIsPrinting(false);
+    }
+  };
+
+  /** Diagnostic: check agent health + printers */
+  const handleDiagnostic = async () => {
+    setIsDiagnosing(true);
+    const endpoint = getAgentEndpoint();
+    const results: string[] = [];
+
+    try {
+      // Health
+      try {
+        const resp = await fetch(`${endpoint}/health`, {
+          method: 'GET',
+          signal: AbortSignal.timeout(2000),
+        });
+        const data = await resp.json().catch(() => ({}));
+        results.push(`Health: ${resp.ok ? '✅ OK' : '❌ FAIL'} (${resp.status})`);
+        if (data.version) results.push(`Versão: ${data.version}`);
+        if (data.uptime != null) results.push(`Uptime: ${data.uptime}s`);
+      } catch {
+        results.push('Health: ❌ Não conseguiu conectar');
+      }
+
+      // Printers
+      try {
+        const resp = await fetch(`${endpoint}/impressoras`, {
+          method: 'GET',
+          signal: AbortSignal.timeout(3000),
+        });
+        const data = await resp.json().catch(() => ({}));
+        const printers = (data as any)?.impressoras || (data as any)?.printers || [];
+        const defaultP = (data as any)?.impressoraPadrao || (data as any)?.defaultPrinter || 'N/A';
+        results.push(`Impressoras: ${printers.length} encontrada(s)`);
+        results.push(`Padrão: ${defaultP}`);
+        if (printers.length > 0) {
+          const names = printers.map((p: any) => typeof p === 'string' ? p : p.nome || p.name).join(', ');
+          results.push(`Lista: ${names}`);
+        }
+      } catch {
+        results.push('Impressoras: ❌ Não conseguiu consultar');
+      }
+
+      // Route info
+      const caixaRoute = findCaixaRoute();
+      results.push(`Rota Caixa: ${caixaRoute ? `"${caixaRoute.label}" → ${caixaRoute.printer_name || '(sem impressora)'}` : '❌ Não encontrada'}`);
+      results.push(`Modo: ${settings?.print_mode || 'N/A'}`);
+      results.push(`Endpoint: ${endpoint}`);
+
+      toast({
+        title: '🔍 Diagnóstico do Agent',
+        description: results.join('\n'),
+        duration: 15000,
+      });
+
+      console.log('[DIAG]', results);
+    } finally {
+      setIsDiagnosing(false);
     }
   };
 
@@ -182,6 +317,24 @@ export function ReceiptDialog({
             {isPrinting ? 'Imprimindo...' : 'Imprimir'}
           </Button>
         </div>
+
+        {/* Diagnostic button — only show when AGENT mode */}
+        {settings?.print_mode === 'AGENT' && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full text-xs text-muted-foreground"
+            onClick={handleDiagnostic}
+            disabled={isDiagnosing}
+          >
+            {isDiagnosing ? (
+              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+            ) : (
+              <Stethoscope className="h-3 w-3 mr-1" />
+            )}
+            Diagnóstico do Agent
+          </Button>
+        )}
       </DialogContent>
     </Dialog>
   );
