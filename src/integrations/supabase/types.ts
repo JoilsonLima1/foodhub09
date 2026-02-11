@@ -11978,9 +11978,62 @@ export type Database = {
           },
         ]
       }
+      tenant_print_agents: {
+        Row: {
+          agent_version: string | null
+          created_at: string
+          device_id: string
+          device_name: string | null
+          id: string
+          last_seen_at: string | null
+          paired_at: string | null
+          pairing_token: string | null
+          pairing_token_expires_at: string | null
+          status: string
+          tenant_id: string
+        }
+        Insert: {
+          agent_version?: string | null
+          created_at?: string
+          device_id: string
+          device_name?: string | null
+          id?: string
+          last_seen_at?: string | null
+          paired_at?: string | null
+          pairing_token?: string | null
+          pairing_token_expires_at?: string | null
+          status?: string
+          tenant_id: string
+        }
+        Update: {
+          agent_version?: string | null
+          created_at?: string
+          device_id?: string
+          device_name?: string | null
+          id?: string
+          last_seen_at?: string | null
+          paired_at?: string | null
+          pairing_token?: string | null
+          pairing_token_expires_at?: string | null
+          status?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_print_agents_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_print_settings: {
         Row: {
           agent_endpoint: string | null
+          bar_printer_name: string | null
+          default_printer_name: string | null
+          kitchen_printer_name: string | null
           paper_width: string
           print_mode: string
           printer_profile: string
@@ -11989,6 +12042,9 @@ export type Database = {
         }
         Insert: {
           agent_endpoint?: string | null
+          bar_printer_name?: string | null
+          default_printer_name?: string | null
+          kitchen_printer_name?: string | null
           paper_width?: string
           print_mode?: string
           printer_profile?: string
@@ -11997,6 +12053,9 @@ export type Database = {
         }
         Update: {
           agent_endpoint?: string | null
+          bar_printer_name?: string | null
+          default_printer_name?: string | null
+          kitchen_printer_name?: string | null
           paper_width?: string
           print_mode?: string
           printer_profile?: string
@@ -14198,6 +14257,9 @@ export type Database = {
         Args: { p_tenant_id: string }
         Returns: {
           agent_endpoint: string | null
+          bar_printer_name: string | null
+          default_printer_name: string | null
+          kitchen_printer_name: string | null
           paper_width: string
           print_mode: string
           printer_profile: string
