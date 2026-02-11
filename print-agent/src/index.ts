@@ -15,11 +15,9 @@ const ALLOWED_ORIGINS = [
 ];
 
 function isAllowedOrigin(origin?: string): boolean {
-  if (!origin) return true; // same-origin / non-browser
+  if (!origin) return true;
   if (ALLOWED_ORIGINS.includes(origin)) return true;
-  // Allow any *.lovable.app preview
   if (/^https:\/\/.*\.lovable\.app$/.test(origin)) return true;
-  // Allow localhost/127.0.0.1 for dev
   if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return true;
   return false;
 }
@@ -52,7 +50,7 @@ app.use(express.json({ limit: '2mb' }));
 
 // Routes
 app.use('/', healthRouter(config));
-app.use('/', printersRouter());
+app.use('/', printersRouter(config));
 app.use('/', printRouter(config));
 
 // 404
@@ -70,7 +68,8 @@ const port = config.port;
 app.listen(port, '0.0.0.0', () => {
   console.log(`\n  ╔══════════════════════════════════════════╗`);
   console.log(`  ║  FoodHub Print Agent v${config.version}            ║`);
+  console.log(`  ║  Modo: ESC/POS via Spooler              ║`);
   console.log(`  ║  Rodando em http://localhost:${port}        ║`);
-  console.log(`  ║  Pronto para impressão 1-clique!         ║`);
+  console.log(`  ║  Pronto para impressão térmica!          ║`);
   console.log(`  ╚══════════════════════════════════════════╝\n`);
 });

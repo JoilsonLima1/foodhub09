@@ -24,6 +24,15 @@ const paymentMethodLabels: Record<string, string> = {
   mixed: 'Misto',
 };
 
+interface ReceiptLine {
+  type: 'text' | 'bold' | 'separator' | 'cut' | 'feed' | 'pair';
+  value?: string;
+  align?: 'left' | 'center' | 'right';
+  left?: string;
+  right?: string;
+  lines?: number;
+}
+
 interface ReceiptDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -56,7 +65,6 @@ export function ReceiptDialog({
   const [isPrinting, setIsPrinting] = useState(false);
   const [isDiagnosing, setIsDiagnosing] = useState(false);
 
-  // Apply paper width CSS variable from config
   useEffect(() => {
     if (open) {
       const config = getPrinterConfig();
@@ -66,46 +74,63 @@ export function ReceiptDialog({
 
   const getAgentEndpoint = () => settings?.agent_endpoint || 'http://127.0.0.1:8123';
 
-  const buildHTML = () => {
-    const config = getPrinterConfig();
-    const paperWidth = config.paperWidth.replace('mm', '') as PaperWidthMM;
-    const now = new Date();
-
-    return {
-      html: buildReceiptHTML({
-        tenantName,
-        tenantLogo,
-        orderNumber,
-        dateStr: now.toLocaleDateString('pt-BR'),
-        timeStr: now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-        cashierName,
-        items: items.map((item, index) => ({
-          index: index + 1,
-          name: item.productName,
-          variationName: item.variationName,
-          quantity: item.quantity,
-          unitPrice: item.unitPrice,
-          totalPrice: item.totalPrice,
-          notes: item.notes,
-        })),
-        subtotal,
-        total,
-        paymentMethodLabel: paymentMethodLabels[paymentMethod] || paymentMethod,
-      }),
-      paperWidth,
-    };
-  };
-
-  /** Find the "caixa" route: prefer route_type 'recibo', fallback to label 'caixa' */
   const findCaixaRoute = () => {
-    // First try route_type ilike 'recibo'
     const recibo = routes.find(r => r.route_type.toLowerCase() === 'recibo');
     if (recibo) return recibo;
-    // Fallback: label ilike 'caixa' or route_type 'caixa'
     const caixa = routes.find(
       r => r.route_type.toLowerCase() === 'caixa' || r.label.toLowerCase() === 'caixa'
     );
     return caixa || null;
+  };
+
+  const formatCurrency = (value: number) =>
+    value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+  /** Build structured ESC/POS lines for the agent */
+  const buildReceiptLines = (): ReceiptLine[] => {
+    const now = new Date();
+    const date = now.toLocaleDateString('pt-BR');
+    const time = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+    const lines: ReceiptLine[] = [
+      { type: 'bold', value: tenantName, align: 'center' },
+      { type: 'separator' },
+      { type: 'bold', value: `PEDIDO #${orderNumber}`, align: 'center' },
+      { type: 'pair', left: 'Data:', right: `${date} ${time}` },
+      { type: 'pair', left: 'Caixa:', right: cashierName },
+      { type: 'separator' },
+    ];
+
+    // Items
+    items.forEach((item, i) => {
+      const name = item.variationName
+        ? `${item.productName} (${item.variationName})`
+        : item.productName;
+      lines.push({ type: 'text', value: `${i + 1}. ${name}` });
+      lines.push({
+        type: 'pair',
+        left: `   ${item.quantity}x ${formatCurrency(item.unitPrice)}`,
+        right: formatCurrency(item.totalPrice),
+      });
+      if (item.notes) {
+        lines.push({ type: 'text', value: `   Obs: ${item.notes}` });
+      }
+    });
+
+    lines.push({ type: 'separator' });
+    lines.push({ type: 'pair', left: 'Subtotal:', right: formatCurrency(subtotal) });
+    lines.push({ type: 'bold', value: `TOTAL: ${formatCurrency(total)}`, align: 'right' });
+    lines.push({
+      type: 'pair',
+      left: 'Pagamento:',
+      right: paymentMethodLabels[paymentMethod] || paymentMethod,
+    });
+    lines.push({ type: 'separator' });
+    lines.push({ type: 'text', value: 'Obrigado pela preferência!', align: 'center' });
+    lines.push({ type: 'feed', lines: 3 });
+    lines.push({ type: 'cut' });
+
+    return lines;
   };
 
   const handlePrint = async () => {
@@ -113,73 +138,73 @@ export function ReceiptDialog({
     setIsPrinting(true);
 
     try {
-      const { html, paperWidth } = buildHTML();
       const endpoint = getAgentEndpoint();
-
-      // 1. Find caixa route
       const caixaRoute = findCaixaRoute();
-      console.log('[PRINT] rota caixa:', caixaRoute);
-      console.log('[PRINT] settings.print_mode:', settings?.print_mode);
-      console.log('[PRINT] agent_endpoint:', endpoint);
 
-      // 2. Only attempt agent if mode is AGENT
+      // Only attempt agent if mode is AGENT
       if (settings?.print_mode === 'AGENT') {
-        const isInIframe = window.self !== window.top;
         const isHTTPS = window.location.protocol === 'https:';
         const endpointIsHTTP = endpoint.startsWith('http://');
+        const isInIframe = window.self !== window.top;
 
-        // Warn if Mixed Content will likely block
         if (isHTTPS && endpointIsHTTP) {
-          console.warn('[PRINT] ⚠ HTTPS→HTTP: navegador pode bloquear. Publique o app e acesse pelo domínio publicado.');
+          console.warn('[PRINT] ⚠ HTTPS→HTTP: navegador pode bloquear.');
         }
 
-        if (!caixaRoute?.printer_name) {
-          console.log('[PRINT] Rota Caixa sem printer_name, usando impressora padrão do Agent');
-        }
+        const pw = Number(caixaRoute?.paper_width || settings.paper_width) === 58 ? 58 : 80;
+        const receiptLines = buildReceiptLines();
 
-        const pw = Number(caixaRoute?.paper_width || paperWidth) === 58 ? 58 : 80;
         const body: Record<string, unknown> = {
-          html,
+          lines: receiptLines,
           larguraDoPapel: pw,
         };
         if (caixaRoute?.printer_name) {
           body.nomeDaImpressora = caixaRoute.printer_name;
         }
 
-        console.log('[PRINT] POST /imprimir/recibo → printer:', body.nomeDaImpressora || '(padrão)', 'pw:', pw);
+        console.log('[PRINT] POST /print → printer:', body.nomeDaImpressora || '(padrão)', 'pw:', pw);
         toast({ title: '🖨️ Enviando para Agent...' });
 
         try {
-          const postResp = await fetch(`${endpoint}/imprimir/recibo`, {
+          const resp = await fetch(`${endpoint}/print`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body),
             signal: AbortSignal.timeout(15000),
           });
 
-          const postData = await postResp.json().catch(() => ({}));
-          console.log('[PRINT] post status:', postResp.status, 'body:', postData);
+          const data = await resp.json().catch(() => ({}));
+          console.log('[PRINT] response:', resp.status, data);
 
-          if (postResp.ok) {
+          if (resp.ok) {
             toast({
-              title: '✓ Impresso via Agent',
+              title: '✓ Impresso via ESC/POS',
               description: caixaRoute?.printer_name
                 ? `Impressora: ${caixaRoute.printer_name}`
                 : 'Impressora padrão do sistema',
             });
           } else {
-            // POST failed but we TRIED the agent — do NOT open browser dialog
-            const errMsg = (postData as any)?.message || (postData as any)?.error || `HTTP ${postResp.status}`;
-            toast({
-              title: 'Erro na impressão (Agent)',
-              description: errMsg,
-              variant: 'destructive',
-            });
+            const errMsg = (data as any)?.message || (data as any)?.error || `HTTP ${resp.status}`;
+            const code = (data as any)?.code || '';
+
+            if (code === 'PRINTER_NOT_FOUND') {
+              toast({
+                title: 'Impressora não encontrada',
+                description: 'Abra o Diagnóstico do Agent e configure a impressora padrão.',
+                variant: 'destructive',
+                duration: 8000,
+              });
+            } else {
+              toast({
+                title: 'Erro na impressão (Agent)',
+                description: errMsg,
+                variant: 'destructive',
+              });
+            }
           }
-          // Agent was reachable — return WITHOUT browser print
+          // Agent was reachable — do NOT fall through to browser print
           return;
         } catch (fetchErr) {
-          // Network error = agent truly unreachable
           console.error('[PRINT] Agent unreachable:', fetchErr);
 
           if (isInIframe || (isHTTPS && endpointIsHTTP)) {
@@ -196,19 +221,41 @@ export function ReceiptDialog({
               variant: 'destructive',
             });
           }
-          // Fall through to browser print only when agent is unreachable
+          // Fall through to browser print
         }
       }
 
-      // Fallback: browser print (only reached if agent unreachable or mode != AGENT)
+      // Fallback: browser print
       console.log('[PRINT] Usando impressão do navegador (fallback)');
+      const config = getPrinterConfig();
+      const paperWidth = config.paperWidth.replace('mm', '') as PaperWidthMM;
+      const html = buildReceiptHTML({
+        tenantName,
+        tenantLogo,
+        orderNumber,
+        dateStr: new Date().toLocaleDateString('pt-BR'),
+        timeStr: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+        cashierName,
+        items: items.map((item, index) => ({
+          index: index + 1,
+          name: item.productName,
+          variationName: item.variationName,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          totalPrice: item.totalPrice,
+          notes: item.notes,
+        })),
+        subtotal,
+        total,
+        paymentMethodLabel: paymentMethodLabels[paymentMethod] || paymentMethod,
+      });
       printReceiptHTML(html, paperWidth);
     } finally {
       setIsPrinting(false);
     }
   };
 
-  /** Diagnostic: check agent health + printers */
+  /** Diagnostic: check agent health + printers + config */
   const handleDiagnostic = async () => {
     setIsDiagnosing(true);
     const endpoint = getAgentEndpoint();
@@ -224,35 +271,39 @@ export function ReceiptDialog({
         const data = await resp.json().catch(() => ({}));
         results.push(`Health: ${resp.ok ? '✅ OK' : '❌ FAIL'} (${resp.status})`);
         if (data.version) results.push(`Versão: ${data.version}`);
+        if (data.mode) results.push(`Modo: ${data.mode}`);
         if (data.uptime != null) results.push(`Uptime: ${data.uptime}s`);
       } catch {
         results.push('Health: ❌ Não conseguiu conectar');
       }
 
-      // Printers
+      // Diagnostic endpoint
       try {
-        const resp = await fetch(`${endpoint}/impressoras`, {
+        const resp = await fetch(`${endpoint}/diagnostic`, {
           method: 'GET',
           signal: AbortSignal.timeout(3000),
         });
         const data = await resp.json().catch(() => ({}));
-        const printers = (data as any)?.impressoras || (data as any)?.printers || [];
-        const defaultP = (data as any)?.impressoraPadrao || (data as any)?.defaultPrinter || 'N/A';
-        results.push(`Impressoras: ${printers.length} encontrada(s)`);
-        results.push(`Padrão: ${defaultP}`);
-        if (printers.length > 0) {
-          const names = printers.map((p: any) => typeof p === 'string' ? p : p.nome || p.name).join(', ');
-          results.push(`Lista: ${names}`);
+        results.push(`Impressoras: ${data.printers_detected_count || 0} encontrada(s)`);
+        results.push(`Padrão (Agent): ${data.printer_default || 'N/A'}`);
+        if (data.printers_detected?.length > 0) {
+          results.push(`Lista: ${data.printers_detected.join(', ')}`);
+        }
+        if (data.last_error) {
+          results.push(`Último erro: ${data.last_error}`);
         }
       } catch {
-        results.push('Impressoras: ❌ Não conseguiu consultar');
+        results.push('Diagnóstico: ❌ Não conseguiu consultar');
       }
 
       // Route info
       const caixaRoute = findCaixaRoute();
       results.push(`Rota Caixa: ${caixaRoute ? `"${caixaRoute.label}" → ${caixaRoute.printer_name || '(sem impressora)'}` : '❌ Não encontrada'}`);
-      results.push(`Modo: ${settings?.print_mode || 'N/A'}`);
       results.push(`Endpoint: ${endpoint}`);
+
+      if (!caixaRoute?.printer_name) {
+        results.push('⚠ Configure uma impressora na Rota Caixa ou defina a padrão no Agent.');
+      }
 
       toast({
         title: '🔍 Diagnóstico do Agent',
@@ -309,7 +360,6 @@ export function ReceiptDialog({
           </Button>
         </div>
 
-        {/* Diagnostic button — only show when AGENT mode */}
         {settings?.print_mode === 'AGENT' && (
           <Button
             variant="ghost"
