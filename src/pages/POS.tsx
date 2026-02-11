@@ -380,6 +380,11 @@ export default function POS() {
           <div className="flex items-center gap-2">
             <Calculator className="h-5 w-5" />
             <h1 className="text-xl font-bold">PDV</h1>
+            {(new URLSearchParams(window.location.search).has('kiosk') || localStorage.getItem('enable_kiosk_mode') === 'true') && (
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5">
+                Modo Caixa
+              </Badge>
+            )}
           </div>
           
           {/* Display Mode Toggle */}

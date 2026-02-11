@@ -111,12 +111,18 @@ export const ReceiptPrint = forwardRef<HTMLDivElement, ReceiptPrintProps>(
           <p className="mt-1">Volte sempre!</p>
         </div>
 
-        {/* Print-only styles — thermal optimized */}
+        {/* Print-only styles — thermal optimized for 58mm/80mm */}
         <style>{`
           @media print {
             @page {
+              size: var(--receipt-width, 80mm) auto;
               margin: 0;
-              size: auto;
+            }
+            html, body {
+              margin: 0 !important;
+              padding: 0 !important;
+              width: var(--receipt-width, 80mm) !important;
+              background: #fff !important;
             }
             body * {
               visibility: hidden;
@@ -129,16 +135,25 @@ export const ReceiptPrint = forwardRef<HTMLDivElement, ReceiptPrintProps>(
               left: 0;
               top: 0;
               width: var(--receipt-width, 80mm);
+              max-width: var(--receipt-width, 80mm);
               padding: 2mm;
               font-size: 9pt;
-              font-family: 'Courier New', monospace;
+              font-family: 'Courier New', 'Lucida Console', monospace;
               color: #000 !important;
               background: #fff !important;
               line-height: 1.3;
+              transform: none !important;
+              zoom: 1 !important;
             }
             .receipt-print img {
-              max-height: 10mm;
+              max-height: 12mm;
               filter: grayscale(1) contrast(2);
+            }
+            .receipt-print .flex {
+              display: flex;
+            }
+            .receipt-print .justify-between {
+              justify-content: space-between;
             }
           }
         `}</style>
