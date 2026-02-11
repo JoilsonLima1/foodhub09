@@ -38,13 +38,19 @@ export function WooviCredentialsPanel({ scope, scopeId, pspProviderId }: Props) 
           .maybeSingle();
         return data;
       } else {
-        const { data } = await supabase
+        let query = supabase
           .from('pix_platform_credentials')
           .select('*')
           .eq('psp_provider_id', pspProviderId)
-          .eq('scope', scope)
-          .eq('scope_id', scopeId || null)
-          .maybeSingle();
+          .eq('scope', scope);
+        
+        if (scopeId) {
+          query = query.eq('scope_id', scopeId);
+        } else {
+          query = query.is('scope_id', null);
+        }
+        
+        const { data } = await query.maybeSingle();
         return data;
       }
     },
