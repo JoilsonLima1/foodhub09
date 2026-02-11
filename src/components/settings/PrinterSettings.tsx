@@ -6,10 +6,11 @@ import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Printer, TestTube, CheckCircle, HelpCircle, Zap, Wifi, WifiOff, Loader2, ExternalLink } from 'lucide-react';
+import { Printer, TestTube, CheckCircle, HelpCircle, Zap, Wifi, WifiOff, Loader2, ExternalLink, Monitor } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ReceiptPrint } from '@/components/pos/ReceiptPrint';
 import { PrinterHelpModal } from './PrinterHelpModal';
+import { KioskHelpModal } from './KioskHelpModal';
 import { DefaultPrinterCallout } from './DefaultPrinterCallout';
 import { useTenantPrintSettings, type TenantPrintSettings } from '@/hooks/useTenantPrintSettings';
 import type { CartItem } from '@/types/database';
@@ -63,6 +64,7 @@ export function PrinterSettings() {
   const [local, setLocal] = useState<TenantPrintSettings | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [showKioskHelp, setShowKioskHelp] = useState(false);
   const [testingAgent, setTestingAgent] = useState(false);
   const receiptRef = useRef<HTMLDivElement>(null);
 
@@ -188,28 +190,73 @@ export function PrinterSettings() {
         </CardContent>
       </Card>
 
-      {/* Agent Mode */}
+      {/* Print Mode */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
-            <Zap className="h-4 w-4" /> Impressão 1-Clique (Opcional)
+            <Printer className="h-4 w-4" /> Modo de Impressão
           </CardTitle>
           <CardDescription>
-            Requer instalar o FoodHub Print no computador. Após instalado, o botão imprimir sai direto sem janela.
+            Escolha como o cupom será impresso no PDV.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <Label>Ativar modo Agent</Label>
-              <p className="text-xs text-muted-foreground">Impressão direta sem diálogo do navegador</p>
+          <RadioGroup
+            value={local.print_mode}
+            onValueChange={(v: TenantPrintSettings['print_mode']) => update({ print_mode: v })}
+            className="space-y-3"
+          >
+            {/* Browser */}
+            <div className="relative">
+              <RadioGroupItem value="BROWSER" id="mode-browser" className="peer sr-only" />
+              <Label htmlFor="mode-browser" className="flex items-start gap-3 rounded-lg border-2 border-muted bg-card p-4 cursor-pointer transition-all hover:bg-accent peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5">
+                <Monitor className="h-5 w-5 mt-0.5 shrink-0" />
+                <div>
+                  <span className="font-medium">Navegador (Padrão)</span>
+                  <p className="text-xs text-muted-foreground mt-0.5">Abre a janela de seleção de impressora do sistema. Funciona em qualquer navegador.</p>
+                </div>
+              </Label>
             </div>
-            <Switch
-              checked={local.print_mode === 'AGENT'}
-              onCheckedChange={(checked) => update({ print_mode: checked ? 'AGENT' : 'BROWSER' })}
-            />
-          </div>
 
+            {/* Kiosk */}
+            <div className="relative">
+              <RadioGroupItem value="KIOSK" id="mode-kiosk" className="peer sr-only" />
+              <Label htmlFor="mode-kiosk" className="flex items-start gap-3 rounded-lg border-2 border-muted bg-card p-4 cursor-pointer transition-all hover:bg-accent peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5">
+                <Zap className="h-5 w-5 mt-0.5 shrink-0" />
+                <div>
+                  <span className="font-medium">Kiosk (Sem diálogo – igual iFood)</span>
+                  <p className="text-xs text-muted-foreground mt-0.5">Imprime direto na impressora padrão sem abrir janela. Requer Chrome com flags especiais.</p>
+                </div>
+              </Label>
+            </div>
+
+            {/* Agent */}
+            <div className="relative">
+              <RadioGroupItem value="AGENT" id="mode-agent" className="peer sr-only" />
+              <Label htmlFor="mode-agent" className="flex items-start gap-3 rounded-lg border-2 border-muted bg-card p-4 cursor-pointer transition-all hover:bg-accent peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5">
+                <ExternalLink className="h-5 w-5 mt-0.5 shrink-0" />
+                <div>
+                  <span className="font-medium">Agent (FoodHub Print)</span>
+                  <p className="text-xs text-muted-foreground mt-0.5">Envia comandos para o agente local instalado no computador. Requer software adicional.</p>
+                </div>
+              </Label>
+            </div>
+          </RadioGroup>
+
+          {/* Kiosk info */}
+          {local.print_mode === 'KIOSK' && (
+            <div className="space-y-3 pt-2 border-t">
+              <div className="rounded-md bg-primary/5 border border-primary/20 p-3 text-xs text-foreground space-y-1">
+                <p className="font-medium">🖨️ Kiosk ativo — impressão silenciosa</p>
+                <p className="text-muted-foreground">O código de impressão é o mesmo do modo Browser. A diferença é que o Chrome iniciado com <code className="bg-muted px-1 rounded">--kiosk-printing</code> envia direto para a impressora padrão.</p>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => setShowKioskHelp(true)}>
+                <HelpCircle className="h-4 w-4 mr-1" /> Como configurar o Chrome Kiosk
+              </Button>
+            </div>
+          )}
+
+          {/* Agent config */}
           {local.print_mode === 'AGENT' && (
             <div className="space-y-3 pt-2 border-t">
               <div className="space-y-2">
@@ -269,6 +316,7 @@ export function PrinterSettings() {
       )}
 
       <PrinterHelpModal open={showHelp} onOpenChange={setShowHelp} />
+      <KioskHelpModal open={showKioskHelp} onOpenChange={setShowKioskHelp} />
     </div>
   );
 }
