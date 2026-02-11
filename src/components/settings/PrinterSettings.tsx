@@ -285,9 +285,9 @@ export function PrinterSettings() {
                 <Label>Endpoint do Agente</Label>
                 <div className="flex gap-2">
                   <Input
-                    value={local.agent_endpoint || 'http://127.0.0.1:9123'}
+                    value={local.agent_endpoint || 'http://127.0.0.1:8123'}
                     onChange={(e) => update({ agent_endpoint: e.target.value })}
-                    placeholder="http://127.0.0.1:9123"
+                    placeholder="http://127.0.0.1:8123"
                     className="font-mono text-sm"
                   />
                   <Button variant="outline" size="sm" onClick={handleTestAgent} disabled={testingAgent}>

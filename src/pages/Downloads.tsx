@@ -4,15 +4,16 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import {
   Printer, Download, Monitor, Zap, Shield, CheckCircle,
-  Settings, FileText, HelpCircle, ChevronRight, Cpu, Globe, ArrowLeft,
+  Settings, FileText, HelpCircle, ChevronRight, Cpu, Globe, ArrowLeft, Loader2,
 } from 'lucide-react';
 import { useState } from 'react';
 import { KioskHelpModal } from '@/components/settings/KioskHelpModal';
 import { useNavigate } from 'react-router-dom';
+import { usePrintAgentSettings } from '@/hooks/usePrintAgentSettings';
 
 const FEATURES = [
   { icon: Zap, title: 'Impressão silenciosa', desc: 'Imprime direto na térmica sem diálogo do navegador.' },
-  { icon: Shield, title: 'Conexão segura', desc: 'Comunicação local via HTTP na porta 9123, sem expor dados à internet.' },
+  { icon: Shield, title: 'Conexão segura', desc: 'Comunicação local via HTTP na porta configurada, sem expor dados à internet.' },
   { icon: Settings, title: 'Auto-detecta impressora', desc: 'Reconhece modelos Epson, Elgin, Bematech, Daruma e genéricas ESC/POS.' },
   { icon: Cpu, title: 'Leve e discreto', desc: 'Roda em segundo plano consumindo menos de 20 MB de memória.' },
 ];
@@ -45,6 +46,10 @@ const FAQ = [
 export default function Downloads() {
   const [showKioskHelp, setShowKioskHelp] = useState(false);
   const navigate = useNavigate();
+  const { data: agentUrls, isLoading } = usePrintAgentSettings();
+
+  const hasWindowsUrl = agentUrls.windows_url && agentUrls.windows_url !== '#';
+  const hasMacUrl = agentUrls.mac_url && agentUrls.mac_url !== '#';
 
   return (
     <div className="container mx-auto py-8 px-4 max-w-3xl space-y-6">
@@ -90,26 +95,38 @@ export default function Downloads() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Button
-              variant="outline"
-              className="h-auto py-4 flex-col gap-1.5"
-              disabled
-            >
-              <Monitor className="h-6 w-6" />
-              <span className="font-medium">Windows</span>
-              <span className="text-[10px] text-muted-foreground">Windows 10+ • 64-bit • Em breve</span>
-            </Button>
-            <Button
-              variant="outline"
-              className="h-auto py-4 flex-col gap-1.5"
-              disabled
-            >
-              <Globe className="h-6 w-6" />
-              <span className="font-medium">macOS</span>
-              <span className="text-[10px] text-muted-foreground">macOS 12+ • Intel/Apple Silicon • Em breve</span>
-            </Button>
-          </div>
+          {isLoading ? (
+            <div className="flex justify-center py-6">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Button
+                variant="outline"
+                className="h-auto py-4 flex-col gap-1.5"
+                disabled={!hasWindowsUrl}
+                onClick={() => hasWindowsUrl && window.open(agentUrls.windows_url, '_blank')}
+              >
+                <Monitor className="h-6 w-6" />
+                <span className="font-medium">Windows</span>
+                <span className="text-[10px] text-muted-foreground">
+                  Windows 10+ • 64-bit • {hasWindowsUrl ? 'Baixar agora' : 'Em breve'}
+                </span>
+              </Button>
+              <Button
+                variant="outline"
+                className="h-auto py-4 flex-col gap-1.5"
+                disabled={!hasMacUrl}
+                onClick={() => hasMacUrl && window.open(agentUrls.mac_url, '_blank')}
+              >
+                <Globe className="h-6 w-6" />
+                <span className="font-medium">macOS</span>
+                <span className="text-[10px] text-muted-foreground">
+                  macOS 12+ • Intel/Apple Silicon • {hasMacUrl ? 'Baixar agora' : 'Em breve'}
+                </span>
+              </Button>
+            </div>
+          )}
           <p className="text-[11px] text-muted-foreground text-center">
             Versão 1.0.0 • Nenhuma conta adicional é necessária.
           </p>
