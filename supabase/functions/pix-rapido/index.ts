@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { createHmac } from "https://deno.land/std@0.190.0/crypto/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -25,6 +26,81 @@ function successResponse(data: any) {
   );
 }
 
+// ============================================================
+// WOOVI API HELPERS
+// ============================================================
+const WOOVI_API_BASE = "https://api.openpix.com.br/api/openpix/v1";
+
+async function wooviCreateCharge(apiKey: string, params: {
+  correlationID: string;
+  value: number; // cents
+  comment?: string;
+  expiresIn?: number; // seconds
+}) {
+  const response = await fetch(`${WOOVI_API_BASE}/charge`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": apiKey,
+    },
+    body: JSON.stringify({
+      correlationID: params.correlationID,
+      value: params.value,
+      comment: params.comment || "PIX Rápido",
+      expiresIn: params.expiresIn || 1800, // 30 min default
+    }),
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    logStep("Woovi API error", { status: response.status, body: data });
+    throw new Error(data?.error || `Woovi API error: ${response.status}`);
+  }
+  return data;
+}
+
+async function wooviGetCharge(apiKey: string, correlationID: string) {
+  const response = await fetch(`${WOOVI_API_BASE}/charge/${correlationID}`, {
+    method: "GET",
+    headers: {
+      "Authorization": apiKey,
+    },
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data?.error || `Woovi status error: ${response.status}`);
+  }
+  return data;
+}
+
+function verifyWooviWebhook(payload: string, signature: string, webhookSecret: string): boolean {
+  try {
+    const hmac = createHmac("sha256", webhookSecret);
+    hmac.update(payload);
+    const expected = hmac.toString();
+    return expected === signature;
+  } catch {
+    return false;
+  }
+}
+
+async function testWooviConnection(apiKey: string): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const response = await fetch(`${WOOVI_API_BASE}/charge?skip=0&limit=1`, {
+      method: "GET",
+      headers: { "Authorization": apiKey },
+    });
+    if (response.ok) return { ok: true };
+    const data = await response.json();
+    return { ok: false, error: data?.error || `HTTP ${response.status}` };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Connection failed" };
+  }
+}
+
+// ============================================================
+// MAIN HANDLER
+// ============================================================
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -41,7 +117,13 @@ serve(async (req) => {
     // Webhook doesn't need auth
     if (action === "webhook") {
       const supabase = createClient(supabaseUrl, supabaseServiceKey);
-      return await handleWebhook(supabase, body);
+      return await handleWebhook(supabase, body, req);
+    }
+
+    // Test connection (super admin only, but also tenant)
+    if (action === "test-connection") {
+      const supabase = createClient(supabaseUrl, supabaseServiceKey);
+      return await handleTestConnection(supabase, body);
     }
 
     // All other actions need auth
@@ -78,7 +160,7 @@ serve(async (req) => {
 });
 
 // ============================================================
-// RESOLVE CONFIG - get available PIX options for a tenant
+// RESOLVE CONFIG
 // ============================================================
 async function handleResolveConfig(supabase: any, body: any) {
   const { tenant_id } = body;
@@ -91,6 +173,21 @@ async function handleResolveConfig(supabase: any, body: any) {
   }
 
   return successResponse({ options: data || [] });
+}
+
+// ============================================================
+// TEST CONNECTION
+// ============================================================
+async function handleTestConnection(supabase: any, body: any) {
+  const { api_key, psp_name } = body;
+  if (!api_key) return errorResponse(400, "MISSING_KEY", "api_key obrigatório");
+
+  if (psp_name === "woovi" || psp_name === "openpix") {
+    const result = await testWooviConnection(api_key);
+    return successResponse({ connected: result.ok, error: result.error });
+  }
+
+  return errorResponse(400, "UNSUPPORTED_PSP", "PSP não suportado para teste");
 }
 
 // ============================================================
@@ -126,43 +223,63 @@ async function handleCreate(supabase: any, body: any, userId: string) {
   const fixedRate = pspConfig?.fixed_rate || psp.default_fixed_fee;
   const minFee = pspConfig?.min_fee || 0;
   const maxFee = pspConfig?.max_fee || null;
-  
+
   let platformFee = amount * percentRate + fixedRate;
   platformFee = Math.max(platformFee, minFee);
   if (maxFee) platformFee = Math.min(platformFee, maxFee);
   platformFee = Math.round(platformFee * 100) / 100;
 
-  // Generate TXID
-  const txid = `pxr_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
-  
-  // Get tenant PSP account for API credentials
-  const { data: tenantAccount } = await supabase
-    .from('tenant_psp_accounts')
-    .select('*')
-    .eq('tenant_id', tenant_id)
-    .eq('psp_provider_id', psp_provider_id)
-    .eq('is_enabled', true)
-    .single();
+  // Generate correlation ID
+  const correlationID = `pxr_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
 
-  let qrCode = null;
-  let qrCodeUrl = null;
-  let pixKey = null;
-  let expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString(); // 30min default
+  // Resolve credentials for this tenant + PSP
+  const { data: credResult } = await supabase.rpc('resolve_pix_credentials', {
+    p_tenant_id: tenant_id,
+    p_psp_provider_id: psp_provider_id,
+  });
 
-  // If we have real PSP credentials, call the API
-  // For now, generate a simulated QR code for development
-  if (psp.name === 'openpix' && tenantAccount?.api_key_encrypted) {
-    // Real OpenPix integration would go here
-    logStep("Would call OpenPix API", { txid });
-  } else if (psp.name === 'woovi' && tenantAccount?.api_key_encrypted) {
-    logStep("Would call Woovi API", { txid });
-  } else if (psp.name === 'celcoin' && tenantAccount?.api_key_encrypted) {
-    logStep("Would call Celcoin API", { txid });
+  const credentials = credResult || { source: 'none', api_key: null };
+
+  let qrCode: string | null = null;
+  let qrCodeUrl: string | null = null;
+  let pspChargeId: string | null = null;
+  let expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+  let txid = correlationID;
+
+  // Real Woovi/OpenPix integration
+  if ((psp.name === 'woovi' || psp.name === 'openpix') && credentials.api_key) {
+    try {
+      logStep("Calling Woovi API", { correlationID, amount });
+      const amountCents = Math.round(amount * 100);
+      const wooviResult = await wooviCreateCharge(credentials.api_key, {
+        correlationID,
+        value: amountCents,
+        comment: description || `PIX Rápido - Pedido`,
+        expiresIn: 1800,
+      });
+
+      const charge = wooviResult.charge || wooviResult;
+      qrCode = charge.brCode || charge.pixQrCode || null;
+      qrCodeUrl = charge.qrCodeImage || null;
+      pspChargeId = charge.identifier || charge.globalID || null;
+      txid = charge.transactionID || charge.correlationID || correlationID;
+
+      if (charge.expiresDate) {
+        expiresAt = charge.expiresDate;
+      }
+
+      logStep("Woovi charge created", { txid, pspChargeId, hasQr: !!qrCode });
+    } catch (wooviError) {
+      const errMsg = wooviError instanceof Error ? wooviError.message : "Erro Woovi";
+      logStep("Woovi API failed", { error: errMsg });
+      return errorResponse(502, "PSP_ERROR", `Erro ao criar cobrança PIX: ${errMsg}`);
+    }
+  } else if (!credentials.api_key) {
+    // No credentials configured - return simulation for development
+    logStep("No credentials - using simulation", { psp: psp.name });
+    qrCode = `00020126580014br.gov.bcb.pix0136${correlationID}5204000053039865802BR5925FOODHUB PIX RAPIDO6009SAO PAULO62070503***6304`;
+    qrCodeUrl = null;
   }
-
-  // For development/simulation: generate a fake PIX payload
-  qrCode = `00020126580014br.gov.bcb.pix0136${txid}5204000053039865802BR5925FOODHUB PIX RAPIDO6009SAO PAULO62070503***6304`;
-  qrCodeUrl = null; // Real PSPs return an image URL
 
   // Insert transaction record
   const { data: txRecord, error: txError } = await supabase
@@ -172,20 +289,22 @@ async function handleCreate(supabase: any, body: any, userId: string) {
       order_id: order_id || null,
       psp_provider_id,
       txid,
+      psp_charge_id: pspChargeId,
+      psp_correlation_id: correlationID,
       amount,
-      psp_fee: 0, // PSP fee is handled by the PSP
+      psp_fee: 0,
       platform_fee: platformFee,
       net_amount: amount - platformFee,
       pricing_plan_id: pspConfig?.pricing_plan_id || null,
       qr_code: qrCode,
       qr_code_url: qrCodeUrl,
-      pix_key: pixKey,
       status: 'pending',
       expires_at: expiresAt,
       metadata: {
         description: description || `PIX Rápido - ${txid}`,
         created_by: userId,
         psp_name: psp.name,
+        credential_source: credentials.source,
         fee_details: { percentRate, fixedRate, minFee, maxFee, calculatedFee: platformFee },
       },
     })
@@ -197,7 +316,7 @@ async function handleCreate(supabase: any, body: any, userId: string) {
     return errorResponse(500, "DB_ERROR", "Erro ao registrar transação PIX");
   }
 
-  logStep("PIX charge created", { txid, platformFee, amount });
+  logStep("PIX charge created", { txid, platformFee, amount, source: credentials.source });
 
   return successResponse({
     transaction_id: txRecord.id,
@@ -233,6 +352,77 @@ async function handleStatus(supabase: any, body: any) {
     return errorResponse(404, "TX_NOT_FOUND", "Transação não encontrada");
   }
 
+  // If pending and we have credentials, try checking PSP status
+  if (tx.status === 'pending' && tx.psp_correlation_id) {
+    try {
+      const { data: psp } = await supabase
+        .from('pix_psp_providers')
+        .select('name')
+        .eq('id', tx.psp_provider_id)
+        .single();
+
+      if (psp && (psp.name === 'woovi' || psp.name === 'openpix')) {
+        const { data: credResult } = await supabase.rpc('resolve_pix_credentials', {
+          p_tenant_id: tx.tenant_id,
+          p_psp_provider_id: tx.psp_provider_id,
+        });
+
+        if (credResult?.api_key) {
+          const wooviData = await wooviGetCharge(credResult.api_key, tx.psp_correlation_id);
+          const charge = wooviData.charge || wooviData;
+
+          if (charge.status === 'COMPLETED') {
+            // Update locally
+            await supabase
+              .from('pix_transactions')
+              .update({
+                status: 'paid',
+                paid_at: new Date().toISOString(),
+                e2e_id: charge.payer?.e2eId || null,
+              })
+              .eq('id', tx.id);
+
+            // Register ledger entry
+            if (tx.order_id && tx.platform_fee > 0) {
+              try {
+                await supabase.from('ledger_entries').insert({
+                  tenant_id: tx.tenant_id,
+                  entry_type: 'platform_fee',
+                  amount: tx.platform_fee,
+                  currency: 'BRL',
+                  reference_type: 'pix_transaction',
+                  reference_id: tx.id,
+                  description: `Taxa PIX Rápido - ${tx.txid}`,
+                  metadata: { psp_provider_id: tx.psp_provider_id, order_id: tx.order_id },
+                });
+              } catch { /* non-critical */ }
+            }
+
+            // Update order
+            if (tx.order_id) {
+              await supabase
+                .from('orders')
+                .update({ status: 'paid', payment_status: 'approved' })
+                .eq('id', tx.order_id);
+            }
+
+            return successResponse({
+              transaction_id: tx.id,
+              txid: tx.txid,
+              status: 'paid',
+              is_confirmed: true,
+              paid_at: new Date().toISOString(),
+              amount: tx.amount,
+              platform_fee: tx.platform_fee,
+            });
+          }
+        }
+      }
+    } catch (pollErr) {
+      logStep("PSP poll error (non-critical)", { error: pollErr instanceof Error ? pollErr.message : pollErr });
+    }
+  }
+
   return successResponse({
     transaction_id: tx.id,
     txid: tx.txid,
@@ -245,43 +435,92 @@ async function handleStatus(supabase: any, body: any) {
 }
 
 // ============================================================
-// WEBHOOK - receive payment confirmation from PSP
+// WEBHOOK - receive payment confirmation from Woovi/OpenPix
 // ============================================================
-async function handleWebhook(supabase: any, body: any) {
-  const { psp_name, txid, e2e_id, payload } = body;
+async function handleWebhook(supabase: any, body: any, req: Request) {
+  const { psp_name, event, charge, pix: pixArray } = body;
 
-  logStep("Webhook received", { psp_name, txid });
+  // Woovi sends: { event: "OPENPIX:CHARGE_COMPLETED", charge: {...} }
+  const isWooviEvent = body.event === "OPENPIX:CHARGE_COMPLETED" || body.event === "OPENPIX:CHARGE_EXPIRED";
+  const chargeData = body.charge || {};
 
-  if (!txid) {
-    return errorResponse(400, "MISSING_TXID", "txid obrigatório no webhook");
+  const correlationID = chargeData.correlationID || body.txid;
+  logStep("Webhook received", { event: body.event, correlationID });
+
+  if (!correlationID) {
+    return errorResponse(400, "MISSING_TXID", "correlationID/txid obrigatório no webhook");
   }
 
-  // Find the transaction
-  const { data: tx, error } = await supabase
+  // Find the transaction by correlation ID or txid
+  let tx = null;
+  const { data: txByCorr } = await supabase
     .from('pix_transactions')
     .select('*')
-    .eq('txid', txid)
-    .single();
+    .eq('psp_correlation_id', correlationID)
+    .maybeSingle();
 
-  if (error || !tx) {
-    logStep("Transaction not found for webhook", { txid });
+  tx = txByCorr;
+
+  if (!tx) {
+    const { data: txByTxid } = await supabase
+      .from('pix_transactions')
+      .select('*')
+      .eq('txid', correlationID)
+      .maybeSingle();
+    tx = txByTxid;
+  }
+
+  if (!tx) {
+    logStep("Transaction not found for webhook", { correlationID });
     return errorResponse(404, "TX_NOT_FOUND", "Transação não encontrada");
   }
 
+  // Validate webhook signature if we have a webhook secret
+  const wooviSignature = req.headers.get("x-webhook-secret") || req.headers.get("x-openpix-signature");
+  if (wooviSignature) {
+    const { data: credResult } = await supabase.rpc('resolve_pix_credentials', {
+      p_tenant_id: tx.tenant_id,
+      p_psp_provider_id: tx.psp_provider_id,
+    });
+    if (credResult?.webhook_secret) {
+      // Note: Woovi uses simple secret comparison, not HMAC
+      if (wooviSignature !== credResult.webhook_secret) {
+        logStep("Webhook signature mismatch", { correlationID });
+        return errorResponse(401, "INVALID_SIGNATURE", "Assinatura do webhook inválida");
+      }
+    }
+  }
+
   if (tx.status === 'paid') {
-    logStep("Transaction already paid", { txid });
+    logStep("Transaction already paid", { correlationID });
     return successResponse({ message: "Transação já confirmada" });
   }
 
-  // Update transaction
+  // Handle charge expired
+  if (body.event === "OPENPIX:CHARGE_EXPIRED") {
+    await supabase
+      .from('pix_transactions')
+      .update({
+        status: 'expired',
+        webhook_received_at: new Date().toISOString(),
+        webhook_payload: body,
+      })
+      .eq('id', tx.id);
+    logStep("Transaction expired via webhook", { correlationID });
+    return successResponse({ message: "Transação expirada" });
+  }
+
+  // Handle charge completed
+  const e2eId = pixArray?.[0]?.endToEndId || chargeData.payer?.e2eId || null;
+
   const { error: updateError } = await supabase
     .from('pix_transactions')
     .update({
       status: 'paid',
       paid_at: new Date().toISOString(),
-      e2e_id: e2e_id || null,
+      e2e_id: e2eId,
       webhook_received_at: new Date().toISOString(),
-      webhook_payload: payload || {},
+      webhook_payload: body,
     })
     .eq('id', tx.id);
 
@@ -290,7 +529,7 @@ async function handleWebhook(supabase: any, body: any) {
     return errorResponse(500, "UPDATE_ERROR", "Erro ao atualizar transação");
   }
 
-  // Register platform fee in ledger if there's an order
+  // Register platform fee in ledger
   if (tx.order_id && tx.platform_fee > 0) {
     try {
       await supabase.from('ledger_entries').insert({
@@ -323,6 +562,15 @@ async function handleWebhook(supabase: any, body: any) {
     logStep("Order updated to paid", { orderId: tx.order_id });
   }
 
-  logStep("Webhook processed successfully", { txid, e2e_id });
+  // Update last_webhook_at on credentials
+  try {
+    await supabase
+      .from('pix_platform_credentials')
+      .update({ last_webhook_at: new Date().toISOString(), last_webhook_status: 'ok' })
+      .eq('psp_provider_id', tx.psp_provider_id)
+      .eq('is_active', true);
+  } catch { /* non-critical */ }
+
+  logStep("Webhook processed successfully", { correlationID, e2eId });
   return successResponse({ message: "Pagamento confirmado" });
 }

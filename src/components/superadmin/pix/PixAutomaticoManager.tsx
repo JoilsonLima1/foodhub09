@@ -1,10 +1,11 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, Zap, Server, Tag, GitBranch, Calculator } from 'lucide-react';
+import { Loader2, Zap, Server, Tag, GitBranch, Calculator, KeyRound } from 'lucide-react';
 import { usePixAutomatico } from '@/hooks/usePixAutomatico';
 import { PixPspProvidersTab } from './PixPspProvidersTab';
 import { PixPricingPlansTab } from './PixPricingPlansTab';
 import { PixAvailabilityRulesTab } from './PixAvailabilityRulesTab';
 import { PixSimulatorTab } from './PixSimulatorTab';
+import { WooviCredentialsPanel } from './WooviCredentialsPanel';
 
 export function PixAutomaticoManager() {
   const {
@@ -59,6 +60,10 @@ export function PixAutomaticoManager() {
             <Calculator className="h-4 w-4" />
             Simulador
           </TabsTrigger>
+          <TabsTrigger value="credentials" className="flex items-center gap-2">
+            <KeyRound className="h-4 w-4" />
+            Credenciais
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="providers">
@@ -90,6 +95,17 @@ export function PixAutomaticoManager() {
 
         <TabsContent value="simulator">
           <PixSimulatorTab plans={pricingPlans} />
+        </TabsContent>
+
+        <TabsContent value="credentials">
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Credenciais de plataforma (escopo global) utilizadas como fallback para tenants sem credencial própria.
+            </p>
+            {providers.filter(p => p.name === 'woovi' || p.name === 'openpix').map(p => (
+              <WooviCredentialsPanel key={p.id} scope="platform" pspProviderId={p.id} />
+            ))}
+          </div>
         </TabsContent>
       </Tabs>
     </div>

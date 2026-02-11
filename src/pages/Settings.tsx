@@ -46,6 +46,7 @@ import { MyModulesHub } from '@/components/modules/MyModulesHub';
 import { TenantFeesView } from '@/components/settings/TenantFeesView';
 import { TenantServiceSettings } from '@/components/settings/TenantServiceSettings';
 import { WaiterCommissionsManager } from '@/components/settings/WaiterCommissionsManager';
+import { TenantPixRapidoSettings } from '@/components/settings/TenantPixRapidoSettings';
 
 export default function Settings() {
   const { user, profile, roles } = useAuth();
@@ -204,6 +205,8 @@ export default function Settings() {
                 <TenantOnlineGateways />
               </CardContent>
             </Card>
+
+            <TenantPixRapidoSettings />
 
             <Card>
               <CardHeader>

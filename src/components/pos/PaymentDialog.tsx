@@ -45,6 +45,7 @@ interface PaymentDialogProps {
   onCreatePixRapido?: (pspProviderId: string) => Promise<void>;
   onResetPixRapido?: () => void;
   estimatePixRapidoFee?: (amount: number, option: PixRapidoOption) => number;
+  pixRapidoError?: string | null;
 }
 
 type CpfPromptTarget = 'PIX' | 'BOLETO' | null;
@@ -77,6 +78,7 @@ export function PaymentDialog({
   onCreatePixRapido,
   onResetPixRapido,
   estimatePixRapidoFee,
+  pixRapidoError,
 }: PaymentDialogProps) {
   const [activeTab, setActiveTab] = useState<string>('online');
   const [cpfPromptTarget, setCpfPromptTarget] = useState<CpfPromptTarget>(null);
@@ -528,6 +530,35 @@ export function PaymentDialog({
                     <div className="flex flex-col items-center gap-3 py-8">
                       <Loader2 className="h-10 w-10 animate-spin text-primary" />
                       <p className="text-sm text-muted-foreground">Gerando PIX Rápido...</p>
+                    </div>
+                  )}
+
+                  {/* Error fallback */}
+                  {pixRapidoError && !isCreatingPixRapido && !pixRapidoIntent && (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+                        <AlertCircle className="h-5 w-5 text-destructive shrink-0" />
+                        <div className="text-sm">
+                          <p className="font-medium text-destructive">Falha ao gerar PIX</p>
+                          <p className="text-muted-foreground text-xs">{pixRapidoError}</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button variant="outline" className="flex-1" onClick={() => onResetPixRapido?.()}>
+                          Tentar novamente
+                        </Button>
+                        <Button
+                          variant="default"
+                          className="flex-1"
+                          onClick={() => {
+                            onResetPixRapido?.();
+                            setActiveTab('manual');
+                          }}
+                        >
+                          <Banknote className="h-4 w-4 mr-1" />
+                          Pagamento Manual
+                        </Button>
+                      </div>
                     </div>
                   )}
 
