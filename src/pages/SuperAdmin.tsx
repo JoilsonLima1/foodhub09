@@ -63,6 +63,7 @@ import { PlatformTemplatesManager } from '@/components/superadmin/PlatformTempla
 import { PartnerBillingManager } from '@/components/superadmin/PartnerBillingManager';
 import { PartnerPlanApprovalManager } from '@/components/superadmin/PartnerPlanApprovalManager';
 import { PixAutomaticoManager } from '@/components/superadmin/pix/PixAutomaticoManager';
+import { LegalDocumentsManager } from '@/components/superadmin/legal/LegalDocumentsManager';
 
 import { 
   OpsAlertsPanel, 
@@ -309,6 +310,10 @@ export default function SuperAdmin() {
             <Zap className="h-4 w-4" />
             PIX Automático
           </TabsTrigger>
+          <TabsTrigger value="legal" className="flex items-center gap-2">
+            <Shield className="h-4 w-4" />
+            Jurídico
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="organizations">
@@ -483,6 +488,10 @@ export default function SuperAdmin() {
 
         <TabsContent value="pix-automatico">
           <PixAutomaticoManager />
+        </TabsContent>
+
+        <TabsContent value="legal">
+          <LegalDocumentsManager />
         </TabsContent>
 
       </Tabs>
