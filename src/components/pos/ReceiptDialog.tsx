@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Printer, X, CheckCircle } from 'lucide-react';
 import { ReceiptPrint } from './ReceiptPrint';
 import type { CartItem } from '@/types/database';
+import { getPrinterConfig } from '@/components/settings/PrinterSettings';
 
 interface ReceiptDialogProps {
   open: boolean;
@@ -36,6 +37,14 @@ export function ReceiptDialog({
   tenantLogo,
 }: ReceiptDialogProps) {
   const receiptRef = useRef<HTMLDivElement>(null);
+
+  // Apply paper width CSS variable from config
+  useEffect(() => {
+    if (open) {
+      const config = getPrinterConfig();
+      document.documentElement.style.setProperty('--receipt-width', config.paperWidth);
+    }
+  }, [open]);
 
   const handlePrint = () => {
     window.print();

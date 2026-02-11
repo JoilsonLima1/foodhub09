@@ -111,22 +111,34 @@ export const ReceiptPrint = forwardRef<HTMLDivElement, ReceiptPrintProps>(
           <p className="mt-1">Volte sempre!</p>
         </div>
 
-        {/* Print-only styles */}
+        {/* Print-only styles — thermal optimized */}
         <style>{`
           @media print {
+            @page {
+              margin: 0;
+              size: auto;
+            }
             body * {
               visibility: hidden;
             }
             .receipt-print, .receipt-print * {
-              visibility: visible;
+              visibility: visible !important;
             }
             .receipt-print {
               position: absolute;
               left: 0;
               top: 0;
-              width: 80mm;
-              padding: 5mm;
-              font-size: 10pt;
+              width: var(--receipt-width, 80mm);
+              padding: 2mm;
+              font-size: 9pt;
+              font-family: 'Courier New', monospace;
+              color: #000 !important;
+              background: #fff !important;
+              line-height: 1.3;
+            }
+            .receipt-print img {
+              max-height: 10mm;
+              filter: grayscale(1) contrast(2);
             }
           }
         `}</style>
