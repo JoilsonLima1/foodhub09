@@ -91,12 +91,20 @@ export default function Downloads() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Button variant="outline" className="h-auto py-4 flex-col gap-1.5">
+            <Button
+              variant="outline"
+              className="h-auto py-4 flex-col gap-1.5 hover:bg-accent focus:bg-accent active:bg-accent"
+              onClick={() => window.open('#', '_blank')}
+            >
               <Monitor className="h-6 w-6" />
               <span className="font-medium">Windows</span>
               <span className="text-[10px] text-muted-foreground">Windows 10+ • 64-bit • ~25 MB</span>
             </Button>
-            <Button variant="outline" className="h-auto py-4 flex-col gap-1.5">
+            <Button
+              variant="outline"
+              className="h-auto py-4 flex-col gap-1.5 hover:bg-accent focus:bg-accent active:bg-accent"
+              onClick={() => window.open('#', '_blank')}
+            >
               <Globe className="h-6 w-6" />
               <span className="font-medium">macOS</span>
               <span className="text-[10px] text-muted-foreground">macOS 12+ • Intel/Apple Silicon • ~20 MB</span>
