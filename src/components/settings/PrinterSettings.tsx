@@ -6,7 +6,8 @@ import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Printer, TestTube, CheckCircle, HelpCircle, Zap, Wifi, WifiOff, Loader2, ExternalLink, Monitor, RefreshCw, Search } from 'lucide-react';
+import { Printer, TestTube, CheckCircle, HelpCircle, Zap, Wifi, WifiOff, Loader2, ExternalLink, Monitor, RefreshCw, Search, Plus, Trash2 } from 'lucide-react';
+import { usePrinterRoutes } from '@/hooks/usePrinterRoutes';
 import { useToast } from '@/hooks/use-toast';
 import { ReceiptPrint } from '@/components/pos/ReceiptPrint';
 import { PrinterHelpModal } from './PrinterHelpModal';
@@ -63,6 +64,7 @@ const sampleItems: CartItem[] = [
 export function PrinterSettings() {
   const { toast } = useToast();
   const { settings, isLoading, isSaving, isOffline, save, testAgent } = useTenantPrintSettings();
+  const { routes, isLoading: routesLoading, isSaving: routesSaving, addRoute, updateRoute, removeRoute } = usePrinterRoutes();
   const [local, setLocal] = useState<TenantPrintSettings | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
@@ -162,29 +164,24 @@ export function PrinterSettings() {
     }
   }, [local?.print_mode, agentOnline, detectPrinters]);
 
-  const handleTestPrintForType = async (type: 'caixa' | 'cozinha' | 'bar') => {
+  const handleTestPrintForRoute = async (routeId: string, routeType: string, printerName: string | null) => {
     if (!local) return;
     const endpoint = getAgentEndpoint();
-    const printerMap: Record<string, string | null> = {
-      caixa: local.default_printer_name,
-      cozinha: local.kitchen_printer_name,
-      bar: local.bar_printer_name,
-    };
-    setTestingType(type);
+    setTestingType(routeId);
     try {
       const resp = await fetch(`${endpoint}/test-print`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          nomeDaImpressora: printerMap[type] || undefined,
-          tipo: type,
+          nomeDaImpressora: printerName || undefined,
+          tipo: routeType,
           larguraDoPapel: parseInt(local.paper_width),
         }),
         signal: AbortSignal.timeout(15000),
       });
       const data = await resp.json();
       if (data.ok) {
-        toast({ title: `✓ Teste ${type} enviado`, description: `Impressora: ${data.printer || 'padrão'}` });
+        toast({ title: `✓ Teste ${routeType} enviado`, description: `Impressora: ${data.printer || 'padrão'}` });
       } else if (data.code === 'PRINTER_NOT_FOUND') {
         toast({
           title: 'Impressora não encontrada',
@@ -196,7 +193,7 @@ export function PrinterSettings() {
       }
     } catch (err) {
       toast({
-        title: `Falha no teste ${type}`,
+        title: `Falha no teste ${routeType}`,
         description: (err as Error).message || 'Agent não respondeu.',
         variant: 'destructive',
       });
@@ -204,6 +201,8 @@ export function PrinterSettings() {
       setTestingType(null);
     }
   };
+
+  const [newRouteLabel, setNewRouteLabel] = useState('');
 
   // Sync local state when DB settings load
   useEffect(() => {
@@ -499,10 +498,10 @@ export function PrinterSettings() {
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="flex items-center gap-2 text-base">
-                    <Printer className="h-4 w-4" /> Impressoras Detectadas
+                    <Printer className="h-4 w-4" /> Rotas de Impressão
                   </CardTitle>
                   <CardDescription>
-                    Selecione as impressoras para cada seção. Campos vazios usam a impressora padrão do sistema.
+                    Configure uma impressora para cada setor. Clique em "Detectar" para listar as impressoras instaladas.
                   </CardDescription>
                 </div>
                 <Button
@@ -540,121 +539,101 @@ export function PrinterSettings() {
                 </div>
               )}
 
-              {/* Caixa (Default) */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label>Impressora Padrão (Caixa)</Label>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 text-xs"
-                    onClick={() => handleTestPrintForType('caixa')}
-                    disabled={testingType !== null || !agentOnline}
-                  >
-                    {testingType === 'caixa' ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <TestTube className="h-3 w-3 mr-1" />}
-                    Testar
-                  </Button>
+              {/* Dynamic printer routes */}
+              {routesLoading ? (
+                <div className="flex justify-center py-4">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                 </div>
-                {detectedPrinters.length > 0 ? (
-                  <Select
-                    value={local.default_printer_name || '__default__'}
-                    onValueChange={(v) => update({ default_printer_name: v === '__default__' ? null : v })}
-                  >
-                    <SelectTrigger><SelectValue placeholder="Usar padrão do sistema" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__default__">
-                        {defaultPrinter ? `Padrão do sistema (${defaultPrinter})` : 'Padrão do sistema'}
-                      </SelectItem>
-                      {detectedPrinters.map(p => (
-                        <SelectItem key={p} value={p}>{p}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <Input
-                    value={local.default_printer_name || ''}
-                    onChange={(e) => update({ default_printer_name: e.target.value || null })}
-                    placeholder="Ex: EPSON TM-T20X (detecte para preencher)"
-                  />
-                )}
-              </div>
+              ) : (
+                <div className="space-y-3">
+                  {routes.map((route) => (
+                    <div key={route.id} className="flex items-center gap-2 p-3 border rounded-lg bg-card">
+                      <div className="flex-1 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Input
+                            value={route.label}
+                            onChange={(e) => updateRoute(route.id, { label: e.target.value })}
+                            className="h-8 text-sm font-medium max-w-[140px]"
+                          />
+                          <span className="text-xs text-muted-foreground">({route.route_type})</span>
+                        </div>
+                        {detectedPrinters.length > 0 ? (
+                          <Select
+                            value={route.printer_name || '__default__'}
+                            onValueChange={(v) => updateRoute(route.id, { printer_name: v === '__default__' ? null : v })}
+                          >
+                            <SelectTrigger className="h-8 text-sm">
+                              <SelectValue placeholder="Usar padrão do sistema" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__default__">
+                                {defaultPrinter ? `Padrão do sistema (${defaultPrinter})` : 'Padrão do sistema'}
+                              </SelectItem>
+                              {detectedPrinters.map(p => (
+                                <SelectItem key={p} value={p}>{p}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <Input
+                            value={route.printer_name || ''}
+                            onChange={(e) => updateRoute(route.id, { printer_name: e.target.value || null })}
+                            placeholder="Detecte para preencher"
+                            className="h-8 text-sm"
+                          />
+                        )}
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={() => handleTestPrintForRoute(route.id, route.route_type, route.printer_name)}
+                          disabled={testingType !== null || !agentOnline}
+                        >
+                          {testingType === route.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <TestTube className="h-3 w-3" />}
+                        </Button>
+                        {routes.length > 1 && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 text-xs text-destructive hover:text-destructive"
+                            onClick={() => removeRoute(route.id)}
+                            disabled={routesSaving}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
 
-              {/* Cozinha */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label>Impressora Cozinha <span className="text-muted-foreground text-xs">(opcional)</span></Label>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 text-xs"
-                    onClick={() => handleTestPrintForType('cozinha')}
-                    disabled={testingType !== null || !agentOnline}
-                  >
-                    {testingType === 'cozinha' ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <TestTube className="h-3 w-3 mr-1" />}
-                    Testar
-                  </Button>
-                </div>
-                {detectedPrinters.length > 0 ? (
-                  <Select
-                    value={local.kitchen_printer_name || '__default__'}
-                    onValueChange={(v) => update({ kitchen_printer_name: v === '__default__' ? null : v })}
-                  >
-                    <SelectTrigger><SelectValue placeholder="Usar padrão do sistema" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__default__">Usar padrão do sistema</SelectItem>
-                      {detectedPrinters.map(p => (
-                        <SelectItem key={p} value={p}>{p}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <Input
-                    value={local.kitchen_printer_name || ''}
-                    onChange={(e) => update({ kitchen_printer_name: e.target.value || null })}
-                    placeholder="Ex: EPSON TM-T88VI (opcional)"
-                  />
-                )}
-              </div>
-
-              {/* Bar */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label>Impressora Bar <span className="text-muted-foreground text-xs">(opcional)</span></Label>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 text-xs"
-                    onClick={() => handleTestPrintForType('bar')}
-                    disabled={testingType !== null || !agentOnline}
-                  >
-                    {testingType === 'bar' ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <TestTube className="h-3 w-3 mr-1" />}
-                    Testar
-                  </Button>
-                </div>
-                {detectedPrinters.length > 0 ? (
-                  <Select
-                    value={local.bar_printer_name || '__default__'}
-                    onValueChange={(v) => update({ bar_printer_name: v === '__default__' ? null : v })}
-                  >
-                    <SelectTrigger><SelectValue placeholder="Usar padrão do sistema" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__default__">Usar padrão do sistema</SelectItem>
-                      {detectedPrinters.map(p => (
-                        <SelectItem key={p} value={p}>{p}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <Input
-                    value={local.bar_printer_name || ''}
-                    onChange={(e) => update({ bar_printer_name: e.target.value || null })}
-                    placeholder="Ex: BEMATECH MP-4200 (opcional)"
-                  />
-                )}
+              {/* Add route */}
+              <div className="flex items-center gap-2 pt-2 border-t">
+                <Input
+                  value={newRouteLabel}
+                  onChange={(e) => setNewRouteLabel(e.target.value)}
+                  placeholder="Nome do setor (ex: Copa, Sobremesas)"
+                  className="h-8 text-sm"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 shrink-0"
+                  disabled={!newRouteLabel.trim() || routesSaving}
+                  onClick={() => {
+                    addRoute(newRouteLabel.trim());
+                    setNewRouteLabel('');
+                  }}
+                >
+                  <Plus className="h-3 w-3 mr-1" /> Adicionar
+                </Button>
               </div>
 
               <p className="text-xs text-muted-foreground">
-                Clique em "Detectar" para listar as impressoras instaladas. Campos vazios usam a impressora padrão do Windows.
+                Campos vazios usam a impressora padrão do Windows. Clique no ícone de teste para verificar.
               </p>
             </CardContent>
           </Card>
