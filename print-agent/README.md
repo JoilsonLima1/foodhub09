@@ -16,9 +16,46 @@ O FoodHub Print Agent roda em segundo plano no Windows e recebe comandos de impr
 
 1. Baixe o instalador `FoodHubPrintAgentSetup.exe`
 2. Execute e siga as instruções
-3. O Agent inicia automaticamente e fica no background
-4. No PDV, vá em **Configurações → Impressora → Modo Agent**
-5. Teste a conexão clicando em "Testar Conexão"
+3. **Recomendado:** marque "Instalar como Serviço do Windows" para auto-start
+4. O Agent inicia automaticamente e fica no background
+5. No PDV, vá em **Configurações → Impressora → Modo Agent**
+6. Clique em "Detectar" para listar impressoras
+7. Teste a conexão clicando em "Testar"
+
+## Modo Serviço do Windows (recomendado)
+
+O instalador oferece a opção de instalar como **Serviço do Windows** usando WinSW. Isso garante:
+- ✅ Início automático com o Windows
+- ✅ Reinício automático em caso de falha
+- ✅ Roda sem janela aberta
+- ✅ Funciona mesmo sem login do usuário
+
+### Gerenciar o serviço manualmente
+
+```powershell
+# Verificar status
+sc query FoodHubPrintAgent
+
+# Parar
+net stop FoodHubPrintAgent
+
+# Iniciar
+net start FoodHubPrintAgent
+
+# Remover o serviço (como admin)
+cd "C:\Program Files\FoodHub Print Agent"
+.\FoodHubPrintAgentService.exe stop
+.\FoodHubPrintAgentService.exe uninstall
+```
+
+### Instalar como serviço manualmente (sem instalador)
+
+```powershell
+# Copie FoodHubPrintAgent.exe, FoodHubPrintAgentService.exe e FoodHubPrintAgentService.xml para a mesma pasta
+cd "C:\Program Files\FoodHub Print Agent"
+.\FoodHubPrintAgentService.exe install
+.\FoodHubPrintAgentService.exe start
+```
 
 ## Desenvolvimento Local
 
@@ -44,27 +81,41 @@ Verificação rápida de conectividade.
 { "pong": true }
 ```
 
-### GET /printers
+### GET /impressoras (ou /printers)
 Lista impressoras instaladas no Windows.
 ```json
-{ "ok": true, "printers": [{ "name": "EPSON TM-T20X", "isDefault": true }] }
+{ "ok": true, "impressoraPadrao": "EPSON TM-T20X", "impressoras": ["EPSON TM-T20X", "Microsoft Print to PDF"] }
 ```
 
-### POST /print/test
+### POST /test-print
 Imprime cupom de teste.
 ```json
-{ "paperWidth": 80, "printerName": "EPSON TM-T20X" }
+{ "nomeDaImpressora": "EPSON TM-T20X", "tipo": "caixa", "larguraDoPapel": 80 }
 ```
 
-### POST /print/receipt
+Erros guiados:
+```json
+{ "ok": false, "code": "PRINTER_NOT_FOUND", "message": "Impressora não encontrada..." }
+```
+
+### POST /imprimir/recibo (ou /print/receipt)
 Imprime cupom real.
 ```json
 {
-  "paperWidth": 80,
-  "printerName": "EPSON TM-T20X",
+  "larguraDoPapel": 80,
+  "nomeDaImpressora": "EPSON TM-T20X",
   "html": "<html>...</html>"
 }
 ```
+
+## CORS e Private Network Access
+
+O Agent aceita requisições de:
+- `https://foodhub09.com.br`
+- `https://*.lovable.app`
+- `localhost` / `127.0.0.1`
+
+E suporta **Private Network Access (PNA)** do Chrome 104+, respondendo com `Access-Control-Allow-Private-Network: true`.
 
 ## Build
 
@@ -98,16 +149,16 @@ O Agent salva configurações em:
 ## Troubleshooting
 
 ### "Conexão recusada" no PDV
-1. Verifique se o Agent está rodando (ícone na barra de tarefas)
+1. Verifique se o Agent está rodando: `sc query FoodHubPrintAgent`
 2. Acesse `http://localhost:8123/health` no navegador
-3. Se não responder, reinicie o Agent
+3. Se não responder, reinicie: `net stop FoodHubPrintAgent && net start FoodHubPrintAgent`
 
 ### Impressão sai com layout errado
 1. Verifique se a largura do papel está correta (58mm ou 80mm)
 2. No Windows, abra **Impressoras e Scanners** → sua impressora → **Preferências** → confirme o tamanho do papel
 
 ### Agent não encontra a impressora
-1. Acesse `http://localhost:8123/printers` para ver as impressoras detectadas
+1. Acesse `http://localhost:8123/impressoras` para ver as impressoras detectadas
 2. Use o nome exato da impressora no campo "Nome da Impressora" no PDV
 
 ### Firewall bloqueando

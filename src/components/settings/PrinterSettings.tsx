@@ -81,36 +81,67 @@ export function PrinterSettings() {
     return local?.agent_endpoint || settings?.agent_endpoint || 'http://127.0.0.1:8123';
   }, [local, settings]);
 
+  const checkAgentHealth = useCallback(async (): Promise<boolean> => {
+    const endpoint = getAgentEndpoint();
+    try {
+      const resp = await fetch(`${endpoint}/health`, {
+        method: 'GET',
+        signal: AbortSignal.timeout(3000),
+      });
+      const data = await resp.json();
+      return !!data.ok;
+    } catch {
+      return false;
+    }
+  }, [getAgentEndpoint]);
+
   const detectPrinters = useCallback(async (showToast = true) => {
     const endpoint = getAgentEndpoint();
     setIsDetecting(true);
     try {
-      const resp = await fetch(`${endpoint}/printers`, {
+      // First check health
+      const healthy = await checkAgentHealth();
+      if (!healthy) {
+        setAgentOnline(false);
+        setDetectedPrinters([]);
+        if (showToast) {
+          toast({
+            title: 'Agent offline',
+            description: 'O FoodHub Print Agent não está respondendo. Verifique se está instalado e rodando no computador.',
+            variant: 'destructive',
+          });
+        }
+        return;
+      }
+
+      const resp = await fetch(`${endpoint}/impressoras`, {
         method: 'GET',
         signal: AbortSignal.timeout(5000),
       });
       const data = await resp.json();
       if (data.ok) {
-        setDetectedPrinters(data.printers || []);
-        setDefaultPrinter(data.defaultPrinter || null);
+        const printers = data.impressoras || data.printers || [];
+        const defPrinter = data.impressoraPadrao || data.defaultPrinter || null;
+        setDetectedPrinters(printers);
+        setDefaultPrinter(defPrinter);
         setAgentOnline(true);
 
         // Auto-fill Caixa with default if not set
-        if (data.defaultPrinter && local && !local.default_printer_name) {
-          setLocal(prev => prev ? { ...prev, default_printer_name: data.defaultPrinter } : prev);
+        if (defPrinter && local && !local.default_printer_name) {
+          setLocal(prev => prev ? { ...prev, default_printer_name: defPrinter } : prev);
         }
 
         if (showToast) {
           toast({
-            title: `${(data.printers || []).length} impressora(s) detectada(s)`,
-            description: data.defaultPrinter ? `Padrão: ${data.defaultPrinter}` : 'Nenhuma impressora padrão identificada.',
+            title: `${printers.length} impressora(s) detectada(s)`,
+            description: defPrinter ? `Padrão: ${defPrinter}` : 'Nenhuma impressora padrão identificada.',
           });
         }
       } else {
         throw new Error(data.error || 'Erro ao detectar');
       }
     } catch (err) {
-      setAgentOnline(false);
+      if (agentOnline !== false) setAgentOnline(false);
       setDetectedPrinters([]);
       if (showToast) {
         toast({
@@ -122,7 +153,7 @@ export function PrinterSettings() {
     } finally {
       setIsDetecting(false);
     }
-  }, [getAgentEndpoint, local, toast]);
+  }, [getAgentEndpoint, checkAgentHealth, local, toast, agentOnline]);
 
   // Auto-detect when Agent mode is active
   useEffect(() => {
@@ -145,15 +176,21 @@ export function PrinterSettings() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          printerName: printerMap[type] || undefined,
-          type,
-          paperWidth: parseInt(local.paper_width),
+          nomeDaImpressora: printerMap[type] || undefined,
+          tipo: type,
+          larguraDoPapel: parseInt(local.paper_width),
         }),
         signal: AbortSignal.timeout(15000),
       });
       const data = await resp.json();
       if (data.ok) {
-        toast({ title: `✓ Teste ${type} enviado`, description: `Impressora: ${data.printer || 'default'}` });
+        toast({ title: `✓ Teste ${type} enviado`, description: `Impressora: ${data.printer || 'padrão'}` });
+      } else if (data.code === 'PRINTER_NOT_FOUND') {
+        toast({
+          title: 'Impressora não encontrada',
+          description: 'Clique em "Detectar" e selecione uma impressora da lista.',
+          variant: 'destructive',
+        });
       } else {
         throw new Error(data.error || 'Erro');
       }
@@ -269,15 +306,30 @@ export function PrinterSettings() {
       return;
     }
     setTestingAgent(true);
-    const ok = await testAgent(local.agent_endpoint);
-    setTestingAgent(false);
-    toast({
-      title: ok ? 'Agente conectado!' : 'Agente não encontrado',
-      description: ok
-        ? 'O FoodHub Print está respondendo.'
-        : `Não foi possível conectar em ${local.agent_endpoint}`,
-      variant: ok ? 'default' : 'destructive',
-    });
+    try {
+      const healthy = await checkAgentHealth();
+      setAgentOnline(healthy);
+      if (healthy) {
+        // Also detect printers
+        await detectPrinters(false);
+      }
+      toast({
+        title: healthy ? '✓ Agent conectado!' : 'Agent não encontrado',
+        description: healthy
+          ? 'O FoodHub Print Agent está respondendo. Impressoras detectadas.'
+          : `Não foi possível conectar em ${local.agent_endpoint}. Verifique se o Agent está instalado e rodando.`,
+        variant: healthy ? 'default' : 'destructive',
+      });
+    } catch {
+      setAgentOnline(false);
+      toast({
+        title: 'Agent não encontrado',
+        description: `Não foi possível conectar em ${local.agent_endpoint}`,
+        variant: 'destructive',
+      });
+    } finally {
+      setTestingAgent(false);
+    }
   };
 
   return (

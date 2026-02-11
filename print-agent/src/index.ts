@@ -1,5 +1,4 @@
 import express from 'express';
-import cors from 'cors';
 import { loadConfig } from './config';
 import { healthRouter } from './routes/health';
 import { printersRouter } from './routes/printers';
@@ -8,7 +7,47 @@ import { printRouter } from './routes/print';
 const config = loadConfig();
 const app = express();
 
-app.use(cors());
+// ----- CORS + Private Network Access (PNA) -----
+const ALLOWED_ORIGINS = [
+  'https://foodhub09.com.br',
+  'https://www.foodhub09.com.br',
+  'https://start-a-new-quest.lovable.app',
+];
+
+function isAllowedOrigin(origin?: string): boolean {
+  if (!origin) return true; // same-origin / non-browser
+  if (ALLOWED_ORIGINS.includes(origin)) return true;
+  // Allow any *.lovable.app preview
+  if (/^https:\/\/.*\.lovable\.app$/.test(origin)) return true;
+  // Allow localhost/127.0.0.1 for dev
+  if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return true;
+  return false;
+}
+
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+
+  if (origin && isAllowedOrigin(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else if (!origin) {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
+
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  // Private Network Access (PNA) — Chrome 104+
+  if (req.headers['access-control-request-private-network'] === 'true') {
+    res.setHeader('Access-Control-Allow-Private-Network', 'true');
+  }
+
+  if (req.method === 'OPTIONS') {
+    return res.status(204).end();
+  }
+
+  next();
+});
+
 app.use(express.json({ limit: '2mb' }));
 
 // Routes

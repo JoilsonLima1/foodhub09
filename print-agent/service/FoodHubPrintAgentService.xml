@@ -1,0 +1,17 @@
+<service>
+  <id>FoodHubPrintAgent</id>
+  <name>FoodHub Print Agent</name>
+  <description>Serviço de impressão térmica do FoodHub. Recebe comandos de impressão via HTTP local (porta 8123).</description>
+  <executable>%BASE%\FoodHubPrintAgent.exe</executable>
+  <workingdirectory>%BASE%</workingdirectory>
+  <log mode="roll-by-size">
+    <sizeThreshold>10240</sizeThreshold>
+    <keepFiles>3</keepFiles>
+  </log>
+  <onfailure action="restart" delay="10 sec" />
+  <onfailure action="restart" delay="30 sec" />
+  <onfailure action="none" />
+  <resetfailure>1 hour</resetfailure>
+  <startmode>Automatic</startmode>
+  <delayedAutoStart>true</delayedAutoStart>
+</service>

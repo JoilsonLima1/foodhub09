@@ -3,6 +3,8 @@ name: Build Print Agent (Windows)
 on:
   push:
     branches: [main]
+    paths:
+      - 'print-agent/**'
   workflow_dispatch:
 
 jobs:
@@ -31,9 +33,34 @@ jobs:
       - name: Package executable
         run: npx pkg dist/index.js --targets node18-win-x64 --output dist/FoodHubPrintAgent.exe
 
+      - name: Download WinSW
+        run: |
+          Invoke-WebRequest -Uri "https://github.com/winsw/winsw/releases/download/v2.12.0/WinSW-x64.exe" -OutFile "service/WinSW.exe"
+        shell: powershell
+
       - name: Upload Portable Executable
         uses: actions/upload-artifact@v4
         with:
           name: FoodHubPrintAgent-portable
           path: print-agent/dist/FoodHubPrintAgent.exe
+          retention-days: 30
+
+      - name: Upload Service Files
+        uses: actions/upload-artifact@v4
+        with:
+          name: FoodHubPrintAgent-service
+          path: |
+            print-agent/service/WinSW.exe
+            print-agent/service/FoodHubPrintAgentService.xml
+          retention-days: 30
+
+      - name: Create Portable ZIP
+        run: Compress-Archive -Path "dist\FoodHubPrintAgent.exe", "service\WinSW.exe", "service\FoodHubPrintAgentService.xml" -DestinationPath "dist\FoodHubPrintAgent-portable.zip"
+        shell: powershell
+
+      - name: Upload Portable ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: FoodHubPrintAgent-portable-zip
+          path: print-agent/dist/FoodHubPrintAgent-portable.zip
           retention-days: 30
