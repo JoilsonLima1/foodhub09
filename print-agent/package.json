@@ -3,6 +3,9 @@
   "version": "2.0.0",
   "description": "FoodHub Print Agent — impressão térmica ESC/POS via spooler do Windows",
   "main": "dist/index.js",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
