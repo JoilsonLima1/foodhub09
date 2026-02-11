@@ -150,36 +150,65 @@ export function useTenantPrintSettings() {
     }
   }, []);
 
-  // Print via agent
-  const printViaAgent = useCallback(async (html: string): Promise<boolean> => {
-    if (!settings || settings.print_mode !== 'AGENT' || !settings.agent_endpoint) return false;
-
+  // Check if agent is online (quick health check)
+  const isAgentOnline = useCallback(async (): Promise<boolean> => {
+    if (!settings?.agent_endpoint) return false;
     try {
-      const resp = await fetch(`${settings.agent_endpoint}/print`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tenantId: settings.tenant_id,
-          paperWidth: settings.paper_width,
-          profile: settings.printer_profile,
-          html,
-          cut: true,
-        }),
-        signal: AbortSignal.timeout(10000),
+      const resp = await fetch(`${settings.agent_endpoint}/health`, {
+        method: 'GET',
+        signal: AbortSignal.timeout(1500),
       });
-
-      if (!resp.ok) throw new Error('Agent print failed');
-      return true;
-    } catch (err) {
-      console.error('Agent print failed, falling back to browser:', err);
-      toast({
-        title: 'Agente indisponível',
-        description: 'Usando impressão pelo navegador como fallback.',
-        variant: 'destructive',
-      });
+      return resp.ok;
+    } catch {
       return false;
     }
-  }, [settings, toast]);
+  }, [settings]);
+
+  // Print via agent with explicit printer/paper config
+  const printViaAgent = useCallback(async (
+    html: string,
+    options?: { printerName?: string | null; paperWidth?: string }
+  ): Promise<{ ok: boolean; error?: string }> => {
+    if (!settings || settings.print_mode !== 'AGENT' || !settings.agent_endpoint) {
+      return { ok: false };
+    }
+
+    try {
+      const online = await isAgentOnline();
+      if (!online) {
+        return { ok: false, error: 'AGENT_OFFLINE' };
+      }
+
+      const pw = Number(options?.paperWidth || settings.paper_width) === 58 ? 58 : 80;
+      const body: Record<string, unknown> = {
+        html,
+        larguraDoPapel: pw,
+      };
+      if (options?.printerName) {
+        body.nomeDaImpressora = options.printerName;
+      }
+
+      const resp = await fetch(`${settings.agent_endpoint}/imprimir/recibo`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(15000),
+      });
+
+      const data = await resp.json().catch(() => ({}));
+
+      if (!resp.ok) {
+        const code = (data as any)?.code || 'PRINT_ERROR';
+        const message = (data as any)?.message || 'Falha ao imprimir via Agent.';
+        return { ok: false, error: `${code}: ${message}` };
+      }
+
+      return { ok: true };
+    } catch (err) {
+      console.error('Agent print failed:', err);
+      return { ok: false, error: 'AGENT_OFFLINE' };
+    }
+  }, [settings, isAgentOnline]);
 
   return {
     settings,
@@ -188,6 +217,7 @@ export function useTenantPrintSettings() {
     isOffline,
     save,
     testAgent,
+    isAgentOnline,
     printViaAgent,
   };
 }
