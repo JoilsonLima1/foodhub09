@@ -21,10 +21,12 @@ async function listWindowsPrinters(): Promise<PrinterInfo[]> {
     const raw = JSON.parse(stdout);
     const printers = Array.isArray(raw) ? raw : [raw];
 
-    return printers.map((p: { Name: string; Default?: boolean }) => ({
-      name: p.Name,
-      isDefault: !!p.Default,
-    }));
+    return printers
+      .map((p: { Name: string; Default?: boolean }) => ({
+        name: p.Name,
+        isDefault: !!p.Default,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
   } catch (err) {
     console.warn('[Printers] Failed to list printers:', err);
     return [];
@@ -34,6 +36,32 @@ async function listWindowsPrinters(): Promise<PrinterInfo[]> {
 export function printersRouter() {
   const router = Router();
 
+  // GET /impressoras — Portuguese endpoint (primary)
+  router.get('/impressoras', async (_req, res) => {
+    try {
+      const printers = await listWindowsPrinters();
+      const defaultPrinter = printers.find(p => p.isDefault)?.name || null;
+      res.json({
+        ok: true,
+        impressoraPadrao: defaultPrinter,
+        impressoras: printers.map(p => p.name),
+        // Backward compat
+        defaultPrinter,
+        printers: printers.map(p => p.name),
+      });
+    } catch (err) {
+      res.json({
+        ok: true,
+        impressoraPadrao: null,
+        impressoras: [],
+        defaultPrinter: null,
+        printers: [],
+        error: (err as Error).message,
+      });
+    }
+  });
+
+  // GET /printers — backward compat alias
   router.get('/printers', async (_req, res) => {
     try {
       const printers = await listWindowsPrinters();
@@ -42,6 +70,8 @@ export function printersRouter() {
         ok: true,
         defaultPrinter,
         printers: printers.map(p => p.name),
+        impressoraPadrao: defaultPrinter,
+        impressoras: printers.map(p => p.name),
       });
     } catch (err) {
       res.json({
@@ -55,3 +85,5 @@ export function printersRouter() {
 
   return router;
 }
+
+export { listWindowsPrinters };

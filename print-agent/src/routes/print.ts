@@ -32,6 +32,20 @@ async function getDefaultPrinterName(): Promise<string | null> {
   }
 }
 
+/** Validate printer exists, returns error response or null */
+async function validatePrinter(printerName: string | undefined | null): Promise<{ ok: false; code: string; message: string } | null> {
+  if (!printerName) return null;
+  const available = await getWindowsPrinterNames();
+  if (available.length > 0 && !available.includes(printerName)) {
+    return {
+      ok: false,
+      code: 'PRINTER_NOT_FOUND',
+      message: `Impressora "${printerName}" não encontrada. Clique em Detectar e selecione uma impressora instalada. Disponíveis: ${available.join(', ')}`,
+    };
+  }
+  return null;
+}
+
 function buildTestReceiptHTML(paperWidth: number, type: string): string {
   const w = paperWidth === 58 ? '58mm' : '80mm';
   const fontSize = paperWidth === 58 ? '10px' : '12px';
@@ -50,9 +64,7 @@ function buildTestReceiptHTML(paperWidth: number, type: string): string {
   .receipt { width: 100%; padding: 2mm; }
   .center { text-align: center; }
   .bold { font-weight: bold; }
-  .sep { border: none; border-top: 1px dashed #000; margin: 4px 0; }
   .row { display: flex; justify-content: space-between; }
-  .total { font-size: ${paperWidth === 58 ? '14px' : '16px'}; font-weight: bold; }
   .small { font-size: ${paperWidth === 58 ? '8px' : '10px'}; color: #666; }
   .cut { text-align: center; letter-spacing: 2px; color: #999; font-size: 8px; margin: 2mm 0; }
 </style></head><body>
@@ -97,10 +109,11 @@ export function printRouter(config: AgentConfig) {
   // POST /test-print — quick test print for a specific printer/type
   router.post('/test-print', async (req: Request, res: Response) => {
     try {
-      const { printerName, type = 'caixa', paperWidth = 80 } = req.body || {};
-      const pw = paperWidth === 58 ? 58 : 80;
+      const { printerName, nomeDaImpressora, type = 'caixa', tipo, paperWidth = 80, larguraDoPapel } = req.body || {};
+      const pw = (larguraDoPapel || paperWidth) === 58 ? 58 : 80;
+      const printType = tipo || type;
 
-      let printer = printerName || undefined;
+      let printer = nomeDaImpressora || printerName || undefined;
 
       // If no printer specified, resolve default
       if (!printer) {
@@ -108,21 +121,16 @@ export function printRouter(config: AgentConfig) {
         if (def) printer = def;
       }
 
-      // Validate printer exists if specified
-      if (printer) {
-        const available = await getWindowsPrinterNames();
-        if (available.length > 0 && !available.includes(printer)) {
-          return res.status(400).json({
-            ok: false,
-            error: `Impressora "${printer}" não encontrada. Impressoras disponíveis: ${available.join(', ')}`,
-          });
-        }
+      // Validate printer exists
+      const validationError = await validatePrinter(printer);
+      if (validationError) {
+        return res.status(400).json(validationError);
       }
 
-      const html = buildTestReceiptHTML(pw, type);
+      const html = buildTestReceiptHTML(pw, printType);
       await renderAndPrint(html, pw, printer);
 
-      res.json({ ok: true, message: `Teste ${type} impresso com sucesso.`, printer: printer || 'default' });
+      res.json({ ok: true, message: `Teste ${printType} impresso com sucesso.`, printer: printer || 'default' });
     } catch (err) {
       console.error('[TestPrint]', err);
       res.status(500).json({
@@ -140,6 +148,11 @@ export function printRouter(config: AgentConfig) {
       const html = buildTestReceiptHTML(pw, 'caixa');
       const printer = printerName || config.defaultPrinter || undefined;
 
+      const validationError = await validatePrinter(printer);
+      if (validationError) {
+        return res.status(400).json(validationError);
+      }
+
       await renderAndPrint(html, pw, printer);
       res.json({ ok: true, message: 'Cupom de teste impresso com sucesso.' });
     } catch (err) {
@@ -151,26 +164,20 @@ export function printRouter(config: AgentConfig) {
     }
   });
 
-  // POST /print/receipt — print a real receipt
-  router.post('/print/receipt', async (req: Request, res: Response) => {
+  // POST /imprimir/recibo — Portuguese endpoint
+  router.post('/imprimir/recibo', async (req: Request, res: Response) => {
     try {
-      const { paperWidth = 80, printerName, html, text } = req.body || {};
-      const pw = paperWidth === 58 ? 58 : 80;
-      let printer = printerName || config.defaultPrinter || undefined;
+      const { larguraDoPapel = 80, nomeDaImpressora, html, text, paperWidth, printerName } = req.body || {};
+      const pw = (larguraDoPapel || paperWidth) === 58 ? 58 : 80;
+      let printer = nomeDaImpressora || printerName || config.defaultPrinter || undefined;
 
       if (!html && !text) {
         return res.status(400).json({ ok: false, error: 'Envie html ou text no body.' });
       }
 
-      // Validate printer exists if specified
-      if (printer) {
-        const available = await getWindowsPrinterNames();
-        if (available.length > 0 && !available.includes(printer)) {
-          return res.status(400).json({
-            ok: false,
-            error: `Impressora "${printer}" não encontrada. Impressoras disponíveis: ${available.join(', ')}`,
-          });
-        }
+      const validationError = await validatePrinter(printer);
+      if (validationError) {
+        return res.status(400).json(validationError);
       }
 
       const content = html || `<!DOCTYPE html>
@@ -188,6 +195,65 @@ export function printRouter(config: AgentConfig) {
       res.status(500).json({
         ok: false,
         error: (err as Error).message || 'Falha ao imprimir cupom.',
+      });
+    }
+  });
+
+  // POST /print/receipt — legacy backward compat
+  router.post('/print/receipt', async (req: Request, res: Response) => {
+    try {
+      const { paperWidth = 80, printerName, html, text } = req.body || {};
+      const pw = paperWidth === 58 ? 58 : 80;
+      let printer = printerName || config.defaultPrinter || undefined;
+
+      if (!html && !text) {
+        return res.status(400).json({ ok: false, error: 'Envie html ou text no body.' });
+      }
+
+      const validationError = await validatePrinter(printer);
+      if (validationError) {
+        return res.status(400).json(validationError);
+      }
+
+      const content = html || `<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<style>
+  @page { size: ${pw}mm auto; margin: 0; }
+  body { width: ${pw}mm; margin: 0; padding: 2mm; font-family: 'Courier New', monospace;
+    font-size: ${pw === 58 ? '10px' : '12px'}; white-space: pre-wrap; }
+</style></head><body>${text}</body></html>`;
+
+      await renderAndPrint(content, pw, printer);
+      res.json({ ok: true, message: 'Cupom impresso com sucesso.' });
+    } catch (err) {
+      console.error('[Print/Receipt]', err);
+      res.status(500).json({
+        ok: false,
+        error: (err as Error).message || 'Falha ao imprimir cupom.',
+      });
+    }
+  });
+
+  // POST /imprimir/teste — Portuguese legacy compat
+  router.post('/imprimir/teste', async (req: Request, res: Response) => {
+    try {
+      const { larguraDoPapel = 80, nomeDaImpressora } = req.body || {};
+      const pw = larguraDoPapel === 58 ? 58 : 80;
+      const html = buildTestReceiptHTML(pw, 'caixa');
+      const printer = nomeDaImpressora || config.defaultPrinter || undefined;
+
+      const validationError = await validatePrinter(printer);
+      if (validationError) {
+        return res.status(400).json(validationError);
+      }
+
+      await renderAndPrint(html, pw, printer);
+      res.json({ ok: true, message: 'Cupom de teste impresso com sucesso.' });
+    } catch (err) {
+      console.error('[Print/Test]', err);
+      res.status(500).json({
+        ok: false,
+        error: (err as Error).message || 'Falha ao imprimir cupom de teste.',
       });
     }
   });
