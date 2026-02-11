@@ -11,7 +11,6 @@ interface PrinterInfo {
 
 async function listWindowsPrinters(): Promise<PrinterInfo[]> {
   try {
-    // Use PowerShell to list printers
     const { stdout } = await execAsync(
       'powershell -Command "Get-Printer | Select-Object Name, Default | ConvertTo-Json"',
       { timeout: 5000 }
@@ -38,9 +37,19 @@ export function printersRouter() {
   router.get('/printers', async (_req, res) => {
     try {
       const printers = await listWindowsPrinters();
-      res.json({ ok: true, printers });
+      const defaultPrinter = printers.find(p => p.isDefault)?.name || null;
+      res.json({
+        ok: true,
+        defaultPrinter,
+        printers: printers.map(p => p.name),
+      });
     } catch (err) {
-      res.json({ ok: true, printers: [], error: (err as Error).message });
+      res.json({
+        ok: true,
+        defaultPrinter: null,
+        printers: [],
+        error: (err as Error).message,
+      });
     }
   });
 
