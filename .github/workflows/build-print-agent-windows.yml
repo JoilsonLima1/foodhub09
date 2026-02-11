@@ -1,0 +1,55 @@
+name: Build Print Agent (Windows)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'print-agent/**'
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: print-agent
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build TypeScript
+        run: npm run build
+
+      - name: Package as executable
+        run: npx pkg dist/index.js --targets node18-win-x64 --output dist/FoodHubPrintAgent.exe
+
+      - name: Install Inno Setup
+        run: choco install innosetup -y
+
+      - name: Build Installer
+        run: |
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\setup.iss
+        shell: powershell
+
+      - name: Upload Installer Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FoodHubPrintAgentSetup
+          path: print-agent/dist/FoodHubPrintAgentSetup.exe
+          retention-days: 30
+
+      - name: Upload Portable Executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: FoodHubPrintAgent-portable
+          path: print-agent/dist/FoodHubPrintAgent.exe
+          retention-days: 30
