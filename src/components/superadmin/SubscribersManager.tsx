@@ -48,10 +48,14 @@ import {
   Save,
   Eye,
   EyeOff,
+  FileText,
+  Loader2 as DossierSpinner,
 } from 'lucide-react';
 import { useSubscribers, Subscriber } from '@/hooks/useSubscribers';
 import { useSubscriptionPlans } from '@/hooks/useSubscriptionPlans';
 import { PasswordConfirmDialog } from './PasswordConfirmDialog';
+import { useToast } from '@/hooks/use-toast';
+import { generateLegalDossier } from '@/lib/generateLegalDossier';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -170,6 +174,7 @@ function EditSubscriberDialog({ subscriber, open, onOpenChange, onSave, isLoadin
 
 export function SubscribersManager() {
   const { subscribers, isLoading, stats, updateSubscriber, deleteSubscriber } = useSubscribers();
+  const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [showInactive, setShowInactive] = useState(true);
@@ -179,6 +184,26 @@ export function SubscribersManager() {
   
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [subscriberToDelete, setSubscriberToDelete] = useState<Subscriber | null>(null);
+  const [generatingDossier, setGeneratingDossier] = useState<string | null>(null);
+
+  const handleGenerateDossier = async (tenantId: string, tenantName: string) => {
+    setGeneratingDossier(tenantId);
+    try {
+      await generateLegalDossier(tenantId);
+      toast({
+        title: 'Dossiê gerado',
+        description: `PDF do dossiê jurídico de "${tenantName}" foi baixado.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Erro ao gerar dossiê',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setGeneratingDossier(null);
+    }
+  };
 
   const filteredSubscribers = subscribers?.filter(sub => {
     const matchesSearch = 
@@ -405,6 +430,17 @@ export function SubscribersManager() {
                                   Desativar
                                 </>
                               )}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => handleGenerateDossier(sub.tenant_id, sub.tenant?.name || 'Tenant')}
+                              disabled={generatingDossier === sub.tenant_id}
+                            >
+                              {generatingDossier === sub.tenant_id ? (
+                                <DossierSpinner className="h-4 w-4 mr-2 animate-spin" />
+                              ) : (
+                                <FileText className="h-4 w-4 mr-2" />
+                              )}
+                              Gerar Dossiê Jurídico
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem 
