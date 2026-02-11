@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Grid, List, Monitor, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { PrinterSettings } from './PrinterSettings';
 
 type DisplayMode = 'list' | 'grid_images';
 
@@ -209,6 +210,9 @@ export function POSSettings() {
           'Salvar Configurações'
         )}
       </Button>
+
+      {/* Printer Settings */}
+      <PrinterSettings />
     </div>
   );
 }
