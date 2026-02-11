@@ -181,6 +181,42 @@ export function PixSplitSettingsTab() {
           </Button>
         </CardContent>
       </Card>
+
+      {/* Demonstrative Calculation */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm font-medium">Exemplo de Cálculo (Demonstrativo)</CardTitle>
+          <CardDescription className="text-xs">
+            Simulação com base nos percentuais configurados acima. Não altera o backend.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {(() => {
+            const exampleAmount = 100;
+            const pct = settings.default_commission_percent || 0;
+            const fixed = settings.default_commission_fixed || 0;
+            const commission = (exampleAmount * pct / 100) + fixed;
+            const merchant = exampleAmount - commission;
+            return (
+              <div className="grid grid-cols-3 gap-4 text-center">
+                <div className="rounded-lg border p-3">
+                  <p className="text-xs text-muted-foreground">Valor da Cobrança</p>
+                  <p className="text-lg font-bold">R$ {exampleAmount.toFixed(2)}</p>
+                </div>
+                <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
+                  <p className="text-xs text-muted-foreground">Comissão Plataforma</p>
+                  <p className="text-lg font-bold text-primary">R$ {commission.toFixed(2)}</p>
+                  <p className="text-[10px] text-muted-foreground">{pct}% + R$ {fixed.toFixed(2)}</p>
+                </div>
+                <div className="rounded-lg border p-3">
+                  <p className="text-xs text-muted-foreground">Valor Lojista</p>
+                  <p className="text-lg font-bold">R$ {merchant.toFixed(2)}</p>
+                </div>
+              </div>
+            );
+          })()}
+        </CardContent>
+      </Card>
     </div>
   );
 }

@@ -106,10 +106,13 @@ export function useLegalAcceptance(tenantId: string | null) {
     return true;
   };
 
+  const canActivateSplit = allAccepted && requiredDocs.length > 0;
+
   return {
     requiredDocs,
     loading,
     allAccepted,
+    canActivateSplit,
     acceptDocuments,
     refresh: checkAcceptance,
   };
