@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import {
-  Printer, Download, Info, Monitor, Zap, Shield, CheckCircle,
+  Printer, Download, Monitor, Zap, Shield, CheckCircle,
   Settings, FileText, HelpCircle, ChevronRight, Cpu, Globe, ArrowLeft,
 } from 'lucide-react';
 import { useState } from 'react';
@@ -65,18 +65,18 @@ export default function Downloads() {
       </div>
 
       {/* Status Banner */}
-      <Card className="border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20">
+      <Card className="border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20">
         <CardContent className="flex items-start gap-3 py-4">
-          <Info className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+          <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="font-semibold text-sm">Em desenvolvimento</span>
-              <Badge variant="outline" className="text-[10px] h-5 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300">
-                Em breve
+              <span className="font-semibold text-sm">Disponível</span>
+              <Badge variant="outline" className="text-[10px] h-5 border-green-300 dark:border-green-700 text-green-700 dark:text-green-300">
+                v1.0.0
               </Badge>
             </div>
             <p className="text-xs text-muted-foreground">
-              O Agent está sendo finalizado. Enquanto isso, use a <strong>impressão pelo navegador</strong> ou o <strong>modo Kiosk do Chrome</strong> para imprimir sem popup.
+              O FoodHub Print Agent está pronto para uso. Baixe, instale e imprima em 1 clique.
             </p>
           </div>
         </CardContent>
@@ -91,19 +91,19 @@ export default function Downloads() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Button variant="outline" disabled className="h-auto py-4 flex-col gap-1.5">
+            <Button variant="outline" className="h-auto py-4 flex-col gap-1.5">
               <Monitor className="h-6 w-6" />
               <span className="font-medium">Windows</span>
               <span className="text-[10px] text-muted-foreground">Windows 10+ • 64-bit • ~25 MB</span>
             </Button>
-            <Button variant="outline" disabled className="h-auto py-4 flex-col gap-1.5">
+            <Button variant="outline" className="h-auto py-4 flex-col gap-1.5">
               <Globe className="h-6 w-6" />
               <span className="font-medium">macOS</span>
               <span className="text-[10px] text-muted-foreground">macOS 12+ • Intel/Apple Silicon • ~20 MB</span>
             </Button>
           </div>
           <p className="text-[11px] text-muted-foreground text-center">
-            Versão 1.0.0 será disponibilizada aqui. Nenhuma conta adicional é necessária.
+            Versão 1.0.0 • Nenhuma conta adicional é necessária.
           </p>
         </CardContent>
       </Card>
