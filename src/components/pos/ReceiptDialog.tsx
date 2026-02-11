@@ -124,92 +124,83 @@ export function ReceiptDialog({
 
       // 2. Only attempt agent if mode is AGENT
       if (settings?.print_mode === 'AGENT') {
-        // Health check
-        let agentOnline = false;
-        try {
-          toast({ title: 'Agent check...' });
-          const healthResp = await fetch(`${endpoint}/health`, {
-            method: 'GET',
-            signal: AbortSignal.timeout(1500),
-          });
-          agentOnline = healthResp.ok;
-          const healthData = await healthResp.json().catch(() => ({}));
-          console.log('[PRINT] health ok?', agentOnline, 'status', healthResp.status, 'data', healthData);
-        } catch (err) {
-          console.log('[PRINT] health FAIL:', err);
-          agentOnline = false;
+        const isInIframe = window.self !== window.top;
+        const isHTTPS = window.location.protocol === 'https:';
+        const endpointIsHTTP = endpoint.startsWith('http://');
+
+        // Warn if Mixed Content will likely block
+        if (isHTTPS && endpointIsHTTP) {
+          console.warn('[PRINT] ⚠ HTTPS→HTTP: navegador pode bloquear. Publique o app e acesse pelo domínio publicado.');
         }
 
-        if (agentOnline) {
-          // Agent is online — NEVER call window.print from here
-          toast({ title: 'Agent online ✅ enviando impressão...' });
+        if (!caixaRoute?.printer_name) {
+          console.log('[PRINT] Rota Caixa sem printer_name, usando impressora padrão do Agent');
+        }
 
-          if (!caixaRoute?.printer_name) {
-            console.log('[PRINT] Rota Caixa sem printer_name, tentando impressora padrão');
-          }
+        const pw = Number(caixaRoute?.paper_width || paperWidth) === 58 ? 58 : 80;
+        const body: Record<string, unknown> = {
+          html,
+          larguraDoPapel: pw,
+        };
+        if (caixaRoute?.printer_name) {
+          body.nomeDaImpressora = caixaRoute.printer_name;
+        }
 
-          const pw = Number(caixaRoute?.paper_width || paperWidth) === 58 ? 58 : 80;
-          const body: Record<string, unknown> = {
-            html,
-            larguraDoPapel: pw,
-          };
-          if (caixaRoute?.printer_name) {
-            body.nomeDaImpressora = caixaRoute.printer_name;
-          }
+        console.log('[PRINT] POST /imprimir/recibo → printer:', body.nomeDaImpressora || '(padrão)', 'pw:', pw);
+        toast({ title: '🖨️ Enviando para Agent...' });
 
-          console.log('[PRINT] POST /imprimir/recibo body keys:', Object.keys(body), 'printer:', body.nomeDaImpressora, 'pw:', pw);
+        try {
+          const postResp = await fetch(`${endpoint}/imprimir/recibo`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+            signal: AbortSignal.timeout(15000),
+          });
 
-          try {
-            const postResp = await fetch(`${endpoint}/imprimir/recibo`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(body),
-              signal: AbortSignal.timeout(15000),
-            });
+          const postData = await postResp.json().catch(() => ({}));
+          console.log('[PRINT] post status:', postResp.status, 'body:', postData);
 
-            const postData = await postResp.json().catch(() => ({}));
-            console.log('[PRINT] post status:', postResp.status);
-            console.log('[PRINT] post body:', postData);
-
-            if (postResp.ok) {
-              toast({
-                title: '✓ Enviado para impressão (Agent)',
-                description: caixaRoute?.printer_name
-                  ? `Impressora: ${caixaRoute.printer_name}`
-                  : 'Impressora padrão do sistema',
-              });
-            } else {
-              // POST failed but agent IS online — do NOT fallback to browser
-              const errMsg = (postData as any)?.message || (postData as any)?.error || `HTTP ${postResp.status}`;
-              toast({
-                title: 'Falhou em: POST /imprimir/recibo',
-                description: errMsg,
-                variant: 'destructive',
-              });
-            }
-          } catch (postErr) {
-            console.error('[PRINT] POST /imprimir/recibo exception:', postErr);
+          if (postResp.ok) {
             toast({
-              title: 'Falhou em: POST /imprimir/recibo',
-              description: 'Timeout ou erro de rede ao enviar para o Agent.',
+              title: '✓ Impresso via Agent',
+              description: caixaRoute?.printer_name
+                ? `Impressora: ${caixaRoute.printer_name}`
+                : 'Impressora padrão do sistema',
+            });
+          } else {
+            // POST failed but we TRIED the agent — do NOT open browser dialog
+            const errMsg = (postData as any)?.message || (postData as any)?.error || `HTTP ${postResp.status}`;
+            toast({
+              title: 'Erro na impressão (Agent)',
+              description: errMsg,
               variant: 'destructive',
             });
           }
-
-          // Agent was online — return WITHOUT calling browser print
+          // Agent was reachable — return WITHOUT browser print
           return;
-        }
+        } catch (fetchErr) {
+          // Network error = agent truly unreachable
+          console.error('[PRINT] Agent unreachable:', fetchErr);
 
-        // Agent offline — fallback to browser
-        console.log('[PRINT] Agent offline, fallback para navegador');
-        toast({
-          title: 'Falhou em: HEALTH',
-          description: 'Agent offline. Usando impressão pelo navegador.',
-          variant: 'destructive',
-        });
+          if (isInIframe || (isHTTPS && endpointIsHTTP)) {
+            toast({
+              title: 'Agent inacessível (preview bloqueado)',
+              description: 'O preview HTTPS não consegue acessar o Agent HTTP local. Publique o app e acesse pelo domínio publicado no PC do Agent.',
+              variant: 'destructive',
+              duration: 10000,
+            });
+          } else {
+            toast({
+              title: 'Agent offline',
+              description: 'Não foi possível conectar ao Agent. Usando impressão do navegador.',
+              variant: 'destructive',
+            });
+          }
+          // Fall through to browser print only when agent is unreachable
+        }
       }
 
-      // Fallback: browser print (only reached if agent offline or mode != AGENT)
+      // Fallback: browser print (only reached if agent unreachable or mode != AGENT)
       console.log('[PRINT] Usando impressão do navegador (fallback)');
       printReceiptHTML(html, paperWidth);
     } finally {
