@@ -9228,6 +9228,50 @@ export type Database = {
         }
         Relationships: []
       }
+      printer_routes: {
+        Row: {
+          created_at: string
+          display_order: number
+          id: string
+          label: string
+          paper_width: string | null
+          printer_name: string | null
+          route_type: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          label?: string
+          paper_width?: string | null
+          printer_name?: string | null
+          route_type?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          label?: string
+          paper_width?: string | null
+          printer_name?: string | null
+          route_type?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "printer_routes_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_addon_mapping: {
         Row: {
           addon_id: string
