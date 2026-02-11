@@ -116,6 +116,8 @@ export function PrinterSettings() {
         return;
       }
 
+      setAgentOnline(true);
+
       const resp = await fetch(`${endpoint}/impressoras`, {
         method: 'GET',
         signal: AbortSignal.timeout(5000),
@@ -126,12 +128,6 @@ export function PrinterSettings() {
         const defPrinter = data.impressoraPadrao || data.defaultPrinter || null;
         setDetectedPrinters(printers);
         setDefaultPrinter(defPrinter);
-        setAgentOnline(true);
-
-        // Auto-fill Caixa with default if not set
-        if (defPrinter && local && !local.default_printer_name) {
-          setLocal(prev => prev ? { ...prev, default_printer_name: defPrinter } : prev);
-        }
 
         if (showToast) {
           toast({
@@ -143,7 +139,7 @@ export function PrinterSettings() {
         throw new Error(data.error || 'Erro ao detectar');
       }
     } catch (err) {
-      if (agentOnline !== false) setAgentOnline(false);
+      setAgentOnline(false);
       setDetectedPrinters([]);
       if (showToast) {
         toast({
@@ -155,14 +151,16 @@ export function PrinterSettings() {
     } finally {
       setIsDetecting(false);
     }
-  }, [getAgentEndpoint, checkAgentHealth, local, toast, agentOnline]);
+  }, [getAgentEndpoint, checkAgentHealth, toast]);
 
-  // Auto-detect when Agent mode is active
+  // Auto-detect when Agent mode is active (run once)
+  const hasAutoDetected = useRef(false);
   useEffect(() => {
-    if (local?.print_mode === 'AGENT' && agentOnline === null) {
+    if (local?.print_mode === 'AGENT' && !hasAutoDetected.current) {
+      hasAutoDetected.current = true;
       detectPrinters(false);
     }
-  }, [local?.print_mode, agentOnline, detectPrinters]);
+  }, [local?.print_mode, detectPrinters]);
 
   const handleTestPrintForRoute = async (routeId: string, routeType: string, printerName: string | null) => {
     if (!local) return;
