@@ -54,6 +54,7 @@ jobs:
             print-agent/service/FoodHubPrintAgentService.xml
             print-agent/service/install-service.bat
             print-agent/service/uninstall-service.bat
+            print-agent/service/install-cert.bat
             print-agent/service/README.md
           retention-days: 30
 
@@ -61,7 +62,7 @@ jobs:
       - name: Create Portable ZIP
         run: |
           Copy-Item "service\README.md" "dist\README.md"
-          Compress-Archive -Path "dist\FoodHubPrintAgent.exe", "service\FoodHubPrintAgentService.exe", "service\FoodHubPrintAgentService.xml", "service\install-service.bat", "service\uninstall-service.bat", "dist\README.md" -DestinationPath "dist\FoodHubPrintAgent-portable.zip"
+          Compress-Archive -Path "dist\FoodHubPrintAgent.exe", "service\FoodHubPrintAgentService.exe", "service\FoodHubPrintAgentService.xml", "service\install-service.bat", "service\uninstall-service.bat", "service\install-cert.bat", "dist\README.md" -DestinationPath "dist\FoodHubPrintAgent-portable.zip"
         shell: powershell
 
       - name: Upload Portable ZIP

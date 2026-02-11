@@ -36,12 +36,14 @@ function saveToCache(settings: TenantPrintSettings) {
   } catch {}
 }
 
+const DEFAULT_AGENT_ENDPOINT = 'https://127.0.0.1:8123';
+
 const defaultSettings = (tenantId: string): TenantPrintSettings => ({
   tenant_id: tenantId,
   paper_width: '80',
   printer_profile: 'GENERIC',
   print_mode: 'BROWSER',
-  agent_endpoint: null,
+  agent_endpoint: DEFAULT_AGENT_ENDPOINT,
   default_printer_name: null,
   kitchen_printer_name: null,
   bar_printer_name: null,
