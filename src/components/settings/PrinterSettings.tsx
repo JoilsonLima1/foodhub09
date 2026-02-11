@@ -153,14 +153,7 @@ export function PrinterSettings() {
     }
   }, [getAgentEndpoint, checkAgentHealth, toast]);
 
-  // Auto-detect when Agent mode is active (run once)
-  const hasAutoDetected = useRef(false);
-  useEffect(() => {
-    if (local?.print_mode === 'AGENT' && !hasAutoDetected.current) {
-      hasAutoDetected.current = true;
-      detectPrinters(false);
-    }
-  }, [local?.print_mode, detectPrinters]);
+  // No auto-detect — user clicks "Detectar" manually
 
   const handleTestPrintForRoute = async (routeId: string, routeType: string, printerName: string | null) => {
     if (!local) return;
