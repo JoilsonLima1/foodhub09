@@ -35,7 +35,7 @@ jobs:
 
       - name: Download WinSW
         run: |
-          Invoke-WebRequest -Uri "https://github.com/winsw/winsw/releases/download/v2.12.0/WinSW-x64.exe" -OutFile "service/WinSW.exe"
+          Invoke-WebRequest -Uri "https://github.com/winsw/winsw/releases/download/v2.12.0/WinSW-x64.exe" -OutFile "service/FoodHubPrintAgentService.exe"
         shell: powershell
 
       - name: Upload Portable Executable
@@ -50,12 +50,29 @@ jobs:
         with:
           name: FoodHubPrintAgent-service
           path: |
-            print-agent/service/WinSW.exe
+            print-agent/service/FoodHubPrintAgentService.exe
             print-agent/service/FoodHubPrintAgentService.xml
+            print-agent/service/install-service.bat
+            print-agent/service/uninstall-service.bat
+            print-agent/service/README.md
+          retention-days: 30
+
+      - name: Upload Service Files
+        uses: actions/upload-artifact@v4
+        with:
+          name: FoodHubPrintAgent-service
+          path: |
+            print-agent/service/FoodHubPrintAgentService.exe
+            print-agent/service/FoodHubPrintAgentService.xml
+            print-agent/service/install-service.bat
+            print-agent/service/uninstall-service.bat
+            print-agent/service/README.md
           retention-days: 30
 
       - name: Create Portable ZIP
-        run: Compress-Archive -Path "dist\FoodHubPrintAgent.exe", "service\WinSW.exe", "service\FoodHubPrintAgentService.xml" -DestinationPath "dist\FoodHubPrintAgent-portable.zip"
+        run: |
+          Copy-Item "service\README.md" "dist\README.md"
+          Compress-Archive -Path "dist\FoodHubPrintAgent.exe", "service\FoodHubPrintAgentService.exe", "service\FoodHubPrintAgentService.xml", "service\install-service.bat", "service\uninstall-service.bat", "dist\README.md" -DestinationPath "dist\FoodHubPrintAgent-portable.zip"
         shell: powershell
 
       - name: Upload Portable ZIP
