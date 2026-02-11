@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ReceiptPrint } from '@/components/pos/ReceiptPrint';
 import { PrinterHelpModal } from './PrinterHelpModal';
 import { KioskHelpModal } from './KioskHelpModal';
+import { PrintAgentPairing } from './PrintAgentPairing';
 import { DefaultPrinterCallout } from './DefaultPrinterCallout';
 import { useTenantPrintSettings, type TenantPrintSettings } from '@/hooks/useTenantPrintSettings';
 import { printReceiptHTML, buildReceiptHTML, type PaperWidthMM } from '@/lib/thermalPrint';
@@ -96,6 +97,9 @@ export function PrinterSettings() {
       printer_profile: local.printer_profile,
       print_mode: local.print_mode,
       agent_endpoint: local.agent_endpoint,
+      default_printer_name: local.default_printer_name,
+      kitchen_printer_name: local.kitchen_printer_name,
+      bar_printer_name: local.bar_printer_name,
     });
   };
 
@@ -303,7 +307,52 @@ export function PrinterSettings() {
         </CardContent>
       </Card>
 
-      {/* Actions */}
+      {/* Printer Names (for Agent mode) */}
+      {local.print_mode === 'AGENT' && (
+        <>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Printer className="h-4 w-4" /> Nomes das Impressoras
+              </CardTitle>
+              <CardDescription>
+                Nomes exatos das impressoras instaladas no sistema operacional (usados pelo Agent).
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>Impressora Padrão (Caixa)</Label>
+                <Input
+                  value={local.default_printer_name || ''}
+                  onChange={(e) => update({ default_printer_name: e.target.value || null })}
+                  placeholder="Ex: EPSON TM-T20X"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Impressora Cozinha</Label>
+                <Input
+                  value={local.kitchen_printer_name || ''}
+                  onChange={(e) => update({ kitchen_printer_name: e.target.value || null })}
+                  placeholder="Ex: EPSON TM-T88VI (opcional)"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Impressora Bar</Label>
+                <Input
+                  value={local.bar_printer_name || ''}
+                  onChange={(e) => update({ bar_printer_name: e.target.value || null })}
+                  placeholder="Ex: BEMATECH MP-4200 (opcional)"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Use o nome exato como aparece em "Impressoras e Scanners" do sistema. Se vazio, o Agent usa a impressora padrão.
+              </p>
+            </CardContent>
+          </Card>
+
+          <PrintAgentPairing />
+        </>
+      )}
       <div className="flex gap-3">
         <Button onClick={handleSave} className="flex-1 sm:flex-none" disabled={isSaving}>
           {isSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />}

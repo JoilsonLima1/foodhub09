@@ -9,6 +9,9 @@ export interface TenantPrintSettings {
   printer_profile: 'EPSON' | 'ELGIN' | 'BEMATECH' | 'DARUMA' | 'TOMATE' | 'GENERIC';
   print_mode: 'BROWSER' | 'AGENT' | 'KIOSK';
   agent_endpoint: string | null;
+  default_printer_name: string | null;
+  kitchen_printer_name: string | null;
+  bar_printer_name: string | null;
   updated_at: string;
 }
 
@@ -39,6 +42,9 @@ const defaultSettings = (tenantId: string): TenantPrintSettings => ({
   printer_profile: 'GENERIC',
   print_mode: 'BROWSER',
   agent_endpoint: null,
+  default_printer_name: null,
+  kitchen_printer_name: null,
+  bar_printer_name: null,
   updated_at: new Date().toISOString(),
 });
 
@@ -106,6 +112,9 @@ export function useTenantPrintSettings() {
           printer_profile: newSettings.printer_profile,
           print_mode: newSettings.print_mode,
           agent_endpoint: newSettings.agent_endpoint,
+          default_printer_name: newSettings.default_printer_name,
+          kitchen_printer_name: newSettings.kitchen_printer_name,
+          bar_printer_name: newSettings.bar_printer_name,
         }, { onConflict: 'tenant_id' });
 
       if (error) throw error;

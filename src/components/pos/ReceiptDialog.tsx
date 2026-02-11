@@ -11,6 +11,7 @@ import { ReceiptPrint } from './ReceiptPrint';
 import type { CartItem } from '@/types/database';
 import { getPrinterConfig } from '@/components/settings/PrinterSettings';
 import { printReceiptHTML, buildReceiptHTML, type PaperWidthMM } from '@/lib/thermalPrint';
+import { useTenantPrintSettings } from '@/hooks/useTenantPrintSettings';
 
 const paymentMethodLabels: Record<string, string> = {
   cash: 'Dinheiro',
@@ -47,6 +48,7 @@ export function ReceiptDialog({
   tenantLogo,
 }: ReceiptDialogProps) {
   const receiptRef = useRef<HTMLDivElement>(null);
+  const { printViaAgent } = useTenantPrintSettings();
 
   // Apply paper width CSS variable from config
   useEffect(() => {
@@ -56,36 +58,44 @@ export function ReceiptDialog({
     }
   }, [open]);
 
-  const handlePrint = () => {
+  const buildHTML = () => {
     const config = getPrinterConfig();
     const paperWidth = config.paperWidth.replace('mm', '') as PaperWidthMM;
-
     const now = new Date();
-    const dateStr = now.toLocaleDateString('pt-BR');
-    const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
-    const html = buildReceiptHTML({
-      tenantName,
-      tenantLogo,
-      orderNumber,
-      dateStr,
-      timeStr,
-      cashierName,
-      items: items.map((item, index) => ({
-        index: index + 1,
-        name: item.productName,
-        variationName: item.variationName,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        totalPrice: item.totalPrice,
-        notes: item.notes,
-      })),
-      subtotal,
-      total,
-      paymentMethodLabel: paymentMethodLabels[paymentMethod] || paymentMethod,
-    });
+    return {
+      html: buildReceiptHTML({
+        tenantName,
+        tenantLogo,
+        orderNumber,
+        dateStr: now.toLocaleDateString('pt-BR'),
+        timeStr: now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+        cashierName,
+        items: items.map((item, index) => ({
+          index: index + 1,
+          name: item.productName,
+          variationName: item.variationName,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          totalPrice: item.totalPrice,
+          notes: item.notes,
+        })),
+        subtotal,
+        total,
+        paymentMethodLabel: paymentMethodLabels[paymentMethod] || paymentMethod,
+      }),
+      paperWidth,
+    };
+  };
 
-    printReceiptHTML(html, paperWidth);
+  const handlePrint = async () => {
+    const { html, paperWidth } = buildHTML();
+
+    // Try agent first, fallback to browser
+    const agentOk = await printViaAgent(html);
+    if (!agentOk) {
+      printReceiptHTML(html, paperWidth);
+    }
   };
 
   return (
