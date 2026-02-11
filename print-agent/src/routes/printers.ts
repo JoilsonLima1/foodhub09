@@ -1,29 +1,22 @@
 import { Router } from 'express';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import fs from 'fs';
+import path from 'path';
+import type { AgentConfig } from '../config';
 
 const execAsync = promisify(exec);
 
-interface PrinterInfo {
-  name: string;
-  isDefault: boolean;
-}
-
 async function getDefaultPrinterName(): Promise<string | null> {
-  // Try wmic first (most reliable on Win10/11)
   try {
     const { stdout } = await execAsync(
       'wmic printer where Default="TRUE" get Name',
       { timeout: 5000 }
     );
     const lines = stdout.split('\n').map(l => l.trim()).filter(Boolean);
-    // First line is header "Name", second is the value
-    if (lines.length >= 2) {
-      return lines[1];
-    }
-  } catch { /* fallback below */ }
+    if (lines.length >= 2) return lines[1];
+  } catch {}
 
-  // Fallback: PowerShell Get-CimInstance
   try {
     const { stdout } = await execAsync(
       'powershell -Command "Get-CimInstance -ClassName Win32_Printer | Where-Object {$_.Default -eq $true} | Select-Object -ExpandProperty Name"',
@@ -31,86 +24,127 @@ async function getDefaultPrinterName(): Promise<string | null> {
     );
     const name = stdout.trim();
     if (name) return name;
-  } catch { /* ignore */ }
+  } catch {}
 
   return null;
 }
 
-async function listWindowsPrinters(): Promise<PrinterInfo[]> {
+async function listWindowsPrinterNames(): Promise<string[]> {
   try {
     const { stdout } = await execAsync(
       'powershell -Command "Get-Printer | Select-Object Name | ConvertTo-Json"',
       { timeout: 5000 }
     );
-
     if (!stdout.trim()) return [];
-
     const raw = JSON.parse(stdout);
     const printers = Array.isArray(raw) ? raw : [raw];
-    const defaultName = await getDefaultPrinterName();
-
-    return printers
-      .map((p: { Name: string }) => ({
-        name: p.Name,
-        isDefault: defaultName ? p.Name === defaultName : false,
-      }))
-      .sort((a, b) => a.name.localeCompare(b.name));
-  } catch (err) {
-    console.warn('[Printers] Failed to list printers:', err);
+    return printers.map((p: { Name: string }) => p.Name).sort();
+  } catch {
     return [];
   }
 }
 
-export function printersRouter() {
+export function printersRouter(config: AgentConfig) {
   const router = Router();
 
-  // GET /impressoras — Portuguese endpoint (primary)
-  router.get('/impressoras', async (_req, res) => {
+  // GET /printers — list installed printers
+  router.get('/printers', async (_req, res) => {
     try {
-      const printers = await listWindowsPrinters();
-      const printerNames = printers.map(p => p.name);
-      const foundDefault = printers.find(p => p.isDefault)?.name || null;
-      // Only return default if it's actually in the list
-      const defaultPrinter = foundDefault && printerNames.includes(foundDefault) ? foundDefault : null;
+      const printers = await listWindowsPrinterNames();
+      const systemDefault = await getDefaultPrinterName();
       res.json({
         ok: true,
-        impressoraPadrao: defaultPrinter,
-        impressoras: printerNames,
-        // Backward compat
-        defaultPrinter,
-        printers: printerNames,
+        printers,
+        defaultPrinter: config.defaultPrinter || systemDefault || null,
+        systemDefault,
+        count: printers.length,
       });
     } catch (err) {
       res.json({
         ok: true,
-        impressoraPadrao: null,
-        impressoras: [],
-        defaultPrinter: null,
         printers: [],
+        defaultPrinter: null,
+        count: 0,
         error: (err as Error).message,
       });
     }
   });
 
-  // GET /printers — backward compat alias
-  router.get('/printers', async (_req, res) => {
+  // GET /impressoras — alias PT-BR
+  router.get('/impressoras', async (_req, res) => {
     try {
-      const printers = await listWindowsPrinters();
-      const printerNames = printers.map(p => p.name);
-      const foundDefault = printers.find(p => p.isDefault)?.name || null;
-      const defaultPrinter = foundDefault && printerNames.includes(foundDefault) ? foundDefault : null;
+      const printers = await listWindowsPrinterNames();
+      const systemDefault = await getDefaultPrinterName();
       res.json({
         ok: true,
-        defaultPrinter,
-        printers: printerNames,
-        impressoraPadrao: defaultPrinter,
-        impressoras: printerNames,
+        impressoras: printers,
+        impressoraPadrao: config.defaultPrinter || systemDefault || null,
+        padraDoSistema: systemDefault,
+        quantidade: printers.length,
+        // backward compat
+        printers,
+        defaultPrinter: config.defaultPrinter || systemDefault || null,
       });
     } catch (err) {
       res.json({
         ok: true,
-        defaultPrinter: null,
-        printers: [],
+        impressoras: [],
+        impressoraPadrao: null,
+        quantidade: 0,
+        error: (err as Error).message,
+      });
+    }
+  });
+
+  // POST /printers/default — persist default printer in config
+  router.post('/printers/default', async (req, res) => {
+    try {
+      const { printerName, nomeDaImpressora } = req.body || {};
+      const name = nomeDaImpressora || printerName;
+
+      if (!name || typeof name !== 'string') {
+        return res.status(400).json({
+          ok: false,
+          code: 'MISSING_PRINTER_NAME',
+          message: 'Envie "printerName" no body.',
+        });
+      }
+
+      // Validate printer exists
+      const printers = await listWindowsPrinterNames();
+      if (printers.length > 0 && !printers.includes(name)) {
+        return res.status(400).json({
+          ok: false,
+          code: 'PRINTER_NOT_FOUND',
+          message: `Impressora "${name}" não encontrada. Disponíveis: ${printers.join(', ')}`,
+        });
+      }
+
+      // Persist to config
+      const configFile = path.join(config.configDir, 'config.json');
+      let existing: Record<string, unknown> = {};
+      try {
+        if (fs.existsSync(configFile)) {
+          existing = JSON.parse(fs.readFileSync(configFile, 'utf-8'));
+        }
+      } catch {}
+
+      existing.defaultPrinter = name;
+      fs.mkdirSync(config.configDir, { recursive: true });
+      fs.writeFileSync(configFile, JSON.stringify(existing, null, 2), 'utf-8');
+
+      // Update in-memory config
+      config.defaultPrinter = name;
+
+      res.json({
+        ok: true,
+        message: `Impressora padrão salva: "${name}"`,
+        defaultPrinter: name,
+      });
+    } catch (err) {
+      console.error('[Printers/Default]', err);
+      res.status(500).json({
+        ok: false,
         error: (err as Error).message,
       });
     }
@@ -119,4 +153,4 @@ export function printersRouter() {
   return router;
 }
 
-export { listWindowsPrinters };
+export { listWindowsPrinterNames };

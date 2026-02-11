@@ -12,7 +12,7 @@ export interface AgentConfig {
 function getConfigDir(): string {
   if (process.platform === 'win32') {
     const programData = process.env.ProgramData || 'C:\\ProgramData';
-    return path.join(programData, 'FoodHub', 'print-agent');
+    return path.join(programData, 'FoodHubPrintAgent');
   }
   return path.join(os.homedir(), '.foodhub-print-agent');
 }
@@ -23,7 +23,7 @@ export function loadConfig(): AgentConfig {
 
   const defaults: AgentConfig = {
     port: parseInt(process.env.PORT || '8123', 10),
-    version: '1.0.0',
+    version: '2.0.0',
     configDir,
     defaultPrinter: null,
   };

@@ -1,78 +1,119 @@
-import puppeteer from 'puppeteer';
-import { print as printPdf } from 'pdf-to-printer';
-import fs from 'fs';
-import path from 'path';
-import os from 'os';
+import {
+  printer as ThermalPrinter,
+  types as PrinterTypes,
+} from 'node-thermal-printer';
+
+export interface ReceiptLine {
+  type: 'text' | 'bold' | 'separator' | 'cut' | 'feed' | 'pair';
+  value?: string;
+  align?: 'left' | 'center' | 'right';
+  /** For type 'pair': left + right columns */
+  left?: string;
+  right?: string;
+  /** Number of line feeds (for type 'feed') */
+  lines?: number;
+}
+
+export interface PrintJob {
+  printerName?: string;
+  paperWidth?: 58 | 80;
+  lines: ReceiptLine[];
+}
 
 /**
- * Render HTML to PDF using headless Chromium, then send to printer silently.
- * This avoids any browser dialog — true 1-click printing.
+ * Send ESC/POS raw commands to a Windows-installed printer via the print spooler.
+ * No Puppeteer, no Chrome, no PDF — pure thermal.
  */
-export async function renderAndPrint(
-  html: string,
-  paperWidth: 58 | 80,
-  printerName?: string
-): Promise<void> {
-  const tmpDir = path.join(os.tmpdir(), 'foodhub-print');
-  fs.mkdirSync(tmpDir, { recursive: true });
+export async function printEscPos(job: PrintJob): Promise<void> {
+  const pw = job.paperWidth === 58 ? 58 : 80;
+  const charsPerLine = pw === 58 ? 32 : 48;
 
-  const pdfPath = path.join(tmpDir, `receipt-${Date.now()}.pdf`);
+  const tp = new ThermalPrinter({
+    type: PrinterTypes.EPSON,
+    interface: job.printerName
+      ? `printer:${job.printerName}`
+      : 'printer:auto',
+    characterSet: 'CHARCODE_LATIN1',
+    removeSpecialCharacters: false,
+    width: charsPerLine,
+    options: {
+      timeout: 10000,
+    },
+  });
 
-  let browser;
-  try {
-    // Launch headless Chromium
-    browser = await puppeteer.launch({
-      headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-gpu',
-      ],
-    });
+  // Check connectivity
+  const isConnected = await tp.isPrinterConnected();
+  if (!isConnected) {
+    throw new Error(
+      job.printerName
+        ? `Impressora "${job.printerName}" não está acessível via spooler.`
+        : 'Nenhuma impressora padrão acessível via spooler.'
+    );
+  }
 
-    const page = await browser.newPage();
+  // Process each line
+  for (const line of job.lines) {
+    switch (line.type) {
+      case 'text':
+        setAlign(tp, line.align);
+        tp.println(line.value || '');
+        break;
 
-    // Set viewport to match paper width
-    const widthPx = paperWidth === 58 ? 220 : 302; // approx px for 58mm/80mm at 96dpi
-    await page.setViewport({ width: widthPx, height: 800 });
+      case 'bold':
+        setAlign(tp, line.align);
+        tp.bold(true);
+        tp.println(line.value || '');
+        tp.bold(false);
+        break;
 
-    // Load the HTML content
-    await page.setContent(html, { waitUntil: 'networkidle0', timeout: 10000 });
-
-    // Generate PDF matching thermal paper size
-    const widthMM = paperWidth === 58 ? 58 : 80;
-    await page.pdf({
-      path: pdfPath,
-      width: `${widthMM}mm`,
-      printBackground: true,
-      margin: { top: '0', right: '0', bottom: '0', left: '0' },
-      preferCSSPageSize: true,
-    });
-
-    await browser.close();
-    browser = null;
-
-    // Send PDF to printer silently
-    const printOptions: { printer?: string } = {};
-    if (printerName) {
-      printOptions.printer = printerName;
-    }
-
-    await printPdf(pdfPath, printOptions);
-
-    console.log(`[Print] ✓ Printed to ${printerName || 'default printer'} (${paperWidth}mm)`);
-  } catch (err) {
-    if (browser) {
-      try { await browser.close(); } catch {}
-    }
-    throw err;
-  } finally {
-    // Clean up temp file
-    try {
-      if (fs.existsSync(pdfPath)) {
-        fs.unlinkSync(pdfPath);
+      case 'pair': {
+        // Left-right pair on same line
+        const left = line.left || '';
+        const right = line.right || '';
+        const spaces = charsPerLine - left.length - right.length;
+        tp.alignLeft();
+        tp.print(left + ' '.repeat(Math.max(1, spaces)) + right);
+        tp.newLine();
+        break;
       }
-    } catch {}
+
+      case 'separator':
+        tp.drawLine();
+        break;
+
+      case 'feed':
+        for (let i = 0; i < (line.lines || 1); i++) {
+          tp.newLine();
+        }
+        break;
+
+      case 'cut':
+        tp.cut();
+        break;
+
+      default:
+        break;
+    }
+  }
+
+  // Execute print
+  await tp.execute();
+
+  console.log(
+    `[ESC/POS] ✓ Impresso em ${job.printerName || 'impressora padrão'} (${pw}mm, ${job.lines.length} linhas)`
+  );
+}
+
+function setAlign(tp: InstanceType<typeof ThermalPrinter>, align?: string) {
+  switch (align) {
+    case 'center':
+      tp.alignCenter();
+      break;
+    case 'right':
+      tp.alignRight();
+      break;
+    default:
+      tp.alignLeft();
+      break;
   }
 }

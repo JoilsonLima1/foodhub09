@@ -79,7 +79,6 @@ export function useTenantPrintSettings() {
         }
       } catch (err) {
         console.error('Failed to load print settings from DB:', err);
-        // Fallback to localStorage
         const cached = loadFromCache(tenantId!);
         if (cached) {
           setSettings(cached);
@@ -140,7 +139,7 @@ export function useTenantPrintSettings() {
   // Test agent connection
   const testAgent = useCallback(async (endpoint: string): Promise<boolean> => {
     try {
-      const resp = await fetch(`${endpoint}/status`, {
+      const resp = await fetch(`${endpoint}/health`, {
         method: 'GET',
         signal: AbortSignal.timeout(3000),
       });
@@ -150,45 +149,39 @@ export function useTenantPrintSettings() {
     }
   }, []);
 
-  // Check if agent is online (quick health check)
+  // Check if agent is online
   const isAgentOnline = useCallback(async (): Promise<boolean> => {
     if (!settings?.agent_endpoint) return false;
-    try {
-      const resp = await fetch(`${settings.agent_endpoint}/health`, {
-        method: 'GET',
-        signal: AbortSignal.timeout(1500),
-      });
-      return resp.ok;
-    } catch {
-      return false;
-    }
-  }, [settings]);
+    return testAgent(settings.agent_endpoint);
+  }, [settings, testAgent]);
 
-  // Print via agent with explicit printer/paper config
+  // Print via agent — sends structured lines to POST /print
   const printViaAgent = useCallback(async (
-    html: string,
+    lines: Array<{
+      type: 'text' | 'bold' | 'separator' | 'cut' | 'feed' | 'pair';
+      value?: string;
+      align?: 'left' | 'center' | 'right';
+      left?: string;
+      right?: string;
+      lines?: number;
+    }>,
     options?: { printerName?: string | null; paperWidth?: string }
   ): Promise<{ ok: boolean; error?: string }> => {
     if (!settings || settings.print_mode !== 'AGENT' || !settings.agent_endpoint) {
-      return { ok: false };
+      return { ok: false, error: 'NOT_AGENT_MODE' };
     }
 
     try {
-      const online = await isAgentOnline();
-      if (!online) {
-        return { ok: false, error: 'AGENT_OFFLINE' };
-      }
-
       const pw = Number(options?.paperWidth || settings.paper_width) === 58 ? 58 : 80;
       const body: Record<string, unknown> = {
-        html,
+        lines,
         larguraDoPapel: pw,
       };
       if (options?.printerName) {
         body.nomeDaImpressora = options.printerName;
       }
 
-      const resp = await fetch(`${settings.agent_endpoint}/imprimir/recibo`, {
+      const resp = await fetch(`${settings.agent_endpoint}/print`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -208,7 +201,7 @@ export function useTenantPrintSettings() {
       console.error('Agent print failed:', err);
       return { ok: false, error: 'AGENT_OFFLINE' };
     }
-  }, [settings, isAgentOnline]);
+  }, [settings]);
 
   return {
     settings,
