@@ -7,7 +7,7 @@ export interface TenantPrintSettings {
   tenant_id: string;
   paper_width: '58' | '80';
   printer_profile: 'EPSON' | 'ELGIN' | 'BEMATECH' | 'DARUMA' | 'TOMATE' | 'GENERIC';
-  print_mode: 'BROWSER' | 'AGENT';
+  print_mode: 'BROWSER' | 'AGENT' | 'KIOSK';
   agent_endpoint: string | null;
   updated_at: string;
 }
