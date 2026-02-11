@@ -103,9 +103,43 @@ export function PrinterSettings() {
     });
   };
 
-  const handleTestPrint = () => {
+  const handleTestPrint = async () => {
     handleSave();
     const paperWidth = local.paper_width as PaperWidthMM;
+
+    // If Agent mode, try agent-side test print first
+    if (local.print_mode === 'AGENT' && local.agent_endpoint) {
+      try {
+        const resp = await fetch(`${local.agent_endpoint}/print/test`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            paperWidth: parseInt(local.paper_width),
+            printerName: local.default_printer_name || undefined,
+          }),
+          signal: AbortSignal.timeout(15000),
+        });
+        const data = await resp.json();
+        if (data.ok) {
+          toast({
+            title: '✓ Impressão enviada para a impressora padrão',
+            description: 'Cupom de teste impresso via Agent sem diálogo.',
+          });
+          setShowPreview(true);
+          return;
+        }
+        throw new Error(data.error || 'Agent retornou erro');
+      } catch (err) {
+        console.warn('[TestPrint] Agent failed, falling back to browser:', err);
+        toast({
+          title: 'Agent offline — usando impressão do navegador',
+          description: 'Vai aparecer a janela de imprimir. Instale o Agent para 1-clique.',
+          variant: 'destructive',
+        });
+      }
+    }
+
+    // Fallback: browser print
     const now = new Date();
     const html = buildReceiptHTML({
       tenantName: 'Meu Estabelecimento',
