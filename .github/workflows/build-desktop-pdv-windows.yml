@@ -1,0 +1,56 @@
+name: Build FoodHub PDV Desktop (Windows)
+
+on:
+  push:
+    paths:
+      - 'desktop-pdv/**'
+    branches: [main]
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: desktop-pdv
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Configure npm registry
+        run: npm config set registry https://registry.npmjs.org/
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build TypeScript
+        run: npm run build
+
+      - name: Build Electron installer
+        run: npm run dist
+
+      - name: Upload NSIS Installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: FoodHubPDV-Setup
+          path: desktop-pdv/release/*.exe
+          retention-days: 30
+
+      - name: Create Portable ZIP
+        run: |
+          Copy-Item "assets" "dist\assets" -Recurse -ErrorAction SilentlyContinue
+          Compress-Archive -Path "dist\*" -DestinationPath "release\FoodHubPDV-Portable.zip" -Force
+        shell: pwsh
+
+      - name: Upload Portable ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: FoodHubPDV-Portable
+          path: desktop-pdv/release/FoodHubPDV-Portable.zip
+          retention-days: 30

@@ -72,7 +72,7 @@ export function ReceiptDialog({
     }
   }, [open]);
 
-  const getAgentEndpoint = () => settings?.agent_endpoint || 'http://127.0.0.1:8123';
+  
 
   const findCaixaRoute = () => {
     const recibo = routes.find(r => r.route_type.toLowerCase() === 'recibo');
@@ -138,45 +138,24 @@ export function ReceiptDialog({
     setIsPrinting(true);
 
     try {
-      const endpoint = getAgentEndpoint();
       const caixaRoute = findCaixaRoute();
 
-      // Only attempt agent if mode is AGENT
+      // ─── Desktop mode: use Electron bridge (window.foodhub) ───
       if (settings?.print_mode === 'desktop') {
-        const isHTTPS = window.location.protocol === 'https:';
-        const endpointIsHTTP = endpoint.startsWith('http://');
-        const isInIframe = window.self !== window.top;
+        if (window.foodhub?.printReceipt) {
+          const pw = Number(caixaRoute?.paper_width || settings.paper_width) === 58 ? 58 : 80;
+          const receiptLines = buildReceiptLines();
 
-        if (isHTTPS && endpointIsHTTP) {
-          console.warn('[PRINT] ⚠ HTTPS→HTTP: navegador pode bloquear.');
-        }
+          console.log('[PRINT] Desktop bridge → printReceipt, pw:', pw);
+          toast({ title: '🖨️ Enviando para impressora...' });
 
-        const pw = Number(caixaRoute?.paper_width || settings.paper_width) === 58 ? 58 : 80;
-        const receiptLines = buildReceiptLines();
-
-        const body: Record<string, unknown> = {
-          lines: receiptLines,
-          larguraDoPapel: pw,
-        };
-        if (caixaRoute?.printer_name) {
-          body.nomeDaImpressora = caixaRoute.printer_name;
-        }
-
-        console.log('[PRINT] POST /print → printer:', body.nomeDaImpressora || '(padrão)', 'pw:', pw);
-        toast({ title: '🖨️ Enviando para Agent...' });
-
-        try {
-          const resp = await fetch(`${endpoint}/print`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body),
-            signal: AbortSignal.timeout(15000),
+          const result = await window.foodhub.printReceipt({
+            lines: receiptLines,
+            printerName: caixaRoute?.printer_name || undefined,
+            paperWidth: pw,
           });
 
-          const data = await resp.json().catch(() => ({}));
-          console.log('[PRINT] response:', resp.status, data);
-
-          if (resp.ok) {
+          if (result.ok) {
             toast({
               title: '✓ Impresso via ESC/POS',
               description: caixaRoute?.printer_name
@@ -184,49 +163,27 @@ export function ReceiptDialog({
                 : 'Impressora padrão do sistema',
             });
           } else {
-            const errMsg = (data as any)?.message || (data as any)?.error || `HTTP ${resp.status}`;
-            const code = (data as any)?.code || '';
-
-            if (code === 'PRINTER_NOT_FOUND') {
-              toast({
-                title: 'Impressora não encontrada',
-                description: 'Abra o Diagnóstico do Agent e configure a impressora padrão.',
-                variant: 'destructive',
-                duration: 8000,
-              });
-            } else {
-              toast({
-                title: 'Erro na impressão (Agent)',
-                description: errMsg,
-                variant: 'destructive',
-              });
-            }
+            toast({
+              title: 'Erro na impressão',
+              description: result.error || 'Falha ao imprimir.',
+              variant: 'destructive',
+            });
           }
-          // Agent was reachable — do NOT fall through to browser print
           return;
-        } catch (fetchErr) {
-          console.error('[PRINT] Agent unreachable:', fetchErr);
-
-          if (isInIframe || (isHTTPS && endpointIsHTTP)) {
-            toast({
-              title: 'Agent inacessível (preview bloqueado)',
-              description: 'O preview HTTPS não consegue acessar o Agent HTTP local. Publique o app e acesse pelo domínio publicado no PC do Agent.',
-              variant: 'destructive',
-              duration: 10000,
-            });
-          } else {
-            toast({
-              title: 'Agent offline',
-              description: 'Não foi possível conectar ao Agent. Usando impressão do navegador.',
-              variant: 'destructive',
-            });
-          }
-          // Fall through to browser print
         }
+
+        // Desktop mode selected but not running in Electron
+        toast({
+          title: 'FoodHub PDV Desktop não detectado',
+          description: 'Para imprimir com 1 clique, abra o sistema pelo FoodHub PDV Desktop. Usando impressão do navegador.',
+          variant: 'destructive',
+          duration: 8000,
+        });
+        // Fall through to browser print
       }
 
-      // Fallback: browser print
-      console.log('[PRINT] Usando impressão do navegador (fallback)');
+      // ─── Web mode (or fallback): browser window.print ───
+      console.log('[PRINT] Usando impressão do navegador');
       const config = getPrinterConfig();
       const paperWidth = config.paperWidth.replace('mm', '') as PaperWidthMM;
       const html = buildReceiptHTML({
@@ -255,58 +212,42 @@ export function ReceiptDialog({
     }
   };
 
-  /** Diagnostic: check agent health + printers + config */
+  /** Diagnostic: check desktop bridge or list printers */
   const handleDiagnostic = async () => {
     setIsDiagnosing(true);
-    const endpoint = getAgentEndpoint();
     const results: string[] = [];
 
     try {
-      // Health
-      try {
-        const resp = await fetch(`${endpoint}/health`, {
-          method: 'GET',
-          signal: AbortSignal.timeout(2000),
-        });
-        const data = await resp.json().catch(() => ({}));
-        results.push(`Health: ${resp.ok ? '✅ OK' : '❌ FAIL'} (${resp.status})`);
-        if (data.version) results.push(`Versão: ${data.version}`);
-        if (data.mode) results.push(`Modo: ${data.mode}`);
-        if (data.uptime != null) results.push(`Uptime: ${data.uptime}s`);
-      } catch {
-        results.push('Health: ❌ Não conseguiu conectar');
-      }
+      if (window.foodhub) {
+        results.push('Desktop: ✅ FoodHub PDV Desktop detectado');
 
-      // Diagnostic endpoint
-      try {
-        const resp = await fetch(`${endpoint}/diagnostic`, {
-          method: 'GET',
-          signal: AbortSignal.timeout(3000),
-        });
-        const data = await resp.json().catch(() => ({}));
-        results.push(`Impressoras: ${data.printers_detected_count || 0} encontrada(s)`);
-        results.push(`Padrão (Agent): ${data.printer_default || 'N/A'}`);
-        if (data.printers_detected?.length > 0) {
-          results.push(`Lista: ${data.printers_detected.join(', ')}`);
+        try {
+          const printers = await window.foodhub.getPrinters();
+          results.push(`Impressoras: ${printers.length} encontrada(s)`);
+          if (printers.length > 0) {
+            results.push(`Lista: ${printers.join(', ')}`);
+          }
+        } catch {
+          results.push('Impressoras: ❌ Erro ao listar');
         }
-        if (data.last_error) {
-          results.push(`Último erro: ${data.last_error}`);
+
+        try {
+          const defaultPrinter = await window.foodhub.getDefaultPrinter();
+          results.push(`Padrão: ${defaultPrinter || 'Nenhuma definida'}`);
+        } catch {
+          results.push('Padrão: ❌ Erro ao consultar');
         }
-      } catch {
-        results.push('Diagnóstico: ❌ Não conseguiu consultar');
+      } else {
+        results.push('Desktop: ❌ Não está rodando no FoodHub PDV Desktop');
+        results.push('💡 Baixe e instale o FoodHub PDV Desktop para impressão 1 clique.');
       }
 
       // Route info
       const caixaRoute = findCaixaRoute();
       results.push(`Rota Caixa: ${caixaRoute ? `"${caixaRoute.label}" → ${caixaRoute.printer_name || '(sem impressora)'}` : '❌ Não encontrada'}`);
-      results.push(`Endpoint: ${endpoint}`);
-
-      if (!caixaRoute?.printer_name) {
-        results.push('⚠ Configure uma impressora na Rota Caixa ou defina a padrão no Agent.');
-      }
 
       toast({
-        title: '🔍 Diagnóstico do Agent',
+        title: '🔍 Diagnóstico de Impressão',
         description: results.join('\n'),
         duration: 15000,
       });
@@ -373,7 +314,7 @@ export function ReceiptDialog({
             ) : (
               <Stethoscope className="h-3 w-3 mr-1" />
             )}
-            Diagnóstico do Agent
+            {window.foodhub ? 'Diagnóstico da Impressora' : 'Verificar Ambiente Desktop'}
           </Button>
         )}
       </DialogContent>
