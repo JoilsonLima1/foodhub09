@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Printer, TestTube, CheckCircle, HelpCircle, Zap, Wifi, WifiOff, Loader2, ExternalLink, Monitor } from 'lucide-react';
+import { Printer, TestTube, CheckCircle, HelpCircle, Zap, Wifi, WifiOff, Loader2, ExternalLink, Monitor, RefreshCw, Search } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ReceiptPrint } from '@/components/pos/ReceiptPrint';
 import { PrinterHelpModal } from './PrinterHelpModal';
@@ -69,6 +69,104 @@ export function PrinterSettings() {
   const [showKioskHelp, setShowKioskHelp] = useState(false);
   const [testingAgent, setTestingAgent] = useState(false);
   const receiptRef = useRef<HTMLDivElement>(null);
+
+  // Printer detection state
+  const [detectedPrinters, setDetectedPrinters] = useState<string[]>([]);
+  const [defaultPrinter, setDefaultPrinter] = useState<string | null>(null);
+  const [isDetecting, setIsDetecting] = useState(false);
+  const [agentOnline, setAgentOnline] = useState<boolean | null>(null);
+  const [testingType, setTestingType] = useState<string | null>(null);
+
+  const getAgentEndpoint = useCallback(() => {
+    return local?.agent_endpoint || settings?.agent_endpoint || 'http://127.0.0.1:8123';
+  }, [local, settings]);
+
+  const detectPrinters = useCallback(async (showToast = true) => {
+    const endpoint = getAgentEndpoint();
+    setIsDetecting(true);
+    try {
+      const resp = await fetch(`${endpoint}/printers`, {
+        method: 'GET',
+        signal: AbortSignal.timeout(5000),
+      });
+      const data = await resp.json();
+      if (data.ok) {
+        setDetectedPrinters(data.printers || []);
+        setDefaultPrinter(data.defaultPrinter || null);
+        setAgentOnline(true);
+
+        // Auto-fill Caixa with default if not set
+        if (data.defaultPrinter && local && !local.default_printer_name) {
+          setLocal(prev => prev ? { ...prev, default_printer_name: data.defaultPrinter } : prev);
+        }
+
+        if (showToast) {
+          toast({
+            title: `${(data.printers || []).length} impressora(s) detectada(s)`,
+            description: data.defaultPrinter ? `Padrão: ${data.defaultPrinter}` : 'Nenhuma impressora padrão identificada.',
+          });
+        }
+      } else {
+        throw new Error(data.error || 'Erro ao detectar');
+      }
+    } catch (err) {
+      setAgentOnline(false);
+      setDetectedPrinters([]);
+      if (showToast) {
+        toast({
+          title: 'Agent offline',
+          description: 'Não foi possível conectar ao FoodHub Print Agent. Verifique se está rodando.',
+          variant: 'destructive',
+        });
+      }
+    } finally {
+      setIsDetecting(false);
+    }
+  }, [getAgentEndpoint, local, toast]);
+
+  // Auto-detect when Agent mode is active
+  useEffect(() => {
+    if (local?.print_mode === 'AGENT' && agentOnline === null) {
+      detectPrinters(false);
+    }
+  }, [local?.print_mode, agentOnline, detectPrinters]);
+
+  const handleTestPrintForType = async (type: 'caixa' | 'cozinha' | 'bar') => {
+    if (!local) return;
+    const endpoint = getAgentEndpoint();
+    const printerMap: Record<string, string | null> = {
+      caixa: local.default_printer_name,
+      cozinha: local.kitchen_printer_name,
+      bar: local.bar_printer_name,
+    };
+    setTestingType(type);
+    try {
+      const resp = await fetch(`${endpoint}/test-print`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          printerName: printerMap[type] || undefined,
+          type,
+          paperWidth: parseInt(local.paper_width),
+        }),
+        signal: AbortSignal.timeout(15000),
+      });
+      const data = await resp.json();
+      if (data.ok) {
+        toast({ title: `✓ Teste ${type} enviado`, description: `Impressora: ${data.printer || 'default'}` });
+      } else {
+        throw new Error(data.error || 'Erro');
+      }
+    } catch (err) {
+      toast({
+        title: `Falha no teste ${type}`,
+        description: (err as Error).message || 'Agent não respondeu.',
+        variant: 'destructive',
+      });
+    } finally {
+      setTestingType(null);
+    }
+  };
 
   // Sync local state when DB settings load
   useEffect(() => {
@@ -346,40 +444,165 @@ export function PrinterSettings() {
         <>
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Printer className="h-4 w-4" /> Nomes das Impressoras
-              </CardTitle>
-              <CardDescription>
-                Nomes exatos das impressoras instaladas no sistema operacional (usados pelo Agent).
-              </CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <Printer className="h-4 w-4" /> Impressoras Detectadas
+                  </CardTitle>
+                  <CardDescription>
+                    Selecione as impressoras para cada seção. Campos vazios usam a impressora padrão do sistema.
+                  </CardDescription>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => detectPrinters(true)}
+                  disabled={isDetecting}
+                >
+                  {isDetecting
+                    ? <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                    : <Search className="h-4 w-4 mr-1" />}
+                  Detectar
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="space-y-4">
+              {agentOnline === false && (
+                <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg p-3">
+                  <WifiOff className="h-4 w-4 shrink-0" />
+                  <div>
+                    <p className="font-medium">Agent offline</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Inicie o FoodHub Print Agent ou{' '}
+                      <a href="/downloads" target="_blank" className="text-primary hover:underline">baixe aqui</a>.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {agentOnline && detectedPrinters.length > 0 && (
+                <div className="flex items-center gap-2 text-xs text-primary bg-primary/5 border border-primary/20 rounded-lg p-2">
+                  <Wifi className="h-3.5 w-3.5" />
+                  {detectedPrinters.length} impressora(s) encontrada(s)
+                  {defaultPrinter && <span className="text-muted-foreground">• Padrão: {defaultPrinter}</span>}
+                </div>
+              )}
+
+              {/* Caixa (Default) */}
               <div className="space-y-2">
-                <Label>Impressora Padrão (Caixa)</Label>
-                <Input
-                  value={local.default_printer_name || ''}
-                  onChange={(e) => update({ default_printer_name: e.target.value || null })}
-                  placeholder="Ex: EPSON TM-T20X"
-                />
+                <div className="flex items-center justify-between">
+                  <Label>Impressora Padrão (Caixa)</Label>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => handleTestPrintForType('caixa')}
+                    disabled={testingType !== null || !agentOnline}
+                  >
+                    {testingType === 'caixa' ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <TestTube className="h-3 w-3 mr-1" />}
+                    Testar
+                  </Button>
+                </div>
+                {detectedPrinters.length > 0 ? (
+                  <Select
+                    value={local.default_printer_name || '__default__'}
+                    onValueChange={(v) => update({ default_printer_name: v === '__default__' ? null : v })}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Usar padrão do sistema" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__default__">
+                        {defaultPrinter ? `Padrão do sistema (${defaultPrinter})` : 'Padrão do sistema'}
+                      </SelectItem>
+                      {detectedPrinters.map(p => (
+                        <SelectItem key={p} value={p}>{p}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input
+                    value={local.default_printer_name || ''}
+                    onChange={(e) => update({ default_printer_name: e.target.value || null })}
+                    placeholder="Ex: EPSON TM-T20X (detecte para preencher)"
+                  />
+                )}
               </div>
+
+              {/* Cozinha */}
               <div className="space-y-2">
-                <Label>Impressora Cozinha</Label>
-                <Input
-                  value={local.kitchen_printer_name || ''}
-                  onChange={(e) => update({ kitchen_printer_name: e.target.value || null })}
-                  placeholder="Ex: EPSON TM-T88VI (opcional)"
-                />
+                <div className="flex items-center justify-between">
+                  <Label>Impressora Cozinha <span className="text-muted-foreground text-xs">(opcional)</span></Label>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => handleTestPrintForType('cozinha')}
+                    disabled={testingType !== null || !agentOnline}
+                  >
+                    {testingType === 'cozinha' ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <TestTube className="h-3 w-3 mr-1" />}
+                    Testar
+                  </Button>
+                </div>
+                {detectedPrinters.length > 0 ? (
+                  <Select
+                    value={local.kitchen_printer_name || '__default__'}
+                    onValueChange={(v) => update({ kitchen_printer_name: v === '__default__' ? null : v })}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Usar padrão do sistema" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__default__">Usar padrão do sistema</SelectItem>
+                      {detectedPrinters.map(p => (
+                        <SelectItem key={p} value={p}>{p}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input
+                    value={local.kitchen_printer_name || ''}
+                    onChange={(e) => update({ kitchen_printer_name: e.target.value || null })}
+                    placeholder="Ex: EPSON TM-T88VI (opcional)"
+                  />
+                )}
               </div>
+
+              {/* Bar */}
               <div className="space-y-2">
-                <Label>Impressora Bar</Label>
-                <Input
-                  value={local.bar_printer_name || ''}
-                  onChange={(e) => update({ bar_printer_name: e.target.value || null })}
-                  placeholder="Ex: BEMATECH MP-4200 (opcional)"
-                />
+                <div className="flex items-center justify-between">
+                  <Label>Impressora Bar <span className="text-muted-foreground text-xs">(opcional)</span></Label>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => handleTestPrintForType('bar')}
+                    disabled={testingType !== null || !agentOnline}
+                  >
+                    {testingType === 'bar' ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <TestTube className="h-3 w-3 mr-1" />}
+                    Testar
+                  </Button>
+                </div>
+                {detectedPrinters.length > 0 ? (
+                  <Select
+                    value={local.bar_printer_name || '__default__'}
+                    onValueChange={(v) => update({ bar_printer_name: v === '__default__' ? null : v })}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Usar padrão do sistema" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__default__">Usar padrão do sistema</SelectItem>
+                      {detectedPrinters.map(p => (
+                        <SelectItem key={p} value={p}>{p}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input
+                    value={local.bar_printer_name || ''}
+                    onChange={(e) => update({ bar_printer_name: e.target.value || null })}
+                    placeholder="Ex: BEMATECH MP-4200 (opcional)"
+                  />
+                )}
               </div>
+
               <p className="text-xs text-muted-foreground">
-                Use o nome exato como aparece em "Impressoras e Scanners" do sistema. Se vazio, o Agent usa a impressora padrão.
+                Clique em "Detectar" para listar as impressoras instaladas. Campos vazios usam a impressora padrão do Windows.
               </p>
             </CardContent>
           </Card>
