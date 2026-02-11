@@ -10,6 +10,16 @@ import { Printer, X, CheckCircle } from 'lucide-react';
 import { ReceiptPrint } from './ReceiptPrint';
 import type { CartItem } from '@/types/database';
 import { getPrinterConfig } from '@/components/settings/PrinterSettings';
+import { printReceiptHTML, buildReceiptHTML, type PaperWidthMM } from '@/lib/thermalPrint';
+
+const paymentMethodLabels: Record<string, string> = {
+  cash: 'Dinheiro',
+  pix: 'PIX',
+  credit_card: 'Cartão de Crédito',
+  debit_card: 'Cartão de Débito',
+  voucher: 'Voucher',
+  mixed: 'Misto',
+};
 
 interface ReceiptDialogProps {
   open: boolean;
@@ -33,7 +43,7 @@ export function ReceiptDialog({
   total,
   paymentMethod,
   cashierName,
-  tenantName,
+  tenantName = 'FoodHub09',
   tenantLogo,
 }: ReceiptDialogProps) {
   const receiptRef = useRef<HTMLDivElement>(null);
@@ -47,7 +57,35 @@ export function ReceiptDialog({
   }, [open]);
 
   const handlePrint = () => {
-    window.print();
+    const config = getPrinterConfig();
+    const paperWidth = config.paperWidth.replace('mm', '') as PaperWidthMM;
+
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('pt-BR');
+    const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+    const html = buildReceiptHTML({
+      tenantName,
+      tenantLogo,
+      orderNumber,
+      dateStr,
+      timeStr,
+      cashierName,
+      items: items.map((item, index) => ({
+        index: index + 1,
+        name: item.productName,
+        variationName: item.variationName,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        totalPrice: item.totalPrice,
+        notes: item.notes,
+      })),
+      subtotal,
+      total,
+      paymentMethodLabel: paymentMethodLabels[paymentMethod] || paymentMethod,
+    });
+
+    printReceiptHTML(html, paperWidth);
   };
 
   return (

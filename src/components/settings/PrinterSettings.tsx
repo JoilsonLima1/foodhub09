@@ -13,6 +13,7 @@ import { PrinterHelpModal } from './PrinterHelpModal';
 import { KioskHelpModal } from './KioskHelpModal';
 import { DefaultPrinterCallout } from './DefaultPrinterCallout';
 import { useTenantPrintSettings, type TenantPrintSettings } from '@/hooks/useTenantPrintSettings';
+import { printReceiptHTML, buildReceiptHTML, type PaperWidthMM } from '@/lib/thermalPrint';
 import type { CartItem } from '@/types/database';
 
 // Keep backward-compatible exports for ReceiptDialog
@@ -100,9 +101,30 @@ export function PrinterSettings() {
 
   const handleTestPrint = () => {
     handleSave();
-    document.documentElement.style.setProperty('--receipt-width', `${local.paper_width}mm`);
+    const paperWidth = local.paper_width as PaperWidthMM;
+    const now = new Date();
+    const html = buildReceiptHTML({
+      tenantName: 'Meu Estabelecimento',
+      orderNumber: 999,
+      dateStr: now.toLocaleDateString('pt-BR'),
+      timeStr: now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+      cashierName: 'Teste',
+      items: sampleItems.map((item, i) => ({
+        index: i + 1,
+        name: item.productName,
+        variationName: item.variationName,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        totalPrice: item.totalPrice,
+        notes: item.notes,
+      })),
+      subtotal: 82.30,
+      total: 82.30,
+      paymentMethodLabel: 'PIX',
+      isTest: true,
+    });
+    printReceiptHTML(html, paperWidth);
     setShowPreview(true);
-    setTimeout(() => window.print(), 300);
   };
 
   const handleTestAgent = async () => {
