@@ -9,10 +9,37 @@ interface PrinterInfo {
   isDefault: boolean;
 }
 
+async function getDefaultPrinterName(): Promise<string | null> {
+  // Try wmic first (most reliable on Win10/11)
+  try {
+    const { stdout } = await execAsync(
+      'wmic printer where Default="TRUE" get Name',
+      { timeout: 5000 }
+    );
+    const lines = stdout.split('\n').map(l => l.trim()).filter(Boolean);
+    // First line is header "Name", second is the value
+    if (lines.length >= 2) {
+      return lines[1];
+    }
+  } catch { /* fallback below */ }
+
+  // Fallback: PowerShell Get-CimInstance
+  try {
+    const { stdout } = await execAsync(
+      'powershell -Command "Get-CimInstance -ClassName Win32_Printer | Where-Object {$_.Default -eq $true} | Select-Object -ExpandProperty Name"',
+      { timeout: 5000 }
+    );
+    const name = stdout.trim();
+    if (name) return name;
+  } catch { /* ignore */ }
+
+  return null;
+}
+
 async function listWindowsPrinters(): Promise<PrinterInfo[]> {
   try {
     const { stdout } = await execAsync(
-      'powershell -Command "Get-Printer | Select-Object Name, Default | ConvertTo-Json"',
+      'powershell -Command "Get-Printer | Select-Object Name | ConvertTo-Json"',
       { timeout: 5000 }
     );
 
@@ -20,11 +47,12 @@ async function listWindowsPrinters(): Promise<PrinterInfo[]> {
 
     const raw = JSON.parse(stdout);
     const printers = Array.isArray(raw) ? raw : [raw];
+    const defaultName = await getDefaultPrinterName();
 
     return printers
-      .map((p: { Name: string; Default?: boolean }) => ({
+      .map((p: { Name: string }) => ({
         name: p.Name,
-        isDefault: !!p.Default,
+        isDefault: defaultName ? p.Name === defaultName : false,
       }))
       .sort((a, b) => a.name.localeCompare(b.name));
   } catch (err) {
@@ -40,14 +68,17 @@ export function printersRouter() {
   router.get('/impressoras', async (_req, res) => {
     try {
       const printers = await listWindowsPrinters();
-      const defaultPrinter = printers.find(p => p.isDefault)?.name || null;
+      const printerNames = printers.map(p => p.name);
+      const foundDefault = printers.find(p => p.isDefault)?.name || null;
+      // Only return default if it's actually in the list
+      const defaultPrinter = foundDefault && printerNames.includes(foundDefault) ? foundDefault : null;
       res.json({
         ok: true,
         impressoraPadrao: defaultPrinter,
-        impressoras: printers.map(p => p.name),
+        impressoras: printerNames,
         // Backward compat
         defaultPrinter,
-        printers: printers.map(p => p.name),
+        printers: printerNames,
       });
     } catch (err) {
       res.json({
@@ -65,13 +96,15 @@ export function printersRouter() {
   router.get('/printers', async (_req, res) => {
     try {
       const printers = await listWindowsPrinters();
-      const defaultPrinter = printers.find(p => p.isDefault)?.name || null;
+      const printerNames = printers.map(p => p.name);
+      const foundDefault = printers.find(p => p.isDefault)?.name || null;
+      const defaultPrinter = foundDefault && printerNames.includes(foundDefault) ? foundDefault : null;
       res.json({
         ok: true,
         defaultPrinter,
-        printers: printers.map(p => p.name),
+        printers: printerNames,
         impressoraPadrao: defaultPrinter,
-        impressoras: printers.map(p => p.name),
+        impressoras: printerNames,
       });
     } catch (err) {
       res.json({
