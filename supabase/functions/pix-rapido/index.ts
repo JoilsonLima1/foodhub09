@@ -152,6 +152,8 @@ serve(async (req) => {
       return await handleStatus(supabase, body);
     } else if (action === "resolve-config") {
       return await handleResolveConfig(supabase, body);
+    } else if (action === "create-subaccount") {
+      return await handleCreateSubaccount(supabase, body);
     }
 
     return errorResponse(400, "INVALID_ACTION", "Ação inválida");
@@ -217,6 +219,20 @@ async function handleCreate(supabase: any, body: any, userId: string) {
     return errorResponse(404, "PSP_NOT_FOUND", "PSP não encontrado ou inativo");
   }
 
+  // Get tenant info for split configuration
+  const { data: tenant } = await supabase
+    .from('tenants')
+    .select('woovi_subaccount_id, pix_split_enabled, commission_type, commission_value, commission_fixed')
+    .eq('id', tenant_id)
+    .single();
+
+  // Get global split settings
+  const { data: splitSettings } = await supabase
+    .from('pix_split_settings')
+    .select('*')
+    .limit(1)
+    .single();
+
   // Resolve pricing for this tenant
   const { data: configs } = await supabase.rpc('resolve_pix_config', { p_tenant_id: tenant_id });
   const pspConfig = (configs || []).find((c: any) => c.psp_provider_id === psp_provider_id);
@@ -248,18 +264,76 @@ async function handleCreate(supabase: any, body: any, userId: string) {
   let pspChargeId: string | null = null;
   let expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
   let txid = correlationID;
+  let splitApplied = false;
+  let commissionAmount = 0;
+  let commissionType = 'percentage';
+
+  // Determine split configuration
+  const canSplit = tenant?.pix_split_enabled
+    && tenant?.woovi_subaccount_id
+    && splitSettings?.auto_split_enabled;
+
+  // Calculate commission
+  const commType = tenant?.commission_type || splitSettings?.default_commission_percent ? 'percentage' : 'fixed';
+  const commPercent = tenant?.commission_value ?? splitSettings?.default_commission_percent ?? 1.0;
+  const commFixed = tenant?.commission_fixed ?? splitSettings?.default_commission_fixed ?? 0;
+
+  if (commType === 'percentage') {
+    commissionAmount = Math.round(amount * commPercent) / 100;
+    commissionType = 'percentage';
+  } else {
+    commissionAmount = commFixed;
+    commissionType = 'fixed';
+  }
 
   // Real Woovi/OpenPix integration
   if ((psp.name === 'woovi' || psp.name === 'openpix') && credentials.api_key) {
     try {
-      logStep("Calling Woovi API", { correlationID, amount });
+      logStep("Calling Woovi API", { correlationID, amount, canSplit });
       const amountCents = Math.round(amount * 100);
-      const wooviResult = await wooviCreateCharge(credentials.api_key, {
+
+      const chargePayload: any = {
         correlationID,
         value: amountCents,
         comment: description || `PIX Rápido - Pedido`,
         expiresIn: 1800,
+      };
+
+      // Add split if tenant has subaccount and split is enabled
+      if (canSplit && splitSettings?.platform_woovi_account_id) {
+        const platformAccountId = splitSettings.platform_woovi_account_id;
+        const tenantSubaccountId = tenant.woovi_subaccount_id;
+
+        // Calculate split percentages
+        const platformPercent = commType === 'percentage'
+          ? commPercent
+          : Math.round((commFixed / amount) * 10000) / 100;
+
+        chargePayload.splits = [
+          {
+            pixKey: tenantSubaccountId,
+            splitPercentage: Math.round((100 - platformPercent) * 100),
+          },
+        ];
+
+        splitApplied = true;
+        logStep("Split applied", { tenantSubaccountId, platformPercent });
+      }
+
+      const response = await fetch(`${WOOVI_API_BASE}/charge`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": credentials.api_key,
+        },
+        body: JSON.stringify(chargePayload),
       });
+
+      const wooviResult = await response.json();
+      if (!response.ok) {
+        logStep("Woovi API error", { status: response.status, body: wooviResult });
+        throw new Error(wooviResult?.error || `Woovi API error: ${response.status}`);
+      }
 
       const charge = wooviResult.charge || wooviResult;
       qrCode = charge.brCode || charge.pixQrCode || null;
@@ -271,7 +345,7 @@ async function handleCreate(supabase: any, body: any, userId: string) {
         expiresAt = charge.expiresDate;
       }
 
-      logStep("Woovi charge created", { txid, pspChargeId, hasQr: !!qrCode });
+      logStep("Woovi charge created", { txid, pspChargeId, hasQr: !!qrCode, splitApplied });
     } catch (wooviError) {
       const errMsg = wooviError instanceof Error ? wooviError.message : "Erro Woovi";
       logStep("Woovi API failed", { error: errMsg });
@@ -308,6 +382,8 @@ async function handleCreate(supabase: any, body: any, userId: string) {
         created_by: userId,
         psp_name: psp.name,
         credential_source: credentials.source,
+        split_applied: splitApplied,
+        commission: { type: commissionType, amount: commissionAmount, percent: commPercent },
         fee_details: { percentRate, fixedRate, minFee, maxFee, calculatedFee: platformFee },
       },
     })
@@ -319,7 +395,31 @@ async function handleCreate(supabase: any, body: any, userId: string) {
     return errorResponse(500, "DB_ERROR", "Erro ao registrar transação PIX");
   }
 
-  logStep("PIX charge created", { txid, platformFee, amount, source: credentials.source });
+  // Register commission record
+  try {
+    await supabase.from('platform_commissions').insert({
+      tenant_id,
+      order_id: order_id || null,
+      pix_transaction_id: txRecord.id,
+      gross_amount: amount,
+      commission_amount: commissionAmount,
+      net_amount: amount - commissionAmount,
+      commission_type: commissionType,
+      commission_rate: commPercent,
+      status: splitApplied ? 'auto_split' : 'manual_pending',
+      metadata: {
+        txid,
+        psp_name: psp.name,
+        split_applied: splitApplied,
+        platform_fee: platformFee,
+      },
+    });
+    logStep("Commission recorded", { status: splitApplied ? 'auto_split' : 'manual_pending', amount: commissionAmount });
+  } catch (commErr) {
+    logStep("Non-critical: commission record failed", { error: commErr instanceof Error ? commErr.message : commErr });
+  }
+
+  logStep("PIX charge created", { txid, platformFee, amount, source: credentials.source, splitApplied });
 
   return successResponse({
     transaction_id: txRecord.id,
@@ -328,10 +428,12 @@ async function handleCreate(supabase: any, body: any, userId: string) {
     qr_code_url: qrCodeUrl,
     amount,
     platform_fee: platformFee,
+    commission: commissionAmount,
     net_amount: amount - platformFee,
     expires_at: expiresAt,
     psp_name: psp.display_name,
     status: 'pending',
+    split_applied: splitApplied,
   });
 }
 
@@ -576,4 +678,103 @@ async function handleWebhook(supabase: any, body: any, req: Request) {
 
   logStep("Webhook processed successfully", { correlationID, e2eId });
   return successResponse({ message: "Pagamento confirmado" });
+}
+
+// ============================================================
+// CREATE WOOVI SUBACCOUNT
+// ============================================================
+async function handleCreateSubaccount(supabase: any, body: any) {
+  const { tenant_id } = body;
+  if (!tenant_id) return errorResponse(400, "MISSING_TENANT", "tenant_id obrigatório");
+
+  // Check tenant
+  const { data: tenant } = await supabase
+    .from('tenants')
+    .select('id, name, woovi_subaccount_id, pix_split_enabled')
+    .eq('id', tenant_id)
+    .single();
+
+  if (!tenant) return errorResponse(404, "TENANT_NOT_FOUND", "Tenant não encontrado");
+
+  if (tenant.woovi_subaccount_id) {
+    return successResponse({
+      message: "Tenant já possui subconta",
+      subaccount_id: tenant.woovi_subaccount_id,
+      already_exists: true,
+    });
+  }
+
+  // Get platform credentials (we need the platform API key to create subaccounts)
+  const { data: platformCred } = await supabase
+    .from('pix_platform_credentials')
+    .select('api_key')
+    .eq('scope', 'platform')
+    .is('scope_id', null)
+    .eq('is_active', true)
+    .limit(1)
+    .single();
+
+  if (!platformCred?.api_key) {
+    return errorResponse(400, "NO_PLATFORM_KEY", "Credencial de plataforma não configurada");
+  }
+
+  try {
+    logStep("Creating Woovi subaccount", { tenant_id, name: tenant.name });
+
+    const response = await fetch(`${WOOVI_API_BASE}/subaccount`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": platformCred.api_key,
+      },
+      body: JSON.stringify({
+        name: tenant.name || `Tenant ${tenant_id.substring(0, 8)}`,
+        pixKey: null, // Will be configured by tenant later
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      logStep("Woovi subaccount creation failed", { status: response.status, body: data });
+
+      // Fallback: disable split for this tenant
+      await supabase
+        .from('tenants')
+        .update({ pix_split_enabled: false })
+        .eq('id', tenant_id);
+
+      return errorResponse(502, "SUBACCOUNT_ERROR", `Erro ao criar subconta: ${data?.error || response.status}`);
+    }
+
+    const subaccountId = data.account?.pixKey || data.account?.id || data.pixKey || data.id;
+
+    // Save subaccount ID on tenant
+    await supabase
+      .from('tenants')
+      .update({
+        woovi_subaccount_id: subaccountId,
+        pix_split_enabled: true,
+      })
+      .eq('id', tenant_id);
+
+    logStep("Woovi subaccount created", { tenant_id, subaccountId });
+
+    return successResponse({
+      message: "Subconta criada com sucesso",
+      subaccount_id: subaccountId,
+      already_exists: false,
+    });
+  } catch (err) {
+    const errMsg = err instanceof Error ? err.message : "Erro desconhecido";
+    logStep("Subaccount creation error", { error: errMsg });
+
+    // Fallback: disable split
+    await supabase
+      .from('tenants')
+      .update({ pix_split_enabled: false })
+      .eq('id', tenant_id);
+
+    return errorResponse(500, "SUBACCOUNT_ERROR", errMsg);
+  }
 }

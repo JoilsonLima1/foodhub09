@@ -1,11 +1,12 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, Zap, Server, Tag, GitBranch, Calculator, KeyRound } from 'lucide-react';
+import { Loader2, Zap, Server, Tag, GitBranch, Calculator, KeyRound, Split } from 'lucide-react';
 import { usePixAutomatico } from '@/hooks/usePixAutomatico';
 import { PixPspProvidersTab } from './PixPspProvidersTab';
 import { PixPricingPlansTab } from './PixPricingPlansTab';
 import { PixAvailabilityRulesTab } from './PixAvailabilityRulesTab';
 import { PixSimulatorTab } from './PixSimulatorTab';
 import { WooviCredentialsPanel } from './WooviCredentialsPanel';
+import { PixSplitSettingsTab } from './PixSplitSettingsTab';
 
 export function PixAutomaticoManager() {
   const {
@@ -64,6 +65,10 @@ export function PixAutomaticoManager() {
             <KeyRound className="h-4 w-4" />
             Credenciais
           </TabsTrigger>
+          <TabsTrigger value="split" className="flex items-center gap-2">
+            <Split className="h-4 w-4" />
+            Split / Comissões
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="providers">
@@ -106,6 +111,10 @@ export function PixAutomaticoManager() {
               <WooviCredentialsPanel key={p.id} scope="platform" pspProviderId={p.id} />
             ))}
           </div>
+        </TabsContent>
+
+        <TabsContent value="split">
+          <PixSplitSettingsTab />
         </TabsContent>
       </Tabs>
     </div>
