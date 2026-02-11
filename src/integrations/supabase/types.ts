@@ -3340,6 +3340,42 @@ export type Database = {
           },
         ]
       }
+      legal_documents: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          is_active: boolean
+          requires_scroll: boolean
+          title: string
+          type: string
+          updated_at: string
+          version: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          requires_scroll?: boolean
+          title: string
+          type: string
+          updated_at?: string
+          version: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          requires_scroll?: boolean
+          title?: string
+          type?: string
+          updated_at?: string
+          version?: string
+        }
+        Relationships: []
+      }
       loyalty_config: {
         Row: {
           birthday_points: number | null
@@ -11729,6 +11765,60 @@ export type Database = {
           },
           {
             foreignKeyName: "tenant_invoices_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenant_legal_acceptance: {
+        Row: {
+          accepted_at: string
+          accepted_ip: string | null
+          accepted_user_agent: string | null
+          accepted_user_id: string | null
+          document_id: string
+          document_type: string
+          id: string
+          metadata: Json | null
+          tenant_id: string
+          version: string
+        }
+        Insert: {
+          accepted_at?: string
+          accepted_ip?: string | null
+          accepted_user_agent?: string | null
+          accepted_user_id?: string | null
+          document_id: string
+          document_type: string
+          id?: string
+          metadata?: Json | null
+          tenant_id: string
+          version: string
+        }
+        Update: {
+          accepted_at?: string
+          accepted_ip?: string | null
+          accepted_user_agent?: string | null
+          accepted_user_id?: string | null
+          document_id?: string
+          document_type?: string
+          id?: string
+          metadata?: Json | null
+          tenant_id?: string
+          version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_legal_acceptance_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "legal_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_legal_acceptance_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
