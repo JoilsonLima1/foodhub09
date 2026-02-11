@@ -51,6 +51,7 @@ import TenantBillingAddons from "./pages/TenantBillingAddons";
 import TenantBillingCoupon from "./pages/TenantBillingCoupon";
 import StoneTenantPage from "./pages/StoneTenantPage";
 import TenantGatewayConfigPage from "./components/settings/TenantGatewayConfigPage";
+import Downloads from "./pages/Downloads";
 
 // Partner pages
 import PartnerDashboardAdmin from "./pages/partner/PartnerDashboardAdmin";
@@ -211,6 +212,7 @@ const App = () => (
                       <Route path="/courier-dashboard" element={<CourierDashboard />} />
                       <Route path="/stone" element={<StoneTenantPage />} />
                       <Route path="/settings/payments/gateways/:provider" element={<TenantGatewayConfigPage />} />
+                      <Route path="/downloads" element={<Downloads />} />
                     </Route>
                     
                     <Route path="*" element={<NotFound />} />
