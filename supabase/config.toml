@@ -95,3 +95,6 @@ verify_jwt = false
 
 [functions.pwa-manifest]
 verify_jwt = false
+
+[functions.pix-rapido]
+verify_jwt = false

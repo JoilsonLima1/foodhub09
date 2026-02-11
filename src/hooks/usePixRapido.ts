@@ -39,6 +39,7 @@ export function usePixRapido() {
   const [isPolling, setIsPolling] = useState(false);
   const [intent, setIntent] = useState<PixRapidoIntent | null>(null);
   const [paymentConfirmed, setPaymentConfirmed] = useState(false);
+  const [lastError, setLastError] = useState<string | null>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollingCountRef = useRef(0);
 
@@ -117,6 +118,7 @@ export function usePixRapido() {
     setIsCreating(true);
     setPaymentConfirmed(false);
     setIntent(null);
+    setLastError(null);
 
     try {
       const { data, error } = await supabase.functions.invoke('pix-rapido', {
@@ -131,7 +133,9 @@ export function usePixRapido() {
       });
 
       if (error || !data?.success) {
-        toast({ title: 'Erro', description: data?.error || 'Falha ao gerar PIX', variant: 'destructive' });
+        const errMsg = data?.error || 'Falha ao gerar PIX';
+        setLastError(errMsg);
+        toast({ title: 'Erro', description: errMsg, variant: 'destructive' });
         return null;
       }
 
@@ -153,6 +157,7 @@ export function usePixRapido() {
       return newIntent;
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Erro ao gerar PIX';
+      setLastError(msg);
       toast({ title: 'Erro', description: msg, variant: 'destructive' });
       return null;
     } finally {
@@ -165,6 +170,7 @@ export function usePixRapido() {
     setIntent(null);
     setPaymentConfirmed(false);
     setIsCreating(false);
+    setLastError(null);
     setOptions([]);
   }, [stopPolling]);
 
@@ -188,5 +194,6 @@ export function usePixRapido() {
     reset,
     stopPolling,
     estimateFee,
+    lastError,
   };
 }

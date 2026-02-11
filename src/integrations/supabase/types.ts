@@ -8228,6 +8228,68 @@ export type Database = {
           },
         ]
       }
+      pix_platform_credentials: {
+        Row: {
+          api_key_encrypted: string
+          connection_status: string
+          connection_tested_at: string | null
+          created_at: string
+          environment: string
+          id: string
+          is_active: boolean
+          last_webhook_at: string | null
+          last_webhook_status: string | null
+          metadata: Json | null
+          psp_provider_id: string
+          scope: string
+          scope_id: string | null
+          updated_at: string
+          webhook_secret_encrypted: string | null
+        }
+        Insert: {
+          api_key_encrypted: string
+          connection_status?: string
+          connection_tested_at?: string | null
+          created_at?: string
+          environment?: string
+          id?: string
+          is_active?: boolean
+          last_webhook_at?: string | null
+          last_webhook_status?: string | null
+          metadata?: Json | null
+          psp_provider_id: string
+          scope?: string
+          scope_id?: string | null
+          updated_at?: string
+          webhook_secret_encrypted?: string | null
+        }
+        Update: {
+          api_key_encrypted?: string
+          connection_status?: string
+          connection_tested_at?: string | null
+          created_at?: string
+          environment?: string
+          id?: string
+          is_active?: boolean
+          last_webhook_at?: string | null
+          last_webhook_status?: string | null
+          metadata?: Json | null
+          psp_provider_id?: string
+          scope?: string
+          scope_id?: string | null
+          updated_at?: string
+          webhook_secret_encrypted?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pix_platform_credentials_psp_provider_id_fkey"
+            columns: ["psp_provider_id"]
+            isOneToOne: false
+            referencedRelation: "pix_psp_providers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pix_pricing_plans: {
         Row: {
           created_at: string
@@ -8360,6 +8422,8 @@ export type Database = {
           pix_key: string | null
           platform_fee: number | null
           pricing_plan_id: string | null
+          psp_charge_id: string | null
+          psp_correlation_id: string | null
           psp_fee: number | null
           psp_provider_id: string
           qr_code: string | null
@@ -8386,6 +8450,8 @@ export type Database = {
           pix_key?: string | null
           platform_fee?: number | null
           pricing_plan_id?: string | null
+          psp_charge_id?: string | null
+          psp_correlation_id?: string | null
           psp_fee?: number | null
           psp_provider_id: string
           qr_code?: string | null
@@ -8412,6 +8478,8 @@ export type Database = {
           pix_key?: string | null
           platform_fee?: number | null
           pricing_plan_id?: string | null
+          psp_charge_id?: string | null
+          psp_correlation_id?: string | null
           psp_fee?: number | null
           psp_provider_id?: string
           qr_code?: string | null
@@ -11732,44 +11800,65 @@ export type Database = {
         Row: {
           api_key_encrypted: string | null
           config: Json | null
+          connection_status: string
+          connection_tested_at: string | null
           created_at: string
           id: string
           is_enabled: boolean
           kyc_approved_at: string | null
           kyc_status: string
           kyc_submitted_at: string | null
+          last_webhook_at: string | null
+          last_webhook_status: string | null
           psp_provider_id: string
+          scope: string
           subaccount_id: string | null
           tenant_id: string
           updated_at: string
+          use_platform_credentials: boolean
+          webhook_secret_encrypted: string | null
         }
         Insert: {
           api_key_encrypted?: string | null
           config?: Json | null
+          connection_status?: string
+          connection_tested_at?: string | null
           created_at?: string
           id?: string
           is_enabled?: boolean
           kyc_approved_at?: string | null
           kyc_status?: string
           kyc_submitted_at?: string | null
+          last_webhook_at?: string | null
+          last_webhook_status?: string | null
           psp_provider_id: string
+          scope?: string
           subaccount_id?: string | null
           tenant_id: string
           updated_at?: string
+          use_platform_credentials?: boolean
+          webhook_secret_encrypted?: string | null
         }
         Update: {
           api_key_encrypted?: string | null
           config?: Json | null
+          connection_status?: string
+          connection_tested_at?: string | null
           created_at?: string
           id?: string
           is_enabled?: boolean
           kyc_approved_at?: string | null
           kyc_status?: string
           kyc_submitted_at?: string | null
+          last_webhook_at?: string | null
+          last_webhook_status?: string | null
           psp_provider_id?: string
+          scope?: string
           subaccount_id?: string | null
           tenant_id?: string
           updated_at?: string
+          use_platform_credentials?: boolean
+          webhook_secret_encrypted?: string | null
         }
         Relationships: [
           {
@@ -14515,6 +14604,10 @@ export type Database = {
           rule_priority: number
           rule_scope: string
         }[]
+      }
+      resolve_pix_credentials: {
+        Args: { p_psp_provider_id: string; p_tenant_id: string }
+        Returns: Json
       }
       reverse_partner_transaction: {
         Args: {

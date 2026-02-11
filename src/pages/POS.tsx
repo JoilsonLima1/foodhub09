@@ -529,6 +529,7 @@ export default function POS() {
         onCreatePixRapido={handleCreatePixRapido}
         onResetPixRapido={pixRapido.reset}
         estimatePixRapidoFee={pixRapido.estimateFee}
+        pixRapidoError={pixRapido.lastError}
       />
 
       {/* Receipt Dialog */}
