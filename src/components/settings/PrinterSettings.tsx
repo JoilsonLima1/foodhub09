@@ -35,7 +35,7 @@ export function getPrinterConfig(): PrinterConfig {
       return {
         paperWidth: `${cached.paper_width}mm` as PaperWidth,
         model: cached.printer_profile.toLowerCase(),
-        autoPrint: cached.print_mode === 'AGENT',
+        autoPrint: cached.print_mode === 'desktop',
       };
     }
   } catch {}
@@ -233,7 +233,7 @@ export function PrinterSettings() {
     const paperWidth = local.paper_width as PaperWidthMM;
 
     // If Agent mode, try agent-side test print first
-    if (local.print_mode === 'AGENT' && local.agent_endpoint) {
+    if (local.print_mode === 'desktop' && local.agent_endpoint) {
       try {
         const resp = await fetch(`${local.agent_endpoint}/print/test`, {
           method: 'POST',
@@ -408,7 +408,7 @@ export function PrinterSettings() {
           >
             {/* Browser */}
             <div className="relative">
-              <RadioGroupItem value="BROWSER" id="mode-browser" className="peer sr-only" />
+              <RadioGroupItem value="web" id="mode-browser" className="peer sr-only" />
               <Label htmlFor="mode-browser" className="flex items-start gap-3 rounded-lg border-2 border-muted bg-card p-4 cursor-pointer transition-all hover:bg-accent peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5">
                 <Monitor className="h-5 w-5 mt-0.5 shrink-0" />
                 <div>
@@ -420,7 +420,7 @@ export function PrinterSettings() {
 
             {/* Kiosk */}
             <div className="relative">
-              <RadioGroupItem value="KIOSK" id="mode-kiosk" className="peer sr-only" />
+              <RadioGroupItem value="smartpos" id="mode-smartpos" className="peer sr-only" />
               <Label htmlFor="mode-kiosk" className="flex items-start gap-3 rounded-lg border-2 border-muted bg-card p-4 cursor-pointer transition-all hover:bg-accent peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5">
                 <Zap className="h-5 w-5 mt-0.5 shrink-0" />
                 <div>
@@ -432,7 +432,7 @@ export function PrinterSettings() {
 
             {/* Agent */}
             <div className="relative">
-              <RadioGroupItem value="AGENT" id="mode-agent" className="peer sr-only" />
+              <RadioGroupItem value="desktop" id="mode-desktop" className="peer sr-only" />
               <Label htmlFor="mode-agent" className="flex items-start gap-3 rounded-lg border-2 border-muted bg-card p-4 cursor-pointer transition-all hover:bg-accent peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5">
                 <ExternalLink className="h-5 w-5 mt-0.5 shrink-0" />
                 <div>
@@ -444,7 +444,7 @@ export function PrinterSettings() {
           </RadioGroup>
 
           {/* Kiosk info */}
-          {local.print_mode === 'KIOSK' && (
+          {local.print_mode === 'smartpos' && (
             <div className="space-y-3 pt-2 border-t">
               <div className="rounded-md bg-primary/5 border border-primary/20 p-3 text-xs text-foreground space-y-1">
                 <p className="font-medium">🖨️ Kiosk ativo — impressão silenciosa</p>
@@ -457,7 +457,7 @@ export function PrinterSettings() {
           )}
 
           {/* Agent config */}
-          {local.print_mode === 'AGENT' && (
+          {local.print_mode === 'desktop' && (
             <div className="space-y-3 pt-2 border-t">
               <div className="space-y-2">
                 <Label>Endpoint do Agente</Label>
@@ -482,7 +482,7 @@ export function PrinterSettings() {
       </Card>
 
       {/* Printer Names (for Agent mode) */}
-      {local.print_mode === 'AGENT' && (
+      {local.print_mode === 'desktop' && (
         <>
           <Card>
             <CardHeader>

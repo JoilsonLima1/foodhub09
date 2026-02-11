@@ -142,7 +142,7 @@ export function ReceiptDialog({
       const caixaRoute = findCaixaRoute();
 
       // Only attempt agent if mode is AGENT
-      if (settings?.print_mode === 'AGENT') {
+      if (settings?.print_mode === 'desktop') {
         const isHTTPS = window.location.protocol === 'https:';
         const endpointIsHTTP = endpoint.startsWith('http://');
         const isInIframe = window.self !== window.top;
@@ -360,7 +360,7 @@ export function ReceiptDialog({
           </Button>
         </div>
 
-        {settings?.print_mode === 'AGENT' && (
+        {settings?.print_mode === 'desktop' && (
           <Button
             variant="ghost"
             size="sm"

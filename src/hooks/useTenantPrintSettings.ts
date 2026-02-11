@@ -7,7 +7,7 @@ export interface TenantPrintSettings {
   tenant_id: string;
   paper_width: '58' | '80';
   printer_profile: 'EPSON' | 'ELGIN' | 'BEMATECH' | 'DARUMA' | 'TOMATE' | 'GENERIC';
-  print_mode: 'BROWSER' | 'AGENT' | 'KIOSK';
+  print_mode: 'web' | 'desktop' | 'smartpos';
   agent_endpoint: string | null;
   default_printer_name: string | null;
   kitchen_printer_name: string | null;
@@ -42,7 +42,7 @@ const defaultSettings = (tenantId: string): TenantPrintSettings => ({
   tenant_id: tenantId,
   paper_width: '80',
   printer_profile: 'GENERIC',
-  print_mode: 'BROWSER',
+  print_mode: 'web',
   agent_endpoint: DEFAULT_AGENT_ENDPOINT,
   default_printer_name: null,
   kitchen_printer_name: null,
@@ -169,7 +169,7 @@ export function useTenantPrintSettings() {
     }>,
     options?: { printerName?: string | null; paperWidth?: string }
   ): Promise<{ ok: boolean; error?: string }> => {
-    if (!settings || settings.print_mode !== 'AGENT' || !settings.agent_endpoint) {
+    if (!settings || settings.print_mode !== 'desktop' || !settings.agent_endpoint) {
       return { ok: false, error: 'NOT_AGENT_MODE' };
     }
 
