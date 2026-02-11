@@ -1,0 +1,59 @@
+{
+  "name": "foodhub-pdv-desktop",
+  "version": "1.0.0",
+  "description": "FoodHub PDV Desktop — impressão térmica ESC/POS 1 clique via USB",
+  "main": "dist/main.js",
+  "author": "FoodHub",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "tsc && electron .",
+    "build": "tsc",
+    "pack": "tsc && electron-builder --win --x64",
+    "dist": "tsc && electron-builder --win --x64 --publish never"
+  },
+  "dependencies": {
+    "electron-store": "8.2.0",
+    "node-thermal-printer": "4.4.3"
+  },
+  "devDependencies": {
+    "electron": "33.3.1",
+    "electron-builder": "25.1.8",
+    "typescript": "5.7.3"
+  },
+  "build": {
+    "appId": "com.foodhub.pdv",
+    "productName": "FoodHub PDV",
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": true,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "FoodHub PDV"
+    },
+    "files": [
+      "dist/**/*",
+      "assets/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "assets",
+        "to": "assets"
+      }
+    ]
+  }
+}
