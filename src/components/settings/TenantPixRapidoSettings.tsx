@@ -1,18 +1,22 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { Zap, CheckCircle, WifiOff } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Zap, CheckCircle, Shield, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { WooviCredentialsPanel } from '@/components/superadmin/pix/WooviCredentialsPanel';
+import { LegalAcceptanceModal } from '@/components/legal/LegalAcceptanceModal';
+import { useLegalAcceptance } from '@/hooks/useLegalAcceptance';
 import { toast } from '@/hooks/use-toast';
 
 export function TenantPixRapidoSettings() {
   const { tenantId } = useAuth();
   const queryClient = useQueryClient();
+  const [legalModalOpen, setLegalModalOpen] = useState(false);
+  const { allAccepted, canActivateSplit, loading: legalLoading, refresh: refreshLegal } = useLegalAcceptance(tenantId || null);
 
   // Get the Woovi PSP provider ID
   const { data: wooviProvider } = useQuery({
@@ -120,11 +124,46 @@ export function TenantPixRapidoSettings() {
         </CardContent>
       </Card>
 
+      {/* Legal acceptance status */}
+      <Card>
+        <CardContent className="py-4">
+          {allAccepted ? (
+            <div className="flex items-center gap-2 text-sm text-primary">
+              <Shield className="h-4 w-4" />
+              Termos jurídicos aceitos — Split automático habilitado.
+            </div>
+          ) : (
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm text-destructive">
+                <AlertTriangle className="h-4 w-4" />
+                É necessário aceitar os termos jurídicos atualizados para ativar o Split Automático.
+              </div>
+              <Button size="sm" onClick={() => setLegalModalOpen(true)}>
+                <Shield className="h-4 w-4 mr-2" />
+                Aceitar Termos
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {!usePlatform && tenantId && wooviProvider && (
         <WooviCredentialsPanel
           scope="tenant"
           scopeId={tenantId}
           pspProviderId={wooviProvider.id}
+        />
+      )}
+
+      {tenantId && (
+        <LegalAcceptanceModal
+          tenantId={tenantId}
+          open={legalModalOpen}
+          onAccepted={() => {
+            setLegalModalOpen(false);
+            refreshLegal();
+          }}
+          onCancel={() => setLegalModalOpen(false)}
         />
       )}
     </div>

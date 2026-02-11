@@ -11,9 +11,10 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Loader2, FileText, Shield, CheckCircle2 } from 'lucide-react';
+import { Loader2, FileText, Shield, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { useLegalAcceptance } from '@/hooks/useLegalAcceptance';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Props {
   tenantId: string;
@@ -28,7 +29,22 @@ export function LegalAcceptanceModal({ tenantId, open, onAccepted, onCancel }: P
   const [scrolledDocs, setScrolledDocs] = useState<Set<string>>(new Set());
   const [expandedDoc, setExpandedDoc] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [commissionPercent, setCommissionPercent] = useState<number | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Load current commission rate for display
+  useEffect(() => {
+    if (open) {
+      supabase
+        .from('pix_split_settings')
+        .select('default_commission_percent')
+        .limit(1)
+        .single()
+        .then(({ data }) => {
+          if (data) setCommissionPercent((data as any).default_commission_percent);
+        });
+    }
+  }, [open]);
 
   const pendingDocs = requiredDocs.filter(d => !d.accepted);
   const allChecked = pendingDocs.length > 0 && pendingDocs.every(d => checkedDocs.has(d.document.id));
@@ -113,6 +129,23 @@ export function LegalAcceptanceModal({ tenantId, open, onAccepted, onCancel }: P
             O aceite digital possui validade jurídica conforme o Marco Civil da Internet.
           </DialogDescription>
         </DialogHeader>
+
+        {/* Split model summary */}
+        <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-2">
+          <div className="flex items-center gap-2 text-sm font-medium">
+            <AlertTriangle className="h-4 w-4 text-primary" />
+            Modelo de Retenção Automática
+          </div>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            A comissão será aplicada automaticamente via divisão (split) no momento da liquidação do Pix.
+            O valor é dividido pela instituição de pagamento — a Plataforma não realiza custódia de valores.
+          </p>
+          {commissionPercent !== null && (
+            <p className="text-xs font-medium text-primary">
+              Comissão vigente: {commissionPercent}% por transação
+            </p>
+          )}
+        </div>
 
         <div className="flex-1 overflow-y-auto space-y-4 py-2">
           {pendingDocs.map((doc) => (
