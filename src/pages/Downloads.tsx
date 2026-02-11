@@ -93,21 +93,21 @@ export default function Downloads() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Button
               variant="outline"
-              className="h-auto py-4 flex-col gap-1.5 hover:bg-accent focus:bg-accent active:bg-accent"
-              onClick={() => window.open('#', '_blank')}
+              className="h-auto py-4 flex-col gap-1.5"
+              disabled
             >
               <Monitor className="h-6 w-6" />
               <span className="font-medium">Windows</span>
-              <span className="text-[10px] text-muted-foreground">Windows 10+ • 64-bit • ~25 MB</span>
+              <span className="text-[10px] text-muted-foreground">Windows 10+ • 64-bit • Em breve</span>
             </Button>
             <Button
               variant="outline"
-              className="h-auto py-4 flex-col gap-1.5 hover:bg-accent focus:bg-accent active:bg-accent"
-              onClick={() => window.open('#', '_blank')}
+              className="h-auto py-4 flex-col gap-1.5"
+              disabled
             >
               <Globe className="h-6 w-6" />
               <span className="font-medium">macOS</span>
-              <span className="text-[10px] text-muted-foreground">macOS 12+ • Intel/Apple Silicon • ~20 MB</span>
+              <span className="text-[10px] text-muted-foreground">macOS 12+ • Intel/Apple Silicon • Em breve</span>
             </Button>
           </div>
           <p className="text-[11px] text-muted-foreground text-center">
