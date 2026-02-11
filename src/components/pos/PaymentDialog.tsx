@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -10,9 +10,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { CreditCard, Banknote, QrCode, FileText, Loader2, CheckCircle, ExternalLink, Copy, X, Wifi, WifiOff, AlertCircle } from 'lucide-react';
+import { CreditCard, Banknote, QrCode, FileText, Loader2, CheckCircle, ExternalLink, Copy, X, Wifi, WifiOff, AlertCircle, Zap } from 'lucide-react';
 import type { PaymentMethod } from '@/types/database';
 import type { POSPaymentIntent, POSBillingType, POSGatewayError } from '@/hooks/usePOSPayment';
+import type { PixRapidoOption, PixRapidoIntent } from '@/hooks/usePixRapido';
 import { toast } from '@/hooks/use-toast';
 
 interface PaymentDialogProps {
@@ -33,6 +34,17 @@ interface PaymentDialogProps {
   onResetOnlinePayment?: () => void;
   onFallbackToManual?: (method: PaymentMethod) => void;
   gatewayError?: POSGatewayError | null;
+  // PIX Rápido props
+  pixRapidoOptions?: PixRapidoOption[];
+  pixRapidoIntent?: PixRapidoIntent | null;
+  pixRapidoConfirmed?: boolean;
+  isCreatingPixRapido?: boolean;
+  isPollingPixRapido?: boolean;
+  onLoadPixRapidoOptions?: () => void;
+  isLoadingPixRapidoOptions?: boolean;
+  onCreatePixRapido?: (pspProviderId: string) => Promise<void>;
+  onResetPixRapido?: () => void;
+  estimatePixRapidoFee?: (amount: number, option: PixRapidoOption) => number;
 }
 
 type CpfPromptTarget = 'PIX' | 'BOLETO' | null;
@@ -55,11 +67,29 @@ export function PaymentDialog({
   onResetOnlinePayment,
   onFallbackToManual,
   gatewayError,
+  pixRapidoOptions = [],
+  pixRapidoIntent,
+  pixRapidoConfirmed = false,
+  isCreatingPixRapido = false,
+  isPollingPixRapido = false,
+  onLoadPixRapidoOptions,
+  isLoadingPixRapidoOptions = false,
+  onCreatePixRapido,
+  onResetPixRapido,
+  estimatePixRapidoFee,
 }: PaymentDialogProps) {
   const [activeTab, setActiveTab] = useState<string>('online');
   const [cpfPromptTarget, setCpfPromptTarget] = useState<CpfPromptTarget>(null);
   const [cpfInput, setCpfInput] = useState('');
   const hasOnlineSupport = !!onCreateOnlinePayment;
+  const hasPixRapido = !!onCreatePixRapido;
+
+  // Load PIX Rápido options when tab is selected
+  useEffect(() => {
+    if (activeTab === 'pix-rapido' && onLoadPixRapidoOptions && pixRapidoOptions.length === 0) {
+      onLoadPixRapidoOptions();
+    }
+  }, [activeTab, onLoadPixRapidoOptions, pixRapidoOptions.length]);
 
   const formatCpfCnpj = (value: string) => {
     const digits = value.replace(/\D/g, '').slice(0, 14);
@@ -127,11 +157,25 @@ export function PaymentDialog({
         onCancelOnlinePayment?.();
       }
       onResetOnlinePayment?.();
+      onResetPixRapido?.();
       setCpfPromptTarget(null);
       setCpfInput('');
     }
     onOpenChange(open);
   };
+
+  const handleCopyPixRapidoCode = async () => {
+    if (pixRapidoIntent?.qr_code) {
+      try {
+        await navigator.clipboard.writeText(pixRapidoIntent.qr_code);
+        toast({ title: 'Código PIX copiado!' });
+      } catch {
+        toast({ title: 'Erro ao copiar', variant: 'destructive' });
+      }
+    }
+  };
+
+  const isAnyConfirmed = paymentConfirmed || pixRapidoConfirmed;
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -146,8 +190,8 @@ export function PaymentDialog({
             <p className="text-3xl font-bold">{formatCurrency(total)}</p>
           </div>
 
-          {/* Payment confirmed state */}
-          {paymentConfirmed && (
+          {/* Payment confirmed state (online or PIX Rápido) */}
+          {isAnyConfirmed && (
             <div className="flex flex-col items-center gap-3 py-6">
               <CheckCircle className="h-16 w-16 text-primary" />
               <p className="text-xl font-bold text-primary">Pagamento Confirmado!</p>
@@ -159,7 +203,7 @@ export function PaymentDialog({
           )}
 
           {/* CPF Prompt Modal (inline) */}
-          {cpfPromptTarget && !paymentConfirmed && (
+          {cpfPromptTarget && !isAnyConfirmed && (
             <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
               <div className="flex items-start gap-3">
                 <AlertCircle className="h-5 w-5 text-amber-500 mt-0.5 shrink-0" />
@@ -220,13 +264,19 @@ export function PaymentDialog({
           )}
 
           {/* Payment flow (only show when not confirmed and no CPF prompt) */}
-          {!paymentConfirmed && !cpfPromptTarget && (
+          {!isAnyConfirmed && !cpfPromptTarget && (
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className={`grid w-full ${hasOnlineSupport ? 'grid-cols-2' : 'grid-cols-1'}`}>
+              <TabsList className={`grid w-full ${hasOnlineSupport && hasPixRapido ? 'grid-cols-3' : hasOnlineSupport || hasPixRapido ? 'grid-cols-2' : 'grid-cols-1'}`}>
                 {hasOnlineSupport && (
                   <TabsTrigger value="online" className="gap-1">
                     <Wifi className="h-3.5 w-3.5" />
                     Online
+                  </TabsTrigger>
+                )}
+                {hasPixRapido && (
+                  <TabsTrigger value="pix-rapido" className="gap-1">
+                    <Zap className="h-3.5 w-3.5" />
+                    PIX Rápido
                   </TabsTrigger>
                 )}
                 <TabsTrigger value="manual" className="gap-1">
@@ -418,6 +468,117 @@ export function PaymentDialog({
                           className="flex-1"
                           onClick={() => onResetOnlinePayment?.()}
                         >
+                          Outro Método
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </TabsContent>
+              )}
+
+              {/* ====== PIX RÁPIDO TAB ====== */}
+              {hasPixRapido && (
+                <TabsContent value="pix-rapido" className="space-y-3 mt-3">
+                  {/* Loading options */}
+                  {isLoadingPixRapidoOptions && (
+                    <div className="flex flex-col items-center gap-3 py-8">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                      <p className="text-sm text-muted-foreground">Carregando opções PIX...</p>
+                    </div>
+                  )}
+
+                  {/* No options available */}
+                  {!isLoadingPixRapidoOptions && pixRapidoOptions.length === 0 && !pixRapidoIntent && !isCreatingPixRapido && (
+                    <div className="text-center py-6">
+                      <p className="text-sm text-muted-foreground">Nenhuma opção de PIX Rápido disponível para sua loja.</p>
+                      <Button variant="ghost" size="sm" className="mt-2" onClick={onLoadPixRapidoOptions}>
+                        Recarregar
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* PSP selection */}
+                  {!isLoadingPixRapidoOptions && pixRapidoOptions.length > 0 && !pixRapidoIntent && !isCreatingPixRapido && (
+                    <div className="space-y-3">
+                      <p className="text-sm text-muted-foreground">PIX sem CPF — selecione a opção:</p>
+                      {pixRapidoOptions.map((option) => {
+                        const estimatedFee = estimatePixRapidoFee?.(total, option) || 0;
+                        return (
+                          <Button
+                            key={option.psp_provider_id}
+                            variant="outline"
+                            className="w-full justify-start h-auto py-3"
+                            onClick={() => onCreatePixRapido?.(option.psp_provider_id)}
+                          >
+                            <Zap className="h-5 w-5 mr-3 text-primary shrink-0" />
+                            <div className="text-left flex-1">
+                              <p className="font-medium">{option.psp_display_name}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {option.pricing_plan_name || 'Taxa padrão'} — taxa estimada {formatCurrency(estimatedFee)}
+                              </p>
+                            </div>
+                          </Button>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Creating */}
+                  {isCreatingPixRapido && (
+                    <div className="flex flex-col items-center gap-3 py-8">
+                      <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                      <p className="text-sm text-muted-foreground">Gerando PIX Rápido...</p>
+                    </div>
+                  )}
+
+                  {/* QR Code display */}
+                  {pixRapidoIntent && !isCreatingPixRapido && (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <Badge variant="outline" className="gap-1">
+                          <Zap className="h-3 w-3" />
+                          {pixRapidoIntent.psp_name}
+                        </Badge>
+                        {isPollingPixRapido && (
+                          <Badge variant="secondary" className="gap-1 animate-pulse">
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                            Aguardando...
+                          </Badge>
+                        )}
+                      </div>
+
+                      {pixRapidoIntent.qr_code && (
+                        <div className="flex flex-col items-center gap-3">
+                          <div className="bg-white p-3 rounded-lg border">
+                            {pixRapidoIntent.qr_code_url ? (
+                              <img src={pixRapidoIntent.qr_code_url} alt="QR Code PIX" className="w-52 h-52" />
+                            ) : (
+                              <div className="w-52 h-52 flex items-center justify-center bg-muted rounded text-xs text-center text-muted-foreground p-4">
+                                <div>
+                                  <QrCode className="h-16 w-16 mx-auto mb-2 text-primary" />
+                                  <p>QR Code simulado</p>
+                                  <p className="font-mono text-[10px] mt-1 break-all">{pixRapidoIntent.txid}</p>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          <Button variant="outline" size="sm" onClick={handleCopyPixRapidoCode} className="gap-1">
+                            <Copy className="h-3.5 w-3.5" />
+                            Copiar código PIX
+                          </Button>
+                          <div className="text-xs text-muted-foreground text-center space-y-1">
+                            <p>Taxa plataforma: {formatCurrency(pixRapidoIntent.platform_fee)}</p>
+                            <p>Expira: {new Date(pixRapidoIntent.expires_at).toLocaleString('pt-BR')}</p>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="flex gap-2">
+                        <Button variant="outline" className="flex-1" onClick={() => onResetPixRapido?.()}>
+                          <X className="h-4 w-4 mr-1" />
+                          Cancelar
+                        </Button>
+                        <Button variant="outline" className="flex-1" onClick={() => onResetPixRapido?.()}>
                           Outro Método
                         </Button>
                       </div>

@@ -22,6 +22,7 @@ import { usePOSSettings } from '@/hooks/usePOSSettings';
 import { useBarcodeScanner, BarcodeScanResult } from '@/hooks/useBarcodeScanner';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { usePOSPayment, type POSBillingType } from '@/hooks/usePOSPayment';
+import { usePixRapido } from '@/hooks/usePixRapido';
 import type { CartItem, PaymentMethod } from '@/types/database';
 import fallbackLogo from '@/assets/logo.png';
 import { toast } from '@/hooks/use-toast';
@@ -41,6 +42,7 @@ export default function POS() {
   const { data: categories = [], isLoading: isLoadingCategories } = useCategories();
   const createOrder = useCreateOrder();
   const posPayment = usePOSPayment();
+  const pixRapido = usePixRapido();
   const { settings } = useSystemSettings();
   const { 
     displayMode, 
@@ -315,6 +317,40 @@ export default function POS() {
     }
   };
 
+  // PIX Rápido handler
+  const handleCreatePixRapido = async (pspProviderId: string) => {
+    if (cart.length === 0) return;
+    try {
+      const result = await createOrder.mutateAsync({
+        items: cart,
+        paymentMethod: 'pix',
+        customerName: customerName.trim() || undefined,
+        notes: orderNotes.trim() || undefined,
+        orderStatus: 'pending_payment',
+        paymentStatus: 'pending',
+      });
+
+      const intent = await pixRapido.createCharge({
+        orderId: result.orderId,
+        amount: result.total,
+        pspProviderId,
+        description: `Pedido #${result.orderNumber}`,
+      });
+
+      if (intent) {
+        setCompletedOrder({
+          orderNumber: result.orderNumber,
+          items: result.items,
+          subtotal: result.subtotal,
+          total: result.total,
+          paymentMethod: 'pix',
+        });
+      }
+    } catch (e) {
+      console.error('Error creating PIX Rápido:', e);
+    }
+  };
+
   // Handle online payment confirmation (after polling detects payment)
   const handleOnlinePaymentConfirm = () => {
     setIsPaymentOpen(false);
@@ -323,6 +359,7 @@ export default function POS() {
     setCustomerName('');
     setOrderNotes('');
     posPayment.reset();
+    pixRapido.reset();
     setIsReceiptOpen(true);
   };
 
@@ -467,7 +504,7 @@ export default function POS() {
         total={total}
         selectedMethod={selectedPaymentMethod}
         onSelectMethod={setSelectedPaymentMethod}
-        onConfirm={posPayment.paymentConfirmed ? handleOnlinePaymentConfirm : handlePayment}
+        onConfirm={(posPayment.paymentConfirmed || pixRapido.paymentConfirmed) ? handleOnlinePaymentConfirm : handlePayment}
         formatCurrency={formatCurrency}
         isProcessing={createOrder.isPending}
         onCreateOnlinePayment={handleCreateOnlinePayment}
@@ -482,6 +519,16 @@ export default function POS() {
           setSelectedPaymentMethod(method);
           toast({ title: 'Modo manual selecionado', description: 'Confirme o pagamento manualmente.' });
         }}
+        pixRapidoOptions={pixRapido.options}
+        pixRapidoIntent={pixRapido.intent}
+        pixRapidoConfirmed={pixRapido.paymentConfirmed}
+        isCreatingPixRapido={pixRapido.isCreating}
+        isPollingPixRapido={pixRapido.isPolling}
+        onLoadPixRapidoOptions={pixRapido.loadOptions}
+        isLoadingPixRapidoOptions={pixRapido.isLoadingOptions}
+        onCreatePixRapido={handleCreatePixRapido}
+        onResetPixRapido={pixRapido.reset}
+        estimatePixRapidoFee={pixRapido.estimateFee}
       />
 
       {/* Receipt Dialog */}
