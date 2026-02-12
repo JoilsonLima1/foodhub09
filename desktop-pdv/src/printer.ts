@@ -163,7 +163,8 @@ export async function printReceipt(
     return { ok: true, jobId };
   } catch (err: any) {
     const msg = err.message || String(err);
-    console.error(`[Printer] ESC/POS error: ${msg}`);
+    console.error(`[Printer] ESC/POS error for "${resolvedName || 'padrão'}": ${msg}`);
+    console.error(`[Printer] Full error:`, err);
 
     let code: PrintErrorCode = 'PRINT_FAILED';
     let message = msg;
@@ -171,6 +172,12 @@ export async function printReceipt(
     if (msg.includes('No driver set') || msg.includes('no driver')) {
       code = 'NO_DRIVER_SET';
       message = `Driver da impressora "${resolvedName || 'padrão'}" não encontrado. Verifique se o driver "Generic / Text Only" está instalado.`;
+    } else if (msg.includes('ENOENT') || msg.includes('not found')) {
+      code = 'PRINTER_NOT_FOUND';
+      message = `Impressora "${resolvedName || 'padrão'}" não encontrada no sistema. Verifique se está ligada e conectada.`;
+    } else if (msg.includes('timeout') || msg.includes('ETIMEDOUT')) {
+      code = 'PRINT_FAILED';
+      message = `Tempo esgotado ao tentar imprimir em "${resolvedName || 'padrão'}". Verifique se a impressora está ligada.`;
     }
 
     console.log(`[PRINT_RESULT] jobId=${jobId}, ok=false, code=${code}`);

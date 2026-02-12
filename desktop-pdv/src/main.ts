@@ -111,20 +111,33 @@ function buildMenu() {
 ipcMain.handle('foodhub:isDesktop', () => true);
 
 ipcMain.handle('foodhub:getPrinters', async () => {
-  // Virtual printers that should be hidden from the user
-  const VIRTUAL_PRINTERS = ['fax', 'onenote', 'xps document writer', 'send to onenote', 'print to pdf', 'microsoft print', 'pdf'];
+  // Virtual / ghost printers that should be hidden
+  const VIRTUAL_PRINTERS = [
+    'fax', 'onenote', 'xps document writer', 'send to onenote',
+    'print to pdf', 'microsoft print', 'pdf', 'nul:', 'file:',
+    'microsoft shared fax', 'snagit', 'foxit', 'cute', 'bullzip',
+    'dopdf', 'pdfcreator', 'adobe pdf', 'nitro', 'primopdf',
+  ];
 
   if (mainWindow) {
     try {
       const printers = await mainWindow.webContents.getPrintersAsync();
-      const filtered = printers
-        .map(p => p.name)
-        .filter(name => {
-          if (!name) return false;
-          const lower = name.toLowerCase();
-          return !VIRTUAL_PRINTERS.some(v => lower.includes(v));
-        });
-      console.log(`[Printer] Electron detected ${printers.length} printer(s), ${filtered.length} after filtering virtual.`);
+      console.log(`[Printer] Raw Electron list (${printers.length}):`, printers.map(p => `"${p.name}" status=${p.status} isDefault=${p.isDefault}`));
+      
+      const seen = new Set<string>();
+      const filtered: string[] = [];
+      for (const p of printers) {
+        const name = p.name;
+        if (!name || !name.trim()) continue;
+        const lower = name.toLowerCase();
+        // Skip virtual printers
+        if (VIRTUAL_PRINTERS.some(v => lower.includes(v))) continue;
+        // Skip duplicates (case-insensitive)
+        if (seen.has(lower)) continue;
+        seen.add(lower);
+        filtered.push(name);
+      }
+      console.log(`[Printer] After filtering: ${filtered.length} printer(s):`, filtered);
       return filtered;
     } catch (err) {
       console.error('[Printer] getPrintersAsync failed, falling back to wmic:', err);
