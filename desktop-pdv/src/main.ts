@@ -111,8 +111,6 @@ function buildMenu() {
 ipcMain.handle('foodhub:isDesktop', () => true);
 
 ipcMain.handle('foodhub:getPrinters', async () => {
-  // Use PowerShell Get-Printer which returns only actually installed printers
-  // (matches what Windows Settings shows, no ghost/spooler artifacts)
   const VIRTUAL_PRINTERS = [
     'fax', 'onenote', 'xps document writer', 'send to onenote',
     'print to pdf', 'microsoft print', 'pdf', 'nul:', 'file:',
@@ -122,23 +120,46 @@ ipcMain.handle('foodhub:getPrinters', async () => {
 
   try {
     const { execSync } = require('child_process');
+    // Get printers WITH their port name — only keep printers whose port
+    // actually exists (USB, COM, LPT, TCP). This eliminates "ghost" printers
+    // that remain in the spooler after being disconnected.
     const output = execSync(
-      'powershell -Command "Get-Printer | Select-Object -ExpandProperty Name"',
-      { encoding: 'utf-8', timeout: 5000 }
+      'powershell -Command "Get-Printer | Select-Object Name, PortName, PrinterStatus | ConvertTo-Json"',
+      { encoding: 'utf-8', timeout: 8000 }
     ).trim();
-    const rawNames = output.split('\n').map((n: string) => n.trim()).filter(Boolean);
-    console.log(`[Printer] PowerShell Get-Printer raw (${rawNames.length}):`, rawNames);
+
+    if (!output) throw new Error('Empty output from Get-Printer');
+
+    const rawList = JSON.parse(output);
+    const printers = Array.isArray(rawList) ? rawList : [rawList];
+    console.log(`[Printer] PowerShell Get-Printer raw (${printers.length}):`, printers.map((p: any) => `"${p.Name}" port=${p.PortName} status=${p.PrinterStatus}`));
+
+    // Ghost printers typically have ports like "PORTPROMPT:", "nul:", "FILE:", or
+    // ports pointing to non-existent devices. Real printers use USB, COM, LPT, or IP ports.
+    const VALID_PORT_PREFIXES = ['usb', 'com', 'lpt', 'ip_', '10.', '192.', '172.', 'tcp'];
+    const GHOST_PORTS = ['portprompt:', 'nul:', 'file:', 'ne0', 'xpsport'];
 
     const seen = new Set<string>();
     const filtered: string[] = [];
-    for (const name of rawNames) {
+    for (const p of printers) {
+      const name = p.Name;
+      if (!name) continue;
       const lower = name.toLowerCase();
+      const port = (p.PortName || '').toLowerCase();
+
+      // Skip virtual printers
       if (VIRTUAL_PRINTERS.some(v => lower.includes(v))) continue;
+      // Skip ghost ports
+      if (GHOST_PORTS.some(g => port.includes(g))) continue;
+      // Only keep printers with real ports (USB, COM, LPT, TCP/IP)
+      const hasValidPort = VALID_PORT_PREFIXES.some(pre => port.startsWith(pre)) || port.includes(':');
+      if (!hasValidPort && port) continue;
+      // Skip duplicates
       if (seen.has(lower)) continue;
       seen.add(lower);
       filtered.push(name);
     }
-    console.log(`[Printer] After filtering: ${filtered.length} printer(s):`, filtered);
+    console.log(`[Printer] After port-based filtering: ${filtered.length} printer(s):`, filtered);
     return filtered;
   } catch (err) {
     console.error('[Printer] PowerShell Get-Printer failed, falling back to Electron:', err);
