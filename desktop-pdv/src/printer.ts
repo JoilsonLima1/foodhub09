@@ -157,6 +157,8 @@ export async function printReceipt(
     }
 
     printer.alignLeft();
+
+    console.log(`[Printer] About to execute() for "${resolvedName}"...`);
     await printer.execute();
 
     console.log(`[PRINT_RESULT] jobId=${jobId}, ok=true, printer="${resolvedName}"`);
