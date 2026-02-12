@@ -1882,6 +1882,102 @@ export type Database = {
           },
         ]
       }
+      device_events: {
+        Row: {
+          created_at: string
+          device_id: string
+          event_type: string
+          id: string
+          level: string
+          message: string | null
+          meta: Json | null
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string
+          device_id: string
+          event_type: string
+          id?: string
+          level?: string
+          message?: string | null
+          meta?: Json | null
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string
+          device_id?: string
+          event_type?: string
+          id?: string
+          level?: string
+          message?: string | null
+          meta?: Json | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "device_events_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "tenant_devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "device_events_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      device_pairing_codes: {
+        Row: {
+          code: string
+          created_at: string
+          created_by_user_id: string | null
+          expires_at: string
+          id: string
+          tenant_id: string
+          used_at: string | null
+          used_by_device_id: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          created_by_user_id?: string | null
+          expires_at: string
+          id?: string
+          tenant_id: string
+          used_at?: string | null
+          used_by_device_id?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          created_by_user_id?: string | null
+          expires_at?: string
+          id?: string
+          tenant_id?: string
+          used_at?: string | null
+          used_by_device_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "device_pairing_codes_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "device_pairing_codes_used_by_device_id_fkey"
+            columns: ["used_by_device_id"]
+            isOneToOne: false
+            referencedRelation: "tenant_devices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       digital_service_global_config: {
         Row: {
           created_at: string | null
@@ -9228,6 +9324,78 @@ export type Database = {
         }
         Relationships: []
       }
+      print_jobs: {
+        Row: {
+          attempts: number
+          claimed_at: string | null
+          created_at: string
+          created_by_user_id: string | null
+          device_id: string | null
+          id: string
+          job_type: string
+          last_error: string | null
+          max_attempts: number
+          payload: Json
+          printed_at: string | null
+          priority: number
+          source: string
+          status: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          claimed_at?: string | null
+          created_at?: string
+          created_by_user_id?: string | null
+          device_id?: string | null
+          id?: string
+          job_type: string
+          last_error?: string | null
+          max_attempts?: number
+          payload: Json
+          printed_at?: string | null
+          priority?: number
+          source?: string
+          status?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          claimed_at?: string | null
+          created_at?: string
+          created_by_user_id?: string | null
+          device_id?: string | null
+          id?: string
+          job_type?: string
+          last_error?: string | null
+          max_attempts?: number
+          payload?: Json
+          printed_at?: string | null
+          priority?: number
+          source?: string
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "print_jobs_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "tenant_devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "print_jobs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       printer_routes: {
         Row: {
           created_at: string
@@ -11598,6 +11766,59 @@ export type Database = {
             foreignKeyName: "tenant_billing_profiles_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenant_devices: {
+        Row: {
+          created_at: string
+          device_key_hash: string
+          enabled: boolean
+          id: string
+          last_seen_at: string | null
+          model: string | null
+          name: string
+          platform: string
+          serial: string | null
+          status: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          device_key_hash: string
+          enabled?: boolean
+          id?: string
+          last_seen_at?: string | null
+          model?: string | null
+          name: string
+          platform?: string
+          serial?: string | null
+          status?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          device_key_hash?: string
+          enabled?: boolean
+          id?: string
+          last_seen_at?: string | null
+          model?: string | null
+          name?: string
+          platform?: string
+          serial?: string | null
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_devices_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
             referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
@@ -14100,6 +14321,33 @@ export type Database = {
           percentage_used: number
         }[]
       }
+      claim_print_jobs: {
+        Args: { p_device_id: string; p_limit?: number; p_tenant_id: string }
+        Returns: {
+          attempts: number
+          claimed_at: string | null
+          created_at: string
+          created_by_user_id: string | null
+          device_id: string | null
+          id: string
+          job_type: string
+          last_error: string | null
+          max_attempts: number
+          payload: Json
+          printed_at: string | null
+          priority: number
+          source: string
+          status: string
+          tenant_id: string
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "print_jobs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       complete_partner_registration: {
         Args: {
           p_email: string
@@ -14237,6 +14485,7 @@ export type Database = {
       }
       generate_operational_alerts: { Args: never; Returns: Json }
       generate_ops_recommendations: { Args: never; Returns: number }
+      generate_pairing_code: { Args: { p_tenant_id: string }; Returns: string }
       generate_partner_monthly_invoice: {
         Args: { p_partner_id: string; p_period: string }
         Returns: Json

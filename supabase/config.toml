@@ -98,3 +98,12 @@ verify_jwt = false
 
 [functions.pix-rapido]
 verify_jwt = false
+
+[functions.smartpos-pair]
+verify_jwt = false
+
+[functions.smartpos-heartbeat]
+verify_jwt = false
+
+[functions.smartpos-jobs]
+verify_jwt = false
