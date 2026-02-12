@@ -14,9 +14,32 @@ interface PrintOptions {
   paperWidth?: number;
 }
 
+function getDefaultPrinterName(): string | undefined {
+  try {
+    const { execSync } = require('child_process');
+    const output = execSync(
+      'powershell -Command "Get-CimInstance Win32_Printer | Where-Object {$_.Default -eq $true} | Select-Object -ExpandProperty Name"',
+      { encoding: 'utf-8', timeout: 5000 }
+    ).trim();
+    if (output) return output;
+  } catch {}
+  return undefined;
+}
+
 function createPrinter(printerName?: string, paperWidth = 80): ThermalPrinter {
-  // Use Windows spooler interface (printer:NAME)
-  const iface = printerName ? `printer:${printerName}` : 'printer:auto';
+  // Resolve printer name: explicit → OS default → undefined (let library decide)
+  let resolvedName = printerName;
+  if (!resolvedName) {
+    resolvedName = getDefaultPrinterName();
+    console.log(`[Printer] No explicit printer, OS default: "${resolvedName || 'none'}"`);
+  }
+
+  const iface = resolvedName ? `printer:${resolvedName}` : undefined;
+  console.log(`[Printer] Creating printer with interface: "${iface || 'none'}", width: ${paperWidth}`);
+
+  if (!iface) {
+    throw new Error('PRINTER_NOT_CONFIGURED: Nenhuma impressora encontrada. Configure uma impressora no Windows.');
+  }
 
   return new ThermalPrinter({
     type: PrinterTypes.EPSON,
@@ -62,11 +85,21 @@ export async function printReceipt(
   const cols = paperWidth === 58 ? 32 : 48;
 
   try {
-    const isConnected = await printer.isPrinterConnected();
+    let isConnected = false;
+    try {
+      isConnected = await printer.isPrinterConnected();
+    } catch (connErr: any) {
+      console.error('[Printer] isPrinterConnected error:', connErr);
+      // Some drivers throw instead of returning false — treat as not connected
+      return {
+        ok: false,
+        error: `PRINTER_NOT_FOUND: "${printerName || 'padrão'}" — driver não encontrado. Verifique se a impressora está instalada no Windows (Painel de Controle → Impressoras).`,
+      };
+    }
     if (!isConnected) {
       return {
         ok: false,
-        error: `PRINTER_NOT_FOUND: "${printerName || 'auto'}" não está acessível.`,
+        error: `PRINTER_NOT_FOUND: "${printerName || 'padrão'}" não está acessível. Verifique se está ligada e conectada.`,
       };
     }
 
@@ -111,10 +144,20 @@ export async function printReceipt(
 
     return { ok: true };
   } catch (err: any) {
-    console.error('[Printer] ESC/POS error:', err);
+    const msg = err.message || String(err);
+    console.error('[Printer] ESC/POS error:', msg);
+
+    // Map common native errors to user-friendly messages
+    if (msg.includes('No driver set') || msg.includes('no driver')) {
+      return {
+        ok: false,
+        error: `PRINTER_DRIVER_ERROR: Driver da impressora "${printerName || 'padrão'}" não encontrado. Verifique no Painel de Controle → Dispositivos e Impressoras se a impressora está instalada corretamente com driver "Generic / Text Only".`,
+      };
+    }
+
     return {
       ok: false,
-      error: `PRINT_ERROR: ${err.message || String(err)}`,
+      error: `PRINT_ERROR: ${msg}`,
     };
   }
 }
