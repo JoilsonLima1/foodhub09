@@ -29,7 +29,6 @@ export interface PrintResult {
 }
 
 function generateJobId(): string {
-  // Simple unique id without external deps
   return `pj_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
@@ -45,6 +44,9 @@ function getDefaultPrinterName(): string | undefined {
   return undefined;
 }
 
+/**
+ * Get the Windows port name for a printer (e.g. "USB001", "COM3", "LPT1").
+ */
 function getPrinterPort(printerName: string): string | undefined {
   try {
     const { execSync } = require('child_process');
@@ -62,32 +64,60 @@ function getPrinterPort(printerName: string): string | undefined {
   return undefined;
 }
 
-function createPrinter(printerName?: string, paperWidth = 80): { printer: ThermalPrinter; resolvedName: string | undefined } {
-  let resolvedName = printerName;
-  if (!resolvedName) {
-    resolvedName = getDefaultPrinterName();
-    console.log(`[Printer] No explicit printer, OS default: "${resolvedName || 'none'}"`);
-  }
-
-  const iface = resolvedName ? `printer:${resolvedName}` : undefined;
-  console.log(`[Printer] Creating printer with interface: "${iface || 'none'}", width: ${paperWidth}`);
-
-  if (!iface) {
-    throw { code: 'PRINTER_NOT_CONFIGURED' as PrintErrorCode, message: 'Nenhuma impressora encontrada. Configure uma impressora no Windows.' };
-  }
+/**
+ * Build ESC/POS buffer using node-thermal-printer in "buffer-only" mode.
+ * We use a dummy file interface so the library never tries to load the
+ * native `printer` npm module (which fails without electron-rebuild).
+ */
+function buildEscPosBuffer(lines: ReceiptLine[], paperWidth: number): Buffer {
+  const os = require('os');
+  const path = require('path');
+  // Dummy file interface — we never call execute(), only getBuffer()
+  const dummyPath = path.join(os.tmpdir(), `foodhub_dummy_${Date.now()}.tmp`);
 
   const printer = new ThermalPrinter({
     type: PrinterTypes.EPSON,
-    interface: iface,
+    interface: dummyPath,
     characterSet: CharacterSet.PC860_PORTUGUESE,
     removeSpecialCharacters: false,
     width: paperWidth === 58 ? 32 : 48,
-    options: {
-      timeout: 10000,
-    },
   });
 
-  return { printer, resolvedName };
+  const cols = paperWidth === 58 ? 32 : 48;
+
+  for (const line of lines) {
+    switch (line.type) {
+      case 'text':
+        applyAlign(printer, line.align);
+        printer.println(line.value || '');
+        break;
+      case 'bold':
+        applyAlign(printer, line.align);
+        printer.bold(true);
+        printer.println(line.value || '');
+        printer.bold(false);
+        break;
+      case 'separator':
+        printer.drawLine();
+        break;
+      case 'pair':
+        printer.alignLeft();
+        printPair(printer, line.left || '', line.right || '', cols);
+        break;
+      case 'feed':
+        printer.newLine();
+        for (let i = 1; i < (line.lines || 1); i++) {
+          printer.newLine();
+        }
+        break;
+      case 'cut':
+        printer.cut();
+        break;
+    }
+  }
+
+  printer.alignLeft();
+  return printer.getBuffer();
 }
 
 function applyAlign(printer: ThermalPrinter, align?: string) {
@@ -107,6 +137,132 @@ function printPair(printer: ThermalPrinter, left: string, right: string, cols: n
   }
 }
 
+/**
+ * Send raw bytes to a Windows printer using multiple fallback strategies:
+ * 1. Direct port write (\\.\USB001) — fastest, works for USB printers
+ * 2. copy /b to port — classic Windows raw printing
+ * 3. PowerShell Out-Printer as last resort
+ */
+function sendRawToPort(buffer: Buffer, printerName: string, portName: string, jobId: string): PrintResult {
+  const fs = require('fs');
+  const os = require('os');
+  const path = require('path');
+  const { execSync } = require('child_process');
+
+  const tmpFile = path.join(os.tmpdir(), `foodhub_print_${jobId}.bin`);
+  fs.writeFileSync(tmpFile, buffer);
+  console.log(`[Printer] Buffer ${buffer.length} bytes → ${tmpFile}`);
+
+  // Strategy 1: Direct port write (\\.\USB001)
+  try {
+    const portPath = portName.startsWith('\\\\') ? portName : `\\\\.\\${portName}`;
+    console.log(`[Printer] Strategy 1: Direct write to ${portPath}...`);
+    fs.writeFileSync(portPath, buffer);
+    console.log(`[PRINT_RESULT] jobId=${jobId}, ok=true, printer="${printerName}" (direct:${portName})`);
+    try { fs.unlinkSync(tmpFile); } catch {}
+    return { ok: true, jobId };
+  } catch (err: any) {
+    console.warn(`[Printer] Strategy 1 failed: ${err.message}`);
+  }
+
+  // Strategy 2: copy /b via cmd.exe
+  try {
+    // Escape the tmpFile path and printer name for cmd
+    const copyCmd = `copy /b "${tmpFile}" "\\\\.\\${portName}"`;
+    console.log(`[Printer] Strategy 2: ${copyCmd}`);
+    execSync(`cmd /c ${copyCmd}`, { timeout: 15000 });
+    console.log(`[PRINT_RESULT] jobId=${jobId}, ok=true, printer="${printerName}" (copy:${portName})`);
+    try { fs.unlinkSync(tmpFile); } catch {}
+    return { ok: true, jobId };
+  } catch (err: any) {
+    console.warn(`[Printer] Strategy 2 failed: ${err.message}`);
+  }
+
+  // Strategy 3: Use Windows print spooler via net use + copy
+  try {
+    // Share the printer and send via UNC
+    const uncPath = `\\\\localhost\\${printerName}`;
+    const shareCmd = `copy /b "${tmpFile}" "${uncPath}"`;
+    console.log(`[Printer] Strategy 3: ${shareCmd}`);
+    execSync(`cmd /c ${shareCmd}`, { timeout: 15000 });
+    console.log(`[PRINT_RESULT] jobId=${jobId}, ok=true, printer="${printerName}" (unc)`);
+    try { fs.unlinkSync(tmpFile); } catch {}
+    return { ok: true, jobId };
+  } catch (err: any) {
+    console.warn(`[Printer] Strategy 3 failed: ${err.message}`);
+  }
+
+  // Strategy 4: Use RawPrinterHelper via PowerShell .NET interop
+  try {
+    const psScript = `
+$signature = @'
+[DllImport("winspool.Drv", EntryPoint="OpenPrinterA", SetLastError=true, CharSet=CharSet.Ansi, ExactSpelling=true, CallingConvention=CallingConvention.StdCall)]
+public static extern bool OpenPrinter([MarshalAs(UnmanagedType.LPStr)] string szPrinter, out IntPtr hPrinter, IntPtr pd);
+[DllImport("winspool.Drv", EntryPoint="ClosePrinter", SetLastError=true, ExactSpelling=true, CallingConvention=CallingConvention.StdCall)]
+public static extern bool ClosePrinter(IntPtr hPrinter);
+[DllImport("winspool.Drv", EntryPoint="StartDocPrinterA", SetLastError=true, CharSet=CharSet.Ansi, ExactSpelling=true, CallingConvention=CallingConvention.StdCall)]
+public static extern bool StartDocPrinter(IntPtr hPrinter, Int32 level, [In, MarshalAs(UnmanagedType.LPStruct)] DOCINFOA di);
+[DllImport("winspool.Drv", EntryPoint="EndDocPrinter", SetLastError=true, ExactSpelling=true, CallingConvention=CallingConvention.StdCall)]
+public static extern bool EndDocPrinter(IntPtr hPrinter);
+[DllImport("winspool.Drv", EntryPoint="StartPagePrinter", SetLastError=true, ExactSpelling=true, CallingConvention=CallingConvention.StdCall)]
+public static extern bool StartPagePrinter(IntPtr hPrinter);
+[DllImport("winspool.Drv", EntryPoint="EndPagePrinter", SetLastError=true, ExactSpelling=true, CallingConvention=CallingConvention.StdCall)]
+public static extern bool EndPagePrinter(IntPtr hPrinter);
+[DllImport("winspool.Drv", EntryPoint="WritePrinter", SetLastError=true, ExactSpelling=true, CallingConvention=CallingConvention.StdCall)]
+public static extern bool WritePrinter(IntPtr hPrinter, IntPtr pBytes, Int32 dwCount, out Int32 dwWritten);
+'@;
+$type = Add-Type -MemberDefinition $signature -Name 'RawPrinterHelper' -Namespace 'FoodHub' -UsingNamespace 'System.Runtime.InteropServices' -PassThru;
+[System.Runtime.InteropServices.StructLayout([System.Runtime.InteropServices.LayoutKind]::Sequential)]
+class DOCINFOA { [string]$pDocName; [string]$pOutputFile; [string]$pDatatype; };
+
+$hPrinter = [IntPtr]::Zero;
+$di = New-Object DOCINFOA;
+$di.pDocName = 'FoodHub Receipt';
+$di.pDatatype = 'RAW';
+$bytes = [System.IO.File]::ReadAllBytes('${tmpFile.replace(/\\/g, '\\\\')}');
+if ($type::OpenPrinter('${printerName.replace(/'/g, "''")}', [ref]$hPrinter, [IntPtr]::Zero)) {
+  if ($type::StartDocPrinter($hPrinter, 1, $di)) {
+    $type::StartPagePrinter($hPrinter);
+    $ptr = [System.Runtime.InteropServices.Marshal]::AllocHGlobal($bytes.Length);
+    [System.Runtime.InteropServices.Marshal]::Copy($bytes, 0, $ptr, $bytes.Length);
+    $written = 0;
+    $type::WritePrinter($hPrinter, $ptr, $bytes.Length, [ref]$written);
+    [System.Runtime.InteropServices.Marshal]::FreeHGlobal($ptr);
+    $type::EndPagePrinter($hPrinter);
+    $type::EndDocPrinter($hPrinter);
+  }
+  $type::ClosePrinter($hPrinter);
+  Write-Output "OK:$($bytes.Length)";
+} else {
+  Write-Error "Failed to open printer";
+}
+`.trim();
+    console.log(`[Printer] Strategy 4: PowerShell Win32 winspool.Drv RAW print...`);
+    const result = execSync(`powershell -Command "${psScript.replace(/"/g, '\\"')}"`, {
+      encoding: 'utf-8',
+      timeout: 20000,
+    }).trim();
+    console.log(`[Printer] Strategy 4 result: ${result}`);
+    if (result.startsWith('OK:')) {
+      console.log(`[PRINT_RESULT] jobId=${jobId}, ok=true, printer="${printerName}" (winspool)`);
+      try { fs.unlinkSync(tmpFile); } catch {}
+      return { ok: true, jobId };
+    }
+  } catch (err: any) {
+    console.warn(`[Printer] Strategy 4 failed: ${err.message}`);
+  }
+
+  try { fs.unlinkSync(tmpFile); } catch {}
+  return {
+    ok: false,
+    jobId,
+    error: {
+      code: 'PRINT_FAILED',
+      message: `Falha ao imprimir em "${printerName}" (porta: ${portName}). Todas as 4 estratégias falharam. Verifique se a impressora está ligada e conectada.`,
+    },
+  };
+}
+
 export async function printReceipt(
   lines: ReceiptLine[],
   options: PrintOptions = {}
@@ -116,144 +272,46 @@ export async function printReceipt(
 
   console.log(`[PRINT_REQUEST] jobId=${jobId}, printerName="${printerName || '(default)'}", paperWidth=${paperWidth}, linesCount=${lines.length}, ts=${new Date().toISOString()}`);
 
-  let resolvedName: string | undefined;
-  let printer: ThermalPrinter;
-
-  try {
-    const created = createPrinter(printerName, paperWidth);
-    printer = created.printer;
-    resolvedName = created.resolvedName;
-  } catch (err: any) {
-    // Structured error from createPrinter
-    if (err.code) {
-      console.log(`[PRINT_RESULT] jobId=${jobId}, ok=false, code=${err.code}`);
-      return { ok: false, jobId, error: { code: err.code, message: err.message } };
-    }
-    console.log(`[PRINT_RESULT] jobId=${jobId}, ok=false, code=INTERNAL_ERROR`);
-    return { ok: false, jobId, error: { code: 'INTERNAL_ERROR', message: err.message || String(err) } };
+  // Resolve printer name
+  let resolvedName = printerName;
+  if (!resolvedName) {
+    resolvedName = getDefaultPrinterName();
+    console.log(`[Printer] No explicit printer, OS default: "${resolvedName || 'none'}"`);
   }
 
-  const cols = paperWidth === 58 ? 32 : 48;
+  if (!resolvedName) {
+    return {
+      ok: false,
+      jobId,
+      error: { code: 'PRINTER_NOT_CONFIGURED', message: 'Nenhuma impressora configurada. Defina uma impressora padrão no Windows.' },
+    };
+  }
+
+  // Get printer port
+  const portName = getPrinterPort(resolvedName);
+  if (!portName) {
+    return {
+      ok: false,
+      jobId,
+      error: { code: 'PRINTER_NOT_FOUND', message: `Porta da impressora "${resolvedName}" não encontrada. Verifique se está conectada.` },
+    };
+  }
 
   try {
-    // NOTE: isPrinterConnected() is unreliable for Windows printer: interfaces
-    // (often returns false even when the printer works fine).
-    // We skip the check and let execute() fail naturally if the printer is unavailable.
-    console.log(`[Printer] Skipping isPrinterConnected (unreliable on Windows), will try execute directly for "${resolvedName}"`);
+    // Build ESC/POS buffer (no native module needed!)
+    const buffer = buildEscPosBuffer(lines, paperWidth);
+    console.log(`[Printer] ESC/POS buffer built: ${buffer.length} bytes for "${resolvedName}" (port: ${portName})`);
 
-    // Build ESC/POS data
-    for (const line of lines) {
-      switch (line.type) {
-        case 'text':
-          applyAlign(printer, line.align);
-          printer.println(line.value || '');
-          break;
-        case 'bold':
-          applyAlign(printer, line.align);
-          printer.bold(true);
-          printer.println(line.value || '');
-          printer.bold(false);
-          break;
-        case 'separator':
-          printer.drawLine();
-          break;
-        case 'pair':
-          printer.alignLeft();
-          printPair(printer, line.left || '', line.right || '', cols);
-          break;
-        case 'feed':
-          printer.newLine();
-          for (let i = 1; i < (line.lines || 1); i++) {
-            printer.newLine();
-          }
-          break;
-        case 'cut':
-          printer.cut();
-          break;
-      }
+    if (buffer.length === 0) {
+      return { ok: false, jobId, error: { code: 'PRINT_FAILED', message: 'Buffer de impressão vazio.' } };
     }
 
-    printer.alignLeft();
-
-    // Try execute() first (uses node-thermal-printer's native printer module)
-    console.log(`[Printer] About to execute() for "${resolvedName}"...`);
-    try {
-      await printer.execute();
-      console.log(`[PRINT_RESULT] jobId=${jobId}, ok=true, printer="${resolvedName}" (native)`);
-      return { ok: true, jobId };
-    } catch (nativeErr: any) {
-      console.warn(`[Printer] Native execute() failed: ${nativeErr.message}. Trying raw port fallback...`);
-    }
-
-    // FALLBACK: Get raw ESC/POS buffer and write directly to printer port via PowerShell
-    const rawBuffer = printer.getBuffer();
-    if (rawBuffer && rawBuffer.length > 0 && resolvedName) {
-      const portName = getPrinterPort(resolvedName);
-      if (portName) {
-        try {
-          const fs = require('fs');
-          const os = require('os');
-          const path = require('path');
-          const { execSync } = require('child_process');
-          
-          // Write buffer to temp file
-          const tmpFile = path.join(os.tmpdir(), `foodhub_print_${jobId}.bin`);
-          fs.writeFileSync(tmpFile, rawBuffer);
-          console.log(`[Printer] Raw buffer ${rawBuffer.length} bytes written to ${tmpFile}`);
-          
-          // Send raw file to printer via PowerShell (most reliable on Windows)
-          const cmd = `powershell -Command "Copy-Item -LiteralPath '${tmpFile}' -Destination '\\\\localhost\\${resolvedName.replace(/'/g, "''")}' -Force"`;
-          console.log(`[Printer] Trying Copy-Item to share...`);
-          
-          try {
-            execSync(cmd, { timeout: 15000 });
-            console.log(`[PRINT_RESULT] jobId=${jobId}, ok=true, printer="${resolvedName}" (share)`);
-            try { fs.unlinkSync(tmpFile); } catch {}
-            return { ok: true, jobId };
-          } catch {
-            // If share doesn't work, try direct port write
-            console.log(`[Printer] Share failed, trying direct port write to ${portName}...`);
-            try {
-              const portPath = portName.startsWith('\\\\') ? portName : `\\\\.\\${portName}`;
-              fs.writeFileSync(portPath, rawBuffer);
-              console.log(`[PRINT_RESULT] jobId=${jobId}, ok=true, printer="${resolvedName}" (port:${portName})`);
-              try { fs.unlinkSync(tmpFile); } catch {}
-              return { ok: true, jobId };
-            } catch (portErr: any) {
-              console.error(`[Printer] Direct port write also failed:`, portErr.message);
-            }
-          }
-          
-          try { fs.unlinkSync(tmpFile); } catch {}
-        } catch (fallbackErr: any) {
-          console.error(`[Printer] Raw fallback failed:`, fallbackErr.message);
-        }
-      }
-    }
-
-    // All methods failed
-    throw new Error(`Falha ao imprimir em "${resolvedName}". Verifique se a impressora está ligada e o driver "Generic / Text Only" está instalado.`);
+    // Send raw bytes to printer port
+    return sendRawToPort(buffer, resolvedName, portName, jobId);
   } catch (err: any) {
     const msg = err.message || String(err);
-    console.error(`[Printer] ESC/POS error for "${resolvedName || 'padrão'}": ${msg}`);
-    console.error(`[Printer] Full error:`, err);
-
-    let code: PrintErrorCode = 'PRINT_FAILED';
-    let message = msg;
-
-    if (msg.includes('No driver set') || msg.includes('no driver')) {
-      code = 'NO_DRIVER_SET';
-      message = `Driver da impressora "${resolvedName || 'padrão'}" não encontrado. Verifique se o driver "Generic / Text Only" está instalado.`;
-    } else if (msg.includes('ENOENT') || msg.includes('not found')) {
-      code = 'PRINTER_NOT_FOUND';
-      message = `Impressora "${resolvedName || 'padrão'}" não encontrada no sistema. Verifique se está ligada e conectada.`;
-    } else if (msg.includes('timeout') || msg.includes('ETIMEDOUT')) {
-      code = 'PRINT_FAILED';
-      message = `Tempo esgotado ao tentar imprimir em "${resolvedName || 'padrão'}". Verifique se a impressora está ligada.`;
-    }
-
-    console.log(`[PRINT_RESULT] jobId=${jobId}, ok=false, code=${code}`);
-    return { ok: false, jobId, error: { code, message } };
+    console.error(`[Printer] Error: ${msg}`);
+    return { ok: false, jobId, error: { code: 'PRINT_FAILED', message: msg } };
   }
 }
 
