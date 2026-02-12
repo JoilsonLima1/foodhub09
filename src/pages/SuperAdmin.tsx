@@ -65,7 +65,7 @@ import { PartnerBillingManager } from '@/components/superadmin/PartnerBillingMan
 import { PartnerPlanApprovalManager } from '@/components/superadmin/PartnerPlanApprovalManager';
 import { PixAutomaticoManager } from '@/components/superadmin/pix/PixAutomaticoManager';
 import { LegalDocumentsManager } from '@/components/superadmin/legal/LegalDocumentsManager';
-import { PrintAgentSettings } from '@/components/superadmin/PrintAgentSettings';
+import { DesktopPdvSettings } from '@/components/superadmin/DesktopPdvSettings';
 
 import { 
   OpsAlertsPanel, 
@@ -316,9 +316,9 @@ export default function SuperAdmin() {
             <Shield className="h-4 w-4" />
             Jurídico
           </TabsTrigger>
-          <TabsTrigger value="print-agent" className="flex items-center gap-2">
+          <TabsTrigger value="desktop-pdv" className="flex items-center gap-2">
             <Printer className="h-4 w-4" />
-            Print Agent
+            Desktop PDV
           </TabsTrigger>
         </TabsList>
 
@@ -500,8 +500,8 @@ export default function SuperAdmin() {
           <LegalDocumentsManager />
         </TabsContent>
 
-        <TabsContent value="print-agent">
-          <PrintAgentSettings />
+        <TabsContent value="desktop-pdv">
+          <DesktopPdvSettings />
         </TabsContent>
 
       </Tabs>

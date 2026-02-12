@@ -12,7 +12,7 @@ import type { CartItem } from '@/types/database';
 import { getPrinterConfig } from '@/components/settings/PrinterSettings';
 import { printReceiptHTML, buildReceiptHTML, type PaperWidthMM } from '@/lib/thermalPrint';
 import { useTenantPrintSettings } from '@/hooks/useTenantPrintSettings';
-import { usePrintAgentSettings } from '@/hooks/usePrintAgentSettings';
+import { useDesktopPdvSettings } from '@/hooks/useDesktopPdvSettings';
 import { usePrinterRoutes } from '@/hooks/usePrinterRoutes';
 import { useToast } from '@/hooks/use-toast';
 
@@ -61,7 +61,7 @@ export function ReceiptDialog({
 }: ReceiptDialogProps) {
   const receiptRef = useRef<HTMLDivElement>(null);
   const { settings } = useTenantPrintSettings();
-  const { data: desktopUrls } = usePrintAgentSettings();
+  const { data: desktopUrls } = useDesktopPdvSettings();
   const { routes } = usePrinterRoutes();
   const { toast } = useToast();
   const [isPrinting, setIsPrinting] = useState(false);
