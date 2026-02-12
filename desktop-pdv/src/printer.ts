@@ -119,34 +119,10 @@ export async function printReceipt(
   const cols = paperWidth === 58 ? 32 : 48;
 
   try {
-    // Check connectivity
-    let isConnected = false;
-    try {
-      isConnected = await printer.isPrinterConnected();
-    } catch (connErr: any) {
-      console.error(`[Printer] isPrinterConnected error for "${resolvedName}":`, connErr?.message);
-      console.log(`[PRINT_RESULT] jobId=${jobId}, ok=false, code=PRINTER_NOT_FOUND`);
-      return {
-        ok: false,
-        jobId,
-        error: {
-          code: 'PRINTER_NOT_FOUND',
-          message: `"${resolvedName || 'padrão'}" — driver não encontrado. Verifique se a impressora está instalada no Windows.`,
-        },
-      };
-    }
-
-    if (!isConnected) {
-      console.log(`[PRINT_RESULT] jobId=${jobId}, ok=false, code=PRINTER_NOT_FOUND (not connected)`);
-      return {
-        ok: false,
-        jobId,
-        error: {
-          code: 'PRINTER_NOT_FOUND',
-          message: `"${resolvedName || 'padrão'}" não está acessível. Verifique se está ligada e conectada.`,
-        },
-      };
-    }
+    // NOTE: isPrinterConnected() is unreliable for Windows printer: interfaces
+    // (often returns false even when the printer works fine).
+    // We skip the check and let execute() fail naturally if the printer is unavailable.
+    console.log(`[Printer] Skipping isPrinterConnected (unreliable on Windows), will try execute directly for "${resolvedName}"`);
 
     // Build ESC/POS data
     for (const line of lines) {
