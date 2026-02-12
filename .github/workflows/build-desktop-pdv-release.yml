@@ -48,7 +48,6 @@ jobs:
 
       - name: Bump patch version
         if: steps.check_tag.outputs.exists == 'true'
-        id: bumped
         shell: bash
         run: |
           CURRENT="${{ steps.pkg.outputs.version }}"
@@ -56,28 +55,14 @@ jobs:
           NEW_PATCH=$((PATCH + 1))
           NEW_VERSION="$MAJOR.$MINOR.$NEW_PATCH"
           node -e "var pkg=require('./package.json'); pkg.version='$NEW_VERSION'; require('fs').writeFileSync('./package.json', JSON.stringify(pkg, null, 2)+'\n')"
-          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "Bumped version to $NEW_VERSION"
 
-      - name: Resolve final version
+      - name: Read final version
         id: final
         shell: bash
         run: |
-          if [ "${{ steps.check_tag.outputs.exists }}" == "true" ]; then
-            echo "version=${{ steps.bumped.outputs.version }}" >> $GITHUB_OUTPUT
-          else
-            echo "version=${{ steps.pkg.outputs.version }}" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Create git tag
-        shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
-          git tag -a "v${{ steps.final.outputs.version }}" -m "Release v${{ steps.final.outputs.version }}"
-          git push origin "v${{ steps.final.outputs.version }}"
+          FINAL_VERSION=$(node -p "require('./package.json').version")
+          echo "version=$FINAL_VERSION" >> $GITHUB_OUTPUT
 
       - name: Configure npm registry
         run: npm config set registry https://registry.npmjs.org/
