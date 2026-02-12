@@ -9404,9 +9404,12 @@ export type Database = {
           created_at: string
           display_order: number
           id: string
+          is_base: boolean
           label: string
           paper_width: string | null
           printer_name: string | null
+          printers: string[]
+          route_key: string
           route_type: string | null
           tenant_id: string
           updated_at: string
@@ -9415,9 +9418,12 @@ export type Database = {
           created_at?: string
           display_order?: number
           id?: string
+          is_base?: boolean
           label?: string
           paper_width?: string | null
           printer_name?: string | null
+          printers?: string[]
+          route_key?: string
           route_type?: string | null
           tenant_id: string
           updated_at?: string
@@ -9426,9 +9432,12 @@ export type Database = {
           created_at?: string
           display_order?: number
           id?: string
+          is_base?: boolean
           label?: string
           paper_width?: string | null
           printer_name?: string | null
+          printers?: string[]
+          route_key?: string
           route_type?: string | null
           tenant_id?: string
           updated_at?: string

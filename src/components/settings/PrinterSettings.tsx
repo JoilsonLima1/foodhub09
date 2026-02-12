@@ -5,14 +5,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Printer, TestTube, CheckCircle, HelpCircle, Loader2, Monitor, Smartphone, Search, Plus, Trash2, WifiOff, Download } from 'lucide-react';
-import { usePrinterRoutes } from '@/hooks/usePrinterRoutes';
+import { Printer, TestTube, CheckCircle, HelpCircle, Loader2, Monitor, Smartphone, Search, Plus, Trash2, WifiOff, Download, Shield, X } from 'lucide-react';
+import { usePrinterRoutes, type PrinterRoute } from '@/hooks/usePrinterRoutes';
 import { useToast } from '@/hooks/use-toast';
 import { ReceiptPrint } from '@/components/pos/ReceiptPrint';
 import { PrinterHelpModal } from './PrinterHelpModal';
 import { DefaultPrinterCallout } from './DefaultPrinterCallout';
 import { useTenantPrintSettings, type TenantPrintSettings } from '@/hooks/useTenantPrintSettings';
 import { useDesktopPdvSettings } from '@/hooks/useDesktopPdvSettings';
+import { SectorCard } from './SectorCard';
 import { printReceiptHTML, buildReceiptHTML, type PaperWidthMM } from '@/lib/thermalPrint';
 import type { CartItem } from '@/types/database';
 
@@ -63,7 +64,7 @@ export function PrinterSettings() {
   const { toast } = useToast();
   const { settings, isLoading, isSaving, isOffline, save } = useTenantPrintSettings();
   const { data: desktopUrls } = useDesktopPdvSettings();
-  const { routes, isLoading: routesLoading, isSaving: routesSaving, addRoute, updateRoute, removeRoute } = usePrinterRoutes();
+  const { routes, isLoading: routesLoading, isSaving: routesSaving, addRoute, updateRoute, removeRoute, addPrinterToRoute, removePrinterFromRoute } = usePrinterRoutes();
   const [local, setLocal] = useState<TenantPrintSettings | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
@@ -445,18 +446,18 @@ export function PrinterSettings() {
         </CardContent>
       </Card>
 
-      {/* Printer Routes — visible for web and desktop modes, hidden for smartpos */}
+      {/* Structured Printer Routes — visible for web and desktop modes */}
       {local.print_mode !== 'smartpos' && (
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="flex items-center gap-2 text-base">
-                  <Printer className="h-4 w-4" /> Impressoras por Ambiente
+                  <Printer className="h-4 w-4" /> Setores de Impressão
                 </CardTitle>
                 <CardDescription>
                   {local.print_mode === 'desktop'
-                    ? 'Configure uma impressora para cada setor. Clique em "Detectar" para listar as impressoras instaladas.'
+                    ? 'Configure impressoras para cada setor. Múltiplas impressoras por setor são suportadas.'
                     : 'Gerencie os setores de impressão do seu estabelecimento.'}
                 </CardDescription>
               </div>
@@ -501,7 +502,7 @@ export function PrinterSettings() {
               </div>
             )}
 
-            {/* Dynamic printer routes */}
+            {/* Sector list */}
             {routesLoading ? (
               <div className="flex justify-center py-4">
                 <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -509,92 +510,30 @@ export function PrinterSettings() {
             ) : (
               <div className="space-y-3">
                 {routes.map((route) => (
-                  <div key={route.id} className="flex items-center gap-2 p-3 border rounded-lg bg-card">
-                    <div className="flex-1 space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Input
-                          value={route.label}
-                          onChange={(e) => updateRoute(route.id, { label: e.target.value })}
-                          className="h-8 text-sm font-medium max-w-[140px]"
-                        />
-                        <span className="text-xs text-muted-foreground">({route.route_type})</span>
-                      </div>
-                      {local.print_mode === 'desktop' && detectedPrinters.length > 0 ? (
-                        <>
-                          {/* Warn if saved printer no longer exists */}
-                          {route.printer_name && !detectedPrinters.includes(route.printer_name) && (
-                            <p className="text-xs text-amber-600 dark:text-amber-400 mb-1">
-                              ⚠️ Impressora anterior "{route.printer_name}" não encontrada. Usando padrão do sistema.
-                            </p>
-                          )}
-                          <Select
-                            value={
-                              route.printer_name && detectedPrinters.includes(route.printer_name)
-                                ? route.printer_name
-                                : '__default__'
-                            }
-                            onValueChange={(v) => updateRoute(route.id, { printer_name: v === '__default__' ? null : v })}
-                          >
-                            <SelectTrigger className="h-8 text-sm">
-                              <SelectValue placeholder="Padrão do sistema" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="__default__">
-                                {defaultPrinter ? `Padrão do sistema (${defaultPrinter})` : 'Padrão do sistema'}
-                              </SelectItem>
-                              {detectedPrinters.map(p => (
-                                <SelectItem key={p} value={p}>{p}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </>
-                      ) : local.print_mode === 'desktop' ? (
-                        <Input
-                          value={route.printer_name || ''}
-                          onChange={(e) => updateRoute(route.id, { printer_name: e.target.value || null })}
-                          placeholder={hasDesktopBridge ? 'Detectando impressoras...' : 'Conecte o Desktop PDV para selecionar'}
-                          className="h-8 text-sm"
-                          disabled={!hasDesktopBridge}
-                        />
-                      ) : (
-                        <p className="text-xs text-muted-foreground pl-1">Impressora: padrão do sistema</p>
-                      )}
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      {local.print_mode === 'desktop' && hasDesktopBridge && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 text-xs"
-                          onClick={() => handleTestPrintForRoute(route.id, route.route_type, route.printer_name)}
-                          disabled={testingType !== null}
-                        >
-                          {testingType === route.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <TestTube className="h-3 w-3" />}
-                        </Button>
-                      )}
-                      {routes.length > 1 && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 text-xs text-destructive hover:text-destructive"
-                          onClick={() => removeRoute(route.id)}
-                          disabled={routesSaving}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      )}
-                    </div>
-                  </div>
+                  <SectorCard
+                    key={route.id}
+                    route={route}
+                    printMode={local.print_mode}
+                    hasDesktopBridge={hasDesktopBridge}
+                    detectedPrinters={detectedPrinters}
+                    defaultPrinter={defaultPrinter}
+                    testingType={testingType}
+                    onAddPrinter={(printerName) => addPrinterToRoute(route.id, printerName)}
+                    onRemovePrinter={(printerName) => removePrinterFromRoute(route.id, printerName)}
+                    onTestPrint={(printerName) => handleTestPrintForRoute(route.id, route.route_type, printerName)}
+                    onRemoveRoute={() => removeRoute(route.id)}
+                    routesSaving={routesSaving}
+                  />
                 ))}
               </div>
             )}
 
-            {/* Add route */}
+            {/* Add custom sector */}
             <div className="flex items-center gap-2 pt-2 border-t">
               <Input
                 value={newRouteLabel}
                 onChange={(e) => setNewRouteLabel(e.target.value)}
-                placeholder="Nome do setor (ex: Copa, Sobremesas)"
+                placeholder="Nome do novo setor (ex: Copa, Churrasqueira)"
                 className="h-8 text-sm"
               />
               <Button
@@ -607,14 +546,14 @@ export function PrinterSettings() {
                   setNewRouteLabel('');
                 }}
               >
-                <Plus className="h-3 w-3 mr-1" /> Adicionar
+                <Plus className="h-3 w-3 mr-1" /> Adicionar Setor
               </Button>
             </div>
 
             <p className="text-xs text-muted-foreground">
               {local.print_mode === 'desktop'
-                ? 'Campos vazios usam a impressora padrão do Windows. Clique no ícone de teste para verificar.'
-                : 'Os setores são usados para direcionar os pedidos para os pontos de produção corretos.'}
+                ? 'Setores sem impressora usam a padrão do Windows. Você pode vincular múltiplas impressoras por setor.'
+                : 'Os setores direcionam os pedidos para os pontos de produção corretos.'}
             </p>
           </CardContent>
         </Card>
