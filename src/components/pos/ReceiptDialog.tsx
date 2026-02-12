@@ -161,18 +161,20 @@ export function ReceiptDialog({
         if (window.foodhub?.printReceipt) {
           const pw = Number(caixaRoute?.paper_width || settings.paper_width) === 58 ? 58 : 80;
           const receiptLines = buildReceiptLines();
-          const printers = caixaRoute?.printers?.length
+          // null = explicit "use OS default" (no config fallback in Electron)
+          const printers: (string | null)[] = caixaRoute?.printers?.length
             ? caixaRoute.printers
-            : [undefined]; // undefined = OS default
+            : [null];
 
-          console.log('[PRINT] Desktop bridge → route_key=caixa, printers:', printers, 'pw:', pw);
+          console.log('[PRINT] Desktop bridge → route_key=caixa, resolvedPrinters:', printers, 'pw:', pw);
           toast({ title: '🖨️ Enviando para FoodHub PDV Desktop...' });
 
           for (const printerName of printers) {
-            console.log(`[PRINT] Sending to printer: "${printerName || '(default)'}"`);
+            const sendingPrinterName = printerName || null;
+            console.log(`[PRINT] sendingPrinterName: ${JSON.stringify(sendingPrinterName)}`);
             const result = await window.foodhub.printReceipt({
               lines: receiptLines,
-              printerName: printerName || undefined,
+              printerName: sendingPrinterName as any,
               paperWidth: pw,
             });
 
