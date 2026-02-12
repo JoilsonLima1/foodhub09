@@ -72,8 +72,6 @@ export function ReceiptDialog({
     }
   }, [open]);
 
-  
-
   const findCaixaRoute = () => {
     const recibo = routes.find(r => r.route_type.toLowerCase() === 'recibo');
     if (recibo) return recibo;
@@ -86,7 +84,7 @@ export function ReceiptDialog({
   const formatCurrency = (value: number) =>
     value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-  /** Build structured ESC/POS lines for the agent */
+  /** Build structured ESC/POS lines for the desktop bridge */
   const buildReceiptLines = (): ReceiptLine[] => {
     const now = new Date();
     const date = now.toLocaleDateString('pt-BR');
@@ -101,7 +99,6 @@ export function ReceiptDialog({
       { type: 'separator' },
     ];
 
-    // Items
     items.forEach((item, i) => {
       const name = item.variationName
         ? `${item.productName} (${item.variationName})`
@@ -182,6 +179,16 @@ export function ReceiptDialog({
         // Fall through to browser print
       }
 
+      // ─── SmartPOS mode: no PC print ───
+      if (settings?.print_mode === 'smartpos') {
+        toast({
+          title: '📱 SmartPOS',
+          description: 'No modo SmartPOS, a impressão é feita diretamente pela maquininha.',
+          duration: 5000,
+        });
+        return;
+      }
+
       // ─── Web mode (or fallback): browser window.print ───
       console.log('[PRINT] Usando impressão do navegador');
       const config = getPrinterConfig();
@@ -218,8 +225,10 @@ export function ReceiptDialog({
     const results: string[] = [];
 
     try {
+      results.push(`Modo atual: ${settings?.print_mode || 'web'}`);
+
       if (window.foodhub) {
-        results.push('Desktop: ✅ FoodHub PDV Desktop detectado');
+        results.push('Desktop PDV: ✅ Conectado');
 
         try {
           const printers = await window.foodhub.getPrinters();
@@ -238,8 +247,8 @@ export function ReceiptDialog({
           results.push('Padrão: ❌ Erro ao consultar');
         }
       } else {
-        results.push('Desktop: ❌ Não está rodando no FoodHub PDV Desktop');
-        results.push('💡 Baixe e instale o FoodHub PDV Desktop para impressão 1 clique.');
+        results.push('Desktop PDV: ❌ Não está rodando no FoodHub PDV Desktop');
+        results.push('💡 Baixe o FoodHub PDV Desktop em /downloads para impressão 1 clique.');
       }
 
       // Route info
