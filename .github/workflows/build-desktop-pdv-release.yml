@@ -2,8 +2,11 @@ name: Release FoodHub PDV Desktop
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - main
+    paths:
+      - 'desktop-pdv/**'
+  workflow_dispatch:
 
 defaults:
   run:
@@ -17,6 +20,53 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Read current version
+        id: pkg
+        shell: bash
+        run: echo "version=$(node -p \"require('./package.json').version\")" >> $GITHUB_OUTPUT
+
+      - name: Check if tag already exists
+        id: check_tag
+        shell: bash
+        run: |
+          if git rev-parse "v${{ steps.pkg.outputs.version }}" >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Bump patch version
+        if: steps.check_tag.outputs.exists == 'true'
+        shell: bash
+        run: |
+          CURRENT="${{ steps.pkg.outputs.version }}"
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+          NEW_PATCH=$((PATCH + 1))
+          NEW_VERSION="$MAJOR.$MINOR.$NEW_PATCH"
+          node -e "const pkg=require('./package.json'); pkg.version='$NEW_VERSION'; require('fs').writeFileSync('./package.json', JSON.stringify(pkg, null, 2)+'\n')"
+          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+        id: bumped
+
+      - name: Resolve final version
+        id: final
+        shell: bash
+        run: |
+          if [ "${{ steps.check_tag.outputs.exists }}" == "true" ]; then
+            echo "version=${{ steps.bumped.outputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${{ steps.pkg.outputs.version }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create git tag
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "v${{ steps.final.outputs.version }}" -m "Release v${{ steps.final.outputs.version }}"
+          git push origin "v${{ steps.final.outputs.version }}"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -37,7 +87,7 @@ jobs:
       - name: Upload artifacts (debug)
         uses: actions/upload-artifact@v4
         with:
-          name: FoodHubPDV-Release-${{ github.ref_name }}
+          name: FoodHubPDV-Release-v${{ steps.final.outputs.version }}
           path: |
             desktop-pdv/release/*.exe
             desktop-pdv/release/latest.yml
