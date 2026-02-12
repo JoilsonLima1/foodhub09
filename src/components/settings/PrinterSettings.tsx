@@ -78,18 +78,35 @@ export function PrinterSettings() {
 
   const hasDesktopBridge = typeof window !== 'undefined' && !!window.foodhub;
 
+  // Auto-detect printers when in desktop mode and bridge is available
+  useEffect(() => {
+    if (local?.print_mode === 'desktop' && hasDesktopBridge && detectedPrinters.length === 0 && !isDetecting) {
+      detectPrintersViaBridge();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [local?.print_mode, hasDesktopBridge]);
+
   const detectPrintersViaBridge = async () => {
     if (!window.foodhub) return;
     setIsDetecting(true);
     try {
       const printers = await window.foodhub.getPrinters();
       const defPrinter = await window.foodhub.getDefaultPrinter();
-      setDetectedPrinters(printers);
+
+      // Filter out empty/undefined names
+      const validPrinters = printers.filter(p => typeof p === 'string' && p.trim().length > 0);
+      console.log(`[PrinterSettings] Detected ${validPrinters.length} printer(s) via bridge`);
+
+      setDetectedPrinters(validPrinters);
       setDefaultPrinter(defPrinter || null);
-      toast({
-        title: `${printers.length} impressora(s) detectada(s)`,
-        description: defPrinter ? `Padrão: ${defPrinter}` : 'Nenhuma impressora padrão identificada.',
-      });
+
+      // Only show toast when user explicitly clicked Detect (not on auto-detect)
+      if (isDetecting) {
+        toast({
+          title: `${validPrinters.length} impressora(s) detectada(s)`,
+          description: defPrinter ? `Padrão: ${defPrinter}` : 'Nenhuma impressora padrão identificada.',
+        });
+      }
     } catch {
       setDetectedPrinters([]);
       toast({
@@ -102,34 +119,52 @@ export function PrinterSettings() {
     }
   };
 
+  const handleManualDetect = async () => {
+    setDetectedPrinters([]); // Reset so we re-fetch
+    await detectPrintersViaBridge();
+    // Show toast for manual detection
+    if (detectedPrinters.length > 0) {
+      toast({
+        title: `${detectedPrinters.length} impressora(s) detectada(s)`,
+        description: defaultPrinter ? `Padrão: ${defaultPrinter}` : 'Nenhuma impressora padrão identificada.',
+      });
+    }
+  };
+
   const handleTestPrintForRoute = async (routeId: string, routeType: string, printerName: string | null) => {
     if (!local || !window.foodhub) return;
     setTestingType(routeId);
     try {
       const pw = Number(local.paper_width) === 58 ? 58 : 80;
+      // null or __default__ means use OS default (pass undefined)
+      const resolvedPrinter = printerName && printerName !== '__default__' ? printerName : undefined;
       const result = await window.foodhub.printReceipt({
         lines: [
           { type: 'bold', value: `TESTE - ${routeType.toUpperCase()}`, align: 'center' },
           { type: 'separator' },
-          { type: 'text', value: `Impressora: ${printerName || 'padrão'}` },
+          { type: 'text', value: `Impressora: ${resolvedPrinter || 'padrão do sistema'}` },
           { type: 'text', value: `Papel: ${pw}mm` },
           { type: 'separator' },
           { type: 'text', value: 'Se leu isto, está funcionando!', align: 'center' },
           { type: 'feed', lines: 3 },
           { type: 'cut' },
         ],
-        printerName: printerName || undefined,
+        printerName: resolvedPrinter,
         paperWidth: pw,
       });
       if (result.ok) {
-        toast({ title: `✓ Teste ${routeType} enviado`, description: `Impressora: ${printerName || 'padrão'}` });
+        toast({ title: `✓ Teste ${routeType} enviado`, description: `Impressora: ${resolvedPrinter || 'padrão do sistema'}` });
       } else {
-        throw new Error(result.error || 'Erro');
+        const errMsg = result.error || 'Erro desconhecido';
+        throw new Error(errMsg);
       }
     } catch (err) {
+      const msg = (err as Error).message || 'Erro ao imprimir.';
       toast({
         title: `Falha no teste ${routeType}`,
-        description: (err as Error).message || 'Erro ao imprimir.',
+        description: msg.includes('PRINTER_NOT_FOUND')
+          ? 'Impressora não encontrada. Verifique se está instalada e ligada no Windows.'
+          : msg,
         variant: 'destructive',
       });
     } finally {
@@ -429,7 +464,7 @@ export function PrinterSettings() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={detectPrintersViaBridge}
+                  onClick={handleManualDetect}
                   disabled={isDetecting || !hasDesktopBridge}
                 >
                   {isDetecting
@@ -485,27 +520,39 @@ export function PrinterSettings() {
                         <span className="text-xs text-muted-foreground">({route.route_type})</span>
                       </div>
                       {local.print_mode === 'desktop' && detectedPrinters.length > 0 ? (
-                        <Select
-                          value={route.printer_name || '__default__'}
-                          onValueChange={(v) => updateRoute(route.id, { printer_name: v === '__default__' ? null : v })}
-                        >
-                          <SelectTrigger className="h-8 text-sm">
-                            <SelectValue placeholder="Usar padrão do sistema" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="__default__">
-                              {defaultPrinter ? `Padrão do sistema (${defaultPrinter})` : 'Padrão do sistema'}
-                            </SelectItem>
-                            {detectedPrinters.map(p => (
-                              <SelectItem key={p} value={p}>{p}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <>
+                          {/* Warn if saved printer no longer exists */}
+                          {route.printer_name && !detectedPrinters.includes(route.printer_name) && (
+                            <p className="text-xs text-amber-600 dark:text-amber-400 mb-1">
+                              ⚠️ Impressora anterior "{route.printer_name}" não encontrada. Usando padrão do sistema.
+                            </p>
+                          )}
+                          <Select
+                            value={
+                              route.printer_name && detectedPrinters.includes(route.printer_name)
+                                ? route.printer_name
+                                : '__default__'
+                            }
+                            onValueChange={(v) => updateRoute(route.id, { printer_name: v === '__default__' ? null : v })}
+                          >
+                            <SelectTrigger className="h-8 text-sm">
+                              <SelectValue placeholder="Padrão do sistema" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__default__">
+                                {defaultPrinter ? `Padrão do sistema (${defaultPrinter})` : 'Padrão do sistema'}
+                              </SelectItem>
+                              {detectedPrinters.map(p => (
+                                <SelectItem key={p} value={p}>{p}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </>
                       ) : local.print_mode === 'desktop' ? (
                         <Input
                           value={route.printer_name || ''}
                           onChange={(e) => updateRoute(route.id, { printer_name: e.target.value || null })}
-                          placeholder={hasDesktopBridge ? 'Clique Detectar para preencher' : 'Conecte o Desktop PDV para selecionar'}
+                          placeholder={hasDesktopBridge ? 'Detectando impressoras...' : 'Conecte o Desktop PDV para selecionar'}
                           className="h-8 text-sm"
                           disabled={!hasDesktopBridge}
                         />

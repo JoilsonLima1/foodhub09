@@ -85,10 +85,29 @@ function buildMenu() {
 ipcMain.handle('foodhub:isDesktop', () => true);
 
 ipcMain.handle('foodhub:getPrinters', async () => {
+  // Use Electron's native API for reliable printer listing (avoids wmic CSV parsing issues)
+  if (mainWindow) {
+    try {
+      const printers = await mainWindow.webContents.getPrintersAsync();
+      console.log(`[Printer] Electron detected ${printers.length} printer(s). Keys: ${printers.length > 0 ? Object.keys(printers[0]).join(', ') : 'none'}`);
+      return printers.map(p => p.name).filter(Boolean);
+    } catch (err) {
+      console.error('[Printer] getPrintersAsync failed, falling back to wmic:', err);
+    }
+  }
+  // Fallback to wmic-based listing
   return listPrinters();
 });
 
-ipcMain.handle('foodhub:getDefaultPrinter', () => {
+ipcMain.handle('foodhub:getDefaultPrinter', async () => {
+  // Try Electron native first to find OS default
+  if (mainWindow) {
+    try {
+      const printers = await mainWindow.webContents.getPrintersAsync();
+      const osDef = printers.find(p => p.isDefault);
+      if (osDef) return osDef.name;
+    } catch {}
+  }
   return getConfig('defaultPrinter') || null;
 });
 
