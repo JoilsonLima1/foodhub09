@@ -112,7 +112,7 @@ ipcMain.handle('foodhub:isDesktop', () => true);
 
 ipcMain.handle('foodhub:getPrinters', async () => {
   // Virtual printers that should be hidden from the user
-  const VIRTUAL_PRINTERS = ['fax', 'onenote', 'xps document writer', 'send to onenote'];
+  const VIRTUAL_PRINTERS = ['fax', 'onenote', 'xps document writer', 'send to onenote', 'print to pdf', 'microsoft print', 'pdf'];
 
   if (mainWindow) {
     try {

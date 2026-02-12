@@ -36,7 +36,8 @@
       {
         "provider": "github",
         "owner": "JoilsonLima1",
-        "repo": "foodhub09"
+        "repo": "foodhub09",
+        "releaseType": "release"
       }
     ],
     "win": {

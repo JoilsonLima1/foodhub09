@@ -37,19 +37,23 @@ jobs:
           echo "version=$PKG_VERSION" >> $GITHUB_OUTPUT
           echo "Building version: $PKG_VERSION"
 
-      - name: Delete old conflicting releases and tags
+      - name: Delete ALL old releases and tags
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
-          VERSION="v${{ steps.pkg.outputs.version }}"
-          echo "Cleaning up any existing release/tag for $VERSION..."
-          # Delete release if exists (ignore errors)
-          gh release delete "$VERSION" --repo "$GITHUB_REPOSITORY" --yes 2>/dev/null || true
-          # Delete tag if exists
-          git push origin --delete "refs/tags/$VERSION" 2>/dev/null || true
-          git tag -d "$VERSION" 2>/dev/null || true
-          echo "Cleanup done."
+          echo "Deleting ALL existing releases to avoid conflicts..."
+          # List and delete every release
+          gh release list --repo "$GITHUB_REPOSITORY" --limit 50 --json tagName -q '.[].tagName' | while read -r TAG; do
+            echo "Deleting release $TAG..."
+            gh release delete "$TAG" --repo "$GITHUB_REPOSITORY" --yes 2>/dev/null || true
+            git push origin --delete "refs/tags/$TAG" 2>/dev/null || true
+          done
+          # Also delete local tags
+          git tag -l | while read -r TAG; do
+            git tag -d "$TAG" 2>/dev/null || true
+          done
+          echo "All old releases/tags cleaned."
 
       - name: Configure npm registry
         run: npm config set registry https://registry.npmjs.org/
