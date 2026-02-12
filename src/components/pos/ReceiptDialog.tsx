@@ -6,12 +6,13 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Printer, X, CheckCircle, Loader2, Stethoscope } from 'lucide-react';
+import { Printer, X, CheckCircle, Loader2, Stethoscope, Download } from 'lucide-react';
 import { ReceiptPrint } from './ReceiptPrint';
 import type { CartItem } from '@/types/database';
 import { getPrinterConfig } from '@/components/settings/PrinterSettings';
 import { printReceiptHTML, buildReceiptHTML, type PaperWidthMM } from '@/lib/thermalPrint';
 import { useTenantPrintSettings } from '@/hooks/useTenantPrintSettings';
+import { usePrintAgentSettings } from '@/hooks/usePrintAgentSettings';
 import { usePrinterRoutes } from '@/hooks/usePrinterRoutes';
 import { useToast } from '@/hooks/use-toast';
 
@@ -60,10 +61,12 @@ export function ReceiptDialog({
 }: ReceiptDialogProps) {
   const receiptRef = useRef<HTMLDivElement>(null);
   const { settings } = useTenantPrintSettings();
+  const { data: desktopUrls } = usePrintAgentSettings();
   const { routes } = usePrinterRoutes();
   const { toast } = useToast();
   const [isPrinting, setIsPrinting] = useState(false);
   const [isDiagnosing, setIsDiagnosing] = useState(false);
+  const [showDesktopFallback, setShowDesktopFallback] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -169,16 +172,10 @@ export function ReceiptDialog({
           return;
         }
 
-        // Desktop mode selected but not running in Electron
-        toast({
-          title: 'FoodHub PDV Desktop não detectado',
-          description: 'Para imprimir com 1 clique, abra o sistema pelo FoodHub PDV Desktop. Usando impressão do navegador.',
-          variant: 'destructive',
-          duration: 8000,
-        });
-        // Fall through to browser print
+        // Desktop mode selected but not running in Electron — show guided fallback
+        setShowDesktopFallback(true);
+        return;
       }
-
       // ─── SmartPOS mode: no PC print ───
       if (settings?.print_mode === 'smartpos') {
         toast({
@@ -290,6 +287,61 @@ export function ReceiptDialog({
             tenantLogo={tenantLogo}
           />
         </div>
+        {/* Desktop fallback: app not detected */}
+        {showDesktopFallback && (
+          <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 p-4 space-y-3">
+            <p className="text-sm font-medium text-amber-700 dark:text-amber-300">
+              ⚠️ FoodHub PDV Desktop não detectado
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Para impressão 1 clique, abra o sistema pelo app Desktop. Ou use a impressão pelo navegador.
+            </p>
+            <div className="flex flex-col gap-2">
+              {desktopUrls.windows_url && desktopUrls.windows_url !== '#' ? (
+                <Button size="sm" onClick={() => window.open(desktopUrls.windows_url, '_blank')}>
+                  <Download className="h-4 w-4 mr-2" /> Baixar FoodHub PDV Desktop
+                </Button>
+              ) : (
+                <Button size="sm" onClick={() => window.open('/downloads', '_blank')}>
+                  <Download className="h-4 w-4 mr-2" /> Ver página de download
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setShowDesktopFallback(false);
+                  // Trigger browser print
+                  const config = getPrinterConfig();
+                  const paperWidth = config.paperWidth.replace('mm', '') as PaperWidthMM;
+                  const html = buildReceiptHTML({
+                    tenantName,
+                    tenantLogo,
+                    orderNumber,
+                    dateStr: new Date().toLocaleDateString('pt-BR'),
+                    timeStr: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+                    cashierName,
+                    items: items.map((item, index) => ({
+                      index: index + 1,
+                      name: item.productName,
+                      variationName: item.variationName,
+                      quantity: item.quantity,
+                      unitPrice: item.unitPrice,
+                      totalPrice: item.totalPrice,
+                      notes: item.notes,
+                    })),
+                    subtotal,
+                    total,
+                    paymentMethodLabel: paymentMethodLabels[paymentMethod] || paymentMethod,
+                  });
+                  printReceiptHTML(html, paperWidth);
+                }}
+              >
+                <Printer className="h-4 w-4 mr-2" /> Imprimir pelo navegador
+              </Button>
+            </div>
+          </div>
+        )}
 
         <div className="flex gap-2 mt-4">
           <Button
@@ -300,7 +352,7 @@ export function ReceiptDialog({
             <X className="h-4 w-4 mr-2" />
             Fechar
           </Button>
-          <Button className="flex-1" onClick={handlePrint} disabled={isPrinting}>
+          <Button className="flex-1" onClick={handlePrint} disabled={isPrinting || showDesktopFallback}>
             {isPrinting ? (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
             ) : (

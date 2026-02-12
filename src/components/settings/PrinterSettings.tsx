@@ -5,13 +5,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Printer, TestTube, CheckCircle, HelpCircle, Loader2, Monitor, Smartphone, Search, Plus, Trash2, WifiOff } from 'lucide-react';
+import { Printer, TestTube, CheckCircle, HelpCircle, Loader2, Monitor, Smartphone, Search, Plus, Trash2, WifiOff, Download } from 'lucide-react';
 import { usePrinterRoutes } from '@/hooks/usePrinterRoutes';
 import { useToast } from '@/hooks/use-toast';
 import { ReceiptPrint } from '@/components/pos/ReceiptPrint';
 import { PrinterHelpModal } from './PrinterHelpModal';
 import { DefaultPrinterCallout } from './DefaultPrinterCallout';
 import { useTenantPrintSettings, type TenantPrintSettings } from '@/hooks/useTenantPrintSettings';
+import { usePrintAgentSettings } from '@/hooks/usePrintAgentSettings';
 import { printReceiptHTML, buildReceiptHTML, type PaperWidthMM } from '@/lib/thermalPrint';
 import type { CartItem } from '@/types/database';
 
@@ -61,6 +62,7 @@ const sampleItems: CartItem[] = [
 export function PrinterSettings() {
   const { toast } = useToast();
   const { settings, isLoading, isSaving, isOffline, save } = useTenantPrintSettings();
+  const { data: desktopUrls } = usePrintAgentSettings();
   const { routes, isLoading: routesLoading, isSaving: routesSaving, addRoute, updateRoute, removeRoute } = usePrinterRoutes();
   const [local, setLocal] = useState<TenantPrintSettings | null>(null);
   const [showPreview, setShowPreview] = useState(false);
@@ -317,7 +319,7 @@ export function PrinterSettings() {
                 <Monitor className="h-5 w-5 mt-0.5 shrink-0" />
                 <div>
                   <span className="font-medium">Navegador (Padrão)</span>
-                  <p className="text-xs text-muted-foreground mt-0.5">Abre a janela de impressão do navegador. Funciona em qualquer computador.</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Imprime pelo navegador (pode abrir diálogo de impressão).</p>
                 </div>
               </Label>
             </div>
@@ -329,7 +331,7 @@ export function PrinterSettings() {
                 <Printer className="h-5 w-5 mt-0.5 shrink-0" />
                 <div>
                   <span className="font-medium">Desktop (PDV 1 clique)</span>
-                  <p className="text-xs text-muted-foreground mt-0.5">Impressão 1 clique sem diálogo. Requer FoodHub PDV Desktop instalado.</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Impressão 1 clique (requer o app FoodHub PDV Desktop instalado).</p>
                 </div>
               </Label>
             </div>
@@ -341,28 +343,59 @@ export function PrinterSettings() {
                 <Smartphone className="h-5 w-5 mt-0.5 shrink-0" />
                 <div>
                   <span className="font-medium">SmartPOS (Maquininha)</span>
-                  <p className="text-xs text-muted-foreground mt-0.5">Uso em maquininha/SmartPOS. Sem impressão USB do PC.</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Uso em maquininha/SmartPOS (fluxo próprio do dispositivo).</p>
                 </div>
               </Label>
             </div>
           </RadioGroup>
 
-          {/* Desktop info */}
-          {local.print_mode === 'desktop' && !hasDesktopBridge && (
-            <div className="rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 p-3 text-xs space-y-1">
-              <p className="font-medium text-amber-700 dark:text-amber-300">⚠️ FoodHub PDV Desktop não detectado</p>
-              <p className="text-muted-foreground">
-                Para impressão 1 clique, abra o sistema pelo FoodHub PDV Desktop.{' '}
-                <a href="/downloads" target="_blank" className="text-primary hover:underline">Baixar Desktop PDV</a>
-              </p>
-            </div>
-          )}
+          {/* Desktop: download + setup block */}
+          {local.print_mode === 'desktop' && (
+            <Card className="border-primary/20 bg-primary/5">
+              <CardContent className="pt-5 space-y-4">
+                <div className="flex items-center gap-2">
+                  <Download className="h-5 w-5 text-primary shrink-0" />
+                  <h4 className="font-semibold text-sm">FoodHub PDV Desktop (1 clique)</h4>
+                </div>
 
-          {local.print_mode === 'desktop' && hasDesktopBridge && (
-            <div className="rounded-md bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 p-3 text-xs">
-              <p className="font-medium text-green-700 dark:text-green-300">✅ FoodHub PDV Desktop conectado</p>
-              <p className="text-muted-foreground mt-0.5">Impressão 1 clique está ativa.</p>
-            </div>
+                {hasDesktopBridge ? (
+                  <div className="rounded-md bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 p-3 text-xs">
+                    <p className="font-medium text-green-700 dark:text-green-300">✅ FoodHub PDV Desktop conectado</p>
+                    <p className="text-muted-foreground mt-0.5">Impressão 1 clique está ativa.</p>
+                  </div>
+                ) : (
+                  <>
+                    <ol className="text-xs text-muted-foreground space-y-1.5 pl-1">
+                      <li className="flex gap-2"><span className="font-bold text-foreground">1.</span> Baixe e instale o app no computador do caixa</li>
+                      <li className="flex gap-2"><span className="font-bold text-foreground">2.</span> Abra o app e faça login</li>
+                      <li className="flex gap-2"><span className="font-bold text-foreground">3.</span> Volte ao PDV e imprima em 1 clique</li>
+                    </ol>
+
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      {desktopUrls.windows_url && desktopUrls.windows_url !== '#' ? (
+                        <Button
+                          className="flex-1"
+                          onClick={() => window.open(desktopUrls.windows_url, '_blank')}
+                        >
+                          <Download className="h-4 w-4 mr-2" /> Baixar FoodHub PDV Desktop
+                        </Button>
+                      ) : (
+                        <Button className="flex-1" disabled>
+                          <Download className="h-4 w-4 mr-2" /> Link ainda não configurado pelo administrador
+                        </Button>
+                      )}
+                      <Button variant="outline" size="sm" onClick={() => window.open('/downloads', '_blank')}>
+                        Instruções de instalação
+                      </Button>
+                    </div>
+
+                    <p className="text-[11px] text-muted-foreground">
+                      Recomendado para impressora térmica USB ESC/POS.
+                    </p>
+                  </>
+                )}
+              </CardContent>
+            </Card>
           )}
 
           {/* SmartPOS info */}
