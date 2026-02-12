@@ -1,11 +1,16 @@
-import { app, BrowserWindow, ipcMain, session } from 'electron';
+import { app, BrowserWindow, ipcMain, session, Menu } from 'electron';
 import path from 'path';
 import { printReceipt, listPrinters, testPrint } from './printer';
 import { getConfig, setConfig } from './config';
+import { initAutoUpdater, checkForUpdatesManual, installUpdate, stopUpdater } from './updater';
 
 const PDV_URL = getConfig('pdvUrl') || 'https://start-a-new-quest.lovable.app/pos';
 
 let mainWindow: BrowserWindow | null = null;
+
+function getMainWindow() {
+  return mainWindow;
+}
 
 function createWindow() {
   const kiosk = getConfig('kiosk') === true;
@@ -34,6 +39,45 @@ function createWindow() {
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
+}
+
+function buildMenu() {
+  const template: Electron.MenuItemConstructorOptions[] = [
+    {
+      label: 'Arquivo',
+      submenu: [
+        { role: 'reload', label: 'Recarregar' },
+        { type: 'separator' },
+        { role: 'quit', label: 'Sair' },
+      ],
+    },
+    {
+      label: 'Ajuda',
+      submenu: [
+        {
+          label: 'Verificar atualizações',
+          click: () => {
+            checkForUpdatesManual().catch(() => {});
+          },
+        },
+        { type: 'separator' },
+        {
+          label: 'Sobre FoodHub PDV',
+          click: () => {
+            const version = app.getVersion();
+            const { dialog } = require('electron');
+            dialog.showMessageBox({
+              type: 'info',
+              title: 'Sobre',
+              message: `FoodHub PDV Desktop\nVersão ${version}`,
+            });
+          },
+        },
+      ],
+    },
+  ];
+
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
 // ─── IPC Handlers ──────────────────────────────────────────
@@ -76,6 +120,16 @@ ipcMain.handle('foodhub:printTest', async () => {
   return testPrint(printerName);
 });
 
+// ─── Update IPC ────────────────────────────────────────────
+
+ipcMain.handle('foodhub:checkForUpdates', () => {
+  return checkForUpdatesManual();
+});
+
+ipcMain.handle('foodhub:installUpdate', () => {
+  installUpdate();
+});
+
 // ─── App lifecycle ─────────────────────────────────────────
 
 app.whenReady().then(() => {
@@ -83,10 +137,13 @@ app.whenReady().then(() => {
   const ua = session.defaultSession.getUserAgent();
   session.defaultSession.setUserAgent(`${ua} FoodHubPDV/1.0`);
 
+  buildMenu();
   createWindow();
+  initAutoUpdater(getMainWindow);
 });
 
 app.on('window-all-closed', () => {
+  stopUpdater();
   app.quit();
 });
 

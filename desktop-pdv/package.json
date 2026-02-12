@@ -12,10 +12,13 @@
     "dev": "tsc && electron .",
     "build": "tsc",
     "pack": "tsc && electron-builder --win --x64",
-    "dist": "tsc && electron-builder --win --x64 --publish never"
+    "dist": "tsc && electron-builder --win --x64 --publish never",
+    "release": "tsc && electron-builder --win --x64 --publish always"
   },
   "dependencies": {
+    "electron-log": "5.3.0",
     "electron-store": "8.2.0",
+    "electron-updater": "6.3.9",
     "node-thermal-printer": "4.4.3"
   },
   "devDependencies": {
@@ -29,6 +32,13 @@
     "directories": {
       "output": "release"
     },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "OWNER",
+        "repo": "foodhub-pdv-releases"
+      }
+    ],
     "win": {
       "target": [
         {
