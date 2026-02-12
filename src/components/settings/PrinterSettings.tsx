@@ -224,7 +224,12 @@ export function PrinterSettings() {
       toast({ title: '🖨️ Enviando cupom de teste...' });
       const pw = Number(local.paper_width) === 58 ? 58 : 80;
       const caixaRoute = routes.find(r => r.route_key === 'caixa');
-      const printers = caixaRoute?.printers?.length ? caixaRoute.printers : [undefined]; // undefined = OS default
+      // When route has no printers, send null to signal "use OS default" (not undefined which triggers config fallback)
+      const resolvedPrinters: (string | null)[] = caixaRoute?.printers?.length
+        ? caixaRoute.printers
+        : [null]; // null = explicit OS default, no config fallback
+
+      console.log('[TEST_PRINT] route_key=caixa, resolvedPrinters:', resolvedPrinters);
 
       const lines = [
         { type: 'bold' as const, value: 'CUPOM DE TESTE', align: 'center' as const },
@@ -240,12 +245,13 @@ export function PrinterSettings() {
       ];
 
       let anyOk = false;
-      for (const printerName of printers) {
+      for (const printerName of resolvedPrinters) {
         try {
-          console.log(`[TEST_PRINT] Sending to: "${printerName || '(default)'}"`);
+          const sendingPrinterName = printerName || null;
+          console.log(`[TEST_PRINT] sendingPrinterName: ${JSON.stringify(sendingPrinterName)}`);
           const result = await window.foodhub.printReceipt({
             lines,
-            printerName: printerName || undefined,
+            printerName: sendingPrinterName as any,
             paperWidth: pw,
           });
           console.log('[TEST_PRINT] result:', { ok: result.ok, jobId: result.jobId, error: result.error });

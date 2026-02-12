@@ -126,9 +126,14 @@ ipcMain.handle('foodhub:printReceipt', async (_event, payload: {
   paperWidth?: number;
 }) => {
   try {
-    console.log(`[IPC] foodhub:printReceipt received, printerName="${payload.printerName || '(default)'}", lines=${payload.lines?.length || 0}`);
-    const printerName = payload.printerName || getConfig('defaultPrinter') || undefined;
+    // If printerName is explicitly null → use OS default (no config fallback)
+    // If printerName is undefined (not provided) → fall back to config
+    const hasExplicitPrinter = 'printerName' in payload && payload.printerName !== undefined;
+    const printerName = hasExplicitPrinter
+      ? (payload.printerName || undefined)   // null → undefined (OS default)
+      : (getConfig('defaultPrinter') || undefined);
     const paperWidth = payload.paperWidth || 80;
+    console.log(`[IPC] foodhub:printReceipt received, payload.printerName=${JSON.stringify(payload.printerName)}, resolved="${printerName || '(OS default)'}", lines=${payload.lines?.length || 0}`);
     return await printReceipt(payload.lines, { printerName, paperWidth });
   } catch (err: any) {
     console.error('[IPC] foodhub:printReceipt uncaught error:', err);
@@ -138,8 +143,9 @@ ipcMain.handle('foodhub:printReceipt', async (_event, payload: {
 
 ipcMain.handle('foodhub:printTest', async () => {
   try {
-    console.log('[IPC] foodhub:printTest received');
+    console.log('[IPC] foodhub:printTest received (uses config default)');
     const printerName = getConfig('defaultPrinter') || undefined;
+    console.log(`[IPC] printTest resolved printer: "${printerName || '(OS default)'}"`);
     return await testPrint(printerName);
   } catch (err: any) {
     console.error('[IPC] foodhub:printTest uncaught error:', err);
