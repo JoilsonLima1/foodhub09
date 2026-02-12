@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+    "authorization, x-client-info, apikey, content-type, x-auth-token, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 Deno.serve(async (req) => {
@@ -12,8 +12,17 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Accept token from Authorization header or x-auth-token
+    let token = "";
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
+    if (authHeader?.startsWith("Bearer ")) {
+      token = authHeader.replace("Bearer ", "");
+    }
+    if (!token) {
+      token = req.headers.get("x-auth-token") ?? "";
+    }
+
+    if (!token) {
       return new Response(JSON.stringify({ configured: false, reason: "UNAUTHORIZED" }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -25,10 +34,10 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const token = authHeader.replace("Bearer ", "");
     const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
 
     if (authErr || !user) {
+      console.error("smartpos-config-status auth error:", authErr?.message);
       return new Response(JSON.stringify({ configured: false, reason: "UNAUTHORIZED" }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
