@@ -176,30 +176,6 @@ ipcMain.handle('foodhub:getPrinters', async () => {
 
   return listPrinters();
 });
-  } catch (err) {
-    console.error('[Printer] PowerShell Get-Printer failed, falling back to Electron:', err);
-  }
-
-  // Fallback to Electron API
-  if (mainWindow) {
-    try {
-      const printers = await mainWindow.webContents.getPrintersAsync();
-      const seen = new Set<string>();
-      const filtered: string[] = [];
-      for (const p of printers) {
-        const name = p.name;
-        if (!name || !name.trim()) continue;
-        const lower = name.toLowerCase();
-        if (VIRTUAL_PRINTERS.some(v => lower.includes(v))) continue;
-        if (seen.has(lower)) continue;
-        seen.add(lower);
-        filtered.push(name);
-      }
-      return filtered;
-    } catch {}
-  }
-  return listPrinters();
-});
 
 ipcMain.handle('foodhub:getDefaultPrinter', async () => {
   if (mainWindow) {
