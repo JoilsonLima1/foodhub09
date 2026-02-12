@@ -1,8 +1,12 @@
 /**
- * FoodHub PDV Desktop — ESC/POS Printer Module v2
+ * FoodHub PDV Desktop — ESC/POS Printer Module v3
  *
  * ZERO external dependencies. Builds ESC/POS byte buffers manually
- * and sends raw bytes to the Windows printer via multiple fallback strategies.
+ * and sends raw bytes via Windows Print Spooler (winspool.Drv).
+ *
+ * KEY FIX (v3): The PowerShell winspool script is written to a .ps1
+ * temp file instead of being passed inline, eliminating all escaping
+ * issues that caused "Todas as 4 estratégias falharam".
  */
 
 // ─── Types ─────────────────────────────────────────────────
@@ -60,7 +64,6 @@ function generateJobId(): string {
 
 /** Encode a string to CP860 (Portuguese) compatible bytes using latin1 as best-effort */
 function encodeText(text: string): Buffer {
-  // Replace common Unicode chars that CP860 doesn't handle
   const cleaned = text
     .replace(/✓/g, 'V')
     .replace(/[""]/g, '"')
@@ -84,13 +87,12 @@ function buildPair(left: string, right: string, cols: number): Buffer {
   return Buffer.from(line + '\n', 'latin1');
 }
 
-// ─── ESC/POS Buffer Builder (no external deps!) ────────────
+// ─── ESC/POS Buffer Builder ────────────────────────────────
 
 function buildEscPosBuffer(lines: ReceiptLine[], paperWidth: number): Buffer {
   const cols = paperWidth === 58 ? 32 : 48;
   const parts: Buffer[] = [];
 
-  // Initialize printer
   parts.push(CMD.INIT);
 
   for (const line of lines) {
@@ -134,9 +136,7 @@ function buildEscPosBuffer(lines: ReceiptLine[], paperWidth: number): Buffer {
     }
   }
 
-  // Reset alignment
   parts.push(CMD.ALIGN_LEFT);
-
   return Buffer.concat(parts);
 }
 
@@ -146,7 +146,7 @@ function getDefaultPrinterName(): string | undefined {
   try {
     const { execSync } = require('child_process');
     const output = execSync(
-      'powershell -Command "Get-CimInstance Win32_Printer | Where-Object {$_.Default -eq $true} | Select-Object -ExpandProperty Name"',
+      'powershell -NoProfile -Command "Get-CimInstance Win32_Printer | Where-Object {$_.Default -eq $true} | Select-Object -ExpandProperty Name"',
       { encoding: 'utf-8', timeout: 5000 }
     ).trim();
     if (output) return output;
@@ -157,8 +157,9 @@ function getDefaultPrinterName(): string | undefined {
 function getPrinterPort(printerName: string): string | undefined {
   try {
     const { execSync } = require('child_process');
+    const escaped = printerName.replace(/'/g, "''");
     const output = execSync(
-      `powershell -Command "Get-Printer -Name '${printerName.replace(/'/g, "''")}' | Select-Object -ExpandProperty PortName"`,
+      `powershell -NoProfile -Command "Get-Printer -Name '${escaped}' | Select-Object -ExpandProperty PortName"`,
       { encoding: 'utf-8', timeout: 5000 }
     ).trim();
     if (output) {
@@ -171,61 +172,22 @@ function getPrinterPort(printerName: string): string | undefined {
   return undefined;
 }
 
-// ─── Raw Print Strategies ──────────────────────────────────
+// ─── RAW Print via winspool.Drv (PRIMARY STRATEGY) ─────────
+// Writes the PowerShell script to a .ps1 temp file to avoid
+// ALL escaping issues that plagued the inline approach.
 
-function sendRawToPort(buffer: Buffer, printerName: string, portName: string, jobId: string): PrintResult {
+function sendViaWinspool(bufferFile: string, printerName: string, jobId: string): boolean {
   const fs = require('fs');
   const os = require('os');
   const path = require('path');
   const { execSync } = require('child_process');
 
-  const tmpFile = path.join(os.tmpdir(), `foodhub_print_${jobId}.bin`);
-  fs.writeFileSync(tmpFile, buffer);
-  console.log(`[Printer] Buffer ${buffer.length} bytes -> ${tmpFile}`);
+  const psFile = path.join(os.tmpdir(), `fh_print_${jobId}.ps1`);
 
-  const cleanup = () => { try { fs.unlinkSync(tmpFile); } catch {} };
-  const ok = (strategy: string): PrintResult => {
-    console.log(`[PRINT_RESULT] jobId=${jobId}, ok=true, printer="${printerName}" (${strategy})`);
-    cleanup();
-    return { ok: true, jobId };
-  };
+  // Build PS1 script content — no escaping needed since it's written to a file
+  const psContent = `
+$ErrorActionPreference = 'Stop'
 
-  // Strategy 1: Direct port write
-  try {
-    const portPath = portName.startsWith('\\\\') ? portName : `\\\\.\\${portName}`;
-    console.log(`[Printer] S1: Direct write to ${portPath}`);
-    fs.writeFileSync(portPath, buffer);
-    return ok(`direct:${portName}`);
-  } catch (err: any) {
-    console.warn(`[Printer] S1 failed: ${err.message}`);
-  }
-
-  // Strategy 2: copy /b via cmd
-  try {
-    const copyCmd = `copy /b "${tmpFile}" "\\\\.\\${portName}"`;
-    console.log(`[Printer] S2: ${copyCmd}`);
-    execSync(`cmd /c ${copyCmd}`, { timeout: 15000 });
-    return ok(`copy:${portName}`);
-  } catch (err: any) {
-    console.warn(`[Printer] S2 failed: ${err.message}`);
-  }
-
-  // Strategy 3: UNC share
-  try {
-    const uncPath = `\\\\localhost\\${printerName}`;
-    const shareCmd = `copy /b "${tmpFile}" "${uncPath}"`;
-    console.log(`[Printer] S3: ${shareCmd}`);
-    execSync(`cmd /c ${shareCmd}`, { timeout: 15000 });
-    return ok('unc');
-  } catch (err: any) {
-    console.warn(`[Printer] S3 failed: ${err.message}`);
-  }
-
-  // Strategy 4: Win32 winspool.Drv via PowerShell
-  try {
-    const escapedTmpFile = tmpFile.replace(/\\/g, '\\\\');
-    const escapedPrinter = printerName.replace(/'/g, "''");
-    const psScript = `
 $signature = @'
 [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
 public class DOCINFOA {
@@ -233,55 +195,190 @@ public class DOCINFOA {
     [MarshalAs(UnmanagedType.LPStr)] public string pOutputFile;
     [MarshalAs(UnmanagedType.LPStr)] public string pDatatype;
 }
-[DllImport("winspool.Drv", EntryPoint="OpenPrinterA", SetLastError=true, CharSet=CharSet.Ansi)]
-public static extern bool OpenPrinter(string szPrinter, out IntPtr hPrinter, IntPtr pd);
-[DllImport("winspool.Drv", EntryPoint="ClosePrinter", SetLastError=true)]
-public static extern bool ClosePrinter(IntPtr hPrinter);
-[DllImport("winspool.Drv", EntryPoint="StartDocPrinterA", SetLastError=true, CharSet=CharSet.Ansi)]
-public static extern bool StartDocPrinter(IntPtr hPrinter, int level, [In] DOCINFOA di);
-[DllImport("winspool.Drv", EntryPoint="EndDocPrinter", SetLastError=true)]
-public static extern bool EndDocPrinter(IntPtr hPrinter);
-[DllImport("winspool.Drv", EntryPoint="StartPagePrinter", SetLastError=true)]
-public static extern bool StartPagePrinter(IntPtr hPrinter);
-[DllImport("winspool.Drv", EntryPoint="EndPagePrinter", SetLastError=true)]
-public static extern bool EndPagePrinter(IntPtr hPrinter);
-[DllImport("winspool.Drv", EntryPoint="WritePrinter", SetLastError=true)]
-public static extern bool WritePrinter(IntPtr hPrinter, IntPtr pBytes, int dwCount, out int dwWritten);
+
+[DllImport("winspool.Drv", EntryPoint="OpenPrinterA", SetLastError=true, CharSet=CharSet.Ansi, ExactSpelling=true, CallingConvention=CallingConvention.StdCall)]
+public static extern bool OpenPrinter([MarshalAs(UnmanagedType.LPStr)] string szPrinter, out System.IntPtr hPrinter, System.IntPtr pd);
+
+[DllImport("winspool.Drv", EntryPoint="ClosePrinter", SetLastError=true, ExactSpelling=true, CallingConvention=CallingConvention.StdCall)]
+public static extern bool ClosePrinter(System.IntPtr hPrinter);
+
+[DllImport("winspool.Drv", EntryPoint="StartDocPrinterA", SetLastError=true, CharSet=CharSet.Ansi, ExactSpelling=true, CallingConvention=CallingConvention.StdCall)]
+public static extern bool StartDocPrinter(System.IntPtr hPrinter, System.Int32 level, [In, MarshalAs(UnmanagedType.LPStruct)] DOCINFOA di);
+
+[DllImport("winspool.Drv", EntryPoint="EndDocPrinter", SetLastError=true, ExactSpelling=true, CallingConvention=CallingConvention.StdCall)]
+public static extern bool EndDocPrinter(System.IntPtr hPrinter);
+
+[DllImport("winspool.Drv", EntryPoint="StartPagePrinter", SetLastError=true, ExactSpelling=true, CallingConvention=CallingConvention.StdCall)]
+public static extern bool StartPagePrinter(System.IntPtr hPrinter);
+
+[DllImport("winspool.Drv", EntryPoint="EndPagePrinter", SetLastError=true, ExactSpelling=true, CallingConvention=CallingConvention.StdCall)]
+public static extern bool EndPagePrinter(System.IntPtr hPrinter);
+
+[DllImport("winspool.Drv", EntryPoint="WritePrinter", SetLastError=true, ExactSpelling=true, CallingConvention=CallingConvention.StdCall)]
+public static extern bool WritePrinter(System.IntPtr hPrinter, System.IntPtr pBytes, System.Int32 dwCount, out System.Int32 dwWritten);
 '@
-$t = Add-Type -MemberDefinition $signature -Name 'RawPrint' -Namespace 'FH' -UsingNamespace 'System.Runtime.InteropServices' -PassThru
-$hp = [IntPtr]::Zero
-$di = New-Object FH.DOCINFOA
+
+$rawPrinterType = Add-Type -MemberDefinition $signature -Name 'RawPrinterHelper' -Namespace 'FoodHub' -UsingNamespace 'System.Runtime.InteropServices' -PassThru
+
+$printerName = '${printerName.replace(/'/g, "''")}'
+$dataFilePath = '${bufferFile.replace(/\\/g, '\\\\').replace(/'/g, "''")}'
+
+$hPrinter = [System.IntPtr]::Zero
+$di = New-Object FoodHub.DOCINFOA
 $di.pDocName = 'FoodHub Receipt'
 $di.pDatatype = 'RAW'
-$b = [System.IO.File]::ReadAllBytes('${escapedTmpFile}')
-if ($t::OpenPrinter('${escapedPrinter}', [ref]$hp, [IntPtr]::Zero)) {
-  if ($t::StartDocPrinter($hp, 1, $di)) {
-    $t::StartPagePrinter($hp) | Out-Null
-    $p = [System.Runtime.InteropServices.Marshal]::AllocHGlobal($b.Length)
-    [System.Runtime.InteropServices.Marshal]::Copy($b, 0, $p, $b.Length)
-    $w = 0
-    $t::WritePrinter($hp, $p, $b.Length, [ref]$w) | Out-Null
-    [System.Runtime.InteropServices.Marshal]::FreeHGlobal($p)
-    $t::EndPagePrinter($hp) | Out-Null
-    $t::EndDocPrinter($hp) | Out-Null
-  }
-  $t::ClosePrinter($hp) | Out-Null
-  Write-Output "OK:$($b.Length)"
-} else {
-  Write-Error "OpenPrinter failed"
+
+$bytes = [System.IO.File]::ReadAllBytes($dataFilePath)
+Write-Host "FHLOG: Read $($bytes.Length) bytes from data file"
+
+$openResult = $rawPrinterType::OpenPrinter($printerName, [ref]$hPrinter, [System.IntPtr]::Zero)
+if (-not $openResult) {
+    $err = [System.Runtime.InteropServices.Marshal]::GetLastWin32Error()
+    Write-Error "FHERR: OpenPrinter failed for '$printerName' (Win32 error $err)"
+    exit 1
 }
-`;
-    console.log(`[Printer] S4: PowerShell winspool.Drv RAW print...`);
-    const result = execSync(
-      `powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "${psScript.replace(/"/g, '\\"')}"`,
-      { encoding: 'utf-8', timeout: 20000 }
-    ).trim();
-    console.log(`[Printer] S4 result: ${result}`);
-    if (result.includes('OK:')) {
-      return ok('winspool');
+Write-Host "FHLOG: OpenPrinter OK, handle=$hPrinter"
+
+try {
+    $startDocResult = $rawPrinterType::StartDocPrinter($hPrinter, 1, $di)
+    if (-not $startDocResult) {
+        $err = [System.Runtime.InteropServices.Marshal]::GetLastWin32Error()
+        Write-Error "FHERR: StartDocPrinter failed (Win32 error $err)"
+        exit 1
     }
+    Write-Host "FHLOG: StartDocPrinter OK"
+
+    $rawPrinterType::StartPagePrinter($hPrinter) | Out-Null
+    Write-Host "FHLOG: StartPagePrinter OK"
+
+    $unmanagedPtr = [System.Runtime.InteropServices.Marshal]::AllocHGlobal($bytes.Length)
+    [System.Runtime.InteropServices.Marshal]::Copy($bytes, 0, $unmanagedPtr, $bytes.Length)
+    
+    $bytesWritten = 0
+    $writeResult = $rawPrinterType::WritePrinter($hPrinter, $unmanagedPtr, $bytes.Length, [ref]$bytesWritten)
+    [System.Runtime.InteropServices.Marshal]::FreeHGlobal($unmanagedPtr)
+
+    if (-not $writeResult) {
+        $err = [System.Runtime.InteropServices.Marshal]::GetLastWin32Error()
+        Write-Error "FHERR: WritePrinter failed (Win32 error $err)"
+        exit 1
+    }
+    Write-Host "FHLOG: WritePrinter OK, bytesWritten=$bytesWritten"
+
+    $rawPrinterType::EndPagePrinter($hPrinter) | Out-Null
+    $rawPrinterType::EndDocPrinter($hPrinter) | Out-Null
+    Write-Host "FHLOG: EndDoc/EndPage OK"
+}
+finally {
+    $rawPrinterType::ClosePrinter($hPrinter) | Out-Null
+}
+
+Write-Output "FHOK:$($bytesWritten)"
+`;
+
+  try {
+    // Write the PS1 script to a temp file (avoids ALL escaping issues)
+    fs.writeFileSync(psFile, psContent, { encoding: 'utf-8' });
+    console.log(`[Printer] PS1 script written to ${psFile}`);
+
+    const result = execSync(
+      `powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "${psFile}"`,
+      { encoding: 'utf-8', timeout: 25000 }
+    ).trim();
+
+    console.log(`[Printer] Winspool result: ${result}`);
+
+    // Cleanup PS1 file
+    try { fs.unlinkSync(psFile); } catch {}
+
+    return result.includes('FHOK:');
   } catch (err: any) {
-    console.warn(`[Printer] S4 failed: ${err.message}`);
+    console.error(`[Printer] Winspool failed:`, err.message);
+    // Log stderr if available
+    if (err.stderr) {
+      console.error(`[Printer] PS stderr:`, err.stderr.toString());
+    }
+    if (err.stdout) {
+      console.log(`[Printer] PS stdout:`, err.stdout.toString());
+    }
+    // Cleanup
+    try { fs.unlinkSync(psFile); } catch {}
+    return false;
+  }
+}
+
+// ─── Fallback: Direct port write ───────────────────────────
+
+function sendDirectToPort(bufferFile: string, portName: string): boolean {
+  const fs = require('fs');
+  const { execSync } = require('child_process');
+
+  // Strategy A: copy /b to port
+  try {
+    const copyCmd = `copy /b "${bufferFile}" "\\\\.\\${portName}"`;
+    console.log(`[Printer] Fallback copy/b: ${copyCmd}`);
+    execSync(`cmd /c ${copyCmd}`, { timeout: 15000 });
+    return true;
+  } catch (err: any) {
+    console.warn(`[Printer] copy/b failed: ${err.message}`);
+  }
+
+  // Strategy B: direct fs write to port path
+  try {
+    const portPath = portName.startsWith('\\\\') ? portName : `\\\\.\\${portName}`;
+    console.log(`[Printer] Fallback direct write: ${portPath}`);
+    const data = fs.readFileSync(bufferFile);
+    fs.writeFileSync(portPath, data);
+    return true;
+  } catch (err: any) {
+    console.warn(`[Printer] Direct write failed: ${err.message}`);
+  }
+
+  return false;
+}
+
+// ─── Main Print Function ───────────────────────────────────
+
+function sendRawToPort(buffer: Buffer, printerName: string, portName: string, jobId: string): PrintResult {
+  const fs = require('fs');
+  const os = require('os');
+  const path = require('path');
+
+  // Write ESC/POS buffer to temp file
+  const tmpFile = path.join(os.tmpdir(), `foodhub_escpos_${jobId}.bin`);
+  fs.writeFileSync(tmpFile, buffer);
+  console.log(`[Printer] Buffer ${buffer.length} bytes -> ${tmpFile}`);
+
+  const cleanup = () => { try { fs.unlinkSync(tmpFile); } catch {} };
+
+  // PRIMARY: Win32 winspool.Drv via PS1 file
+  console.log(`[Printer] === Strategy 1 (PRIMARY): winspool.Drv via .ps1 file ===`);
+  if (sendViaWinspool(tmpFile, printerName, jobId)) {
+    console.log(`[PRINT_RESULT] jobId=${jobId}, ok=true, printer="${printerName}" (winspool)`);
+    cleanup();
+    return { ok: true, jobId };
+  }
+
+  // FALLBACK: Direct port access (for LPT/COM ports, rarely works for USB)
+  console.log(`[Printer] === Strategy 2 (FALLBACK): Direct port ${portName} ===`);
+  if (sendDirectToPort(tmpFile, portName)) {
+    console.log(`[PRINT_RESULT] jobId=${jobId}, ok=true, printer="${printerName}" (direct:${portName})`);
+    cleanup();
+    return { ok: true, jobId };
+  }
+
+  // FALLBACK 2: UNC share
+  try {
+    const { execSync } = require('child_process');
+    const uncPath = `\\\\localhost\\${printerName}`;
+    const shareCmd = `copy /b "${tmpFile}" "${uncPath}"`;
+    console.log(`[Printer] === Strategy 3 (FALLBACK): UNC ${uncPath} ===`);
+    execSync(`cmd /c ${shareCmd}`, { timeout: 15000 });
+    console.log(`[PRINT_RESULT] jobId=${jobId}, ok=true, printer="${printerName}" (unc)`);
+    cleanup();
+    return { ok: true, jobId };
+  } catch (err: any) {
+    console.warn(`[Printer] UNC failed: ${err.message}`);
   }
 
   cleanup();
@@ -290,7 +387,7 @@ if ($t::OpenPrinter('${escapedPrinter}', [ref]$hp, [IntPtr]::Zero)) {
     jobId,
     error: {
       code: 'PRINT_FAILED',
-      message: `Falha ao imprimir em "${printerName}" (porta: ${portName}). Todas as 4 estrategias falharam. Verifique se a impressora esta ligada e conectada.`,
+      message: `Falha ao imprimir em "${printerName}" (porta: ${portName}). Verifique se a impressora esta ligada, conectada e com driver "Generic / Text Only".`,
     },
   };
 }
@@ -350,30 +447,22 @@ export async function printReceipt(
 export async function listPrinters(): Promise<string[]> {
   try {
     const { execSync } = require('child_process');
-    const output = execSync('wmic printer list brief /format:csv', {
-      encoding: 'utf-8',
-      timeout: 5000,
-    });
-    const lines = output.split('\n').filter(Boolean);
-    const names: string[] = [];
-    for (let i = 1; i < lines.length; i++) {
-      const cols = lines[i].split(',');
-      if (cols.length >= 2 && cols[1]?.trim()) {
-        names.push(cols[1].trim());
-      }
-    }
-    return names;
-  } catch (err) {
-    console.error('[Printer] Failed to list printers:', err);
+    const output = execSync(
+      'powershell -NoProfile -Command "Get-CimInstance Win32_Printer | Where-Object {$_.WorkOffline -eq $false} | Select-Object -ExpandProperty Name"',
+      { encoding: 'utf-8', timeout: 5000 }
+    ).trim();
+    return output.split('\n').map((n: string) => n.trim()).filter(Boolean);
+  } catch {
     return [];
   }
 }
 
 export async function testPrint(printerName?: string): Promise<PrintResult> {
   const testLines: ReceiptLine[] = [
-    { type: 'bold', value: 'FoodHub PDV Desktop', align: 'center' },
+    { type: 'bold', value: 'FoodHub PDV Desktop v3', align: 'center' },
     { type: 'separator' },
-    { type: 'text', value: 'Teste de impressao ESC/POS v2', align: 'center' },
+    { type: 'text', value: 'Teste de impressao ESC/POS', align: 'center' },
+    { type: 'text', value: 'winspool.Drv via .ps1 file', align: 'center' },
     { type: 'pair', left: 'Data:', right: new Date().toLocaleString('pt-BR') },
     { type: 'pair', left: 'Impressora:', right: printerName || 'Padrao do sistema' },
     { type: 'separator' },

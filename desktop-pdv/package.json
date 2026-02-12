@@ -1,6 +1,6 @@
 {
   "name": "foodhub-pdv-desktop",
-  "version": "2.6.0",
+  "version": "2.7.0",
   "description": "FoodHub PDV Desktop — impressão térmica ESC/POS 1 clique via USB",
   "main": "dist/main.js",
   "author": "FoodHub",
