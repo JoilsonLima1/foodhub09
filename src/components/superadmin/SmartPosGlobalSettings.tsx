@@ -17,18 +17,26 @@ export function SmartPosGlobalSettings() {
     async function checkStatus() {
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-          setStatus({ configured: false, reason: 'UNAUTHORIZED' });
-          setIsLoading(false);
-          return;
-        }
-
+        const token = session?.access_token ?? '';
+        
         const response = await supabase.functions.invoke('smartpos-config-status', {
-          headers: { Authorization: `Bearer ${session.access_token}` },
+          headers: { 'x-auth-token': token },
         });
 
         if (response.error) {
-          setStatus({ configured: false, reason: 'INTERNAL_ERROR', detail: response.error.message });
+          // Try to parse structured response from error body
+          try {
+            const parsed = typeof response.error === 'object' && 'context' in response.error
+              ? JSON.parse((response.error as any).context?.body || '{}')
+              : {};
+            if (parsed.reason) {
+              setStatus(parsed as ConfigStatus);
+            } else {
+              setStatus({ configured: false, reason: 'INTERNAL_ERROR', detail: response.error.message });
+            }
+          } catch {
+            setStatus({ configured: false, reason: 'INTERNAL_ERROR', detail: response.error.message });
+          }
         } else {
           setStatus(response.data as ConfigStatus);
         }
