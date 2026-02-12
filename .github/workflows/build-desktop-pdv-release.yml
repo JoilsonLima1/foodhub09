@@ -37,23 +37,14 @@ jobs:
           echo "version=$PKG_VERSION" >> $GITHUB_OUTPUT
           echo "Building version: $PKG_VERSION"
 
-      - name: Delete ALL old releases and tags
+      - name: Delete existing release for this version
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
-          echo "Deleting ALL existing releases to avoid conflicts..."
-          # List and delete every release
-          gh release list --repo "$GITHUB_REPOSITORY" --limit 50 --json tagName -q '.[].tagName' | while read -r TAG; do
-            echo "Deleting release $TAG..."
-            gh release delete "$TAG" --repo "$GITHUB_REPOSITORY" --yes 2>/dev/null || true
-            git push origin --delete "refs/tags/$TAG" 2>/dev/null || true
-          done
-          # Also delete local tags
-          git tag -l | while read -r TAG; do
-            git tag -d "$TAG" 2>/dev/null || true
-          done
-          echo "All old releases/tags cleaned."
+          TAG="v${{ steps.pkg.outputs.version }}"
+          echo "Cleaning release/tag $TAG if it exists..."
+          gh release delete "$TAG" --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag 2>/dev/null || echo "No existing release for $TAG"
 
       - name: Configure npm registry
         run: npm config set registry https://registry.npmjs.org/
@@ -61,27 +52,43 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Build & publish release
+      - name: Build TypeScript
+        run: npx tsc
+
+      - name: Build & publish with electron-builder
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
-        run: npm run release
+        run: npx electron-builder --win --x64 --publish always
 
-      - name: Verify release assets
+      - name: List release output
         shell: bash
         run: |
-          echo "=== Checking generated files ==="
-          ls -la release/ || echo "No release directory found"
+          echo "=== Release directory ==="
+          ls -la release/ 2>/dev/null || echo "No release dir"
           echo ""
-          echo "=== Looking for .exe ==="
-          find release/ -name "*.exe" 2>/dev/null || echo "No .exe found!"
+          echo "=== EXE files ==="
+          find release/ -name "*.exe" 2>/dev/null || echo "No .exe found"
           echo ""
-          echo "=== Looking for latest.yml ==="
-          find release/ -name "latest.yml" 2>/dev/null || echo "No latest.yml found!"
+          echo "=== YML files ==="
+          find release/ -name "*.yml" 2>/dev/null || echo "No .yml found"
 
-      - name: Upload artifacts (debug)
+      - name: Verify GitHub Release was created
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          TAG="v${{ steps.pkg.outputs.version }}"
+          echo "Checking if release $TAG exists on GitHub..."
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" || echo "WARNING: Release $TAG not found on GitHub!"
+          echo ""
+          echo "All releases:"
+          gh release list --repo "$GITHUB_REPOSITORY" --limit 10
+
+      - name: Upload artifacts (backup)
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: FoodHubPDV-Release-v${{ steps.pkg.outputs.version }}
+          name: FoodHubPDV-v${{ steps.pkg.outputs.version }}
           path: |
             desktop-pdv/release/*.exe
             desktop-pdv/release/latest.yml
