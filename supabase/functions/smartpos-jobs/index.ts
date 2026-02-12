@@ -6,14 +6,48 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+async function getDeviceSecret(supabase: any): Promise<string | null> {
+  const { data, error } = await supabase
+    .from("system_settings")
+    .select("setting_value")
+    .eq("setting_key", "smartpos_device_secret")
+    .maybeSingle();
+  if (error || !data) return null;
+  const val = data.setting_value as unknown as string;
+  return val && val.length > 0 ? val : null;
+}
+
+async function hmacHash(secret: string, message: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const sig = await crypto.subtle.sign("HMAC", key, encoder.encode(message));
+  return Array.from(new Uint8Array(sig))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+async function plainHash(message: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const hashBuffer = await crypto.subtle.digest("SHA-256", encoder.encode(message));
+  return Array.from(new Uint8Array(hashBuffer))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 async function authenticateDevice(supabase: any, authHeader: string | null) {
   if (!authHeader?.startsWith("Bearer ")) return null;
   const token = authHeader.replace("Bearer ", "");
-  const encoder = new TextEncoder();
-  const hashBuffer = await crypto.subtle.digest("SHA-256", encoder.encode(token));
-  const tokenHash = Array.from(new Uint8Array(hashBuffer))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
+
+  const secret = await getDeviceSecret(supabase);
+  const tokenHash = secret
+    ? await hmacHash(secret, token)
+    : await plainHash(token);
 
   const { data, error } = await supabase
     .from("tenant_devices")
@@ -22,7 +56,19 @@ async function authenticateDevice(supabase: any, authHeader: string | null) {
     .eq("enabled", true)
     .maybeSingle();
 
-  if (error || !data) return null;
+  if (error || !data) {
+    if (secret) {
+      const fallbackHash = await plainHash(token);
+      const { data: fallbackData, error: fallbackErr } = await supabase
+        .from("tenant_devices")
+        .select("*")
+        .eq("device_key_hash", fallbackHash)
+        .eq("enabled", true)
+        .maybeSingle();
+      if (!fallbackErr && fallbackData) return fallbackData;
+    }
+    return null;
+  }
   return data;
 }
 
@@ -47,7 +93,6 @@ Deno.serve(async (req) => {
 
     const url = new URL(req.url);
     const pathParts = url.pathname.split("/").filter(Boolean);
-    // Routes: /smartpos-jobs/claim  or  /smartpos-jobs/:id/ack  or /smartpos-jobs/diagnostic
 
     const lastPart = pathParts[pathParts.length - 1];
     const secondLast = pathParts.length >= 2 ? pathParts[pathParts.length - 2] : null;
@@ -62,7 +107,6 @@ Deno.serve(async (req) => {
         }
       } catch {}
 
-      // Update heartbeat on claim
       await supabase
         .from("tenant_devices")
         .update({ status: "online", last_seen_at: new Date().toISOString() })
@@ -82,7 +126,6 @@ Deno.serve(async (req) => {
         );
       }
 
-      // Log claims
       if (jobs && jobs.length > 0) {
         const events = jobs.map((j: any) => ({
           tenant_id: device.tenant_id,
@@ -112,7 +155,6 @@ Deno.serve(async (req) => {
         );
       }
 
-      // Verify job belongs to this device/tenant
       const { data: job, error: fetchErr } = await supabase
         .from("print_jobs")
         .select("*")
@@ -139,10 +181,12 @@ Deno.serve(async (req) => {
         updates.attempts = newAttempts;
         updates.last_error = ackError || "Unknown error";
         if (newAttempts < job.max_attempts) {
-          // Re-queue for retry
           updates.status = "queued";
           updates.claimed_at = null;
           updates.device_id = null;
+          // Exponential backoff: 2^attempts * 5 seconds
+          const backoffMs = Math.pow(2, newAttempts) * 5000;
+          updates.available_at = new Date(Date.now() + backoffMs).toISOString();
         } else {
           updates.status = "failed";
         }
@@ -150,7 +194,6 @@ Deno.serve(async (req) => {
 
       await supabase.from("print_jobs").update(updates).eq("id", jobId);
 
-      // Log event
       await supabase.from("device_events").insert({
         tenant_id: device.tenant_id,
         device_id: device.id,

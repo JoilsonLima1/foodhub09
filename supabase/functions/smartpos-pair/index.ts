@@ -6,6 +6,40 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+async function getDeviceSecret(supabase: any): Promise<string | null> {
+  const { data, error } = await supabase
+    .from("system_settings")
+    .select("setting_value")
+    .eq("setting_key", "smartpos_device_secret")
+    .maybeSingle();
+  if (error || !data) return null;
+  const val = data.setting_value as unknown as string;
+  return val && val.length > 0 ? val : null;
+}
+
+async function hmacHash(secret: string, message: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const sig = await crypto.subtle.sign("HMAC", key, encoder.encode(message));
+  return Array.from(new Uint8Array(sig))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+async function plainHash(message: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const hashBuffer = await crypto.subtle.digest("SHA-256", encoder.encode(message));
+  return Array.from(new Uint8Array(hashBuffer))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -51,19 +85,18 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Generate device API key (raw token) and its hash
+    // Generate device API key (raw token)
     const rawBytes = new Uint8Array(32);
     crypto.getRandomValues(rawBytes);
     const deviceApiKey = Array.from(rawBytes)
       .map((b) => b.toString(16).padStart(2, "0"))
       .join("");
 
-    // SHA-256 hash of the token
-    const encoder = new TextEncoder();
-    const hashBuffer = await crypto.subtle.digest("SHA-256", encoder.encode(deviceApiKey));
-    const deviceKeyHash = Array.from(new Uint8Array(hashBuffer))
-      .map((b) => b.toString(16).padStart(2, "0"))
-      .join("");
+    // Hash using HMAC if secret configured, otherwise plain SHA-256
+    const secret = await getDeviceSecret(supabase);
+    const deviceKeyHash = secret
+      ? await hmacHash(secret, deviceApiKey)
+      : await plainHash(deviceApiKey);
 
     // Create device
     const { data: device, error: devError } = await supabase
