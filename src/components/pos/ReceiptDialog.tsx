@@ -14,6 +14,8 @@ import { printReceiptHTML, buildReceiptHTML, type PaperWidthMM } from '@/lib/the
 import { useTenantPrintSettings } from '@/hooks/useTenantPrintSettings';
 import { useDesktopPdvSettings } from '@/hooks/useDesktopPdvSettings';
 import { usePrinterRoutes } from '@/hooks/usePrinterRoutes';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 const paymentMethodLabels: Record<string, string> = {
@@ -63,6 +65,7 @@ export function ReceiptDialog({
   const { settings } = useTenantPrintSettings();
   const { data: desktopUrls } = useDesktopPdvSettings();
   const { routes } = usePrinterRoutes();
+  const { tenantId, user } = useAuth();
   const { toast } = useToast();
   const [isPrinting, setIsPrinting] = useState(false);
   const [isDiagnosing, setIsDiagnosing] = useState(false);
@@ -176,13 +179,48 @@ export function ReceiptDialog({
         setShowDesktopFallback(true);
         return;
       }
-      // ─── SmartPOS mode: no PC print ───
+      // ─── SmartPOS mode: create print_job ───
       if (settings?.print_mode === 'smartpos') {
-        toast({
-          title: '📱 SmartPOS',
-          description: 'No modo SmartPOS, a impressão é feita diretamente pela maquininha.',
-          duration: 5000,
+        if (!tenantId) return;
+        const receiptLines = buildReceiptLines();
+        const payload = {
+          version: 1,
+          title: tenantName,
+          job_type: 'RECEIPT' as const,
+          order_id: String(orderNumber),
+          target: { sector: 'caixa' },
+          lines: receiptLines.map(l => {
+            if (l.type === 'separator') return { type: 'hr' };
+            if (l.type === 'bold') return { type: 'text', value: l.value || '', align: l.align || 'left', bold: true };
+            if (l.type === 'pair') return { type: 'pair', left: l.left || '', right: l.right || '', bold: false };
+            if (l.type === 'cut') return { type: 'cut' };
+            if (l.type === 'feed') return { type: 'text', value: '' };
+            return { type: 'text', value: l.value || '', align: l.align || 'left', bold: false };
+          }),
+        };
+        const { error: jobError } = await supabase.from('print_jobs').insert({
+          tenant_id: tenantId,
+          device_id: null,
+          source: 'pdv',
+          job_type: 'RECEIPT',
+          payload,
+          priority: 3,
+          created_by_user_id: user?.id || null,
         });
+        if (jobError) {
+          console.error('Failed to create print job:', jobError);
+          toast({
+            title: 'Erro ao enfileirar impressão',
+            description: 'Não foi possível enviar para a maquininha.',
+            variant: 'destructive',
+          });
+        } else {
+          toast({
+            title: '📱 Enviado para SmartPOS',
+            description: 'O cupom será impresso pela maquininha em instantes.',
+            duration: 4000,
+          });
+        }
         return;
       }
 

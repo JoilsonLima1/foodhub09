@@ -47,6 +47,7 @@ import { TenantFeesView } from '@/components/settings/TenantFeesView';
 import { TenantServiceSettings } from '@/components/settings/TenantServiceSettings';
 import { WaiterCommissionsManager } from '@/components/settings/WaiterCommissionsManager';
 import { TenantPixRapidoSettings } from '@/components/settings/TenantPixRapidoSettings';
+import { SmartPosSettings } from '@/components/settings/SmartPosSettings';
 
 export default function Settings() {
   const { user, profile, roles } = useAuth();
@@ -120,6 +121,10 @@ export default function Settings() {
           <TabsTrigger value="waiters" className="shrink-0 flex items-center gap-2 whitespace-nowrap">
             <UserCheck className="h-4 w-4" />
             Garçons
+          </TabsTrigger>
+          <TabsTrigger value="smartpos" className="shrink-0 flex items-center gap-2 whitespace-nowrap">
+            <Smartphone className="h-4 w-4" />
+            SmartPOS
           </TabsTrigger>
           <TabsTrigger value="integrations" className="shrink-0 flex items-center gap-2 whitespace-nowrap">
             <Plug2 className="h-4 w-4" />
@@ -265,6 +270,11 @@ export default function Settings() {
         {/* Waiters & Commissions */}
         <TabsContent value="waiters">
           <WaiterCommissionsManager />
+        </TabsContent>
+
+        {/* SmartPOS */}
+        <TabsContent value="smartpos">
+          <SmartPosSettings />
         </TabsContent>
 
         {/* Integrations */}
