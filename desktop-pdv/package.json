@@ -35,8 +35,8 @@
     "publish": [
       {
         "provider": "github",
-        "owner": "OWNER",
-        "repo": "foodhub-pdv-releases"
+        "owner": "JoilsonLima1",
+        "repo": "foodhub09"
       }
     ],
     "win": {
