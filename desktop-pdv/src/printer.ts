@@ -45,6 +45,23 @@ function getDefaultPrinterName(): string | undefined {
   return undefined;
 }
 
+function getPrinterPort(printerName: string): string | undefined {
+  try {
+    const { execSync } = require('child_process');
+    const output = execSync(
+      `powershell -Command "Get-Printer -Name '${printerName.replace(/'/g, "''")}' | Select-Object -ExpandProperty PortName"`,
+      { encoding: 'utf-8', timeout: 5000 }
+    ).trim();
+    if (output) {
+      console.log(`[Printer] Port for "${printerName}": ${output}`);
+      return output;
+    }
+  } catch (err) {
+    console.error(`[Printer] Failed to get port for "${printerName}":`, err);
+  }
+  return undefined;
+}
+
 function createPrinter(printerName?: string, paperWidth = 80): { printer: ThermalPrinter; resolvedName: string | undefined } {
   let resolvedName = printerName;
   if (!resolvedName) {
@@ -158,11 +175,64 @@ export async function printReceipt(
 
     printer.alignLeft();
 
+    // Try execute() first (uses node-thermal-printer's native printer module)
     console.log(`[Printer] About to execute() for "${resolvedName}"...`);
-    await printer.execute();
+    try {
+      await printer.execute();
+      console.log(`[PRINT_RESULT] jobId=${jobId}, ok=true, printer="${resolvedName}" (native)`);
+      return { ok: true, jobId };
+    } catch (nativeErr: any) {
+      console.warn(`[Printer] Native execute() failed: ${nativeErr.message}. Trying raw port fallback...`);
+    }
 
-    console.log(`[PRINT_RESULT] jobId=${jobId}, ok=true, printer="${resolvedName}"`);
-    return { ok: true, jobId };
+    // FALLBACK: Get raw ESC/POS buffer and write directly to printer port via PowerShell
+    const rawBuffer = printer.getBuffer();
+    if (rawBuffer && rawBuffer.length > 0 && resolvedName) {
+      const portName = getPrinterPort(resolvedName);
+      if (portName) {
+        try {
+          const fs = require('fs');
+          const os = require('os');
+          const path = require('path');
+          const { execSync } = require('child_process');
+          
+          // Write buffer to temp file
+          const tmpFile = path.join(os.tmpdir(), `foodhub_print_${jobId}.bin`);
+          fs.writeFileSync(tmpFile, rawBuffer);
+          console.log(`[Printer] Raw buffer ${rawBuffer.length} bytes written to ${tmpFile}`);
+          
+          // Send raw file to printer via PowerShell (most reliable on Windows)
+          const cmd = `powershell -Command "Copy-Item -LiteralPath '${tmpFile}' -Destination '\\\\localhost\\${resolvedName.replace(/'/g, "''")}' -Force"`;
+          console.log(`[Printer] Trying Copy-Item to share...`);
+          
+          try {
+            execSync(cmd, { timeout: 15000 });
+            console.log(`[PRINT_RESULT] jobId=${jobId}, ok=true, printer="${resolvedName}" (share)`);
+            try { fs.unlinkSync(tmpFile); } catch {}
+            return { ok: true, jobId };
+          } catch {
+            // If share doesn't work, try direct port write
+            console.log(`[Printer] Share failed, trying direct port write to ${portName}...`);
+            try {
+              const portPath = portName.startsWith('\\\\') ? portName : `\\\\.\\${portName}`;
+              fs.writeFileSync(portPath, rawBuffer);
+              console.log(`[PRINT_RESULT] jobId=${jobId}, ok=true, printer="${resolvedName}" (port:${portName})`);
+              try { fs.unlinkSync(tmpFile); } catch {}
+              return { ok: true, jobId };
+            } catch (portErr: any) {
+              console.error(`[Printer] Direct port write also failed:`, portErr.message);
+            }
+          }
+          
+          try { fs.unlinkSync(tmpFile); } catch {}
+        } catch (fallbackErr: any) {
+          console.error(`[Printer] Raw fallback failed:`, fallbackErr.message);
+        }
+      }
+    }
+
+    // All methods failed
+    throw new Error(`Falha ao imprimir em "${resolvedName}". Verifique se a impressora está ligada e o driver "Generic / Text Only" está instalado.`);
   } catch (err: any) {
     const msg = err.message || String(err);
     console.error(`[Printer] ESC/POS error for "${resolvedName || 'padrão'}": ${msg}`);
