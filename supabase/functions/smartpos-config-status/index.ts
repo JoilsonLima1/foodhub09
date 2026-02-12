@@ -12,11 +12,10 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Verify caller is super_admin
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
+      return new Response(JSON.stringify({ configured: false, reason: "UNAUTHORIZED" }), {
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -30,13 +29,12 @@ Deno.serve(async (req) => {
     const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
 
     if (authErr || !user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
+      return new Response(JSON.stringify({ configured: false, reason: "UNAUTHORIZED" }), {
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Check super_admin role
     const { data: profile } = await supabase
       .from("profiles")
       .select("role")
@@ -44,24 +42,29 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (!profile || profile.role !== "super_admin") {
-      return new Response(JSON.stringify({ error: "Forbidden" }), {
-        status: 403,
+      return new Response(JSON.stringify({ configured: false, reason: "FORBIDDEN" }), {
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     const secret = Deno.env.get("SERVER_DEVICE_SECRET") ?? "";
-    const configured = secret.length >= 32;
+    if (!secret || secret.length < 32) {
+      return new Response(
+        JSON.stringify({ configured: false, reason: "SECRET_ABSENT" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     return new Response(
-      JSON.stringify({ configured }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({ configured: true }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
     console.error("smartpos-config-status error:", err);
     return new Response(
-      JSON.stringify({ error: "Internal server error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({ configured: false, reason: "INTERNAL_ERROR", detail: "check logs" }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });

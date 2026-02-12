@@ -1,19 +1,24 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Smartphone, Loader2, CheckCircle2, XCircle } from 'lucide-react';
+import { Smartphone, Loader2, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
+type ConfigStatus = {
+  configured: boolean;
+  reason?: string;
+  detail?: string;
+};
+
 export function SmartPosGlobalSettings() {
-  const [configured, setConfigured] = useState<boolean | null>(null);
+  const [status, setStatus] = useState<ConfigStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function checkStatus() {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
-          setError('Não autenticado');
+          setStatus({ configured: false, reason: 'UNAUTHORIZED' });
           setIsLoading(false);
           return;
         }
@@ -23,12 +28,12 @@ export function SmartPosGlobalSettings() {
         });
 
         if (response.error) {
-          setError('Erro ao verificar status');
+          setStatus({ configured: false, reason: 'INTERNAL_ERROR', detail: response.error.message });
         } else {
-          setConfigured(response.data?.configured ?? false);
+          setStatus(response.data as ConfigStatus);
         }
       } catch {
-        setError('Erro ao verificar status');
+        setStatus({ configured: false, reason: 'INTERNAL_ERROR', detail: 'Network error' });
       } finally {
         setIsLoading(false);
       }
@@ -46,6 +51,75 @@ export function SmartPosGlobalSettings() {
     );
   }
 
+  const renderStatus = () => {
+    if (!status) {
+      return (
+        <>
+          <XCircle className="h-5 w-5 text-destructive shrink-0" />
+          <div>
+            <p className="font-medium text-destructive">❌ Erro desconhecido</p>
+            <p className="text-sm text-muted-foreground">Não foi possível verificar o status.</p>
+          </div>
+        </>
+      );
+    }
+
+    if (status.configured) {
+      return (
+        <>
+          <CheckCircle2 className="h-5 w-5 text-primary shrink-0" />
+          <div>
+            <p className="font-medium text-primary">✅ Configurado</p>
+            <p className="text-sm text-muted-foreground">
+              O SERVER_DEVICE_SECRET está configurado e pronto para uso.
+            </p>
+          </div>
+        </>
+      );
+    }
+
+    if (status.reason === 'SECRET_ABSENT') {
+      return (
+        <>
+          <XCircle className="h-5 w-5 text-destructive shrink-0" />
+          <div>
+            <p className="font-medium text-destructive">❌ Secret não configurado no ambiente</p>
+            <p className="text-sm text-muted-foreground">
+              Verifique <code className="bg-muted px-1 rounded">SERVER_DEVICE_SECRET</code> em Project Secrets. O valor deve ter no mínimo 32 caracteres.
+            </p>
+          </div>
+        </>
+      );
+    }
+
+    if (status.reason === 'UNAUTHORIZED' || status.reason === 'FORBIDDEN') {
+      return (
+        <>
+          <AlertTriangle className="h-5 w-5 text-muted-foreground shrink-0" />
+          <div>
+            <p className="font-medium text-muted-foreground">Acesso restrito</p>
+            <p className="text-sm text-muted-foreground">
+              Não foi possível verificar: autenticação insuficiente.
+            </p>
+          </div>
+        </>
+      );
+    }
+
+    // INTERNAL_ERROR or unknown
+    return (
+      <>
+        <AlertTriangle className="h-5 w-5 text-destructive shrink-0" />
+        <div>
+          <p className="font-medium text-destructive">❌ Erro interno ao validar</p>
+          <p className="text-sm text-muted-foreground">
+            Verifique os logs das Edge Functions para mais detalhes.
+          </p>
+        </div>
+      </>
+    );
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -54,44 +128,16 @@ export function SmartPosGlobalSettings() {
           SmartPOS – Autenticação de Dispositivos
         </CardTitle>
         <CardDescription>
-          O segredo de autenticação HMAC-SHA256 dos dispositivos SmartPOS é configurado como variável de ambiente (Secret) das Edge Functions, e não fica armazenado no banco de dados.
+          O segredo é configurado via Secrets do ambiente das Edge Functions. Não é exibido por segurança.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex items-center gap-3 p-4 rounded-lg border bg-muted/30">
-          {error ? (
-            <>
-              <XCircle className="h-5 w-5 text-destructive shrink-0" />
-              <div>
-                <p className="font-medium text-destructive">Erro ao verificar</p>
-                <p className="text-sm text-muted-foreground">{error}</p>
-              </div>
-            </>
-          ) : configured ? (
-            <>
-              <CheckCircle2 className="h-5 w-5 text-primary shrink-0" />
-              <div>
-                <p className="font-medium text-primary">✅ Configurado</p>
-                <p className="text-sm text-muted-foreground">
-                  O SERVER_DEVICE_SECRET está configurado e pronto para uso.
-                </p>
-              </div>
-            </>
-          ) : (
-            <>
-              <XCircle className="h-5 w-5 text-destructive shrink-0" />
-              <div>
-                <p className="font-medium text-destructive">❌ Não configurado</p>
-                <p className="text-sm text-muted-foreground">
-                  O SERVER_DEVICE_SECRET não foi encontrado ou é muito curto (mín. 32 caracteres). Configure-o nos Secrets do ambiente das Edge Functions.
-                </p>
-              </div>
-            </>
-          )}
+          {renderStatus()}
         </div>
         <p className="text-xs text-muted-foreground">
-          Este segredo é configurado no ambiente (Secrets) das Edge Functions e não fica no banco de dados. 
-          Para alterar, acesse os Secrets do projeto e atualize a variável <code className="bg-muted px-1 rounded">SERVER_DEVICE_SECRET</code>.
+          Para configurar ou alterar, acesse os Secrets do projeto e atualize a variável{' '}
+          <code className="bg-muted px-1 rounded">SERVER_DEVICE_SECRET</code>.
         </p>
       </CardContent>
     </Card>
