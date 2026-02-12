@@ -165,6 +165,10 @@ export function PrinterSettings() {
         title: `Falha no teste ${routeType}`,
         description: msg.includes('PRINTER_NOT_FOUND')
           ? 'Impressora não encontrada. Verifique se está instalada e ligada no Windows.'
+          : msg.includes('No driver set') || msg.includes('PRINTER_DRIVER_ERROR')
+          ? 'Driver da impressora não encontrado. No Painel de Controle → Impressoras, verifique se o driver "Generic / Text Only" está instalado.'
+          : msg.includes('PRINTER_NOT_CONFIGURED')
+          ? 'Nenhuma impressora configurada. Adicione uma impressora ao setor.'
           : msg,
         variant: 'destructive',
       });
