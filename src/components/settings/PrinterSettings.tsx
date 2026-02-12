@@ -133,12 +133,16 @@ export function PrinterSettings() {
   };
 
   const handleTestPrintForRoute = async (routeId: string, routeType: string, printerName: string | null) => {
-    if (!local || !window.foodhub) return;
+    if (!local || !window.foodhub) {
+      toast({ title: 'Desktop PDV não conectado', description: 'Abra o sistema pelo app FoodHub PDV Desktop.', variant: 'destructive' });
+      return;
+    }
     setTestingType(routeId);
+    toast({ title: `🖨️ Enviando teste ${routeType}...` });
     try {
       const pw = Number(local.paper_width) === 58 ? 58 : 80;
-      // null or __default__ means use OS default (pass undefined)
       const resolvedPrinter = printerName && printerName !== '__default__' ? printerName : undefined;
+      console.log(`[TEST_SECTOR] route=${routeType}, printer="${resolvedPrinter || '(default)'}"`);
       const result = await window.foodhub.printReceipt({
         lines: [
           { type: 'bold', value: `TESTE - ${routeType.toUpperCase()}`, align: 'center' },
@@ -153,23 +157,24 @@ export function PrinterSettings() {
         printerName: resolvedPrinter,
         paperWidth: pw,
       });
+      console.log(`[TEST_SECTOR] result:`, { ok: result.ok, jobId: result.jobId, error: result.error });
       if (result.ok) {
-        toast({ title: `✓ Teste ${routeType} enviado`, description: `Impressora: ${resolvedPrinter || 'padrão do sistema'}` });
+        toast({ title: `✅ Teste ${routeType} enviado`, description: `Impressora: ${resolvedPrinter || 'padrão do sistema'} (job: ${result.jobId || '?'})` });
       } else {
-        const errMsg = result.error || 'Erro desconhecido';
-        throw new Error(errMsg);
+        const code = result.error?.code || 'UNKNOWN';
+        const msg = result.error?.message || 'Erro desconhecido';
+        toast({
+          title: `❌ Falha no teste ${routeType} (${code})`,
+          description: msg,
+          variant: 'destructive',
+          duration: 10000,
+        });
       }
     } catch (err) {
-      const msg = (err as Error).message || 'Erro ao imprimir.';
+      console.error('[TEST_SECTOR] exception:', err);
       toast({
-        title: `Falha no teste ${routeType}`,
-        description: msg.includes('PRINTER_NOT_FOUND')
-          ? 'Impressora não encontrada. Verifique se está instalada e ligada no Windows.'
-          : msg.includes('No driver set') || msg.includes('PRINTER_DRIVER_ERROR')
-          ? 'Driver da impressora não encontrado. No Painel de Controle → Impressoras, verifique se o driver "Generic / Text Only" está instalado.'
-          : msg.includes('PRINTER_NOT_CONFIGURED')
-          ? 'Nenhuma impressora configurada. Adicione uma impressora ao setor.'
-          : msg,
+        title: `Erro inesperado no teste ${routeType}`,
+        description: (err as Error).message || 'Erro ao comunicar com o Desktop PDV.',
         variant: 'destructive',
       });
     } finally {
@@ -237,18 +242,23 @@ export function PrinterSettings() {
       let anyOk = false;
       for (const printerName of printers) {
         try {
+          console.log(`[TEST_PRINT] Sending to: "${printerName || '(default)'}"`);
           const result = await window.foodhub.printReceipt({
             lines,
             printerName: printerName || undefined,
             paperWidth: pw,
           });
+          console.log('[TEST_PRINT] result:', { ok: result.ok, jobId: result.jobId, error: result.error });
           if (result.ok) {
             anyOk = true;
-            toast({ title: '✓ Teste enviado', description: `Impressora: ${printerName || 'padrão do sistema'}` });
+            toast({ title: '✅ Cupom de teste enviado', description: `Impressora: ${printerName || 'padrão do sistema'} (job: ${result.jobId || '?'})` });
           } else {
-            toast({ title: `Erro: ${printerName || 'padrão'}`, description: result.error || 'Falha.', variant: 'destructive' });
+            const code = result.error?.code || 'UNKNOWN';
+            const msg = result.error?.message || 'Falha ao imprimir.';
+            toast({ title: `❌ Falha no teste (${code})`, description: msg, variant: 'destructive', duration: 10000 });
           }
         } catch (err) {
+          console.error('[TEST_PRINT] exception:', err);
           toast({ title: `Erro: ${printerName || 'padrão'}`, description: (err as Error).message, variant: 'destructive' });
         }
       }

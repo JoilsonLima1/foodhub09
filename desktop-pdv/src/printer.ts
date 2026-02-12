@@ -1,4 +1,5 @@
 import { ThermalPrinter, PrinterTypes, CharacterSet } from 'node-thermal-printer';
+import { v4 as uuidv4 } from 'crypto';
 
 interface ReceiptLine {
   type: 'text' | 'bold' | 'separator' | 'cut' | 'feed' | 'pair';
@@ -14,6 +15,25 @@ interface PrintOptions {
   paperWidth?: number;
 }
 
+/** Standard error codes returned to the frontend */
+export type PrintErrorCode =
+  | 'PRINTER_NOT_CONFIGURED'
+  | 'PRINTER_NOT_FOUND'
+  | 'NO_DRIVER_SET'
+  | 'PRINT_FAILED'
+  | 'INTERNAL_ERROR';
+
+export interface PrintResult {
+  ok: boolean;
+  jobId: string;
+  error?: { code: PrintErrorCode; message: string };
+}
+
+function generateJobId(): string {
+  // Simple unique id without external deps
+  return `pj_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
 function getDefaultPrinterName(): string | undefined {
   try {
     const { execSync } = require('child_process');
@@ -26,8 +46,7 @@ function getDefaultPrinterName(): string | undefined {
   return undefined;
 }
 
-function createPrinter(printerName?: string, paperWidth = 80): ThermalPrinter {
-  // Resolve printer name: explicit → OS default → undefined (let library decide)
+function createPrinter(printerName?: string, paperWidth = 80): { printer: ThermalPrinter; resolvedName: string | undefined } {
   let resolvedName = printerName;
   if (!resolvedName) {
     resolvedName = getDefaultPrinterName();
@@ -38,10 +57,10 @@ function createPrinter(printerName?: string, paperWidth = 80): ThermalPrinter {
   console.log(`[Printer] Creating printer with interface: "${iface || 'none'}", width: ${paperWidth}`);
 
   if (!iface) {
-    throw new Error('PRINTER_NOT_CONFIGURED: Nenhuma impressora encontrada. Configure uma impressora no Windows.');
+    throw { code: 'PRINTER_NOT_CONFIGURED' as PrintErrorCode, message: 'Nenhuma impressora encontrada. Configure uma impressora no Windows.' };
   }
 
-  return new ThermalPrinter({
+  const printer = new ThermalPrinter({
     type: PrinterTypes.EPSON,
     interface: iface,
     characterSet: CharacterSet.PC860_PORTUGUESE,
@@ -51,19 +70,15 @@ function createPrinter(printerName?: string, paperWidth = 80): ThermalPrinter {
       timeout: 10000,
     },
   });
+
+  return { printer, resolvedName };
 }
 
 function applyAlign(printer: ThermalPrinter, align?: string) {
   switch (align) {
-    case 'center':
-      printer.alignCenter();
-      break;
-    case 'right':
-      printer.alignRight();
-      break;
-    default:
-      printer.alignLeft();
-      break;
+    case 'center': printer.alignCenter(); break;
+    case 'right': printer.alignRight(); break;
+    default: printer.alignLeft(); break;
   }
 }
 
@@ -79,60 +94,87 @@ function printPair(printer: ThermalPrinter, left: string, right: string, cols: n
 export async function printReceipt(
   lines: ReceiptLine[],
   options: PrintOptions = {}
-): Promise<{ ok: boolean; error?: string }> {
+): Promise<PrintResult> {
+  const jobId = generateJobId();
   const { printerName, paperWidth = 80 } = options;
-  const printer = createPrinter(printerName, paperWidth);
+
+  console.log(`[PRINT_REQUEST] jobId=${jobId}, printerName="${printerName || '(default)'}", paperWidth=${paperWidth}, linesCount=${lines.length}, ts=${new Date().toISOString()}`);
+
+  let resolvedName: string | undefined;
+  let printer: ThermalPrinter;
+
+  try {
+    const created = createPrinter(printerName, paperWidth);
+    printer = created.printer;
+    resolvedName = created.resolvedName;
+  } catch (err: any) {
+    // Structured error from createPrinter
+    if (err.code) {
+      console.log(`[PRINT_RESULT] jobId=${jobId}, ok=false, code=${err.code}`);
+      return { ok: false, jobId, error: { code: err.code, message: err.message } };
+    }
+    console.log(`[PRINT_RESULT] jobId=${jobId}, ok=false, code=INTERNAL_ERROR`);
+    return { ok: false, jobId, error: { code: 'INTERNAL_ERROR', message: err.message || String(err) } };
+  }
+
   const cols = paperWidth === 58 ? 32 : 48;
 
   try {
+    // Check connectivity
     let isConnected = false;
     try {
       isConnected = await printer.isPrinterConnected();
     } catch (connErr: any) {
-      console.error('[Printer] isPrinterConnected error:', connErr);
-      // Some drivers throw instead of returning false — treat as not connected
+      console.error(`[Printer] isPrinterConnected error for "${resolvedName}":`, connErr?.message);
+      console.log(`[PRINT_RESULT] jobId=${jobId}, ok=false, code=PRINTER_NOT_FOUND`);
       return {
         ok: false,
-        error: `PRINTER_NOT_FOUND: "${printerName || 'padrão'}" — driver não encontrado. Verifique se a impressora está instalada no Windows (Painel de Controle → Impressoras).`,
-      };
-    }
-    if (!isConnected) {
-      return {
-        ok: false,
-        error: `PRINTER_NOT_FOUND: "${printerName || 'padrão'}" não está acessível. Verifique se está ligada e conectada.`,
+        jobId,
+        error: {
+          code: 'PRINTER_NOT_FOUND',
+          message: `"${resolvedName || 'padrão'}" — driver não encontrado. Verifique se a impressora está instalada no Windows.`,
+        },
       };
     }
 
+    if (!isConnected) {
+      console.log(`[PRINT_RESULT] jobId=${jobId}, ok=false, code=PRINTER_NOT_FOUND (not connected)`);
+      return {
+        ok: false,
+        jobId,
+        error: {
+          code: 'PRINTER_NOT_FOUND',
+          message: `"${resolvedName || 'padrão'}" não está acessível. Verifique se está ligada e conectada.`,
+        },
+      };
+    }
+
+    // Build ESC/POS data
     for (const line of lines) {
       switch (line.type) {
         case 'text':
           applyAlign(printer, line.align);
           printer.println(line.value || '');
           break;
-
         case 'bold':
           applyAlign(printer, line.align);
           printer.bold(true);
           printer.println(line.value || '');
           printer.bold(false);
           break;
-
         case 'separator':
           printer.drawLine();
           break;
-
         case 'pair':
           printer.alignLeft();
           printPair(printer, line.left || '', line.right || '', cols);
           break;
-
         case 'feed':
           printer.newLine();
           for (let i = 1; i < (line.lines || 1); i++) {
             printer.newLine();
           }
           break;
-
         case 'cut':
           printer.cut();
           break;
@@ -142,29 +184,26 @@ export async function printReceipt(
     printer.alignLeft();
     await printer.execute();
 
-    return { ok: true };
+    console.log(`[PRINT_RESULT] jobId=${jobId}, ok=true, printer="${resolvedName}"`);
+    return { ok: true, jobId };
   } catch (err: any) {
     const msg = err.message || String(err);
-    console.error('[Printer] ESC/POS error:', msg);
+    console.error(`[Printer] ESC/POS error: ${msg}`);
 
-    // Map common native errors to user-friendly messages
+    let code: PrintErrorCode = 'PRINT_FAILED';
+    let message = msg;
+
     if (msg.includes('No driver set') || msg.includes('no driver')) {
-      return {
-        ok: false,
-        error: `PRINTER_DRIVER_ERROR: Driver da impressora "${printerName || 'padrão'}" não encontrado. Verifique no Painel de Controle → Dispositivos e Impressoras se a impressora está instalada corretamente com driver "Generic / Text Only".`,
-      };
+      code = 'NO_DRIVER_SET';
+      message = `Driver da impressora "${resolvedName || 'padrão'}" não encontrado. Verifique se o driver "Generic / Text Only" está instalado.`;
     }
 
-    return {
-      ok: false,
-      error: `PRINT_ERROR: ${msg}`,
-    };
+    console.log(`[PRINT_RESULT] jobId=${jobId}, ok=false, code=${code}`);
+    return { ok: false, jobId, error: { code, message } };
   }
 }
 
 export async function listPrinters(): Promise<string[]> {
-  // node-thermal-printer doesn't provide printer listing natively.
-  // We use a simple Windows wmic call.
   try {
     const { execSync } = require('child_process');
     const output = execSync('wmic printer list brief /format:csv', {
@@ -173,7 +212,6 @@ export async function listPrinters(): Promise<string[]> {
     });
 
     const lines = output.split('\n').filter(Boolean);
-    // CSV header: Node,Name,... — we need the Name column
     const names: string[] = [];
     for (let i = 1; i < lines.length; i++) {
       const cols = lines[i].split(',');
@@ -188,7 +226,7 @@ export async function listPrinters(): Promise<string[]> {
   }
 }
 
-export async function testPrint(printerName?: string): Promise<{ ok: boolean; error?: string }> {
+export async function testPrint(printerName?: string): Promise<PrintResult> {
   const testLines: ReceiptLine[] = [
     { type: 'bold', value: 'FoodHub PDV Desktop', align: 'center' },
     { type: 'separator' },
