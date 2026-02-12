@@ -212,8 +212,11 @@ export function PrinterSettings() {
   const handleTestPrint = async () => {
     const paperWidth = local.paper_width as PaperWidthMM;
 
+    console.log('[TEST_PRINT] mode:', local.print_mode, 'bridge:', !!window.foodhub, 'routes:', routes.length);
+
     // Desktop bridge test — use the "caixa" route to resolve printers
     if (local.print_mode === 'desktop' && window.foodhub?.printReceipt) {
+      toast({ title: '🖨️ Enviando cupom de teste...' });
       const pw = Number(local.paper_width) === 58 ? 58 : 80;
       const caixaRoute = routes.find(r => r.route_key === 'caixa');
       const printers = caixaRoute?.printers?.length ? caixaRoute.printers : [undefined]; // undefined = OS default

@@ -79,12 +79,8 @@ export function ReceiptDialog({
   }, [open]);
 
   const findCaixaRoute = () => {
-    const recibo = routes.find(r => r.route_type.toLowerCase() === 'recibo');
-    if (recibo) return recibo;
-    const caixa = routes.find(
-      r => r.route_type.toLowerCase() === 'caixa' || r.label.toLowerCase() === 'caixa'
-    );
-    return caixa || null;
+    // Use route_key for reliable matching — never depend on label text
+    return routes.find(r => r.route_key === 'caixa') || null;
   };
 
   const formatCurrency = (value: number) =>
@@ -137,11 +133,12 @@ export function ReceiptDialog({
   };
 
   const handlePrint = async () => {
-    console.log('[PRINT] click imprimir');
+    console.log('[PRINT] click imprimir, mode:', settings?.print_mode, 'bridge:', !!window.foodhub);
     setIsPrinting(true);
 
     try {
       const caixaRoute = findCaixaRoute();
+      console.log('[PRINT] caixaRoute:', caixaRoute ? { route_key: caixaRoute.route_key, printers: caixaRoute.printers } : 'NOT FOUND');
 
       // ─── Desktop mode: use Electron bridge (window.foodhub) ───
       if (settings?.print_mode === 'desktop') {
