@@ -36,14 +36,12 @@ function saveToCache(settings: TenantPrintSettings) {
   } catch {}
 }
 
-const DEFAULT_AGENT_ENDPOINT = 'https://127.0.0.1:8123';
-
 const defaultSettings = (tenantId: string): TenantPrintSettings => ({
   tenant_id: tenantId,
   paper_width: '80',
   printer_profile: 'GENERIC',
   print_mode: 'web',
-  agent_endpoint: DEFAULT_AGENT_ENDPOINT,
+  agent_endpoint: null,
   default_printer_name: null,
   kitchen_printer_name: null,
   bar_printer_name: null,
@@ -138,81 +136,11 @@ export function useTenantPrintSettings() {
     }
   }, [tenantId, settings, toast]);
 
-  // Test agent connection
-  const testAgent = useCallback(async (endpoint: string): Promise<boolean> => {
-    try {
-      const resp = await fetch(`${endpoint}/health`, {
-        method: 'GET',
-        signal: AbortSignal.timeout(3000),
-      });
-      return resp.ok;
-    } catch {
-      return false;
-    }
-  }, []);
-
-  // Check if agent is online
-  const isAgentOnline = useCallback(async (): Promise<boolean> => {
-    if (!settings?.agent_endpoint) return false;
-    return testAgent(settings.agent_endpoint);
-  }, [settings, testAgent]);
-
-  // Print via agent — sends structured lines to POST /print
-  const printViaAgent = useCallback(async (
-    lines: Array<{
-      type: 'text' | 'bold' | 'separator' | 'cut' | 'feed' | 'pair';
-      value?: string;
-      align?: 'left' | 'center' | 'right';
-      left?: string;
-      right?: string;
-      lines?: number;
-    }>,
-    options?: { printerName?: string | null; paperWidth?: string }
-  ): Promise<{ ok: boolean; error?: string }> => {
-    if (!settings || settings.print_mode !== 'desktop' || !settings.agent_endpoint) {
-      return { ok: false, error: 'NOT_AGENT_MODE' };
-    }
-
-    try {
-      const pw = Number(options?.paperWidth || settings.paper_width) === 58 ? 58 : 80;
-      const body: Record<string, unknown> = {
-        lines,
-        larguraDoPapel: pw,
-      };
-      if (options?.printerName) {
-        body.nomeDaImpressora = options.printerName;
-      }
-
-      const resp = await fetch(`${settings.agent_endpoint}/print`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-        signal: AbortSignal.timeout(15000),
-      });
-
-      const data = await resp.json().catch(() => ({}));
-
-      if (!resp.ok) {
-        const code = (data as any)?.code || 'PRINT_ERROR';
-        const message = (data as any)?.message || 'Falha ao imprimir via Agent.';
-        return { ok: false, error: `${code}: ${message}` };
-      }
-
-      return { ok: true };
-    } catch (err) {
-      console.error('Agent print failed:', err);
-      return { ok: false, error: 'AGENT_OFFLINE' };
-    }
-  }, [settings]);
-
   return {
     settings,
     isLoading,
     isSaving,
     isOffline,
     save,
-    testAgent,
-    isAgentOnline,
-    printViaAgent,
   };
 }
