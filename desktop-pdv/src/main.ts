@@ -4,7 +4,8 @@ import { printReceipt, listPrinters, testPrint } from './printer';
 import { getConfig, setConfig } from './config';
 import { initAutoUpdater, checkForUpdatesManual, installUpdate, stopUpdater } from './updater';
 
-const PDV_URL = getConfig('pdvUrl') || 'https://start-a-new-quest.lovable.app/pos';
+const DEFAULT_PDV_URL = 'https://start-a-new-quest.lovable.app/pos';
+const PDV_URL = getConfig('pdvUrl') || DEFAULT_PDV_URL;
 
 let mainWindow: BrowserWindow | null = null;
 
