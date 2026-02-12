@@ -11780,6 +11780,7 @@ export type Database = {
           device_key_hash: string
           enabled: boolean
           id: string
+          key_hash_version: number
           last_seen_at: string | null
           model: string | null
           name: string
@@ -11794,6 +11795,7 @@ export type Database = {
           device_key_hash: string
           enabled?: boolean
           id?: string
+          key_hash_version?: number
           last_seen_at?: string | null
           model?: string | null
           name: string
@@ -11808,6 +11810,7 @@ export type Database = {
           device_key_hash?: string
           enabled?: boolean
           id?: string
+          key_hash_version?: number
           last_seen_at?: string | null
           model?: string | null
           name?: string

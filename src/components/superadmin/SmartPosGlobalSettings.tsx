@@ -1,70 +1,40 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Smartphone, Save, Loader2, Eye, EyeOff, RefreshCw } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { Smartphone, Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 export function SmartPosGlobalSettings() {
-  const { toast } = useToast();
-  const [secret, setSecret] = useState('');
+  const [configured, setConfigured] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const [showSecret, setShowSecret] = useState(false);
-  const [hasExisting, setHasExisting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function load() {
-      const { data, error } = await supabase
-        .from('system_settings')
-        .select('setting_value')
-        .eq('setting_key', 'smartpos_device_secret')
-        .maybeSingle();
-
-      if (!error && data) {
-        const val = data.setting_value as unknown as string;
-        if (val && val.length > 0) {
-          setSecret(val);
-          setHasExisting(true);
+    async function checkStatus() {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          setError('Não autenticado');
+          setIsLoading(false);
+          return;
         }
+
+        const response = await supabase.functions.invoke('smartpos-config-status', {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+
+        if (response.error) {
+          setError('Erro ao verificar status');
+        } else {
+          setConfigured(response.data?.configured ?? false);
+        }
+      } catch {
+        setError('Erro ao verificar status');
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     }
-    load();
+    checkStatus();
   }, []);
-
-  const generateSecret = () => {
-    const bytes = new Uint8Array(32);
-    crypto.getRandomValues(bytes);
-    const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
-    setSecret(hex);
-  };
-
-  const handleSave = async () => {
-    if (!secret.trim()) {
-      toast({ title: 'Secret vazio', description: 'Gere ou insira um secret antes de salvar.', variant: 'destructive' });
-      return;
-    }
-    setIsSaving(true);
-    try {
-      const { error } = await supabase
-        .from('system_settings')
-        .update({ setting_value: JSON.stringify(secret.trim()) })
-        .eq('setting_key', 'smartpos_device_secret');
-
-      if (error) throw error;
-
-      setHasExisting(true);
-      toast({ title: 'Salvo!', description: 'Secret do SmartPOS atualizado com sucesso.' });
-    } catch (err: any) {
-      console.error(err);
-      toast({ title: 'Erro ao salvar', description: err.message, variant: 'destructive' });
-    } finally {
-      setIsSaving(false);
-    }
-  };
 
   if (isLoading) {
     return (
@@ -81,50 +51,48 @@ export function SmartPosGlobalSettings() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Smartphone className="h-5 w-5" />
-          SmartPOS – Chave de Autenticação de Dispositivos
+          SmartPOS – Autenticação de Dispositivos
         </CardTitle>
         <CardDescription>
-          Chave secreta usada para gerar e validar tokens HMAC-SHA256 dos dispositivos SmartPOS.
-          Alterar esta chave invalidará todos os dispositivos pareados existentes.
+          O segredo de autenticação HMAC-SHA256 dos dispositivos SmartPOS é configurado como variável de ambiente (Secret) das Edge Functions, e não fica armazenado no banco de dados.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="space-y-2">
-          <Label>Device Secret (HMAC Key)</Label>
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <Input
-                type={showSecret ? 'text' : 'password'}
-                value={secret}
-                onChange={(e) => setSecret(e.target.value)}
-                placeholder="Cole ou gere um secret..."
-                className="pr-10 font-mono text-sm"
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="absolute right-0 top-0 h-full"
-                onClick={() => setShowSecret(!showSecret)}
-              >
-                {showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </Button>
-            </div>
-            <Button variant="outline" onClick={generateSecret} title="Gerar aleatoriamente">
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Gerar
-            </Button>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            {hasExisting
-              ? '⚠️ Um secret já está configurado. Alterar invalidará tokens existentes.'
-              : 'Nenhum secret configurado. Gere um para ativar a autenticação HMAC dos dispositivos.'}
-          </p>
+        <div className="flex items-center gap-3 p-4 rounded-lg border bg-muted/30">
+          {error ? (
+            <>
+              <XCircle className="h-5 w-5 text-destructive shrink-0" />
+              <div>
+                <p className="font-medium text-destructive">Erro ao verificar</p>
+                <p className="text-sm text-muted-foreground">{error}</p>
+              </div>
+            </>
+          ) : configured ? (
+            <>
+              <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0" />
+              <div>
+                <p className="font-medium text-green-700 dark:text-green-400">✅ Configurado</p>
+                <p className="text-sm text-muted-foreground">
+                  O SERVER_DEVICE_SECRET está configurado e pronto para uso.
+                </p>
+              </div>
+            </>
+          ) : (
+            <>
+              <XCircle className="h-5 w-5 text-destructive shrink-0" />
+              <div>
+                <p className="font-medium text-destructive">❌ Não configurado</p>
+                <p className="text-sm text-muted-foreground">
+                  O SERVER_DEVICE_SECRET não foi encontrado ou é muito curto (mín. 32 caracteres). Configure-o nos Secrets do ambiente das Edge Functions.
+                </p>
+              </div>
+            </>
+          )}
         </div>
-        <Button onClick={handleSave} disabled={isSaving}>
-          {isSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-          Salvar Secret
-        </Button>
+        <p className="text-xs text-muted-foreground">
+          Este segredo é configurado no ambiente (Secrets) das Edge Functions e não fica no banco de dados. 
+          Para alterar, acesse os Secrets do projeto e atualize a variável <code className="bg-muted px-1 rounded">SERVER_DEVICE_SECRET</code>.
+        </p>
       </CardContent>
     </Card>
   );

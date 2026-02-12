@@ -6,15 +6,8 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-async function getDeviceSecret(supabase: any): Promise<string | null> {
-  const { data, error } = await supabase
-    .from("system_settings")
-    .select("setting_value")
-    .eq("setting_key", "smartpos_device_secret")
-    .maybeSingle();
-  if (error || !data) return null;
-  const val = data.setting_value as unknown as string;
-  return val && val.length > 0 ? val : null;
+function getServerSecret(): string {
+  return Deno.env.get("SERVER_DEVICE_SECRET") ?? "";
 }
 
 async function hmacHash(secret: string, message: string): Promise<string> {
@@ -32,20 +25,21 @@ async function hmacHash(secret: string, message: string): Promise<string> {
     .join("");
 }
 
-async function plainHash(message: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const hashBuffer = await crypto.subtle.digest("SHA-256", encoder.encode(message));
-  return Array.from(new Uint8Array(hashBuffer))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    const secret = getServerSecret();
+    if (!secret || secret.length < 32) {
+      console.error("SERVER_DEVICE_SECRET not configured or too short");
+      return new Response(
+        JSON.stringify({ error: "SmartPOS não configurado. Contate o administrador para configurar o segredo do servidor.", code: "SMARTPOS_NOT_CONFIGURED" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     if (req.method !== "POST") {
       return new Response(JSON.stringify({ error: "Method not allowed" }), {
         status: 405,
@@ -92,13 +86,10 @@ Deno.serve(async (req) => {
       .map((b) => b.toString(16).padStart(2, "0"))
       .join("");
 
-    // Hash using HMAC if secret configured, otherwise plain SHA-256
-    const secret = await getDeviceSecret(supabase);
-    const deviceKeyHash = secret
-      ? await hmacHash(secret, deviceApiKey)
-      : await plainHash(deviceApiKey);
+    // Hash using HMAC-SHA256
+    const deviceKeyHash = await hmacHash(secret, deviceApiKey);
 
-    // Create device
+    // Create device with key_hash_version = 2 (HMAC)
     const { data: device, error: devError } = await supabase
       .from("tenant_devices")
       .insert({
@@ -108,6 +99,7 @@ Deno.serve(async (req) => {
         serial: deviceInfo.serial || null,
         platform: "smartpos",
         device_key_hash: deviceKeyHash,
+        key_hash_version: 2,
         status: "online",
         last_seen_at: new Date().toISOString(),
       })

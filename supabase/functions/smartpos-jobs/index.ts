@@ -6,15 +6,8 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-async function getDeviceSecret(supabase: any): Promise<string | null> {
-  const { data, error } = await supabase
-    .from("system_settings")
-    .select("setting_value")
-    .eq("setting_key", "smartpos_device_secret")
-    .maybeSingle();
-  if (error || !data) return null;
-  const val = data.setting_value as unknown as string;
-  return val && val.length > 0 ? val : null;
+function getServerSecret(): string {
+  return Deno.env.get("SERVER_DEVICE_SECRET") ?? "";
 }
 
 async function hmacHash(secret: string, message: string): Promise<string> {
@@ -40,36 +33,40 @@ async function plainHash(message: string): Promise<string> {
     .join("");
 }
 
-async function authenticateDevice(supabase: any, authHeader: string | null) {
+async function authenticateDevice(supabase: any, secret: string, authHeader: string | null) {
   if (!authHeader?.startsWith("Bearer ")) return null;
   const token = authHeader.replace("Bearer ", "");
 
-  const secret = await getDeviceSecret(supabase);
-  const tokenHash = secret
-    ? await hmacHash(secret, token)
-    : await plainHash(token);
-
+  // Try HMAC-SHA256 (v2) first
+  const v2Hash = await hmacHash(secret, token);
   const { data, error } = await supabase
     .from("tenant_devices")
     .select("*")
-    .eq("device_key_hash", tokenHash)
+    .eq("device_key_hash", v2Hash)
     .eq("enabled", true)
     .maybeSingle();
 
-  if (error || !data) {
-    if (secret) {
-      const fallbackHash = await plainHash(token);
-      const { data: fallbackData, error: fallbackErr } = await supabase
-        .from("tenant_devices")
-        .select("*")
-        .eq("device_key_hash", fallbackHash)
-        .eq("enabled", true)
-        .maybeSingle();
-      if (!fallbackErr && fallbackData) return fallbackData;
-    }
-    return null;
+  if (!error && data) return data;
+
+  // Fallback: try legacy SHA-256 (v1) and auto-migrate
+  const v1Hash = await plainHash(token);
+  const { data: legacyDevice, error: legacyErr } = await supabase
+    .from("tenant_devices")
+    .select("*")
+    .eq("device_key_hash", v1Hash)
+    .eq("enabled", true)
+    .eq("key_hash_version", 1)
+    .maybeSingle();
+
+  if (!legacyErr && legacyDevice) {
+    await supabase
+      .from("tenant_devices")
+      .update({ device_key_hash: v2Hash, key_hash_version: 2 })
+      .eq("id", legacyDevice.id);
+    return legacyDevice;
   }
-  return data;
+
+  return null;
 }
 
 Deno.serve(async (req) => {
@@ -78,12 +75,21 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const secret = getServerSecret();
+    if (!secret || secret.length < 32) {
+      console.error("SERVER_DEVICE_SECRET not configured or too short");
+      return new Response(
+        JSON.stringify({ error: "SmartPOS não configurado. Contate o administrador para configurar o segredo do servidor.", code: "SMARTPOS_NOT_CONFIGURED" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const device = await authenticateDevice(supabase, req.headers.get("Authorization"));
+    const device = await authenticateDevice(supabase, secret, req.headers.get("Authorization"));
     if (!device) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
@@ -93,7 +99,6 @@ Deno.serve(async (req) => {
 
     const url = new URL(req.url);
     const pathParts = url.pathname.split("/").filter(Boolean);
-
     const lastPart = pathParts[pathParts.length - 1];
     const secondLast = pathParts.length >= 2 ? pathParts[pathParts.length - 2] : null;
 
@@ -184,7 +189,6 @@ Deno.serve(async (req) => {
           updates.status = "queued";
           updates.claimed_at = null;
           updates.device_id = null;
-          // Exponential backoff: 2^attempts * 5 seconds
           const backoffMs = Math.pow(2, newAttempts) * 5000;
           updates.available_at = new Date(Date.now() + backoffMs).toISOString();
         } else {
