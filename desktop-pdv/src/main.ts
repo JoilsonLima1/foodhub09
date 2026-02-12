@@ -225,7 +225,7 @@ ipcMain.handle('foodhub:installUpdate', () => {
 
 app.whenReady().then(() => {
   const ua = session.defaultSession.getUserAgent();
-  session.defaultSession.setUserAgent(`${ua} FoodHubPDV/1.0`);
+  session.defaultSession.setUserAgent(`${ua} FoodHubPDV/${app.getVersion()}`);
 
   buildMenu();
   createWindow();
