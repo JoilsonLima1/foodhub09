@@ -111,7 +111,8 @@ function buildMenu() {
 ipcMain.handle('foodhub:isDesktop', () => true);
 
 ipcMain.handle('foodhub:getPrinters', async () => {
-  // Virtual / ghost printers that should be hidden
+  // Use PowerShell Get-Printer which returns only actually installed printers
+  // (matches what Windows Settings shows, no ghost/spooler artifacts)
   const VIRTUAL_PRINTERS = [
     'fax', 'onenote', 'xps document writer', 'send to onenote',
     'print to pdf', 'microsoft print', 'pdf', 'nul:', 'file:',
@@ -119,29 +120,47 @@ ipcMain.handle('foodhub:getPrinters', async () => {
     'dopdf', 'pdfcreator', 'adobe pdf', 'nitro', 'primopdf',
   ];
 
+  try {
+    const { execSync } = require('child_process');
+    const output = execSync(
+      'powershell -Command "Get-Printer | Select-Object -ExpandProperty Name"',
+      { encoding: 'utf-8', timeout: 5000 }
+    ).trim();
+    const rawNames = output.split('\n').map((n: string) => n.trim()).filter(Boolean);
+    console.log(`[Printer] PowerShell Get-Printer raw (${rawNames.length}):`, rawNames);
+
+    const seen = new Set<string>();
+    const filtered: string[] = [];
+    for (const name of rawNames) {
+      const lower = name.toLowerCase();
+      if (VIRTUAL_PRINTERS.some(v => lower.includes(v))) continue;
+      if (seen.has(lower)) continue;
+      seen.add(lower);
+      filtered.push(name);
+    }
+    console.log(`[Printer] After filtering: ${filtered.length} printer(s):`, filtered);
+    return filtered;
+  } catch (err) {
+    console.error('[Printer] PowerShell Get-Printer failed, falling back to Electron:', err);
+  }
+
+  // Fallback to Electron API
   if (mainWindow) {
     try {
       const printers = await mainWindow.webContents.getPrintersAsync();
-      console.log(`[Printer] Raw Electron list (${printers.length}):`, printers.map(p => `"${p.name}" status=${p.status} isDefault=${p.isDefault}`));
-      
       const seen = new Set<string>();
       const filtered: string[] = [];
       for (const p of printers) {
         const name = p.name;
         if (!name || !name.trim()) continue;
         const lower = name.toLowerCase();
-        // Skip virtual printers
         if (VIRTUAL_PRINTERS.some(v => lower.includes(v))) continue;
-        // Skip duplicates (case-insensitive)
         if (seen.has(lower)) continue;
         seen.add(lower);
         filtered.push(name);
       }
-      console.log(`[Printer] After filtering: ${filtered.length} printer(s):`, filtered);
       return filtered;
-    } catch (err) {
-      console.error('[Printer] getPrintersAsync failed, falling back to wmic:', err);
-    }
+    } catch {}
   }
   return listPrinters();
 });
