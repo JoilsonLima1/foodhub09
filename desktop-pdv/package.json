@@ -1,6 +1,6 @@
 {
   "name": "foodhub-pdv-desktop",
-  "version": "2.5.0",
+  "version": "2.6.0",
   "description": "FoodHub PDV Desktop — impressão térmica ESC/POS 1 clique via USB",
   "main": "dist/main.js",
   "author": "FoodHub",
@@ -18,8 +18,7 @@
   "dependencies": {
     "electron-log": "5.3.0",
     "electron-store": "8.2.0",
-    "electron-updater": "6.3.9",
-    "node-thermal-printer": "4.4.3"
+    "electron-updater": "6.3.9"
   },
   "devDependencies": {
     "electron": "33.3.1",
