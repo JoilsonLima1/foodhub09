@@ -148,29 +148,37 @@ export function ReceiptDialog({
         if (window.foodhub?.printReceipt) {
           const pw = Number(caixaRoute?.paper_width || settings.paper_width) === 58 ? 58 : 80;
           const receiptLines = buildReceiptLines();
+          // Use printers array from route; fallback to printer_name or OS default
+          const printers = caixaRoute?.printers?.length
+            ? caixaRoute.printers
+            : caixaRoute?.printer_name
+              ? [caixaRoute.printer_name]
+              : [undefined];
 
-          console.log('[PRINT] Desktop bridge → printReceipt, pw:', pw);
+          console.log('[PRINT] Desktop bridge → printReceipt, pw:', pw, 'printers:', printers);
           toast({ title: '🖨️ Enviando para impressora...' });
 
-          const result = await window.foodhub.printReceipt({
-            lines: receiptLines,
-            printerName: caixaRoute?.printer_name || undefined,
-            paperWidth: pw,
-          });
+          for (const printerName of printers) {
+            const result = await window.foodhub.printReceipt({
+              lines: receiptLines,
+              printerName: printerName || undefined,
+              paperWidth: pw,
+            });
 
-          if (result.ok) {
-            toast({
-              title: '✓ Impresso via ESC/POS',
-              description: caixaRoute?.printer_name
-                ? `Impressora: ${caixaRoute.printer_name}`
-                : 'Impressora padrão do sistema',
-            });
-          } else {
-            toast({
-              title: 'Erro na impressão',
-              description: result.error || 'Falha ao imprimir.',
-              variant: 'destructive',
-            });
+            if (result.ok) {
+              toast({
+                title: '✓ Impresso via ESC/POS',
+                description: printerName
+                  ? `Impressora: ${printerName}`
+                  : 'Impressora padrão do sistema',
+              });
+            } else {
+              toast({
+                title: 'Erro na impressão',
+                description: result.error || 'Falha ao imprimir.',
+                variant: 'destructive',
+              });
+            }
           }
           return;
         }

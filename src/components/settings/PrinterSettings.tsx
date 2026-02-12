@@ -205,35 +205,46 @@ export function PrinterSettings() {
     });
   };
 
-  const handleTestPrint = () => {
-    handleSave();
+  const handleTestPrint = async () => {
     const paperWidth = local.paper_width as PaperWidthMM;
 
-    // Desktop bridge test
+    // Desktop bridge test — use the "caixa" route to resolve printers
     if (local.print_mode === 'desktop' && window.foodhub?.printReceipt) {
       const pw = Number(local.paper_width) === 58 ? 58 : 80;
-      window.foodhub.printReceipt({
-        lines: [
-          { type: 'bold', value: 'CUPOM DE TESTE', align: 'center' },
-          { type: 'separator' },
-          { type: 'text', value: 'Pedido #999' },
-          { type: 'pair', left: '2x X-Burguer', right: 'R$ 51,80' },
-          { type: 'pair', left: '2x Refrigerante', right: 'R$ 12,00' },
-          { type: 'pair', left: '1x Batata Frita', right: 'R$ 18,50' },
-          { type: 'separator' },
-          { type: 'bold', value: 'TOTAL: R$ 82,30', align: 'right' },
-          { type: 'feed', lines: 3 },
-          { type: 'cut' },
-        ],
-        printerName: local.default_printer_name || undefined,
-        paperWidth: pw,
-      }).then((result) => {
-        if (result.ok) {
-          toast({ title: '✓ Impressão de teste enviada', description: 'Cupom impresso via Desktop PDV.' });
-        } else {
-          toast({ title: 'Erro na impressão', description: result.error || 'Falha.', variant: 'destructive' });
+      const caixaRoute = routes.find(r => r.route_key === 'caixa');
+      const printers = caixaRoute?.printers?.length ? caixaRoute.printers : [undefined]; // undefined = OS default
+
+      const lines = [
+        { type: 'bold' as const, value: 'CUPOM DE TESTE', align: 'center' as const },
+        { type: 'separator' as const },
+        { type: 'text' as const, value: 'Pedido #999' },
+        { type: 'pair' as const, left: '2x X-Burguer', right: 'R$ 51,80' },
+        { type: 'pair' as const, left: '2x Refrigerante', right: 'R$ 12,00' },
+        { type: 'pair' as const, left: '1x Batata Frita', right: 'R$ 18,50' },
+        { type: 'separator' as const },
+        { type: 'bold' as const, value: 'TOTAL: R$ 82,30', align: 'right' as const },
+        { type: 'feed' as const, lines: 3 },
+        { type: 'cut' as const },
+      ];
+
+      let anyOk = false;
+      for (const printerName of printers) {
+        try {
+          const result = await window.foodhub.printReceipt({
+            lines,
+            printerName: printerName || undefined,
+            paperWidth: pw,
+          });
+          if (result.ok) {
+            anyOk = true;
+            toast({ title: '✓ Teste enviado', description: `Impressora: ${printerName || 'padrão do sistema'}` });
+          } else {
+            toast({ title: `Erro: ${printerName || 'padrão'}`, description: result.error || 'Falha.', variant: 'destructive' });
+          }
+        } catch (err) {
+          toast({ title: `Erro: ${printerName || 'padrão'}`, description: (err as Error).message, variant: 'destructive' });
         }
-      });
+      }
       setShowPreview(true);
       return;
     }
