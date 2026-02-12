@@ -1,5 +1,4 @@
 import { ThermalPrinter, PrinterTypes, CharacterSet } from 'node-thermal-printer';
-import { v4 as uuidv4 } from 'crypto';
 
 interface ReceiptLine {
   type: 'text' | 'bold' | 'separator' | 'cut' | 'feed' | 'pair';
