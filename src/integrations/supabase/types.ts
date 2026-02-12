@@ -9327,6 +9327,7 @@ export type Database = {
       print_jobs: {
         Row: {
           attempts: number
+          available_at: string
           claimed_at: string | null
           created_at: string
           created_by_user_id: string | null
@@ -9345,6 +9346,7 @@ export type Database = {
         }
         Insert: {
           attempts?: number
+          available_at?: string
           claimed_at?: string | null
           created_at?: string
           created_by_user_id?: string | null
@@ -9363,6 +9365,7 @@ export type Database = {
         }
         Update: {
           attempts?: number
+          available_at?: string
           claimed_at?: string | null
           created_at?: string
           created_by_user_id?: string | null
@@ -14325,6 +14328,7 @@ export type Database = {
         Args: { p_device_id: string; p_limit?: number; p_tenant_id: string }
         Returns: {
           attempts: number
+          available_at: string
           claimed_at: string | null
           created_at: string
           created_by_user_id: string | null
