@@ -9,6 +9,19 @@ interface FoodHubReceiptLine {
   lines?: number;
 }
 
+interface FoodHubPrintResult {
+  ok: boolean;
+  jobId?: string;
+  error?: { code: string; message: string };
+}
+
+interface FoodHubStatus {
+  ok: boolean;
+  appVersion: string;
+  printersCount: number;
+  defaultPrinterName: string | null;
+}
+
 interface FoodHubBridge {
   isDesktop: () => Promise<boolean>;
   getPrinters: () => Promise<string[]>;
@@ -18,8 +31,9 @@ interface FoodHubBridge {
     lines: FoodHubReceiptLine[];
     printerName?: string;
     paperWidth?: number;
-  }) => Promise<{ ok: boolean; error?: string }>;
-  printTest: () => Promise<{ ok: boolean; error?: string }>;
+  }) => Promise<FoodHubPrintResult>;
+  printTest: () => Promise<FoodHubPrintResult>;
+  getStatus: () => Promise<FoodHubStatus>;
 }
 
 declare global {
@@ -28,4 +42,4 @@ declare global {
   }
 }
 
-export type { FoodHubBridge, FoodHubReceiptLine };
+export type { FoodHubBridge, FoodHubReceiptLine, FoodHubPrintResult, FoodHubStatus };

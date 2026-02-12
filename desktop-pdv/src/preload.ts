@@ -18,6 +18,7 @@ contextBridge.exposeInMainWorld('foodhub', {
     paperWidth?: number;
   }) => ipcRenderer.invoke('foodhub:printReceipt', payload),
   printTest: () => ipcRenderer.invoke('foodhub:printTest'),
+  getStatus: () => ipcRenderer.invoke('foodhub:getStatus'),
 });
 
 contextBridge.exposeInMainWorld('foodhubUpdates', {
