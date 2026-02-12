@@ -85,11 +85,21 @@ function buildMenu() {
 ipcMain.handle('foodhub:isDesktop', () => true);
 
 ipcMain.handle('foodhub:getPrinters', async () => {
+  // Virtual printers that should be hidden from the user
+  const VIRTUAL_PRINTERS = ['fax', 'onenote', 'xps document writer', 'send to onenote'];
+
   if (mainWindow) {
     try {
       const printers = await mainWindow.webContents.getPrintersAsync();
-      console.log(`[Printer] Electron detected ${printers.length} printer(s).`);
-      return printers.map(p => p.name).filter(Boolean);
+      const filtered = printers
+        .map(p => p.name)
+        .filter(name => {
+          if (!name) return false;
+          const lower = name.toLowerCase();
+          return !VIRTUAL_PRINTERS.some(v => lower.includes(v));
+        });
+      console.log(`[Printer] Electron detected ${printers.length} printer(s), ${filtered.length} after filtering virtual.`);
+      return filtered;
     } catch (err) {
       console.error('[Printer] getPrintersAsync failed, falling back to wmic:', err);
     }
