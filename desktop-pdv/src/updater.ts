@@ -65,8 +65,20 @@ export function initAutoUpdater(getMainWindow: () => BrowserWindow | null) {
   }, CHECK_INTERVAL_MS);
 }
 
-export function checkForUpdatesManual() {
-  return autoUpdater.checkForUpdates();
+export async function checkForUpdatesManual(): Promise<{ status: 'available' | 'not-available' | 'error'; version?: string; message?: string }> {
+  try {
+    const result = await autoUpdater.checkForUpdates();
+    if (result && result.updateInfo && result.updateInfo.version) {
+      const currentVersion = require('electron').app.getVersion();
+      if (result.updateInfo.version !== currentVersion) {
+        return { status: 'available', version: result.updateInfo.version };
+      }
+    }
+    return { status: 'not-available' };
+  } catch (err: any) {
+    log.error('[Updater] Manual check failed:', err);
+    return { status: 'error', message: err?.message || String(err) };
+  }
 }
 
 export function installUpdate() {

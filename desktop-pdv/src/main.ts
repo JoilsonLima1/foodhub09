@@ -56,8 +56,33 @@ function buildMenu() {
       submenu: [
         {
           label: 'Verificar atualizações',
-          click: () => {
-            checkForUpdatesManual().catch(() => {});
+          click: async () => {
+            const { dialog } = require('electron');
+            try {
+              const result = await checkForUpdatesManual();
+              if (result.status === 'available') {
+                dialog.showMessageBox({
+                  type: 'info',
+                  title: 'Atualização disponível',
+                  message: `Uma nova versão (${result.version}) está disponível e será baixada automaticamente.`,
+                });
+              } else if (result.status === 'not-available') {
+                dialog.showMessageBox({
+                  type: 'info',
+                  title: 'Sistema atualizado',
+                  message: `Seu sistema já está atualizado com a última versão (${app.getVersion()}).\nQuando houver uma nova versão, você será avisado automaticamente.`,
+                });
+              } else {
+                dialog.showMessageBox({
+                  type: 'warning',
+                  title: 'Erro ao verificar',
+                  message: `Não foi possível verificar atualizações.\n${result.message || 'Tente novamente mais tarde.'}`,
+                });
+              }
+            } catch {
+              const { dialog: d } = require('electron');
+              d.showMessageBox({ type: 'error', title: 'Erro', message: 'Falha ao verificar atualizações.' });
+            }
           },
         },
         { type: 'separator' },
@@ -188,7 +213,7 @@ ipcMain.handle('foodhub:getStatus', async () => {
 
 // ─── Update IPC ────────────────────────────────────────────
 
-ipcMain.handle('foodhub:checkForUpdates', () => {
+ipcMain.handle('foodhub:checkForUpdates', async () => {
   return checkForUpdatesManual();
 });
 
