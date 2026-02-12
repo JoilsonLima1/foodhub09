@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Printer, Save, Loader2 } from 'lucide-react';
+import { Monitor, Save, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -13,7 +13,7 @@ interface FormState {
   default_port: string;
 }
 
-export function PrintAgentSettings() {
+export function DesktopPdvSettings() {
   const { toast } = useToast();
   const [form, setForm] = useState<FormState>({ windows_url: '#', mac_url: '#', default_port: '8123' });
   const [isLoading, setIsLoading] = useState(true);
@@ -25,18 +25,18 @@ export function PrintAgentSettings() {
         .from('system_settings')
         .select('setting_key, setting_value')
         .in('setting_key', [
-          'print_agent_windows_url',
-          'print_agent_mac_url',
-          'print_agent_default_port',
+          'desktop_pdv_windows_url',
+          'desktop_pdv_mac_url',
+          'desktop_pdv_default_port',
         ]);
 
       if (!error && data) {
         const next = { ...form };
         for (const row of data) {
           const val = row.setting_value as unknown;
-          if (row.setting_key === 'print_agent_windows_url') next.windows_url = String(val || '#');
-          if (row.setting_key === 'print_agent_mac_url') next.mac_url = String(val || '#');
-          if (row.setting_key === 'print_agent_default_port') next.default_port = String(val || '8123');
+          if (row.setting_key === 'desktop_pdv_windows_url') next.windows_url = String(val || '#');
+          if (row.setting_key === 'desktop_pdv_mac_url') next.mac_url = String(val || '#');
+          if (row.setting_key === 'desktop_pdv_default_port') next.default_port = String(val || '8123');
         }
         setForm(next);
       }
@@ -49,9 +49,9 @@ export function PrintAgentSettings() {
     setIsSaving(true);
     try {
       const updates = [
-        { setting_key: 'print_agent_windows_url', setting_value: JSON.stringify(form.windows_url) },
-        { setting_key: 'print_agent_mac_url', setting_value: JSON.stringify(form.mac_url) },
-        { setting_key: 'print_agent_default_port', setting_value: JSON.stringify(Number(form.default_port) || 8123) },
+        { setting_key: 'desktop_pdv_windows_url', setting_value: JSON.stringify(form.windows_url) },
+        { setting_key: 'desktop_pdv_mac_url', setting_value: JSON.stringify(form.mac_url) },
+        { setting_key: 'desktop_pdv_default_port', setting_value: JSON.stringify(Number(form.default_port) || 8123) },
       ];
 
       for (const u of updates) {
@@ -62,7 +62,7 @@ export function PrintAgentSettings() {
         if (error) throw error;
       }
 
-      toast({ title: 'Salvo!', description: 'Configurações do Print Agent atualizadas.' });
+      toast({ title: 'Salvo!', description: 'Configurações do Desktop PDV atualizadas.' });
     } catch (err) {
       console.error(err);
       toast({ title: 'Erro ao salvar', variant: 'destructive' });
@@ -85,11 +85,11 @@ export function PrintAgentSettings() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Printer className="h-5 w-5" />
-          FoodHub Print Agent
+          <Monitor className="h-5 w-5" />
+          FoodHub PDV Desktop
         </CardTitle>
         <CardDescription>
-          Configure as URLs de download e porta padrão do agente de impressão.
+          Configure as URLs de download e porta padrão do Desktop PDV.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -110,7 +110,7 @@ export function PrintAgentSettings() {
           />
         </div>
         <div className="space-y-2">
-          <Label>Porta Padrão do Agent</Label>
+          <Label>Porta Padrão do Desktop PDV</Label>
           <Input
             type="number"
             value={form.default_port}
@@ -119,7 +119,7 @@ export function PrintAgentSettings() {
             className="max-w-[150px]"
           />
           <p className="text-xs text-muted-foreground">
-            Porta usada pelo Agent na máquina do lojista. Valor padrão: 8123.
+            Porta usada pelo Desktop PDV na máquina do lojista. Valor padrão: 8123.
           </p>
         </div>
         <Button onClick={handleSave} disabled={isSaving}>

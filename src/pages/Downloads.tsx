@@ -7,7 +7,7 @@ import {
   Settings, FileText, HelpCircle, ChevronRight, Cpu, Globe, ArrowLeft, Loader2,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { usePrintAgentSettings } from '@/hooks/usePrintAgentSettings';
+import { useDesktopPdvSettings } from '@/hooks/useDesktopPdvSettings';
 
 const FEATURES = [
   { icon: Printer, title: 'Impressão 1 clique', desc: 'Imprime direto na térmica sem diálogo do navegador.' },
@@ -43,10 +43,10 @@ const FAQ = [
 
 export default function Downloads() {
   const navigate = useNavigate();
-  const { data: agentUrls, isLoading } = usePrintAgentSettings();
+  const { data: desktopUrls, isLoading } = useDesktopPdvSettings();
 
-  const hasWindowsUrl = agentUrls.windows_url && agentUrls.windows_url !== '#';
-  const hasMacUrl = agentUrls.mac_url && agentUrls.mac_url !== '#';
+  const hasWindowsUrl = desktopUrls.windows_url && desktopUrls.windows_url !== '#';
+  const hasMacUrl = desktopUrls.mac_url && desktopUrls.mac_url !== '#';
 
   return (
     <div className="container mx-auto py-8 px-4 max-w-3xl space-y-6">
@@ -102,7 +102,7 @@ export default function Downloads() {
                 variant="outline"
                 className="h-auto py-4 flex-col gap-1.5"
                 disabled={!hasWindowsUrl}
-                onClick={() => hasWindowsUrl && window.open(agentUrls.windows_url, '_blank')}
+                onClick={() => hasWindowsUrl && window.open(desktopUrls.windows_url, '_blank')}
               >
                 <Monitor className="h-6 w-6" />
                 <span className="font-medium">Windows</span>
@@ -114,7 +114,7 @@ export default function Downloads() {
                 variant="outline"
                 className="h-auto py-4 flex-col gap-1.5"
                 disabled={!hasMacUrl}
-                onClick={() => hasMacUrl && window.open(agentUrls.mac_url, '_blank')}
+                onClick={() => hasMacUrl && window.open(desktopUrls.mac_url, '_blank')}
               >
                 <Globe className="h-6 w-6" />
                 <span className="font-medium">macOS</span>

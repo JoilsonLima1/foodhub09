@@ -12,7 +12,7 @@ import { ReceiptPrint } from '@/components/pos/ReceiptPrint';
 import { PrinterHelpModal } from './PrinterHelpModal';
 import { DefaultPrinterCallout } from './DefaultPrinterCallout';
 import { useTenantPrintSettings, type TenantPrintSettings } from '@/hooks/useTenantPrintSettings';
-import { usePrintAgentSettings } from '@/hooks/usePrintAgentSettings';
+import { useDesktopPdvSettings } from '@/hooks/useDesktopPdvSettings';
 import { printReceiptHTML, buildReceiptHTML, type PaperWidthMM } from '@/lib/thermalPrint';
 import type { CartItem } from '@/types/database';
 
@@ -62,7 +62,7 @@ const sampleItems: CartItem[] = [
 export function PrinterSettings() {
   const { toast } = useToast();
   const { settings, isLoading, isSaving, isOffline, save } = useTenantPrintSettings();
-  const { data: desktopUrls } = usePrintAgentSettings();
+  const { data: desktopUrls } = useDesktopPdvSettings();
   const { routes, isLoading: routesLoading, isSaving: routesSaving, addRoute, updateRoute, removeRoute } = usePrinterRoutes();
   const [local, setLocal] = useState<TenantPrintSettings | null>(null);
   const [showPreview, setShowPreview] = useState(false);
