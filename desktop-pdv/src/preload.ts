@@ -19,3 +19,11 @@ contextBridge.exposeInMainWorld('foodhub', {
   }) => ipcRenderer.invoke('foodhub:printReceipt', payload),
   printTest: () => ipcRenderer.invoke('foodhub:printTest'),
 });
+
+contextBridge.exposeInMainWorld('foodhubUpdates', {
+  onStatus: (callback: (data: { status: string; version?: string; percent?: number; message?: string }) => void) => {
+    ipcRenderer.on('foodhub:updateStatus', (_event, data) => callback(data));
+  },
+  checkForUpdates: () => ipcRenderer.invoke('foodhub:checkForUpdates'),
+  installUpdate: () => ipcRenderer.invoke('foodhub:installUpdate'),
+});
