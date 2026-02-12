@@ -410,33 +410,54 @@ export function PrinterSettings() {
         </CardContent>
       </Card>
 
-      {/* Printer Routes (Desktop mode only, with bridge) */}
-      {local.print_mode === 'desktop' && hasDesktopBridge && (
+      {/* Printer Routes — visible for web and desktop modes, hidden for smartpos */}
+      {local.print_mode !== 'smartpos' && (
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="flex items-center gap-2 text-base">
-                  <Printer className="h-4 w-4" /> Rotas de Impressão
+                  <Printer className="h-4 w-4" /> Impressoras por Ambiente
                 </CardTitle>
                 <CardDescription>
-                  Configure uma impressora para cada setor. Clique em "Detectar" para listar as impressoras instaladas.
+                  {local.print_mode === 'desktop'
+                    ? 'Configure uma impressora para cada setor. Clique em "Detectar" para listar as impressoras instaladas.'
+                    : 'Gerencie os setores de impressão do seu estabelecimento.'}
                 </CardDescription>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={detectPrintersViaBridge}
-                disabled={isDetecting}
-              >
-                {isDetecting
-                  ? <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                  : <Search className="h-4 w-4 mr-1" />}
-                Detectar
-              </Button>
+              {local.print_mode === 'desktop' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={detectPrintersViaBridge}
+                  disabled={isDetecting || !hasDesktopBridge}
+                >
+                  {isDetecting
+                    ? <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                    : <Search className="h-4 w-4 mr-1" />}
+                  Detectar
+                </Button>
+              )}
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Web mode info */}
+            {local.print_mode === 'web' && (
+              <div className="rounded-md bg-muted/50 border p-3 text-xs text-muted-foreground space-y-1">
+                <p className="font-medium text-foreground">ℹ️ Modo Navegador</p>
+                <p>No modo Navegador, a escolha da impressora ocorre no diálogo de impressão do sistema. Você pode gerenciar os setores abaixo, mas a seleção de impressora física só é possível no modo Desktop.</p>
+              </div>
+            )}
+
+            {/* Desktop mode without bridge warning */}
+            {local.print_mode === 'desktop' && !hasDesktopBridge && (
+              <div className="rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 p-3 text-xs text-amber-700 dark:text-amber-300 space-y-1">
+                <p className="font-medium">⚠️ FoodHub PDV Desktop não detectado</p>
+                <p className="text-muted-foreground">Instale e abra o app Desktop para detectar e selecionar impressoras por setor.</p>
+              </div>
+            )}
+
+            {/* Detected printers count */}
             {detectedPrinters.length > 0 && (
               <div className="flex items-center gap-2 text-xs text-primary bg-primary/5 border border-primary/20 rounded-lg p-2">
                 <Printer className="h-3.5 w-3.5" />
@@ -463,7 +484,7 @@ export function PrinterSettings() {
                         />
                         <span className="text-xs text-muted-foreground">({route.route_type})</span>
                       </div>
-                      {detectedPrinters.length > 0 ? (
+                      {local.print_mode === 'desktop' && detectedPrinters.length > 0 ? (
                         <Select
                           value={route.printer_name || '__default__'}
                           onValueChange={(v) => updateRoute(route.id, { printer_name: v === '__default__' ? null : v })}
@@ -480,25 +501,30 @@ export function PrinterSettings() {
                             ))}
                           </SelectContent>
                         </Select>
-                      ) : (
+                      ) : local.print_mode === 'desktop' ? (
                         <Input
                           value={route.printer_name || ''}
                           onChange={(e) => updateRoute(route.id, { printer_name: e.target.value || null })}
-                          placeholder="Clique Detectar para preencher"
+                          placeholder={hasDesktopBridge ? 'Clique Detectar para preencher' : 'Conecte o Desktop PDV para selecionar'}
                           className="h-8 text-sm"
+                          disabled={!hasDesktopBridge}
                         />
+                      ) : (
+                        <p className="text-xs text-muted-foreground pl-1">Impressora: padrão do sistema</p>
                       )}
                     </div>
                     <div className="flex flex-col gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 text-xs"
-                        onClick={() => handleTestPrintForRoute(route.id, route.route_type, route.printer_name)}
-                        disabled={testingType !== null}
-                      >
-                        {testingType === route.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <TestTube className="h-3 w-3" />}
-                      </Button>
+                      {local.print_mode === 'desktop' && hasDesktopBridge && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={() => handleTestPrintForRoute(route.id, route.route_type, route.printer_name)}
+                          disabled={testingType !== null}
+                        >
+                          {testingType === route.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <TestTube className="h-3 w-3" />}
+                        </Button>
+                      )}
                       {routes.length > 1 && (
                         <Button
                           variant="ghost"
@@ -539,7 +565,20 @@ export function PrinterSettings() {
             </div>
 
             <p className="text-xs text-muted-foreground">
-              Campos vazios usam a impressora padrão do Windows. Clique no ícone de teste para verificar.
+              {local.print_mode === 'desktop'
+                ? 'Campos vazios usam a impressora padrão do Windows. Clique no ícone de teste para verificar.'
+                : 'Os setores são usados para direcionar os pedidos para os pontos de produção corretos.'}
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* SmartPOS: hidden routes, show info */}
+      {local.print_mode === 'smartpos' && (
+        <Card>
+          <CardContent className="py-4">
+            <p className="text-xs text-muted-foreground text-center">
+              📱 No modo SmartPOS, as rotas de impressão são controladas pela maquininha.
             </p>
           </CardContent>
         </Card>
