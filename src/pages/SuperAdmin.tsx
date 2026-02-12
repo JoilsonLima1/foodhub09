@@ -66,6 +66,7 @@ import { PartnerPlanApprovalManager } from '@/components/superadmin/PartnerPlanA
 import { PixAutomaticoManager } from '@/components/superadmin/pix/PixAutomaticoManager';
 import { LegalDocumentsManager } from '@/components/superadmin/legal/LegalDocumentsManager';
 import { DesktopPdvSettings } from '@/components/superadmin/DesktopPdvSettings';
+import { SmartPosGlobalSettings } from '@/components/superadmin/SmartPosGlobalSettings';
 
 import { 
   OpsAlertsPanel, 
@@ -320,6 +321,10 @@ export default function SuperAdmin() {
             <Printer className="h-4 w-4" />
             Desktop PDV
           </TabsTrigger>
+          <TabsTrigger value="smartpos" className="flex items-center gap-2">
+            <Smartphone className="h-4 w-4" />
+            SmartPOS
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="organizations">
@@ -502,6 +507,10 @@ export default function SuperAdmin() {
 
         <TabsContent value="desktop-pdv">
           <DesktopPdvSettings />
+        </TabsContent>
+
+        <TabsContent value="smartpos">
+          <SmartPosGlobalSettings />
         </TabsContent>
 
       </Tabs>
