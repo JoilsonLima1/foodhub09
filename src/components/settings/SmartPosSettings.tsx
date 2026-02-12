@@ -164,7 +164,7 @@ export function SmartPosSettings() {
                     <div className="flex items-center justify-between p-3 gap-3">
                       <div className="flex items-center gap-3 min-w-0 flex-1">
                         {isOnline ? (
-                          <Wifi className="h-4 w-4 text-green-500 shrink-0" />
+                          <Wifi className="h-4 w-4 text-primary shrink-0" />
                         ) : (
                           <WifiOff className="h-4 w-4 text-muted-foreground shrink-0" />
                         )}
