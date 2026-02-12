@@ -69,9 +69,9 @@ export function SmartPosGlobalSettings() {
             </>
           ) : configured ? (
             <>
-              <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0" />
+              <CheckCircle2 className="h-5 w-5 text-primary shrink-0" />
               <div>
-                <p className="font-medium text-green-700 dark:text-green-400">✅ Configurado</p>
+                <p className="font-medium text-primary">✅ Configurado</p>
                 <p className="text-sm text-muted-foreground">
                   O SERVER_DEVICE_SECRET está configurado e pronto para uso.
                 </p>
