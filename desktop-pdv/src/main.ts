@@ -125,17 +125,26 @@ ipcMain.handle('foodhub:printReceipt', async (_event, payload: {
   printerName?: string;
   paperWidth?: number;
 }) => {
-  console.log(`[IPC] foodhub:printReceipt received, printerName="${payload.printerName || '(default)'}", lines=${payload.lines?.length || 0}`);
-  const printerName = payload.printerName || getConfig('defaultPrinter') || undefined;
-  const paperWidth = payload.paperWidth || 80;
-
-  return printReceipt(payload.lines, { printerName, paperWidth });
+  try {
+    console.log(`[IPC] foodhub:printReceipt received, printerName="${payload.printerName || '(default)'}", lines=${payload.lines?.length || 0}`);
+    const printerName = payload.printerName || getConfig('defaultPrinter') || undefined;
+    const paperWidth = payload.paperWidth || 80;
+    return await printReceipt(payload.lines, { printerName, paperWidth });
+  } catch (err: any) {
+    console.error('[IPC] foodhub:printReceipt uncaught error:', err);
+    return { ok: false, jobId: `err_${Date.now()}`, error: { code: 'INTERNAL_ERROR', message: err.message || String(err) } };
+  }
 });
 
 ipcMain.handle('foodhub:printTest', async () => {
-  console.log('[IPC] foodhub:printTest received');
-  const printerName = getConfig('defaultPrinter') || undefined;
-  return testPrint(printerName);
+  try {
+    console.log('[IPC] foodhub:printTest received');
+    const printerName = getConfig('defaultPrinter') || undefined;
+    return await testPrint(printerName);
+  } catch (err: any) {
+    console.error('[IPC] foodhub:printTest uncaught error:', err);
+    return { ok: false, jobId: `err_${Date.now()}`, error: { code: 'INTERNAL_ERROR', message: err.message || String(err) } };
+  }
 });
 
 // ─── Status/Diagnostic IPC ─────────────────────────────────
