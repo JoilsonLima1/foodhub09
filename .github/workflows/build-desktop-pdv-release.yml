@@ -29,40 +29,27 @@ jobs:
         with:
           node-version: 20
 
-      - name: Read current version
+      - name: Read version
         id: pkg
         shell: bash
         run: |
           PKG_VERSION=$(node -p "require('./package.json').version")
           echo "version=$PKG_VERSION" >> $GITHUB_OUTPUT
+          echo "Building version: $PKG_VERSION"
 
-      - name: Check if tag already exists
-        id: check_tag
+      - name: Delete old conflicting releases and tags
         shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
-          if git rev-parse "v${{ steps.pkg.outputs.version }}" >/dev/null 2>&1; then
-            echo "exists=true" >> $GITHUB_OUTPUT
-          else
-            echo "exists=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Bump patch version
-        if: steps.check_tag.outputs.exists == 'true'
-        shell: bash
-        run: |
-          CURRENT="${{ steps.pkg.outputs.version }}"
-          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
-          NEW_PATCH=$((PATCH + 1))
-          NEW_VERSION="$MAJOR.$MINOR.$NEW_PATCH"
-          node -e "var pkg=require('./package.json'); pkg.version='$NEW_VERSION'; require('fs').writeFileSync('./package.json', JSON.stringify(pkg, null, 2)+'\n')"
-          echo "Bumped version to $NEW_VERSION"
-
-      - name: Read final version
-        id: final
-        shell: bash
-        run: |
-          FINAL_VERSION=$(node -p "require('./package.json').version")
-          echo "version=$FINAL_VERSION" >> $GITHUB_OUTPUT
+          VERSION="v${{ steps.pkg.outputs.version }}"
+          echo "Cleaning up any existing release/tag for $VERSION..."
+          # Delete release if exists (ignore errors)
+          gh release delete "$VERSION" --repo "$GITHUB_REPOSITORY" --yes 2>/dev/null || true
+          # Delete tag if exists
+          git push origin --delete "refs/tags/$VERSION" 2>/dev/null || true
+          git tag -d "$VERSION" 2>/dev/null || true
+          echo "Cleanup done."
 
       - name: Configure npm registry
         run: npm config set registry https://registry.npmjs.org/
@@ -75,10 +62,22 @@ jobs:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: npm run release
 
+      - name: Verify release assets
+        shell: bash
+        run: |
+          echo "=== Checking generated files ==="
+          ls -la release/ || echo "No release directory found"
+          echo ""
+          echo "=== Looking for .exe ==="
+          find release/ -name "*.exe" 2>/dev/null || echo "No .exe found!"
+          echo ""
+          echo "=== Looking for latest.yml ==="
+          find release/ -name "latest.yml" 2>/dev/null || echo "No latest.yml found!"
+
       - name: Upload artifacts (debug)
         uses: actions/upload-artifact@v4
         with:
-          name: FoodHubPDV-Release-v${{ steps.final.outputs.version }}
+          name: FoodHubPDV-Release-v${{ steps.pkg.outputs.version }}
           path: |
             desktop-pdv/release/*.exe
             desktop-pdv/release/latest.yml
