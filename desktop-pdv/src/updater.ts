@@ -1,3 +1,4 @@
+// FoodHub PDV Desktop - Auto Updater via GitHub Releases
 import { autoUpdater, UpdateInfo } from 'electron-updater';
 import { BrowserWindow } from 'electron';
 import log from 'electron-log';
