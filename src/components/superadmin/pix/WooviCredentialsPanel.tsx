@@ -157,9 +157,15 @@ export function WooviCredentialsPanel({ scope, scopeId, pspProviderId }: Props) 
         body: { action: 'test-connection', api_key: keyToTest, psp_name: 'woovi' },
       });
       if (error) throw error;
-      setTestResult({ ok: data?.connected, error: data?.error });
+      const connected = data?.connected;
+      setTestResult({ ok: connected, error: data?.error });
 
-      const status = data?.connected ? 'connected' : 'error';
+      // Auto-fetch account info on successful connection
+      if (connected) {
+        handleVerifyAccount();
+      }
+
+      const status = connected ? 'connected' : 'error';
       if (scope === 'tenant' && scopeId && existingCred?.id) {
         await supabase
           .from('tenant_psp_accounts')
