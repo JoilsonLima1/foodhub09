@@ -157,6 +157,11 @@ serve(async (req) => {
       profileData = await verifyStripe(resolvedSecretKey, provider, scope_type, scope_id);
       if (!profileData.legal_name) missingFields.push("legal_name");
       verifiedLevel = missingFields.length > 0 ? "partial" : "full";
+    } else if (provider === "woovi" || provider === "openpix") {
+      profileData = await verifyWoovi(apiKey, provider, scope_type, scope_id);
+      if (!profileData.legal_name) missingFields.push("legal_name");
+      if (!profileData.document) missingFields.push("document");
+      verifiedLevel = missingFields.length > 0 ? "partial" : "full";
     } else {
       profileData = {
         legal_name: null,
@@ -441,6 +446,96 @@ async function verifyStripe(
         payouts_enabled: s.payouts_enabled,
         business_type: s.business_type,
       },
+    },
+  };
+}
+
+// ===== Woovi / OpenPix verification =====
+async function verifyWoovi(
+  apiKey: string,
+  provider: string,
+  scope_type: string,
+  scope_id: string | null,
+): Promise<Record<string, unknown>> {
+  const baseUrl = "https://api.openpix.com.br/api/v1";
+  const headers: Record<string, string> = {
+    Authorization: apiKey,
+    "Content-Type": "application/json",
+  };
+
+  // Try GET /company to fetch account info
+  const companyRes = await fetch(`${baseUrl}/company`, { headers });
+
+  if (!companyRes.ok) {
+    const errBody = await companyRes.text();
+    console.error(`[gateway-verify-account] Woovi /company error: ${companyRes.status} ${errBody}`);
+    if (companyRes.status === 401 || companyRes.status === 403) {
+      throw new Error("API Key inválida ou sem permissão. Verifique a chave no painel Woovi.");
+    }
+    throw new Error(`Erro ao consultar Woovi (HTTP ${companyRes.status}): ${errBody}`);
+  }
+
+  const companyData = await companyRes.json();
+  console.log(`[gateway-verify-account] Woovi company keys: ${JSON.stringify(Object.keys(companyData))}`);
+
+  // The response can be { company: {...} } or direct fields
+  const company = companyData.company || companyData;
+
+  // Extract taxID — can be object { type, taxID } or string
+  let document: string | null = null;
+  if (company.taxID) {
+    if (typeof company.taxID === "object" && company.taxID.taxID) {
+      document = company.taxID.taxID;
+    } else if (typeof company.taxID === "string") {
+      document = company.taxID;
+    }
+  }
+
+  // Try to get bank info from /subaccount or company details
+  let bankName: string | null = null;
+  let bankAgency: string | null = null;
+  let bankAccount: string | null = null;
+  let pixKey: string | null = null;
+
+  // Check if company has bank info directly
+  if (company.bankAccount) {
+    const ba = company.bankAccount;
+    bankName = ba.bankName || ba.bank || null;
+    bankAgency = ba.agency || ba.agencia || null;
+    bankAccount = ba.account || ba.accountNumber || null;
+    if (ba.accountDigit) {
+      bankAccount = bankAccount ? `${bankAccount}-${ba.accountDigit}` : null;
+    }
+  }
+
+  // Try fetching subaccount list for additional info
+  const subRes = await safeFetchJson(`${baseUrl}/subaccount`, headers);
+  if (subRes && Array.isArray((subRes as any).subaccounts) && (subRes as any).subaccounts.length > 0) {
+    const sub = (subRes as any).subaccounts[0];
+    if (!bankName && sub.bankAccount) {
+      bankName = sub.bankAccount.bankName || sub.bankAccount.bank || null;
+      bankAgency = sub.bankAccount.agency || null;
+      bankAccount = sub.bankAccount.account || null;
+    }
+    if (sub.pixKey) pixKey = sub.pixKey;
+  }
+
+  return {
+    legal_name: company.name || company.corporateName || company.tradingName || null,
+    document,
+    email: company.email || null,
+    bank_name: bankName,
+    bank_agency: bankAgency,
+    bank_account: bankAccount,
+    wallet_id: company.id || company.clientId || null,
+    merchant_id: company.id || null,
+    pix_key: pixKey,
+    raw_profile_json: {
+      provider,
+      scope_type,
+      scope_id,
+      fetched_at: new Date().toISOString(),
+      company_data: company,
     },
   };
 }
