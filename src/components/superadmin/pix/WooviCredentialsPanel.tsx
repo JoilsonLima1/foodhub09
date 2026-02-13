@@ -370,7 +370,8 @@ export function WooviCredentialsPanel({ scope, scopeId, pspProviderId }: Props) 
 
                 {!accountInfo.legal_name && !accountInfo.document && (
                   <p className="text-xs text-muted-foreground text-center py-2">
-                    Nenhum dado retornado pela API. Verifique se a chave tem permissões adequadas.
+                    ✅ Chave válida, mas o App Woovi não possui os escopos necessários (COMPANY_GET) para exibir dados da conta. 
+                    Adicione o escopo no painel Woovi → Configurações → APIs → Editar App → Escopos.
                   </p>
                 )}
               </div>

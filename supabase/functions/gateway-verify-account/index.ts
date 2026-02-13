@@ -72,6 +72,33 @@ serve(async (req) => {
       apiKey = null;
     }
 
+    // Fallback to pix_platform_credentials (for woovi/openpix)
+    if (!apiKey && (provider === "woovi" || provider === "openpix")) {
+      let pixQuery = supabase
+        .from("pix_platform_credentials")
+        .select("*")
+        .eq("scope", scope_type || "platform");
+
+      if (scope_id) {
+        pixQuery = pixQuery.eq("scope_id", scope_id);
+      } else {
+        pixQuery = pixQuery.is("scope_id", null);
+      }
+
+      const { data: pixCreds } = await pixQuery;
+      if (pixCreds && pixCreds.length > 0) {
+        // Find matching by checking psp_provider name via psp_providers table or just use first one
+        const cred = pixCreds[0];
+        apiKey = cred.api_key_encrypted || null;
+        if (apiKey && !isMasked(apiKey)) {
+          credentialSource = "legacy";
+          console.log(`[gateway-verify-account] Using pix_platform_credentials key`);
+        } else {
+          apiKey = null;
+        }
+      }
+    }
+
     // Fallback to legacy payment_gateways
     if (!apiKey) {
       const { data: legacy } = await supabase
@@ -463,23 +490,49 @@ async function verifyWoovi(
     "Content-Type": "application/json",
   };
 
-  // Try GET /company to fetch account info
-  const companyRes = await fetch(`${baseUrl}/company`, { headers });
+  // Try multiple endpoints — /company requires COMPANY_GET scope which may not be available
+  let company: Record<string, unknown> | null = null;
 
-  if (!companyRes.ok) {
-    const errBody = await companyRes.text();
-    console.error(`[gateway-verify-account] Woovi /company error: ${companyRes.status} ${errBody}`);
-    if (companyRes.status === 401 || companyRes.status === 403) {
-      throw new Error("API Key inválida ou sem permissão. Verifique a chave no painel Woovi.");
-    }
-    throw new Error(`Erro ao consultar Woovi (HTTP ${companyRes.status}): ${errBody}`);
+  // Strategy 1: /company (requires COMPANY_GET scope)
+  const companyRes = await safeFetchJson(`${baseUrl}/company`, headers);
+  if (companyRes) {
+    company = (companyRes as any).company || companyRes;
+    console.log(`[gateway-verify-account] Woovi /company OK`);
+  } else {
+    console.log(`[gateway-verify-account] Woovi /company failed, trying alternatives`);
   }
 
-  const companyData = await companyRes.json();
-  console.log(`[gateway-verify-account] Woovi company keys: ${JSON.stringify(Object.keys(companyData))}`);
+  // Strategy 2: /account if /company failed
+  if (!company) {
+    const accRes = await safeFetchJson(`${baseUrl}/account`, headers);
+    if (accRes) {
+      company = (accRes as any).account || accRes;
+      console.log(`[gateway-verify-account] Woovi /account OK`);
+    }
+  }
 
-  // The response can be { company: {...} } or direct fields
-  const company = companyData.company || companyData;
+  // Strategy 3: /webhook to at least validate the key works
+  if (!company) {
+    const whRes = await safeFetchJson(`${baseUrl}/webhook`, headers);
+    if (whRes) {
+      // Key works but no company/account endpoint available
+      company = {};
+      console.log(`[gateway-verify-account] Woovi key valid (via /webhook), but no account data available`);
+    }
+  }
+
+  // Strategy 4: try creating a minimal test — just validate key with /charge?limit=1
+  if (!company) {
+    const chargeRes = await safeFetchJson(`${baseUrl}/charge?limit=1`, headers);
+    if (chargeRes) {
+      company = {};
+      console.log(`[gateway-verify-account] Woovi key valid (via /charge), but no account data available`);
+    } else {
+      throw new Error("API Key inválida ou sem permissão. Nenhum endpoint da Woovi retornou dados. Verifique se a chave tem os escopos necessários.");
+    }
+  }
+
+  const companyData = company;
 
   // Extract taxID — can be object { type, taxID } or string
   let document: string | null = null;
