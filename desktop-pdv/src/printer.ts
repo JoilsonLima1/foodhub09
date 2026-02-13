@@ -463,9 +463,9 @@ export async function listPrinters(): Promise<string[]> {
       `powershell -NoProfile -Command "${psCmd}"`,
       { encoding: 'utf-8', timeout: 8000 }
     ).trim();
-    const printers = output.split('\n').map((n: string) => n.trim()).filter(Boolean);
+    const printers: string[] = output.split('\n').map((n: string) => n.trim()).filter((n: string) => n.length > 0);
     // Deduplicate
-    return [...new Set(printers)];
+    return Array.from(new Set(printers));
   } catch {
     return [];
   }
