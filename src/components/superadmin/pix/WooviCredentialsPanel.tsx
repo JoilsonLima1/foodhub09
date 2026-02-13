@@ -5,15 +5,26 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, CheckCircle, XCircle, Wifi, WifiOff, Save, Zap, Copy, ExternalLink } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, Wifi, WifiOff, Save, Zap, Copy, ExternalLink, Search, Building2, User, Mail, Landmark } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 interface Props {
   scope: 'platform' | 'partner' | 'tenant';
-  scopeId?: string; // partner_id or tenant_id
+  scopeId?: string;
   pspProviderId: string;
+}
+
+interface WooviAccountInfo {
+  legal_name: string | null;
+  document: string | null;
+  email: string | null;
+  bank_name: string | null;
+  bank_agency: string | null;
+  bank_account: string | null;
+  pix_key: string | null;
+  wallet_id: string | null;
 }
 
 export function WooviCredentialsPanel({ scope, scopeId, pspProviderId }: Props) {
@@ -22,6 +33,9 @@ export function WooviCredentialsPanel({ scope, scopeId, pspProviderId }: Props) 
   const [webhookSecret, setWebhookSecret] = useState('');
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; error?: string } | null>(null);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [accountInfo, setAccountInfo] = useState<WooviAccountInfo | null>(null);
+  const [verifyError, setVerifyError] = useState<string | null>(null);
 
   const credentialKey = ['woovi-credentials', scope, scopeId, pspProviderId];
 
@@ -145,7 +159,6 @@ export function WooviCredentialsPanel({ scope, scopeId, pspProviderId }: Props) 
       if (error) throw error;
       setTestResult({ ok: data?.connected, error: data?.error });
 
-      // Update connection status
       const status = data?.connected ? 'connected' : 'error';
       if (scope === 'tenant' && scopeId && existingCred?.id) {
         await supabase
@@ -166,9 +179,45 @@ export function WooviCredentialsPanel({ scope, scopeId, pspProviderId }: Props) 
     }
   };
 
-  const webhookUrl = `https://baxitzkbbqqbbbtojswm.supabase.co/functions/v1/pix-rapido`;
+  const handleVerifyAccount = async () => {
+    setIsVerifying(true);
+    setVerifyError(null);
+    setAccountInfo(null);
+    try {
+      const { data, error } = await supabase.functions.invoke('gateway-verify-account', {
+        body: {
+          provider: 'woovi',
+          scope_type: scope,
+          scope_id: scopeId || null,
+        },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Erro ao consultar conta');
 
+      const profile = data.profile;
+      setAccountInfo({
+        legal_name: profile?.legal_name || null,
+        document: profile?.document || null,
+        email: profile?.email || null,
+        bank_name: profile?.bank_name || null,
+        bank_agency: profile?.bank_agency || null,
+        bank_account: profile?.bank_account || null,
+        pix_key: profile?.pix_key || null,
+        wallet_id: profile?.wallet_id || null,
+      });
+      toast({ title: 'Dados da conta obtidos com sucesso' });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Erro desconhecido';
+      setVerifyError(msg);
+      toast({ title: 'Erro ao consultar', description: msg, variant: 'destructive' });
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  const webhookUrl = `https://baxitzkbbqqbbbtojswm.supabase.co/functions/v1/pix-rapido`;
   const connectionStatus = existingCred?.connection_status;
+  const hasCredential = !!(existingCred?.api_key_encrypted);
 
   if (isLoading) return <Loader2 className="h-6 w-6 animate-spin mx-auto my-8" />;
 
@@ -219,6 +268,109 @@ export function WooviCredentialsPanel({ scope, scopeId, pspProviderId }: Props) 
             onFocus={() => { if (webhookSecret.startsWith('••')) setWebhookSecret(''); }}
           />
         </div>
+
+        {/* Account Info Section - like Asaas */}
+        {hasCredential && (
+          <div className="space-y-3 pt-2 border-t">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-medium">Dados da Conta</Label>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleVerifyAccount}
+                disabled={isVerifying}
+              >
+                {isVerifying ? (
+                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                ) : (
+                  <Search className="h-4 w-4 mr-1" />
+                )}
+                Consultar
+              </Button>
+            </div>
+
+            {verifyError && (
+              <Alert variant="destructive">
+                <AlertDescription className="flex items-center gap-2">
+                  <XCircle className="h-4 w-4 shrink-0" />
+                  {verifyError}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {accountInfo && (
+              <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {accountInfo.legal_name && (
+                    <div className="flex items-start gap-2">
+                      <Building2 className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">Nome / Razão Social</p>
+                        <p className="text-sm font-medium">{accountInfo.legal_name}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {accountInfo.document && (
+                    <div className="flex items-start gap-2">
+                      <User className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">CPF / CNPJ</p>
+                        <p className="text-sm font-medium">{accountInfo.document}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {accountInfo.email && (
+                    <div className="flex items-start gap-2">
+                      <Mail className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">E-mail</p>
+                        <p className="text-sm font-medium">{accountInfo.email}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {accountInfo.bank_name && (
+                    <div className="flex items-start gap-2">
+                      <Landmark className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">Banco</p>
+                        <p className="text-sm font-medium">{accountInfo.bank_name}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {accountInfo.bank_agency && (
+                    <div className="flex items-start gap-2">
+                      <Landmark className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">Agência</p>
+                        <p className="text-sm font-medium">{accountInfo.bank_agency}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {accountInfo.bank_account && (
+                    <div className="flex items-start gap-2">
+                      <Landmark className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">Conta</p>
+                        <p className="text-sm font-medium">{accountInfo.bank_account}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {!accountInfo.legal_name && !accountInfo.document && (
+                  <p className="text-xs text-muted-foreground text-center py-2">
+                    Nenhum dado retornado pela API. Verifique se a chave tem permissões adequadas.
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Webhook URL for copy */}
         <Alert>
