@@ -447,11 +447,25 @@ export async function printReceipt(
 export async function listPrinters(): Promise<string[]> {
   try {
     const { execSync } = require('child_process');
+    // Strict filter: only real, online printers on physical ports (USB, COM, LPT)
+    // Excludes virtual ports (PORTPROMPT:, nul:, FILE:, XPS, PDF) and software drivers
+    const psCmd = [
+      'Get-CimInstance Win32_Printer',
+      '| Where-Object {',
+      '  $_.WorkOffline -eq $false -and',
+      '  $_.PortName -notmatch "^(PORTPROMPT:|nul:|FILE:|NUL:)" -and',
+      '  $_.PortName -notmatch "(XPS|PDF)" -and',
+      '  $_.Name -notmatch "(Microsoft|OneNote|Fax|XPS|PDF)"',
+      '}',
+      '| Select-Object -ExpandProperty Name',
+    ].join(' ');
     const output = execSync(
-      'powershell -NoProfile -Command "Get-CimInstance Win32_Printer | Where-Object {$_.WorkOffline -eq $false} | Select-Object -ExpandProperty Name"',
-      { encoding: 'utf-8', timeout: 5000 }
+      `powershell -NoProfile -Command "${psCmd}"`,
+      { encoding: 'utf-8', timeout: 8000 }
     ).trim();
-    return output.split('\n').map((n: string) => n.trim()).filter(Boolean);
+    const printers = output.split('\n').map((n: string) => n.trim()).filter(Boolean);
+    // Deduplicate
+    return [...new Set(printers)];
   } catch {
     return [];
   }
