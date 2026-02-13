@@ -120,18 +120,50 @@ ipcMain.handle('foodhub:getPrinters', async () => {
 
   try {
     const { execSync } = require('child_process');
-    // Use Win32_Printer WMI class to get online/connected printers only
-    // WorkOffline=FALSE ensures we skip disconnected USB printers (ghost printers)
+
+    // ── Step 1: Check if ANY USB printing device is PHYSICALLY connected ──
+    // When a USB printer cable is unplugged, PnP device status changes from OK to Error/Unknown.
+    // This is the ONLY reliable way to detect physical presence — Win32_Printer keeps
+    // installed drivers as "online" even when the cable is disconnected.
+    let usbDeviceCount = 0;
+    try {
+      const usbCheck = execSync(
+        'powershell -NoProfile -Command "(@(Get-PnpDevice -ErrorAction SilentlyContinue | Where-Object { $_.InstanceId -match \'USBPRINT\' -and $_.Status -eq \'OK\' })).Count"',
+        { encoding: 'utf-8', timeout: 8000 }
+      ).trim();
+      usbDeviceCount = parseInt(usbCheck, 10) || 0;
+    } catch {
+      // If PnP query fails, also try checking USB Printing Support class
+      try {
+        const usbCheck2 = execSync(
+          'powershell -NoProfile -Command "(@(Get-PnpDevice -Class USB -Status OK -ErrorAction SilentlyContinue | Where-Object { $_.FriendlyName -match \'print\' })).Count"',
+          { encoding: 'utf-8', timeout: 5000 }
+        ).trim();
+        usbDeviceCount = parseInt(usbCheck2, 10) || 0;
+      } catch {}
+    }
+
+    console.log(`[Printer] USB print devices physically connected: ${usbDeviceCount}`);
+
+    if (usbDeviceCount === 0) {
+      console.log('[Printer] No USB print device detected — cable likely unplugged. Returning empty list.');
+      return [];
+    }
+
+    // ── Step 2: USB device IS present — get printer names on USB ports only ──
     const output = execSync(
-      'powershell -Command "Get-CimInstance Win32_Printer | Where-Object {$_.WorkOffline -eq $false} | Select-Object Name, PortName, PrinterStatus | ConvertTo-Json"',
+      'powershell -NoProfile -Command "Get-CimInstance Win32_Printer | Where-Object { $_.PortName -match \'^USB\' } | Select-Object Name, PortName, PrinterStatus | ConvertTo-Json"',
       { encoding: 'utf-8', timeout: 8000 }
     ).trim();
 
-    if (!output) throw new Error('Empty output');
+    if (!output) {
+      console.log('[Printer] No Win32_Printer on USB ports found.');
+      return [];
+    }
 
     const rawList = JSON.parse(output);
     const printers = Array.isArray(rawList) ? rawList : [rawList];
-    console.log(`[Printer] Win32_Printer online (${printers.length}):`, printers.map((p: any) => `"${p.Name}" port=${p.PortName} status=${p.PrinterStatus}`));
+    console.log(`[Printer] Win32_Printer on USB ports (${printers.length}):`, printers.map((p: any) => `"${p.Name}" port=${p.PortName} status=${p.PrinterStatus}`));
 
     const seen = new Set<string>();
     const filtered: string[] = [];
@@ -139,42 +171,18 @@ ipcMain.handle('foodhub:getPrinters', async () => {
       const name = p.Name;
       if (!name) continue;
       const lower = name.toLowerCase();
-      // Skip virtual printers
       if (VIRTUAL_PRINTERS.some(v => lower.includes(v))) continue;
-      // Skip duplicates
       if (seen.has(lower)) continue;
       seen.add(lower);
       filtered.push(name);
     }
-    console.log(`[Printer] After filtering: ${filtered.length} printer(s):`, filtered);
+    console.log(`[Printer] Final filtered list: ${filtered.length} printer(s):`, filtered);
     return filtered;
   } catch (err) {
-    console.error('[Printer] WMI query failed, falling back to Get-Printer:', err);
+    console.error('[Printer] Detection failed:', err);
   }
 
-  // Fallback: Get-Printer (returns all, including offline)
-  try {
-    const { execSync } = require('child_process');
-    const output = execSync(
-      'powershell -Command "Get-Printer | Select-Object -ExpandProperty Name"',
-      { encoding: 'utf-8', timeout: 5000 }
-    ).trim();
-    const rawNames = output.split('\n').map((n: string) => n.trim()).filter(Boolean);
-    const seen = new Set<string>();
-    const filtered: string[] = [];
-    for (const name of rawNames) {
-      const lower = name.toLowerCase();
-      if (VIRTUAL_PRINTERS.some(v => lower.includes(v))) continue;
-      if (seen.has(lower)) continue;
-      seen.add(lower);
-      filtered.push(name);
-    }
-    return filtered;
-  } catch (err2) {
-    console.error('[Printer] Get-Printer also failed:', err2);
-  }
-
-  return listPrinters();
+  return [];
 });
 
 ipcMain.handle('foodhub:getDefaultPrinter', async () => {

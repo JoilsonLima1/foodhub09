@@ -447,24 +447,31 @@ export async function printReceipt(
 export async function listPrinters(): Promise<string[]> {
   try {
     const { execSync } = require('child_process');
-    // Strict filter: only real, online printers on physical ports (USB, COM, LPT)
-    // Excludes virtual ports (PORTPROMPT:, nul:, FILE:, XPS, PDF) and software drivers
-    const psCmd = [
-      'Get-CimInstance Win32_Printer',
-      '| Where-Object {',
-      '  $_.WorkOffline -eq $false -and',
-      '  $_.PortName -notmatch "^(PORTPROMPT:|nul:|FILE:|NUL:)" -and',
-      '  $_.PortName -notmatch "(XPS|PDF)" -and',
-      '  $_.Name -notmatch "(Microsoft|OneNote|Fax|XPS|PDF)"',
-      '}',
-      '| Select-Object -ExpandProperty Name',
-    ].join(' ');
+
+    // Step 1: Verify physical USB print device presence via PnP
+    let usbPresent = false;
+    try {
+      const count = execSync(
+        'powershell -NoProfile -Command "(@(Get-PnpDevice -ErrorAction SilentlyContinue | Where-Object { $_.InstanceId -match \'USBPRINT\' -and $_.Status -eq \'OK\' })).Count"',
+        { encoding: 'utf-8', timeout: 8000 }
+      ).trim();
+      usbPresent = (parseInt(count, 10) || 0) > 0;
+    } catch {}
+
+    if (!usbPresent) {
+      console.log('[listPrinters] No USB print device physically connected.');
+      return [];
+    }
+
+    // Step 2: Get printer names on USB ports only
     const output = execSync(
-      `powershell -NoProfile -Command "${psCmd}"`,
+      'powershell -NoProfile -Command "Get-CimInstance Win32_Printer | Where-Object { $_.PortName -match \'^USB\' } | Select-Object -ExpandProperty Name"',
       { encoding: 'utf-8', timeout: 8000 }
     ).trim();
+
+    if (!output) return [];
+
     const printers: string[] = output.split('\n').map((n: string) => n.trim()).filter((n: string) => n.length > 0);
-    // Deduplicate
     return Array.from(new Set(printers));
   } catch {
     return [];
