@@ -5,9 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { formatDistanceToNow, format } from 'date-fns';
+import { formatDistanceToNow, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Search, Activity, ShoppingCart, Package, Users, MapPin, Globe } from 'lucide-react';
+import {
+  Search, MapPin, Copy, Check, Phone, Mail, MessageCircle,
+  Clock, ShieldAlert, Activity,
+} from 'lucide-react';
+import { toast } from 'sonner';
 
 const EVENT_ICONS: Record<string, string> = {
   user_signed_up: '🆕',
@@ -17,65 +21,39 @@ const EVENT_ICONS: Record<string, string> = {
   sale_completed: '💰',
 };
 
+function CopyButton({ value, label }: { value: string; label?: string }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = () => {
+    navigator.clipboard.writeText(value);
+    setCopied(true);
+    toast.success('Copiado!');
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <Button variant="ghost" size="sm" onClick={handleCopy} className="h-7 px-2 gap-1 text-xs">
+      {copied ? <Check className="h-3 w-3 text-primary" /> : <Copy className="h-3 w-3" />}
+      {label}
+    </Button>
+  );
+}
+
 export function Tenant360Panel() {
   const [tenantId, setTenantId] = useState('');
   const [search, setSearch] = useState('');
 
-  const { data: health } = useQuery({
-    queryKey: ['tenant_health_single_v2', tenantId],
+  const { data: summary } = useQuery({
+    queryKey: ['tenant_360_single_summary', tenantId],
     enabled: tenantId.length === 36,
     queryFn: async () => {
-      const { data } = await supabase
-        .from('analytics_events' as any)
-        .select('event_name, created_at, region, city, utm_source, metadata')
-        .eq('tenant_id', tenantId)
-        .order('created_at', { ascending: false })
-        .limit(500);
-      const events = (data ?? []) as any[];
-      if (!events.length) return null;
-      const now = new Date();
-      const day30ago = new Date(now.getTime() - 30 * 86400000);
-      const day7ago = new Date(now.getTime() - 7 * 86400000);
-      const day14ago = new Date(now.getTime() - 14 * 86400000);
-      const r = {
-        last_seen_at: events[0].created_at,
-        logins_7d: 0, products_count: 0,
-        sales_count_30d: 0, sales_amount_30d: 0,
-        geo_last_region: null as string | null,
-        geo_last_city: null as string | null,
-        first_utm_source: null as string | null,
-        did_signup: false, did_login: false,
-        did_create_product: false, did_sell: false,
-      };
-      for (const ev of events) {
-        const d = new Date(ev.created_at);
-        if (ev.event_name === 'user_logged_in' && d > day7ago) r.logins_7d++;
-        if (ev.event_name === 'product_created') r.products_count++;
-        if (ev.event_name === 'sale_completed' && d > day30ago) {
-          r.sales_count_30d++;
-          r.sales_amount_30d += Number((ev.metadata as any)?.amount ?? 0);
-        }
-        if (!r.geo_last_region && ev.region) r.geo_last_region = ev.region;
-        if (!r.geo_last_city && ev.city) r.geo_last_city = ev.city;
-        if (!r.first_utm_source && ev.utm_source) r.first_utm_source = ev.utm_source;
-        if (ev.event_name === 'user_signed_up') r.did_signup = true;
-        if (ev.event_name === 'user_logged_in') r.did_login = true;
-        if (ev.event_name === 'product_created') r.did_create_product = true;
-        if (ev.event_name === 'sale_completed') r.did_sell = true;
-      }
-      return {
-        ...r,
-        activation_stage: r.did_sell ? 'ACTIVE'
-          : r.did_create_product ? 'CONFIGURING'
-          : r.did_login ? 'LOGGED_IN'
-          : r.did_signup ? 'NEW' : 'INACTIVE',
-        risk_flag: new Date(r.last_seen_at) < day14ago,
-      };
+      const { data, error } = await supabase
+        .rpc('get_single_tenant_360' as any, { _tenant_id: tenantId });
+      if (error) throw error;
+      return ((data ?? []) as any[])[0] ?? null;
     },
   });
 
   const { data: events = [], isLoading: loadingEvents } = useQuery({
-    queryKey: ['tenant_events_360_v2', tenantId],
+    queryKey: ['tenant_events_360_v3', tenantId],
     enabled: tenantId.length === 36,
     queryFn: async () => {
       const { data } = await supabase
@@ -95,30 +73,35 @@ export function Tenant360Panel() {
       )
     : events;
 
-  // Funnel steps
   const funnelSteps = [
-    { key: 'user_signed_up',  label: 'Cadastrou',        icon: '🆕' },
-    { key: 'user_logged_in',  label: 'Logou',            icon: '🔑' },
-    { key: 'tenant_created',  label: 'Criou Conta',      icon: '🏢' },
-    { key: 'product_created', label: 'Criou Produto',    icon: '📦' },
-    { key: 'sale_completed',  label: 'Fez Venda',        icon: '💰' },
+    { key: 'user_signed_up',  label: 'Cadastrou',     icon: '🆕' },
+    { key: 'user_logged_in',  label: 'Logou',          icon: '🔑' },
+    { key: 'tenant_created',  label: 'Criou Conta',   icon: '🏢' },
+    { key: 'product_created', label: 'Criou Produto', icon: '📦' },
+    { key: 'sale_completed',  label: 'Fez Venda',     icon: '💰' },
   ];
-
   const funnelDone = new Set(events.map((e: any) => e.event_name));
+
+  const daysSinceAccess = summary?.last_seen_at
+    ? differenceInDays(new Date(), new Date(summary.last_seen_at))
+    : null;
+
+  const whatsapp = summary?.tenant_whatsapp || summary?.owner_phone;
+  const email = summary?.owner_email || summary?.tenant_email;
+  const region = summary?.display_region || summary?.geo_last_region;
+  const city = summary?.display_city || summary?.geo_last_city;
 
   return (
     <div className="space-y-4">
       {/* Tenant selector */}
-      <div className="flex gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Cole o UUID do tenant..."
-            className="pl-8 font-mono"
-            value={tenantId}
-            onChange={(e) => setTenantId(e.target.value.trim())}
-          />
-        </div>
+      <div className="relative">
+        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Cole o UUID do tenant..."
+          className="pl-8 font-mono"
+          value={tenantId}
+          onChange={(e) => setTenantId(e.target.value.trim())}
+        />
       </div>
 
       {tenantId.length !== 36 && (
@@ -129,41 +112,177 @@ export function Tenant360Panel() {
 
       {tenantId.length === 36 && (
         <div className="space-y-4">
+          {/* Identidade */}
+          {summary && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  🏢 Identidade da Loja
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4 md:grid-cols-2">
+                  {/* Loja */}
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-0.5">Nome da Loja</p>
+                    <p className="font-semibold text-lg">{summary.tenant_name || '—'}</p>
+                    <p className="text-xs text-muted-foreground font-mono">{tenantId}</p>
+                  </div>
+                  {/* Dono */}
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-0.5">Responsável</p>
+                    <p className="font-medium">{summary.owner_name || '—'}</p>
+                  </div>
+
+                  {/* Email */}
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                      <Mail className="h-3 w-3" /> Email
+                    </p>
+                    {email ? (
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm">{email}</span>
+                        <CopyButton value={email} label="Copiar" />
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 px-2 text-xs gap-1"
+                          onClick={() => window.open(`mailto:${email}`)}
+                        >
+                          <Mail className="h-3 w-3" /> Enviar
+                        </Button>
+                      </div>
+                    ) : <span className="text-sm text-muted-foreground italic">Sem email</span>}
+                  </div>
+
+                  {/* WhatsApp */}
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                      <MessageCircle className="h-3 w-3" /> WhatsApp / Telefone
+                    </p>
+                    {whatsapp ? (
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm">{whatsapp}</span>
+                        <CopyButton value={whatsapp} label="Copiar" />
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 px-2 text-xs gap-1 border-primary text-primary hover:bg-primary/10"
+                          onClick={() => window.open(`https://wa.me/${whatsapp.replace(/\D/g, '')}`, '_blank')}
+                        >
+                          <MessageCircle className="h-3 w-3" /> WhatsApp
+                        </Button>
+                      </div>
+                    ) : <span className="text-sm text-muted-foreground italic">Sem WhatsApp</span>}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Atividade */}
+          {summary && (
+            <div className="grid gap-3 md:grid-cols-4">
+              {/* Último Login */}
+              <Card>
+                <CardHeader className="pb-1">
+                  <CardTitle className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Clock className="h-3 w-3" /> Último Login
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {summary.last_login_at ? (
+                    <>
+                      <div className="text-sm font-medium">
+                        {formatDistanceToNow(new Date(summary.last_login_at), { locale: ptBR, addSuffix: true })}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {new Date(summary.last_login_at).toLocaleString('pt-BR')}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-sm text-muted-foreground italic">Nunca logou</div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Último Acesso */}
+              <Card>
+                <CardHeader className="pb-1">
+                  <CardTitle className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Activity className="h-3 w-3" /> Último Acesso
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {summary.last_seen_at ? (
+                    <>
+                      <div className="text-sm font-medium">
+                        {formatDistanceToNow(new Date(summary.last_seen_at), { locale: ptBR, addSuffix: true })}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {new Date(summary.last_seen_at).toLocaleString('pt-BR')}
+                      </div>
+                    </>
+                  ) : '—'}
+                </CardContent>
+              </Card>
+
+              {/* Dias sem acesso */}
+              <Card className={daysSinceAccess !== null && daysSinceAccess > 14 ? 'border-destructive/50' : ''}>
+                <CardHeader className="pb-1">
+                  <CardTitle className="text-xs text-muted-foreground flex items-center gap-1">
+                    <ShieldAlert className="h-3 w-3" /> Dias sem Acesso
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className={`text-xl font-bold ${daysSinceAccess !== null && daysSinceAccess > 14 ? 'text-destructive' : ''}`}>
+                    {daysSinceAccess !== null ? daysSinceAccess : '—'}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* UF/Cidade */}
+              <Card>
+                <CardHeader className="pb-1">
+                  <CardTitle className="text-xs text-muted-foreground flex items-center gap-1">
+                    <MapPin className="h-3 w-3" /> Localização
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-sm font-medium">
+                    {[region, city].filter(Boolean).join(' / ') || '—'}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
           {/* Health Cards */}
-          {health && (
-            <div className="grid gap-3 md:grid-cols-6">
+          {summary && (
+            <div className="grid gap-3 md:grid-cols-5">
               <Card>
                 <CardHeader className="pb-1"><CardTitle className="text-xs text-muted-foreground">Estágio</CardTitle></CardHeader>
-                <CardContent><Badge>{health.activation_stage}</Badge></CardContent>
+                <CardContent><Badge>{summary.activation_stage}</Badge></CardContent>
               </Card>
               <Card>
                 <CardHeader className="pb-1"><CardTitle className="text-xs text-muted-foreground">Logins 7d</CardTitle></CardHeader>
-                <CardContent><div className="text-xl font-bold">{health.logins_7d}</div></CardContent>
+                <CardContent><div className="text-xl font-bold">{summary.logins_7d}</div></CardContent>
               </Card>
               <Card>
                 <CardHeader className="pb-1"><CardTitle className="text-xs text-muted-foreground">Produtos</CardTitle></CardHeader>
-                <CardContent><div className="text-xl font-bold">{health.products_count}</div></CardContent>
+                <CardContent><div className="text-xl font-bold">{summary.products_count}</div></CardContent>
               </Card>
               <Card>
                 <CardHeader className="pb-1"><CardTitle className="text-xs text-muted-foreground">Vendas 30d</CardTitle></CardHeader>
-                <CardContent><div className="text-xl font-bold">{health.sales_count_30d}</div></CardContent>
+                <CardContent><div className="text-xl font-bold">{summary.sales_count_30d}</div></CardContent>
               </Card>
               <Card>
                 <CardHeader className="pb-1"><CardTitle className="text-xs text-muted-foreground">Valor 30d</CardTitle></CardHeader>
                 <CardContent>
                   <div className="text-xl font-bold">
-                    {health.sales_amount_30d
-                      ? `R$ ${Number(health.sales_amount_30d).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}`
+                    {summary.sales_amount_30d
+                      ? `R$ ${Number(summary.sales_amount_30d).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}`
                       : '—'}
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-1"><CardTitle className="text-xs text-muted-foreground">UF / Cidade</CardTitle></CardHeader>
-                <CardContent>
-                  <div className="text-sm font-medium flex items-center gap-1">
-                    <MapPin className="h-3 w-3" />
-                    {[health.geo_last_region, health.geo_last_city].filter(Boolean).join(' / ') || '—'}
                   </div>
                 </CardContent>
               </Card>
