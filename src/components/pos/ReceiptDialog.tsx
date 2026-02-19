@@ -7,10 +7,9 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Printer, X, CheckCircle, Loader2, Stethoscope, Download } from 'lucide-react';
-import { ReceiptPrint } from './ReceiptPrint';
+import { ReceiptPrinter, printReceipt } from './ReceiptPrinter';
 import type { CartItem } from '@/types/database';
 import { getPrinterConfig } from '@/components/settings/PrinterSettings';
-import { printReceiptHTML, buildReceiptHTML, type PaperWidthMM } from '@/lib/thermalPrint';
 import { useTenantPrintSettings } from '@/hooks/useTenantPrintSettings';
 import { useDesktopPdvSettings } from '@/hooks/useDesktopPdvSettings';
 import { usePrinterRoutes } from '@/hooks/usePrinterRoutes';
@@ -251,31 +250,18 @@ export function ReceiptDialog({
         return;
       }
 
-      // ─── Web mode (or fallback): browser window.print ───
-      console.log('[PRINT] Usando impressão do navegador');
-      const config = getPrinterConfig();
-      const paperWidth = config.paperWidth.replace('mm', '') as PaperWidthMM;
-      const html = buildReceiptHTML({
-        tenantName,
-        tenantLogo,
+      // ─── Web mode (or fallback): open dedicated print window (no browser headers) ───
+      console.log('[PRINT] Usando impressão web (nova janela sem headers)');
+      printReceipt({
         orderNumber,
-        dateStr: new Date().toLocaleDateString('pt-BR'),
-        timeStr: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-        cashierName,
-        items: items.map((item, index) => ({
-          index: index + 1,
-          name: item.productName,
-          variationName: item.variationName,
-          quantity: item.quantity,
-          unitPrice: item.unitPrice,
-          totalPrice: item.totalPrice,
-          notes: item.notes,
-        })),
+        items,
         subtotal,
         total,
-        paymentMethodLabel: paymentMethodLabels[paymentMethod] || paymentMethod,
+        paymentMethod,
+        cashierName,
+        tenantName,
+        tenantLogo,
       });
-      printReceiptHTML(html, paperWidth);
     } finally {
       setIsPrinting(false);
     }
@@ -355,7 +341,7 @@ export function ReceiptDialog({
         </DialogHeader>
 
         <div className="border rounded-lg overflow-hidden bg-muted/50">
-          <ReceiptPrint
+          <ReceiptPrinter
             ref={receiptRef}
             orderNumber={orderNumber}
             items={items}
@@ -392,32 +378,10 @@ export function ReceiptDialog({
                 size="sm"
                 onClick={() => {
                   setShowDesktopFallback(false);
-                  const config = getPrinterConfig();
-                  const paperWidth = config.paperWidth.replace('mm', '') as PaperWidthMM;
-                  const html = buildReceiptHTML({
-                    tenantName,
-                    tenantLogo,
-                    orderNumber,
-                    dateStr: new Date().toLocaleDateString('pt-BR'),
-                    timeStr: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-                    cashierName,
-                    items: items.map((item, index) => ({
-                      index: index + 1,
-                      name: item.productName,
-                      variationName: item.variationName,
-                      quantity: item.quantity,
-                      unitPrice: item.unitPrice,
-                      totalPrice: item.totalPrice,
-                      notes: item.notes,
-                    })),
-                    subtotal,
-                    total,
-                    paymentMethodLabel: paymentMethodLabels[paymentMethod] || paymentMethod,
-                  });
-                  printReceiptHTML(html, paperWidth);
+                  printReceipt({ orderNumber, items, subtotal, total, paymentMethod, cashierName, tenantName, tenantLogo });
                 }}
               >
-                <Printer className="h-4 w-4 mr-2" /> Imprimir pelo navegador
+                <Printer className="h-4 w-4 mr-2" /> Imprimir Cupom
               </Button>
             </div>
           </div>
