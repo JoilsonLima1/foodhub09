@@ -14126,6 +14126,7 @@ export type Database = {
         Row: {
           created_at: string | null
           id: string
+          last_seen_at: string | null
           role: Database["public"]["Enums"]["app_role"]
           tenant_id: string
           user_id: string
@@ -14133,6 +14134,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           id?: string
+          last_seen_at?: string | null
           role: Database["public"]["Enums"]["app_role"]
           tenant_id: string
           user_id: string
@@ -14140,6 +14142,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           id?: string
+          last_seen_at?: string | null
           role?: Database["public"]["Enums"]["app_role"]
           tenant_id?: string
           user_id?: string
@@ -15031,7 +15034,6 @@ export type Database = {
           last_login_at: string | null
           last_seen_at: string | null
           logins_7d: number | null
-          owner_email: string | null
           owner_name: string | null
           owner_phone: string | null
           owner_user_id: string | null
@@ -15856,72 +15858,60 @@ export type Database = {
       get_single_tenant_360: {
         Args: { _tenant_id: string }
         Returns: {
-          activation_stage: string | null
-          display_city: string | null
-          display_region: string | null
-          funnel_step: string | null
-          geo_last_city: string | null
-          geo_last_region: string | null
-          is_active: boolean | null
-          last_login_at: string | null
-          last_seen_at: string | null
-          logins_7d: number | null
-          owner_email: string | null
-          owner_name: string | null
-          owner_phone: string | null
-          owner_user_id: string | null
-          products_count: number | null
-          risk_flag: boolean | null
-          sales_amount_30d: number | null
-          sales_count_30d: number | null
-          tenant_created_at: string | null
-          tenant_email: string | null
-          tenant_id: string | null
-          tenant_name: string | null
-          tenant_phone: string | null
-          tenant_whatsapp: string | null
+          activation_stage: string
+          display_city: string
+          display_region: string
+          funnel_step: string
+          geo_last_city: string
+          geo_last_region: string
+          is_active: boolean
+          last_login_at: string
+          last_seen_at: string
+          logins_7d: number
+          owner_email: string
+          owner_name: string
+          owner_phone: string
+          owner_user_id: string
+          products_count: number
+          risk_flag: boolean
+          sales_amount_30d: number
+          sales_count_30d: number
+          tenant_created_at: string
+          tenant_email: string
+          tenant_id: string
+          tenant_name: string
+          tenant_phone: string
+          tenant_whatsapp: string
         }[]
-        SetofOptions: {
-          from: "*"
-          to: "tenant_360_summary"
-          isOneToOne: false
-          isSetofReturn: true
-        }
       }
       get_tenant_360_summary: {
         Args: never
         Returns: {
-          activation_stage: string | null
-          display_city: string | null
-          display_region: string | null
-          funnel_step: string | null
-          geo_last_city: string | null
-          geo_last_region: string | null
-          is_active: boolean | null
-          last_login_at: string | null
-          last_seen_at: string | null
-          logins_7d: number | null
-          owner_email: string | null
-          owner_name: string | null
-          owner_phone: string | null
-          owner_user_id: string | null
-          products_count: number | null
-          risk_flag: boolean | null
-          sales_amount_30d: number | null
-          sales_count_30d: number | null
-          tenant_created_at: string | null
-          tenant_email: string | null
-          tenant_id: string | null
-          tenant_name: string | null
-          tenant_phone: string | null
-          tenant_whatsapp: string | null
+          activation_stage: string
+          display_city: string
+          display_region: string
+          funnel_step: string
+          geo_last_city: string
+          geo_last_region: string
+          is_active: boolean
+          last_login_at: string
+          last_seen_at: string
+          logins_7d: number
+          owner_email: string
+          owner_name: string
+          owner_phone: string
+          owner_user_id: string
+          products_count: number
+          risk_flag: boolean
+          sales_amount_30d: number
+          sales_count_30d: number
+          tenant_created_at: string
+          tenant_email: string
+          tenant_id: string
+          tenant_name: string
+          tenant_phone: string
+          tenant_whatsapp: string
         }[]
-        SetofOptions: {
-          from: "*"
-          to: "tenant_360_summary"
-          isOneToOne: false
-          isSetofReturn: true
-        }
       }
       get_tenant_billing_summary: {
         Args: { p_tenant_id: string }
@@ -16349,6 +16339,7 @@ export type Database = {
         Args: { _addon_slug: string; _tenant_id: string }
         Returns: boolean
       }
+      track_session_ping: { Args: never; Returns: undefined }
       update_dispute_status: {
         Args: {
           p_actor_id?: string

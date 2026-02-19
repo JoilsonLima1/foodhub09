@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { AppSidebar } from './AppSidebar';
 import { useLowStockAlerts } from '@/hooks/useLowStockAlerts';
 import { usePreparingAlerts } from '@/hooks/usePreparingAlerts';
+import { useSessionPing } from '@/hooks/useSessionPing';
 import { TrialExpirationBanner } from '@/components/trial/TrialExpirationBanner';
 import { TrialExpiredOverlay } from '@/components/trial/TrialExpiredOverlay';
 import { NoStoreAccessAlert } from './NoStoreAccessAlert';
@@ -24,6 +25,9 @@ export function AppLayout() {
   const { hasAccess, isTrialExpired, reason, isLoading } = useFeatureAccess();
   const [loadingTimeout, setLoadingTimeout] = useState(false);
   
+  // Session heartbeat — atualiza last_seen_at a cada 60s
+  useSessionPing();
+
   // Enable low stock alerts globally
   useLowStockAlerts();
   

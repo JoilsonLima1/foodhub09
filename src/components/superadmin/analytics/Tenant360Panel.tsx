@@ -42,8 +42,10 @@ export function Tenant360Panel() {
   const [search, setSearch] = useState('');
 
   const { data: summary } = useQuery({
-    queryKey: ['tenant_360_single_summary', tenantId],
+    queryKey: ['tenant_360_single_summary_v2', tenantId],
     enabled: tenantId.length === 36,
+    refetchInterval: 60_000,
+    staleTime: 30_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .rpc('get_single_tenant_360' as any, { _tenant_id: tenantId });
