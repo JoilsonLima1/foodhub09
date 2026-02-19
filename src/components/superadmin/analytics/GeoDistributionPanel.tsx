@@ -8,13 +8,31 @@ import { MapPin } from 'lucide-react';
 
 export function GeoDistributionPanel() {
   const { data: rows = [], isLoading } = useQuery({
-    queryKey: ['analytics_geo_distribution'],
+    queryKey: ['analytics_geo_v2'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('analytics_geo_distribution' as any)
-        .select('*');
+        .from('analytics_events' as any)
+        .select('region, city, tenant_id, user_id')
+        .not('region', 'is', null);
       if (error) throw error;
-      return data as any[];
+      const events = (data ?? []) as any[];
+      // aggregate by region+city
+      const map = new Map<string, { region: string; city: string; tenants: Set<string>; users: Set<string>; event_count: number }>();
+      for (const ev of events) {
+        const key = `${ev.region}||${ev.city}`;
+        if (!map.has(key)) map.set(key, { region: ev.region, city: ev.city, tenants: new Set(), users: new Set(), event_count: 0 });
+        const r = map.get(key)!;
+        if (ev.tenant_id) r.tenants.add(ev.tenant_id);
+        if (ev.user_id) r.users.add(ev.user_id);
+        r.event_count++;
+      }
+      return Array.from(map.values()).map((r) => ({
+        region: r.region,
+        city: r.city,
+        tenant_count: r.tenants.size,
+        user_count: r.users.size,
+        event_count: r.event_count,
+      })).sort((a, b) => b.tenant_count - a.tenant_count);
     },
   });
 

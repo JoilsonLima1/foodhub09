@@ -22,24 +22,64 @@ export function Tenant360Panel() {
   const [search, setSearch] = useState('');
 
   const { data: health } = useQuery({
-    queryKey: ['tenant_health_single', tenantId],
+    queryKey: ['tenant_health_single_v2', tenantId],
     enabled: tenantId.length === 36,
     queryFn: async () => {
       const { data } = await supabase
-        .from('tenant_health' as any)
-        .select('*')
+        .from('analytics_events' as any)
+        .select('event_name, created_at, region, city, utm_source, metadata')
         .eq('tenant_id', tenantId)
-        .maybeSingle();
-      return data as any;
+        .order('created_at', { ascending: false })
+        .limit(500);
+      const events = (data ?? []) as any[];
+      if (!events.length) return null;
+      const now = new Date();
+      const day30ago = new Date(now.getTime() - 30 * 86400000);
+      const day7ago = new Date(now.getTime() - 7 * 86400000);
+      const day14ago = new Date(now.getTime() - 14 * 86400000);
+      const r = {
+        last_seen_at: events[0].created_at,
+        logins_7d: 0, products_count: 0,
+        sales_count_30d: 0, sales_amount_30d: 0,
+        geo_last_region: null as string | null,
+        geo_last_city: null as string | null,
+        first_utm_source: null as string | null,
+        did_signup: false, did_login: false,
+        did_create_product: false, did_sell: false,
+      };
+      for (const ev of events) {
+        const d = new Date(ev.created_at);
+        if (ev.event_name === 'user_logged_in' && d > day7ago) r.logins_7d++;
+        if (ev.event_name === 'product_created') r.products_count++;
+        if (ev.event_name === 'sale_completed' && d > day30ago) {
+          r.sales_count_30d++;
+          r.sales_amount_30d += Number((ev.metadata as any)?.amount ?? 0);
+        }
+        if (!r.geo_last_region && ev.region) r.geo_last_region = ev.region;
+        if (!r.geo_last_city && ev.city) r.geo_last_city = ev.city;
+        if (!r.first_utm_source && ev.utm_source) r.first_utm_source = ev.utm_source;
+        if (ev.event_name === 'user_signed_up') r.did_signup = true;
+        if (ev.event_name === 'user_logged_in') r.did_login = true;
+        if (ev.event_name === 'product_created') r.did_create_product = true;
+        if (ev.event_name === 'sale_completed') r.did_sell = true;
+      }
+      return {
+        ...r,
+        activation_stage: r.did_sell ? 'ACTIVE'
+          : r.did_create_product ? 'CONFIGURING'
+          : r.did_login ? 'LOGGED_IN'
+          : r.did_signup ? 'NEW' : 'INACTIVE',
+        risk_flag: new Date(r.last_seen_at) < day14ago,
+      };
     },
   });
 
   const { data: events = [], isLoading: loadingEvents } = useQuery({
-    queryKey: ['tenant_events_360', tenantId],
+    queryKey: ['tenant_events_360_v2', tenantId],
     enabled: tenantId.length === 36,
     queryFn: async () => {
       const { data } = await supabase
-        .from('analytics_events')
+        .from('analytics_events' as any)
         .select('*')
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false })
