@@ -34,6 +34,8 @@ import {
   Receipt,
   Zap,
   Printer,
+  Activity,
+  MapPin,
 } from 'lucide-react';
 import { PlanEditor } from '@/components/superadmin/PlanEditor';
 import { FeatureComparison } from '@/components/superadmin/FeatureComparison';
@@ -67,6 +69,9 @@ import { PixAutomaticoManager } from '@/components/superadmin/pix/PixAutomaticoM
 import { LegalDocumentsManager } from '@/components/superadmin/legal/LegalDocumentsManager';
 import { DesktopPdvSettings } from '@/components/superadmin/DesktopPdvSettings';
 import { SmartPosGlobalSettings } from '@/components/superadmin/SmartPosGlobalSettings';
+import { TenantsAnalyticsPanel } from '@/components/superadmin/analytics/TenantsAnalyticsPanel';
+import { Tenant360Panel } from '@/components/superadmin/analytics/Tenant360Panel';
+import { GeoDistributionPanel } from '@/components/superadmin/analytics/GeoDistributionPanel';
 
 import { 
   OpsAlertsPanel, 
@@ -325,6 +330,10 @@ export default function SuperAdmin() {
             <Smartphone className="h-4 w-4" />
             SmartPOS
           </TabsTrigger>
+          <TabsTrigger value="analytics" className="flex items-center gap-2">
+            <Activity className="h-4 w-4" />
+            Analytics 360
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="organizations">
@@ -511,6 +520,34 @@ export default function SuperAdmin() {
 
         <TabsContent value="smartpos">
           <SmartPosGlobalSettings />
+        </TabsContent>
+
+        <TabsContent value="analytics">
+          <Tabs defaultValue="tenants" className="space-y-4">
+            <TabsList>
+              <TabsTrigger value="tenants" className="flex items-center gap-2">
+                <Activity className="h-4 w-4" />
+                Lista de Tenants
+              </TabsTrigger>
+              <TabsTrigger value="tenant360" className="flex items-center gap-2">
+                <BarChart3 className="h-4 w-4" />
+                Tenant 360
+              </TabsTrigger>
+              <TabsTrigger value="geo" className="flex items-center gap-2">
+                <MapPin className="h-4 w-4" />
+                Por UF / Cidade
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="tenants">
+              <TenantsAnalyticsPanel />
+            </TabsContent>
+            <TabsContent value="tenant360">
+              <Tenant360Panel />
+            </TabsContent>
+            <TabsContent value="geo">
+              <GeoDistributionPanel />
+            </TabsContent>
+          </Tabs>
         </TabsContent>
 
       </Tabs>

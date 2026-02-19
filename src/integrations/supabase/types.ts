@@ -122,6 +122,69 @@ export type Database = {
         }
         Relationships: []
       }
+      analytics_events: {
+        Row: {
+          city: string | null
+          country: string | null
+          created_at: string
+          event_name: string
+          id: string
+          ip_hash: string | null
+          metadata: Json
+          referrer: string | null
+          region: string | null
+          session_id: string | null
+          tenant_id: string | null
+          user_agent: string | null
+          user_id: string | null
+          utm_campaign: string | null
+          utm_content: string | null
+          utm_medium: string | null
+          utm_source: string | null
+          utm_term: string | null
+        }
+        Insert: {
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          event_name: string
+          id?: string
+          ip_hash?: string | null
+          metadata?: Json
+          referrer?: string | null
+          region?: string | null
+          session_id?: string | null
+          tenant_id?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
+        }
+        Update: {
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          event_name?: string
+          id?: string
+          ip_hash?: string | null
+          metadata?: Json
+          referrer?: string | null
+          region?: string | null
+          session_id?: string | null
+          tenant_id?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
+        }
+        Relationships: []
+      }
       apply_queue: {
         Row: {
           attempts: number
@@ -13614,6 +13677,16 @@ export type Database = {
       }
     }
     Views: {
+      analytics_geo_distribution: {
+        Row: {
+          city: string | null
+          event_count: number | null
+          region: string | null
+          tenant_count: number | null
+          user_count: number | null
+        }
+        Relationships: []
+      }
       customer_registrations_safe: {
         Row: {
           created_at: string | null
@@ -14098,6 +14171,25 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      tenant_health: {
+        Row: {
+          activation_stage: string | null
+          days_active_30d: number | null
+          days_active_7d: number | null
+          first_utm_source: string | null
+          funnel_step: string | null
+          geo_last_city: string | null
+          geo_last_region: string | null
+          last_seen_at: string | null
+          logins_7d: number | null
+          products_count: number | null
+          risk_flag: boolean | null
+          sales_amount_30d: number | null
+          sales_count_30d: number | null
+          tenant_id: string | null
+        }
+        Relationships: []
       }
       tenant_modules_detailed: {
         Row: {
