@@ -36,13 +36,76 @@ export function TenantsAnalyticsPanel() {
   const [filter, setFilter] = useState<Stage>('ALL');
 
   const { data: rows = [], isLoading } = useQuery({
-    queryKey: ['tenant_health'],
+    queryKey: ['tenant_health_v2'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('tenant_health' as any)
-        .select('*');
+        .from('analytics_events' as any)
+        .select('tenant_id, event_name, created_at, region, city, utm_source, metadata')
+        .not('tenant_id', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(5000);
       if (error) throw error;
-      return data as any[];
+      const events = (data ?? []) as any[];
+      // Aggregate in-memory for tenant_health
+      const map = new Map<string, any>();
+      for (const ev of events) {
+        const tid = ev.tenant_id;
+        if (!map.has(tid)) {
+          map.set(tid, {
+            tenant_id: tid,
+            last_seen_at: ev.created_at,
+            logins_7d: 0,
+            products_count: 0,
+            sales_count_30d: 0,
+            sales_amount_30d: 0,
+            geo_last_region: null,
+            geo_last_city: null,
+            first_utm_source: null,
+            did_signup: false,
+            did_login: false,
+            did_create_product: false,
+            did_sell: false,
+            days_set_7d: new Set<string>(),
+            days_set_30d: new Set<string>(),
+          });
+        }
+        const r = map.get(tid)!;
+        const evDate = new Date(ev.created_at);
+        const now = new Date();
+        const day7ago = new Date(now.getTime() - 7 * 86400000);
+        const day30ago = new Date(now.getTime() - 30 * 86400000);
+        const day14ago = new Date(now.getTime() - 14 * 86400000);
+        if (evDate > day7ago) r.days_set_7d.add(ev.created_at.slice(0, 10));
+        if (evDate > day30ago) r.days_set_30d.add(ev.created_at.slice(0, 10));
+        if (ev.event_name === 'user_logged_in' && evDate > day7ago) r.logins_7d++;
+        if (ev.event_name === 'product_created') r.products_count++;
+        if (ev.event_name === 'sale_completed' && evDate > day30ago) {
+          r.sales_count_30d++;
+          r.sales_amount_30d += Number((ev.metadata as any)?.amount ?? 0);
+        }
+        if (!r.geo_last_region && ev.region) r.geo_last_region = ev.region;
+        if (!r.geo_last_city && ev.city) r.geo_last_city = ev.city;
+        if (!r.first_utm_source && ev.utm_source) r.first_utm_source = ev.utm_source;
+        if (ev.event_name === 'user_signed_up') r.did_signup = true;
+        if (ev.event_name === 'user_logged_in') r.did_login = true;
+        if (ev.event_name === 'product_created') r.did_create_product = true;
+        if (ev.event_name === 'sale_completed') r.did_sell = true;
+        r.risk_flag = new Date(r.last_seen_at) < day14ago;
+      }
+      return Array.from(map.values()).map((r) => ({
+        ...r,
+        days_active_7d: r.days_set_7d.size,
+        days_active_30d: r.days_set_30d.size,
+        activation_stage: r.did_sell ? 'ACTIVE'
+          : r.did_create_product ? 'CONFIGURING'
+          : r.did_login ? 'LOGGED_IN'
+          : r.did_signup ? 'NEW' : 'INACTIVE',
+        funnel_step: r.did_sell ? 'SOLD'
+          : r.did_create_product ? 'CREATED_PRODUCT'
+          : r.did_login ? 'LOGGED_IN' : 'SIGNED_UP',
+      })).sort((a, b) =>
+        new Date(b.last_seen_at).getTime() - new Date(a.last_seen_at).getTime()
+      );
     },
     refetchInterval: 60_000,
   });
