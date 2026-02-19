@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState, useRef } from 'r
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import type { AppRole, UserWithProfile } from '@/types/database';
+import { trackEvent } from '@/hooks/useAnalytics';
 
 interface AuthContextType {
   user: User | null;
@@ -242,10 +243,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
+    if (!error && data.user) {
+      // Fire-and-forget analytics
+      trackEvent({
+        event_name: 'user_logged_in',
+        user_id: data.user.id,
+      });
+    }
     return { error };
   };
 
@@ -276,6 +284,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log('[signUp] User created successfully:', data.user.id);
       // Bootstrap will be triggered by onAuthStateChange -> fetchUserData
       // No need to call it here - this prevents race condition
+      trackEvent({
+        event_name: 'user_signed_up',
+        user_id: data.user.id,
+      });
     }
 
     return { error };
