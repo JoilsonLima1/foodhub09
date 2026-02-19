@@ -85,14 +85,15 @@ export function TenantsAnalyticsPanel() {
   const [filter, setFilter] = useState<Stage>('ALL');
 
   const { data: rows = [], isLoading } = useQuery({
-    queryKey: ['tenant_360_summary_v1'],
+    queryKey: ['tenant_360_summary_v2'],
+    staleTime: 30_000,
+    refetchInterval: 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .rpc('get_tenant_360_summary' as any);
       if (error) throw error;
       return (data ?? []) as TenantRow[];
     },
-    refetchInterval: 60_000,
   });
 
   const filtered = rows.filter((r) => {
