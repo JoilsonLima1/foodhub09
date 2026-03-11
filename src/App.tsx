@@ -52,6 +52,7 @@ import TenantBillingCoupon from "./pages/TenantBillingCoupon";
 import StoneTenantPage from "./pages/StoneTenantPage";
 import TenantGatewayConfigPage from "./components/settings/TenantGatewayConfigPage";
 import Downloads from "./pages/Downloads";
+import PrintTest from "./pages/PrintTest";
 
 // Partner pages
 import PartnerDashboardAdmin from "./pages/partner/PartnerDashboardAdmin";
