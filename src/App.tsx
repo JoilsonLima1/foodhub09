@@ -142,6 +142,7 @@ const App = () => (
                     <Route path="/entrar" element={<Navigate to="/auth?intent=login" replace />} />
                     <Route path="/sistema-gratis-para-restaurante" element={<Landing />} />
                     <Route path="/checkout/success" element={<CheckoutSuccess />} />
+                    <Route path="/print-test" element={<PrintTest />} />
                     
                     {/* Public Menu - accessible without auth */}
                     <Route path="/menu/:tenantId" element={<PublicMenu />} />
