@@ -1378,7 +1378,7 @@ export type Database = {
       }
       conversion_funnel_metrics: {
         Row: {
-          avg_time_to_next_stage: string | null
+          avg_time_to_next_stage: unknown
           conversion_from_previous: number | null
           count: number | null
           created_at: string
@@ -1388,7 +1388,7 @@ export type Database = {
           metadata: Json | null
         }
         Insert: {
-          avg_time_to_next_stage?: string | null
+          avg_time_to_next_stage?: unknown
           conversion_from_previous?: number | null
           count?: number | null
           created_at?: string
@@ -1398,7 +1398,7 @@ export type Database = {
           metadata?: Json | null
         }
         Update: {
-          avg_time_to_next_stage?: string | null
+          avg_time_to_next_stage?: unknown
           conversion_from_previous?: number | null
           count?: number | null
           created_at?: string
