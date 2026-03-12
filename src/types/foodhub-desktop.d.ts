@@ -12,7 +12,10 @@ interface FoodHubReceiptLine {
 interface FoodHubPrintResult {
   ok: boolean;
   jobId?: string;
-  error?: { code: string; message: string };
+  error?: {
+    code: 'NO_DEFAULT_PRINTER' | 'PRINTER_NOT_FOUND' | 'PRINT_FAILED' | 'INTERNAL_ERROR' | string;
+    message: string;
+  };
 }
 
 interface FoodHubStatus {
@@ -26,11 +29,13 @@ interface FoodHubBridge {
   isDesktop: () => Promise<boolean>;
   getPrinters: () => Promise<string[]>;
   getDefaultPrinter: () => Promise<string | null>;
-  setDefaultPrinter: (name: string) => Promise<void>;
+  setDefaultPrinter: (name: string) => Promise<boolean>;
   printReceipt: (payload: {
     lines: FoodHubReceiptLine[];
-    printerName?: string;
+    printerName?: string | null;
     paperWidth?: number;
+    silent?: boolean;
+    useDefaultPrinter?: boolean;
   }) => Promise<FoodHubPrintResult>;
   printTest: () => Promise<FoodHubPrintResult>;
   getStatus: () => Promise<FoodHubStatus>;

@@ -1,6 +1,6 @@
 import { app, BrowserWindow, ipcMain, session, Menu } from 'electron';
 import path from 'path';
-import { printReceipt, listPrinters, testPrint } from './printer';
+import { printReceipt, listPrinters, testPrint, getWindowsDefaultPrinter } from './printer';
 import { getConfig, setConfig } from './config';
 import { initAutoUpdater, checkForUpdatesManual, installUpdate, stopUpdater } from './updater';
 
@@ -186,14 +186,18 @@ ipcMain.handle('foodhub:getPrinters', async () => {
 });
 
 ipcMain.handle('foodhub:getDefaultPrinter', async () => {
+  const osDefault = getWindowsDefaultPrinter();
+  if (osDefault) return osDefault;
+
   if (mainWindow) {
     try {
       const printers = await mainWindow.webContents.getPrintersAsync();
-      const osDef = printers.find(p => p.isDefault);
-      if (osDef) return osDef.name;
+      const fallbackDefault = printers.find(p => p.isDefault)?.name;
+      if (fallbackDefault) return fallbackDefault;
     } catch {}
   }
-  return getConfig('defaultPrinter') || null;
+
+  return null;
 });
 
 ipcMain.handle('foodhub:setDefaultPrinter', (_event, name: string) => {
@@ -210,22 +214,32 @@ ipcMain.handle('foodhub:printReceipt', async (_event, payload: {
     right?: string;
     lines?: number;
   }>;
-  printerName?: string;
+  printerName?: string | null;
   paperWidth?: number;
+  silent?: boolean;
+  useDefaultPrinter?: boolean;
 }) => {
   try {
-    // If printerName is explicitly null → use OS default (no config fallback)
-    // If printerName is undefined (not provided) → fall back to config
-    const hasExplicitPrinter = 'printerName' in payload && payload.printerName !== undefined;
-    const printerName = hasExplicitPrinter
-      ? (payload.printerName || undefined)   // null → undefined (OS default)
-      : (getConfig('defaultPrinter') || undefined);
+    const shouldUseDefaultPrinter = payload.useDefaultPrinter === true || payload.printerName === null;
+    const normalizedPrinterName = typeof payload.printerName === 'string' ? payload.printerName.trim() : payload.printerName;
+    const printerName = shouldUseDefaultPrinter
+      ? null
+      : (normalizedPrinterName || undefined);
+
     const paperWidth = payload.paperWidth || 80;
-    console.log(`[IPC] foodhub:printReceipt received, payload.printerName=${JSON.stringify(payload.printerName)}, resolved="${printerName || '(OS default)'}", lines=${payload.lines?.length || 0}`);
-    return await printReceipt(payload.lines, { printerName, paperWidth });
+    const silent = payload.silent !== false;
+
+    console.log(`[IPC] foodhub:printReceipt received, payload.printerName=${JSON.stringify(payload.printerName)}, useDefaultPrinter=${shouldUseDefaultPrinter}, silent=${silent}, resolved=${JSON.stringify(printerName ?? '(OS default)')}, lines=${payload.lines?.length || 0}`);
+
+    return await printReceipt(payload.lines, {
+      printerName,
+      paperWidth,
+      silent,
+      useDefaultPrinter: shouldUseDefaultPrinter,
+    });
   } catch (err: any) {
     console.error('[IPC] foodhub:printReceipt uncaught error:', err);
-    return { ok: false, jobId: `err_${Date.now()}`, error: { code: 'INTERNAL_ERROR', message: err.message || String(err) } };
+    return { ok: false, jobId: `err_${Date.now()}`, error: { code: 'PRINT_FAILED', message: err.message || String(err) } };
   }
 });
 
@@ -245,14 +259,23 @@ ipcMain.handle('foodhub:printTest', async () => {
 
 ipcMain.handle('foodhub:getStatus', async () => {
   let printersCount = 0;
-  let defaultPrinterName: string | null = null;
+  let defaultPrinterName: string | null = getWindowsDefaultPrinter() || null;
 
   if (mainWindow) {
     try {
       const printers = await mainWindow.webContents.getPrintersAsync();
       printersCount = printers.length;
-      const def = printers.find(p => p.isDefault);
-      if (def) defaultPrinterName = def.name;
+      if (!defaultPrinterName) {
+        const def = printers.find(p => p.isDefault);
+        if (def) defaultPrinterName = def.name;
+      }
+    } catch {}
+  }
+
+  if (printersCount === 0) {
+    try {
+      const printers = await listPrinters();
+      printersCount = printers.length;
     } catch {}
   }
 

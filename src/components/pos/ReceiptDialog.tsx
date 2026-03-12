@@ -337,13 +337,13 @@ export function ReceiptDialog({
     setShowDesktopFallback(false);
 
     try {
-      if (settings?.print_mode === "desktop") {
-        await handleDesktopPrint();
+      if (settings?.print_mode === "smartpos") {
+        await handleSmartPosPrint();
         return;
       }
 
-      if (settings?.print_mode === "smartpos") {
-        await handleSmartPosPrint();
+      if (window.foodhub?.printReceipt || settings?.print_mode === "desktop") {
+        await handleDesktopPrint();
         return;
       }
 
@@ -403,7 +403,7 @@ export function ReceiptDialog({
     }
   };
 
-  const isDesktopDirectPrintAvailable = settings?.print_mode === "desktop" && !!window.foodhub?.printReceipt;
+  const isDesktopDirectPrintAvailable = !!window.foodhub?.printReceipt;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
