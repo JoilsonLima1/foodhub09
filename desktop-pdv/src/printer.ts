@@ -503,5 +503,5 @@ export async function testPrint(printerName?: string): Promise<PrintResult> {
     { type: 'cut' },
   ];
 
-  return printReceipt(testLines, { printerName });
+  return printReceipt(testLines, { printerName, useDefaultPrinter: !printerName, silent: true });
 }
