@@ -403,7 +403,7 @@ export function ReceiptDialog({
     }
   };
 
-  const isDesktopDirectPrintAvailable = settings?.print_mode === "desktop" && !!window.foodhub?.printReceipt;
+  const isDesktopDirectPrintAvailable = !!window.foodhub?.printReceipt;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
