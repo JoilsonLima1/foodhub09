@@ -411,6 +411,19 @@ export function ReceiptDialog({
         results.push("Desktop PDV: ❌ Não detectado");
       }
 
+      // Local Print API diagnostics
+      if (localApiAvailable) {
+        results.push("API Local (Python): ✅ Conectada");
+        try {
+          const config = await LocalPrintApi.getConfig();
+          results.push(`Impressora salva: ${config.selected_printer || "Nenhuma (usará padrão)"}`);
+        } catch {
+          results.push("Config API local: ❌ Erro ao consultar");
+        }
+      } else {
+        results.push("API Local (Python): ❌ Não detectada");
+      }
+
       toast({
         title: "🔍 Diagnóstico de Impressão",
         description: results.join("\n"),
@@ -421,7 +434,7 @@ export function ReceiptDialog({
     }
   };
 
-  const isDesktopDirectPrintAvailable = !!window.foodhub?.printReceipt;
+  const isDirectPrintAvailable = localApiAvailable || !!window.foodhub?.printReceipt;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
