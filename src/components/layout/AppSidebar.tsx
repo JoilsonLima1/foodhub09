@@ -141,11 +141,12 @@ export function AppSidebar() {
     return labelMap[path] || defaultLabel;
   };
 
-  // Filter core nav items based on role, features, and module activation
+  // Filter core nav items based on role, plan features, and module activation
   const filteredCoreItems = useMemo((): NavItem[] => {
-    // First pass: filter by plan features (hard filter)
-    let items = coreNavItems.filter(item => {
-      // Check plan features - these are hard requirements
+    const isSuperAdminRole = roles.includes('super_admin');
+    
+    // First pass: filter by business category features (hard filter)
+    let items: CoreNavItem[] = coreNavItems.filter(item => {
       if (item.feature && !hasFeature(item.feature as any)) {
         return false;
       }
@@ -171,21 +172,33 @@ export function AppSidebar() {
       item.path !== '/courier-dashboard' || roles.includes('delivery')
     );
 
-    // Second pass: mark module items as locked if not active (soft filter - show with upsell)
-    // Only for admin/manager roles who can purchase modules
-    const processedItems = items.map(item => {
-      if (item.moduleSlug && !hasModuleActive(item.moduleSlug)) {
-        // Show item but mark as locked for upsell
-        return {
-          ...item,
-          isLocked: true,
-        };
-      }
-      return item;
+    // Second pass: apply plan feature gating + module gating
+    // Super admins see everything unlocked
+    const processedItems: NavItem[] = items.map(item => {
+      if (isSuperAdminRole) return item;
+
+      // Check plan feature - if item has a planFeature requirement
+      const planAllows = !item.planFeature || hasPlanFeature(item.planFeature);
+      
+      // Check module - if item has a moduleSlug requirement
+      const moduleAllows = !item.moduleSlug || hasModuleActive(item.moduleSlug);
+
+      // Item is always shown if marked alwaysShow
+      if (item.alwaysShow) return item;
+
+      // If plan includes this feature OR module is active, show as unlocked
+      if (planAllows && moduleAllows) return item;
+
+      // If plan includes but module not active (for items with both), lock it
+      // If plan doesn't include, lock it (can be unlocked via plan upgrade or module purchase)
+      return {
+        ...item,
+        isLocked: true,
+      };
     });
 
     return processedItems;
-  }, [roles, hasFeature, hasModuleActive]);
+  }, [roles, hasFeature, hasModuleActive, hasPlanFeature]);
 
   // Get module nav items (grouped by category)
   const moduleNavItems = useMemo(() => {
