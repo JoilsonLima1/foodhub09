@@ -44,32 +44,7 @@ interface ReceiptDialogProps {
   tenantLogo?: string | null;
 }
 
-declare global {
-  interface Window {
-    foodhub?: {
-      printReceipt?: (payload: {
-        lines: ReceiptLine[];
-        printerName: string | null;
-        paperWidth: 58 | 80;
-        silent?: boolean;
-        useDefaultPrinter?: boolean;
-      }) => Promise<{
-        ok: boolean;
-        jobId?: string;
-        error?: {
-          code?: string;
-          message?: string;
-        };
-      }>;
-      getStatus?: () => Promise<{
-        appVersion: string;
-        printersCount: number;
-        defaultPrinterName?: string | null;
-      }>;
-      getDefaultPrinter?: () => Promise<string | null>;
-    };
-  }
-}
+// Window.foodhub types are declared in src/types/foodhub-desktop.d.ts
 
 function getErrorGuidance(code?: string): string {
   switch (code) {
