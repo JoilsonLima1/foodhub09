@@ -1,7 +1,18 @@
 // FoodHub PDV Desktop - Auto Updater via GitHub Releases
 import { autoUpdater, UpdateInfo } from 'electron-updater';
-import { BrowserWindow, dialog, Notification } from 'electron';
+import { app, BrowserWindow, dialog, Notification } from 'electron';
 import log from 'electron-log';
+
+/** Compare two semver strings. Returns >0 if a > b, 0 if equal, <0 if a < b */
+function compareSemver(a: string, b: string): number {
+  const pa = a.replace(/^v/, '').split('.').map(Number);
+  const pb = b.replace(/^v/, '').split('.').map(Number);
+  for (let i = 0; i < 3; i++) {
+    const diff = (pa[i] || 0) - (pb[i] || 0);
+    if (diff !== 0) return diff;
+  }
+  return 0;
+}
 
 // Configure logging
 autoUpdater.logger = log;
@@ -94,9 +105,17 @@ export function initAutoUpdater(getMainWindow: () => BrowserWindow | null) {
   });
 
   autoUpdater.on('update-available', (info: UpdateInfo) => {
-    log.info('[Updater] Update available:', info.version);
+    const current = app.getVersion();
+    log.info(`[Updater] Update candidate: ${info.version} (current: ${current})`);
+
+    // Ignore downgrades — only proceed if remote version is actually newer
+    if (compareSemver(info.version, current) <= 0) {
+      log.info(`[Updater] Ignoring version ${info.version} (not newer than ${current})`);
+      sendStatus(getMainWindow(), 'not-available');
+      return;
+    }
+
     sendStatus(getMainWindow(), 'available', { version: info.version });
-    // Show progress window for download
     showProgressWindow(getMainWindow());
   });
 
@@ -166,8 +185,9 @@ export async function checkForUpdatesManual(): Promise<{ status: 'available' | '
   try {
     const result = await autoUpdater.checkForUpdates();
     if (result && result.updateInfo && result.updateInfo.version) {
-      const currentVersion = require('electron').app.getVersion();
-      if (result.updateInfo.version !== currentVersion) {
+      const currentVersion = app.getVersion();
+      // Only report as available if remote version is strictly newer
+      if (compareSemver(result.updateInfo.version, currentVersion) > 0) {
         return { status: 'available', version: result.updateInfo.version };
       }
     }
