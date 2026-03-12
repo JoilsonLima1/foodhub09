@@ -100,6 +100,7 @@ const coreNavItems: (NavItem & { moduleSlug?: string })[] = [
 // Admin-only items
 const adminNavItems: NavItem[] = [
   { path: '/settings', label: 'Configurações', icon: 'Settings' },
+  { path: '/downloads', label: 'Desktop PDV', icon: Monitor },
   { path: '/super-admin', label: 'Super Admin', icon: 'Crown' },
 ];
 
