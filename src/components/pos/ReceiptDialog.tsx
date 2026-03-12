@@ -46,7 +46,13 @@ interface ReceiptDialogProps {
 declare global {
   interface Window {
     foodhub?: {
-      printReceipt?: (payload: { lines: ReceiptLine[]; printerName: string | null; paperWidth: 58 | 80 }) => Promise<{
+      printReceipt?: (payload: {
+        lines: ReceiptLine[];
+        printerName: string | null;
+        paperWidth: 58 | 80;
+        silent?: boolean;
+        useDefaultPrinter?: boolean;
+      }) => Promise<{
         ok: boolean;
         jobId?: string;
         error?: {
@@ -67,13 +73,15 @@ declare global {
 function getErrorGuidance(code?: string): string {
   switch (code) {
     case "NO_DEFAULT_PRINTER":
-      return "Defina uma impressora padrão no Windows para o Caixa.";
+      return "Defina uma impressora padrão no Windows.";
     case "PRINTER_NOT_FOUND":
-      return "A impressora padrão não foi encontrada. Verifique se ela está ligada e instalada.";
+      return "A impressora padrão não foi encontrada. Verifique se está ligada.";
     case "PRINT_FAILED":
-      return "Falha ao enviar para a impressora padrão. Verifique o app desktop e a impressora.";
+      return "Falha ao imprimir diretamente. Verifique o app desktop.";
+    case "DIALOG_OPENED_INSTEAD_OF_SILENT":
+      return "O app desktop ainda está abrindo a tela de impressão em vez de imprimir silenciosamente.";
     default:
-      return "Verifique a impressora padrão do sistema e tente novamente.";
+      return "Verifique a configuração da impressora padrão e do app desktop.";
   }
 }
 
@@ -177,7 +185,7 @@ export function ReceiptDialog({
       setShowDesktopFallback(true);
       toast({
         title: "Impressão direta indisponível",
-        description: "Para imprimir em 1 clique sem seleção, abra no app Desktop com a impressora padrão configurada.",
+        description: "O app desktop não foi detectado. Para 1 clique, abra no FoodHub PDV Desktop.",
         variant: "destructive",
       });
       return;
@@ -188,14 +196,16 @@ export function ReceiptDialog({
 
     const result = await window.foodhub.printReceipt({
       lines: receiptLines,
-      printerName: null, // SEMPRE usar a impressora padrão do sistema
+      printerName: null,
       paperWidth: pw,
+      silent: true,
+      useDefaultPrinter: true,
     });
 
     if (result.ok) {
       toast({
         title: "✅ Impresso com sucesso",
-        description: "Cupom enviado para a impressora padrão do sistema.",
+        description: "Cupom enviado direto para a impressora padrão.",
         duration: 4000,
       });
       onOpenChange(false);
@@ -209,7 +219,7 @@ export function ReceiptDialog({
       title: `❌ Falha ao imprimir (${errCode})`,
       description: `${errMsg}\n${getErrorGuidance(errCode)}`,
       variant: "destructive",
-      duration: 10000,
+      duration: 12000,
     });
   };
 
@@ -272,7 +282,6 @@ export function ReceiptDialog({
     });
 
     if (jobError) {
-      console.error("Failed to create print job:", jobError);
       toast({
         title: "Erro ao enfileirar impressão",
         description: "Não foi possível enviar para a maquininha.",
@@ -338,7 +347,6 @@ export function ReceiptDialog({
         return;
       }
 
-      // No navegador ainda vai abrir diálogo. Isso é limitação do browser.
       handleBrowserPrint();
     } catch (error) {
       console.error("[PRINT] erro geral:", error);
@@ -390,8 +398,6 @@ export function ReceiptDialog({
         description: results.join("\n"),
         duration: 15000,
       });
-
-      console.log("[DIAG]", results);
     } finally {
       setIsDiagnosing(false);
     }
@@ -428,7 +434,7 @@ export function ReceiptDialog({
             <p className="text-sm font-medium text-amber-700 dark:text-amber-300">⚠️ App Desktop não detectado</p>
 
             <p className="text-xs text-muted-foreground">
-              Impressão em 1 clique sem seleção só funciona no app Desktop usando a impressora padrão do sistema.
+              Impressão em 1 clique sem seleção só funciona no app Desktop usando a impressora padrão.
             </p>
 
             <div className="flex flex-col gap-2">
