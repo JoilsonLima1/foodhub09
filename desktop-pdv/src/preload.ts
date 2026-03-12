@@ -14,8 +14,10 @@ contextBridge.exposeInMainWorld('foodhub', {
       right?: string;
       lines?: number;
     }>;
-    printerName?: string;
+    printerName?: string | null;
     paperWidth?: number;
+    silent?: boolean;
+    useDefaultPrinter?: boolean;
   }) => ipcRenderer.invoke('foodhub:printReceipt', payload),
   printTest: () => ipcRenderer.invoke('foodhub:printTest'),
   getStatus: () => ipcRenderer.invoke('foodhub:getStatus'),
