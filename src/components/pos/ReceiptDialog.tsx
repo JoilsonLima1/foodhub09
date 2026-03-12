@@ -359,12 +359,24 @@ export function ReceiptDialog({
       }
 
       // Priority 2: Electron desktop bridge
-      if (window.foodhub?.printReceipt || settings?.print_mode === "desktop") {
+      if (window.foodhub?.printReceipt) {
         await handleDesktopPrint();
         return;
       }
 
-      // Priority 3: Browser window.print
+      // Se modo é desktop mas nenhum agente disponível → NÃO fazer fallback para browser
+      if (settings?.print_mode === "desktop") {
+        setShowDesktopFallback(true);
+        toast({
+          title: "Impressão direta indisponível",
+          description: "Nenhum agente de impressão detectado. Instale o app Desktop ou inicie a API local (porta 8765).",
+          variant: "destructive",
+          duration: 10000,
+        });
+        return;
+      }
+
+      // Priority 3: Browser window.print (APENAS se modo web)
       handleBrowserPrint();
     } catch (error) {
       console.error("[PRINT] erro geral:", error);
