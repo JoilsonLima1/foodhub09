@@ -161,6 +161,33 @@ export function ReceiptDialog({
 
     return lines;
   };
+  const handleLocalApiPrint = async (): Promise<boolean> => {
+    const pw = Number(settings?.paper_width) === 58 ? 58 : 80;
+    const receiptLines = buildReceiptLines();
+
+    const result = await LocalPrintApi.printReceipt(receiptLines, pw);
+
+    if (result.ok) {
+      toast({
+        title: "✅ Impresso com sucesso",
+        description: "Cupom enviado para a impressora via API local.",
+        duration: 4000,
+      });
+      onOpenChange(false);
+      return true;
+    }
+
+    const errCode = result.error?.code || "PRINT_FAILED";
+    const errMsg = result.error?.message || "Falha ao imprimir via API local.";
+
+    toast({
+      title: `❌ Falha na API local (${errCode})`,
+      description: `${errMsg}\n${getErrorGuidance(errCode)}`,
+      variant: "destructive",
+      duration: 12000,
+    });
+    return false;
+  };
 
   const handleDesktopPrint = async () => {
     if (!window.foodhub?.printReceipt) {
