@@ -11,7 +11,7 @@ import { useDesktopPdvSettings } from "@/hooks/useDesktopPdvSettings";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import * as LocalPrintApi from "@/lib/localPrintApi";
+
 
 const paymentMethodLabels: Record<string, string> = {
   cash: "Dinheiro",
