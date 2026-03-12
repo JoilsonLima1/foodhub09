@@ -291,6 +291,8 @@ ipcMain.handle('foodhub:getStatus', async () => {
     appVersion: app.getVersion(),
     printersCount,
     defaultPrinterName,
+    pdvUrl: PDV_URL,
+    isCustomUrl: !!customUrl,
   };
 });
 
