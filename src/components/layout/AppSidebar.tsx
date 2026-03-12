@@ -262,7 +262,7 @@ export function AppSidebar() {
     return (
       <li key={key}>
         <Link
-          to={item.path}
+          to={isLocked ? '/settings?tab=modules' : item.path}
           onClick={() => setIsOpen(false)}
           title={sidebarCollapsed ? (isLocked ? `${label} (Adquirir)` : label) : undefined}
           className={cn(
