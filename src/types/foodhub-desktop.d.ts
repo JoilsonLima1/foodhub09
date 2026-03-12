@@ -47,4 +47,4 @@ declare global {
   }
 }
 
-export type { FoodHubBridge, FoodHubReceiptLine, FoodHubPrintResult, FoodHubStatus };
+export {};
