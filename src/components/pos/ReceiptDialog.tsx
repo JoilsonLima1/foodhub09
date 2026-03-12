@@ -492,7 +492,7 @@ export function ReceiptDialog({
 
           <Button type="button" className="flex-1" onClick={handlePrint} disabled={isPrinting}>
             {isPrinting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Printer className="h-4 w-4 mr-2" />}
-            {isPrinting ? "Imprimindo..." : isDesktopDirectPrintAvailable ? "Imprimir direto" : "Imprimir"}
+            {isPrinting ? "Imprimindo..." : isDirectPrintAvailable ? "Imprimir direto" : "Imprimir"}
           </Button>
         </div>
 
