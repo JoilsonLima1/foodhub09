@@ -11,6 +11,7 @@ import { useDesktopPdvSettings } from "@/hooks/useDesktopPdvSettings";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import * as LocalPrintApi from "@/lib/localPrintApi";
 
 const paymentMethodLabels: Record<string, string> = {
   cash: "Dinheiro",
@@ -43,32 +44,7 @@ interface ReceiptDialogProps {
   tenantLogo?: string | null;
 }
 
-declare global {
-  interface Window {
-    foodhub?: {
-      printReceipt?: (payload: {
-        lines: ReceiptLine[];
-        printerName: string | null;
-        paperWidth: 58 | 80;
-        silent?: boolean;
-        useDefaultPrinter?: boolean;
-      }) => Promise<{
-        ok: boolean;
-        jobId?: string;
-        error?: {
-          code?: string;
-          message?: string;
-        };
-      }>;
-      getStatus?: () => Promise<{
-        appVersion: string;
-        printersCount: number;
-        defaultPrinterName?: string | null;
-      }>;
-      getDefaultPrinter?: () => Promise<string | null>;
-    };
-  }
-}
+// Window.foodhub types are declared in src/types/foodhub-desktop.d.ts
 
 function getErrorGuidance(code?: string): string {
   switch (code) {
@@ -106,6 +82,12 @@ export function ReceiptDialog({
   const [isPrinting, setIsPrinting] = useState(false);
   const [isDiagnosing, setIsDiagnosing] = useState(false);
   const [showDesktopFallback, setShowDesktopFallback] = useState(false);
+  const [localApiAvailable, setLocalApiAvailable] = useState<boolean | null>(null);
+
+  // Check local print API availability on mount
+  useEffect(() => {
+    LocalPrintApi.checkHealth().then(setLocalApiAvailable);
+  }, []);
 
   useEffect(() => {
     if (open) {
@@ -178,6 +160,33 @@ export function ReceiptDialog({
     lines.push({ type: "cut" });
 
     return lines;
+  };
+  const handleLocalApiPrint = async (): Promise<boolean> => {
+    const pw = Number(settings?.paper_width) === 58 ? 58 : 80;
+    const receiptLines = buildReceiptLines();
+
+    const result = await LocalPrintApi.printReceipt(receiptLines, pw);
+
+    if (result.ok) {
+      toast({
+        title: "✅ Impresso com sucesso",
+        description: "Cupom enviado para a impressora via API local.",
+        duration: 4000,
+      });
+      onOpenChange(false);
+      return true;
+    }
+
+    const errCode = result.error?.code || "PRINT_FAILED";
+    const errMsg = result.error?.message || "Falha ao imprimir via API local.";
+
+    toast({
+      title: `❌ Falha na API local (${errCode})`,
+      description: `${errMsg}\n${getErrorGuidance(errCode)}`,
+      variant: "destructive",
+      duration: 12000,
+    });
+    return false;
   };
 
   const handleDesktopPrint = async () => {
@@ -342,11 +351,20 @@ export function ReceiptDialog({
         return;
       }
 
+      // Priority 1: Local Python print API (127.0.0.1:8765)
+      if (localApiAvailable) {
+        const success = await handleLocalApiPrint();
+        if (success) return;
+        // If local API fails, fall through to other methods
+      }
+
+      // Priority 2: Electron desktop bridge
       if (window.foodhub?.printReceipt || settings?.print_mode === "desktop") {
         await handleDesktopPrint();
         return;
       }
 
+      // Priority 3: Browser window.print
       handleBrowserPrint();
     } catch (error) {
       console.error("[PRINT] erro geral:", error);
@@ -393,6 +411,19 @@ export function ReceiptDialog({
         results.push("Desktop PDV: ❌ Não detectado");
       }
 
+      // Local Print API diagnostics
+      if (localApiAvailable) {
+        results.push("API Local (Python): ✅ Conectada");
+        try {
+          const config = await LocalPrintApi.getConfig();
+          results.push(`Impressora salva: ${config.selected_printer || "Nenhuma (usará padrão)"}`);
+        } catch {
+          results.push("Config API local: ❌ Erro ao consultar");
+        }
+      } else {
+        results.push("API Local (Python): ❌ Não detectada");
+      }
+
       toast({
         title: "🔍 Diagnóstico de Impressão",
         description: results.join("\n"),
@@ -403,7 +434,7 @@ export function ReceiptDialog({
     }
   };
 
-  const isDesktopDirectPrintAvailable = !!window.foodhub?.printReceipt;
+  const isDirectPrintAvailable = localApiAvailable || !!window.foodhub?.printReceipt;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -461,7 +492,7 @@ export function ReceiptDialog({
 
           <Button type="button" className="flex-1" onClick={handlePrint} disabled={isPrinting}>
             {isPrinting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Printer className="h-4 w-4 mr-2" />}
-            {isPrinting ? "Imprimindo..." : isDesktopDirectPrintAvailable ? "Imprimir direto" : "Imprimir"}
+            {isPrinting ? "Imprimindo..." : isDirectPrintAvailable ? "Imprimir direto" : "Imprimir"}
           </Button>
         </div>
 
