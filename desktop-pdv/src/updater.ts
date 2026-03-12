@@ -105,9 +105,17 @@ export function initAutoUpdater(getMainWindow: () => BrowserWindow | null) {
   });
 
   autoUpdater.on('update-available', (info: UpdateInfo) => {
-    log.info('[Updater] Update available:', info.version);
+    const current = app.getVersion();
+    log.info(`[Updater] Update candidate: ${info.version} (current: ${current})`);
+
+    // Ignore downgrades — only proceed if remote version is actually newer
+    if (compareSemver(info.version, current) <= 0) {
+      log.info(`[Updater] Ignoring version ${info.version} (not newer than ${current})`);
+      sendStatus(getMainWindow(), 'not-available');
+      return;
+    }
+
     sendStatus(getMainWindow(), 'available', { version: info.version });
-    // Show progress window for download
     showProgressWindow(getMainWindow());
   });
 
