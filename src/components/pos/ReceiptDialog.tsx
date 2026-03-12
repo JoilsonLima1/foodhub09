@@ -418,7 +418,7 @@ export function ReceiptDialog({
     }
   };
 
-  const isDirectPrintAvailable = localApiAvailable || !!window.foodhub?.printReceipt;
+  const isDirectPrintAvailable = !!window.foodhub?.printReceipt;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
