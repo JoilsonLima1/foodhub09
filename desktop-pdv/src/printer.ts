@@ -401,26 +401,35 @@ export async function printReceipt(
   options: PrintOptions = {}
 ): Promise<PrintResult> {
   const jobId = generateJobId();
-  const { printerName, paperWidth = 80 } = options;
+  const {
+    printerName,
+    paperWidth = 80,
+    silent = true,
+    useDefaultPrinter = false,
+  } = options;
 
-  console.log(`[PRINT_REQUEST] jobId=${jobId}, printer="${printerName || '(default)'}", paperWidth=${paperWidth}, lines=${lines.length}`);
+  const normalizedPrinterName = typeof printerName === 'string' ? printerName.trim() : printerName;
+  const shouldUseDefaultPrinter = useDefaultPrinter || !normalizedPrinterName;
 
-  // Resolve printer name
-  let resolvedName = printerName;
-  if (!resolvedName) {
-    resolvedName = getDefaultPrinterName();
-    console.log(`[Printer] No explicit printer, OS default: "${resolvedName || 'none'}"`);
-  }
+  console.log(
+    `[PRINT_REQUEST] jobId=${jobId}, printer=${JSON.stringify(normalizedPrinterName)}, useDefaultPrinter=${shouldUseDefaultPrinter}, silent=${silent}, paperWidth=${paperWidth}, lines=${lines.length}`
+  );
+
+  const resolvedName = shouldUseDefaultPrinter
+    ? getWindowsDefaultPrinter()
+    : normalizedPrinterName || undefined;
 
   if (!resolvedName) {
     return {
       ok: false,
       jobId,
-      error: { code: 'PRINTER_NOT_CONFIGURED', message: 'Nenhuma impressora configurada. Defina uma impressora padrao no Windows.' },
+      error: {
+        code: 'NO_DEFAULT_PRINTER',
+        message: 'Nenhuma impressora padrão do Windows foi encontrada.',
+      },
     };
   }
 
-  // Get printer port
   const portName = getPrinterPort(resolvedName);
   if (!portName) {
     return {
