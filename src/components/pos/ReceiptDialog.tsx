@@ -351,11 +351,20 @@ export function ReceiptDialog({
         return;
       }
 
+      // Priority 1: Local Python print API (127.0.0.1:8765)
+      if (localApiAvailable) {
+        const success = await handleLocalApiPrint();
+        if (success) return;
+        // If local API fails, fall through to other methods
+      }
+
+      // Priority 2: Electron desktop bridge
       if (window.foodhub?.printReceipt || settings?.print_mode === "desktop") {
         await handleDesktopPrint();
         return;
       }
 
+      // Priority 3: Browser window.print
       handleBrowserPrint();
     } catch (error) {
       console.error("[PRINT] erro geral:", error);
