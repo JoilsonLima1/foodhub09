@@ -82,12 +82,6 @@ export function ReceiptDialog({
   const [isPrinting, setIsPrinting] = useState(false);
   const [isDiagnosing, setIsDiagnosing] = useState(false);
   const [showDesktopFallback, setShowDesktopFallback] = useState(false);
-  const [localApiAvailable, setLocalApiAvailable] = useState<boolean | null>(null);
-
-  // Check local print API availability on mount
-  useEffect(() => {
-    LocalPrintApi.checkHealth().then(setLocalApiAvailable);
-  }, []);
 
   useEffect(() => {
     if (open) {
