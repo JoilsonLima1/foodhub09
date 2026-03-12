@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -27,6 +27,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { 
   Building2, 
@@ -39,12 +46,22 @@ import {
   AlertTriangle,
   Eye,
   EyeOff,
+  CreditCard,
 } from 'lucide-react';
 import { useOrganizations, Organization } from '@/hooks/useOrganizations';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
+interface SubscriptionPlan {
+  id: string;
+  name: string;
+  slug: string;
+}
+
 export function OrganizationsManager() {
+  const { toast } = useToast();
   const {
     organizations,
     isLoading,
@@ -59,10 +76,27 @@ export function OrganizationsManager() {
   const [searchTerm, setSearchTerm] = useState('');
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [planDialogOpen, setPlanDialogOpen] = useState(false);
   const [selectedOrg, setSelectedOrg] = useState<Organization | null>(null);
   const [editForm, setEditForm] = useState<Partial<Organization>>({});
   const [deletePassword, setDeletePassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+
+  // Plan change state
+  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
+  const [selectedPlanId, setSelectedPlanId] = useState('');
+  const [selectedSubStatus, setSelectedSubStatus] = useState('');
+  const [isSavingPlan, setIsSavingPlan] = useState(false);
+
+  useEffect(() => {
+    supabase
+      .from('subscription_plans')
+      .select('id, name, slug')
+      .order('display_order')
+      .then(({ data }) => {
+        if (data) setPlans(data);
+      });
+  }, []);
 
   const filteredOrgs = organizations.filter(org =>
     org.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -113,6 +147,37 @@ export function OrganizationsManager() {
       setSelectedOrg(null);
       setDeletePassword('');
     }
+  };
+
+  const handlePlanClick = (org: Organization) => {
+    setSelectedOrg(org);
+    setSelectedPlanId((org as any).subscription_plan_id || '');
+    setSelectedSubStatus(org.subscription_status || 'active');
+    setPlanDialogOpen(true);
+  };
+
+  const handleSavePlan = async () => {
+    if (!selectedOrg) return;
+    setIsSavingPlan(true);
+    try {
+      const success = await updateOrganization(selectedOrg.id, {
+        subscription_status: selectedSubStatus,
+        subscription_plan_id: selectedPlanId || null,
+      } as any);
+      if (success) {
+        setPlanDialogOpen(false);
+        setSelectedOrg(null);
+        toast({ title: 'Plano atualizado', description: `Plano da organização "${selectedOrg.name}" alterado com sucesso.` });
+      }
+    } finally {
+      setIsSavingPlan(false);
+    }
+  };
+
+  const getPlanName = (org: Organization) => {
+    const planId = (org as any).subscription_plan_id;
+    if (!planId) return '—';
+    return plans.find(p => p.id === planId)?.name || '—';
   };
 
   const getStatusBadge = (org: Organization) => {
@@ -206,6 +271,7 @@ export function OrganizationsManager() {
                   <TableRow>
                     <TableHead>Organização</TableHead>
                     <TableHead>Contato</TableHead>
+                    <TableHead>Plano</TableHead>
                     <TableHead>Usuários</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Criada em</TableHead>
@@ -230,6 +296,11 @@ export function OrganizationsManager() {
                         </div>
                       </TableCell>
                       <TableCell>
+                        <Badge variant="outline" className="text-xs">
+                          {getPlanName(org)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
                         <div className="flex items-center gap-1">
                           <Users className="h-4 w-4 text-muted-foreground" />
                           <span>{org.user_count}</span>
@@ -247,6 +318,10 @@ export function OrganizationsManager() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handlePlanClick(org)}>
+                              <CreditCard className="mr-2 h-4 w-4" />
+                              Alterar Plano
+                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleEdit(org)}>
                               <Edit className="mr-2 h-4 w-4" />
                               Editar
@@ -274,6 +349,61 @@ export function OrganizationsManager() {
           )}
         </CardContent>
       </Card>
+
+      {/* Plan Change Dialog */}
+      <Dialog open={planDialogOpen} onOpenChange={setPlanDialogOpen}>
+        <DialogContent className="sm:max-w-[450px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CreditCard className="h-5 w-5" />
+              Alterar Plano
+            </DialogTitle>
+            <DialogDescription>
+              Altere o plano e status da assinatura de <strong>{selectedOrg?.name}</strong>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label>Plano</Label>
+              <Select value={selectedPlanId} onValueChange={setSelectedPlanId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um plano" />
+                </SelectTrigger>
+                <SelectContent>
+                  {plans.map((plan) => (
+                    <SelectItem key={plan.id} value={plan.id}>
+                      {plan.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label>Status da Assinatura</Label>
+              <Select value={selectedSubStatus} onValueChange={setSelectedSubStatus}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Ativa</SelectItem>
+                  <SelectItem value="trialing">Em teste (Trial)</SelectItem>
+                  <SelectItem value="past_due">Pagamento pendente</SelectItem>
+                  <SelectItem value="canceled">Cancelada</SelectItem>
+                  <SelectItem value="suspended">Suspensa</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPlanDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSavePlan} disabled={isSavingPlan}>
+              {isSavingPlan ? 'Salvando...' : 'Salvar Plano'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
