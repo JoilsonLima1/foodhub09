@@ -12,7 +12,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
-
 const paymentMethodLabels: Record<string, string> = {
   cash: "Dinheiro",
   pix: "PIX",
@@ -44,8 +43,6 @@ interface ReceiptDialogProps {
   tenantLogo?: string | null;
 }
 
-// Window.foodhub types are declared in src/types/foodhub-desktop.d.ts
-
 function getErrorGuidance(code?: string): string {
   switch (code) {
     case "NO_DEFAULT_PRINTER":
@@ -53,7 +50,7 @@ function getErrorGuidance(code?: string): string {
     case "PRINTER_NOT_FOUND":
       return "A impressora padrão não foi encontrada. Verifique se está ligada.";
     case "PRINT_FAILED":
-      return "Falha ao imprimir diretamente. Verifique o app desktop.";
+      return "Falha ao imprimir diretamente. Verifique o app desktop e a impressora.";
     case "DIALOG_OPENED_INSTEAD_OF_SILENT":
       return "O app desktop ainda está abrindo a tela de impressão em vez de imprimir silenciosamente.";
     default:
@@ -161,8 +158,9 @@ export function ReceiptDialog({
       setShowDesktopFallback(true);
       toast({
         title: "Impressão direta indisponível",
-        description: "O app desktop não foi detectado. Para 1 clique, abra no FoodHub PDV Desktop.",
+        description: "O app desktop não foi detectado. Para imprimir em 1 clique, abra no FoodHub PDV Desktop.",
         variant: "destructive",
+        duration: 10000,
       });
       return;
     }
@@ -318,23 +316,22 @@ export function ReceiptDialog({
         return;
       }
 
-      // Modo desktop: impressão direta via Electron (único canal)
       if (settings?.print_mode === "desktop") {
         if (window.foodhub?.printReceipt) {
           await handleDesktopPrint();
-        } else {
-          setShowDesktopFallback(true);
-          toast({
-            title: "Impressão direta indisponível",
-            description: "O app Desktop PDV não foi detectado. Abra o sistema dentro do FoodHub PDV Desktop para impressão em 1 clique.",
-            variant: "destructive",
-            duration: 10000,
-          });
+          return;
         }
+
+        setShowDesktopFallback(true);
+        toast({
+          title: "Impressão direta indisponível",
+          description: "O app desktop não foi detectado. Instale ou abra o FoodHub PDV Desktop.",
+          variant: "destructive",
+          duration: 10000,
+        });
         return;
       }
 
-      // Modo web: browser window.print
       handleBrowserPrint();
     } catch (error) {
       console.error("[PRINT] erro geral:", error);
@@ -391,7 +388,7 @@ export function ReceiptDialog({
     }
   };
 
-  const isDirectPrintAvailable = !!window.foodhub?.printReceipt;
+  const isDesktopDirectPrintAvailable = settings?.print_mode === "desktop" && !!window.foodhub?.printReceipt;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -449,7 +446,7 @@ export function ReceiptDialog({
 
           <Button type="button" className="flex-1" onClick={handlePrint} disabled={isPrinting}>
             {isPrinting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Printer className="h-4 w-4 mr-2" />}
-            {isPrinting ? "Imprimindo..." : isDirectPrintAvailable ? "Imprimir direto" : "Imprimir"}
+            {isPrinting ? "Imprimindo..." : isDesktopDirectPrintAvailable ? "Imprimir direto" : "Imprimir"}
           </Button>
         </div>
 
