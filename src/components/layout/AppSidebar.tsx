@@ -6,6 +6,7 @@ import { useAppearance } from '@/hooks/useAppearance';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { useBusinessCategoryContext } from '@/contexts/BusinessCategoryContext';
 import { useSidebarModules } from '@/hooks/useSidebarModules';
+import { usePlanFeatures, PlanFeatures } from '@/hooks/usePlanFeatures';
 import { useActiveStore } from '@/contexts/ActiveStoreContext';
 import { MODULE_CATEGORY_LABELS } from '@/lib/moduleRoutes';
 import {
@@ -79,23 +80,30 @@ interface NavItem {
   isLocked?: boolean;
 }
 
-// Core navigation items (always available based on plan features)
-// Items with moduleSlug are controlled by addon modules
-const coreNavItems: (NavItem & { moduleSlug?: string })[] = [
-  { path: '/dashboard', label: 'Dashboard', icon: 'LayoutDashboard' },
-  { path: '/orders', label: 'Pedidos', icon: 'ClipboardList' },
-  { path: '/pos', label: 'PDV/Caixa', icon: 'Calculator', feature: 'pos' },
-  { path: '/downloads', label: 'Desktop PDV', icon: Monitor },
+interface CoreNavItem extends NavItem {
+  moduleSlug?: string;
+  /** Plan feature flag that enables this item */
+  planFeature?: keyof PlanFeatures;
+  /** If true, always show regardless of plan */
+  alwaysShow?: boolean;
+}
+
+// Core navigation items (filtered by plan features and module activation)
+const coreNavItems: CoreNavItem[] = [
+  { path: '/dashboard', label: 'Dashboard', icon: 'LayoutDashboard', alwaysShow: true },
+  { path: '/orders', label: 'Pedidos', icon: 'ClipboardList', alwaysShow: true },
+  { path: '/pos', label: 'PDV/Caixa', icon: 'Calculator', feature: 'pos', planFeature: 'feature_pos' },
+  { path: '/downloads', label: 'Desktop PDV', icon: Monitor, planFeature: 'feature_pos' },
   { path: '/tables', label: 'Mesas', icon: 'Grid3X3', feature: 'tables' },
   { path: '/comandas', label: 'Comandas', icon: Receipt, feature: 'tables', moduleSlug: 'comandas' },
   { path: '/events', label: 'Eventos', icon: CalendarDays, moduleSlug: 'events_tickets' },
   { path: '/marketing', label: 'Marketing', icon: TrendingUp, moduleSlug: 'marketing_ceo' },
-  { path: '/kitchen', label: 'Cozinha', icon: 'ChefHat', feature: 'kitchen_display', moduleSlug: 'kitchen_monitor' },
-  { path: '/deliveries', label: 'Entregas', icon: 'Truck', feature: 'delivery', moduleSlug: 'smart_delivery' },
-  { path: '/courier-dashboard', label: 'Minhas Entregas', icon: 'Truck', feature: 'delivery' },
-  { path: '/products', label: 'Produtos', icon: 'Package' },
-  { path: '/stock', label: 'Estoque', icon: 'Warehouse' },
-  { path: '/reports', label: 'Relatórios', icon: 'BarChart3' },
+  { path: '/kitchen', label: 'Cozinha', icon: 'ChefHat', feature: 'kitchen_display', planFeature: 'feature_kitchen_display', moduleSlug: 'kitchen_monitor' },
+  { path: '/deliveries', label: 'Entregas', icon: 'Truck', feature: 'delivery', planFeature: 'feature_delivery_management', moduleSlug: 'smart_delivery' },
+  { path: '/courier-dashboard', label: 'Minhas Entregas', icon: 'Truck', feature: 'delivery', planFeature: 'feature_courier_app' },
+  { path: '/products', label: 'Produtos', icon: 'Package', alwaysShow: true },
+  { path: '/stock', label: 'Estoque', icon: 'Warehouse', planFeature: 'feature_stock_control' },
+  { path: '/reports', label: 'Relatórios', icon: 'BarChart3', planFeature: 'feature_reports_basic' },
 ];
 
 // Admin-only items
@@ -112,6 +120,7 @@ export function AppSidebar() {
   const { branding } = useSystemSettings();
   const { t, hasFeature } = useBusinessCategoryContext();
   const { sidebarModules, hasMultiStore, hasModuleActive, isLoading: modulesLoading } = useSidebarModules();
+  const { hasPlanFeature, planFeatures, isLoading: planLoading } = usePlanFeatures();
   const { activeStoreName } = useActiveStore();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -132,11 +141,12 @@ export function AppSidebar() {
     return labelMap[path] || defaultLabel;
   };
 
-  // Filter core nav items based on role, features, and module activation
+  // Filter core nav items based on role, plan features, and module activation
   const filteredCoreItems = useMemo((): NavItem[] => {
-    // First pass: filter by plan features (hard filter)
-    let items = coreNavItems.filter(item => {
-      // Check plan features - these are hard requirements
+    const isSuperAdminRole = roles.includes('super_admin');
+    
+    // First pass: filter by business category features (hard filter)
+    let items: CoreNavItem[] = coreNavItems.filter(item => {
       if (item.feature && !hasFeature(item.feature as any)) {
         return false;
       }
@@ -162,21 +172,33 @@ export function AppSidebar() {
       item.path !== '/courier-dashboard' || roles.includes('delivery')
     );
 
-    // Second pass: mark module items as locked if not active (soft filter - show with upsell)
-    // Only for admin/manager roles who can purchase modules
-    const processedItems = items.map(item => {
-      if (item.moduleSlug && !hasModuleActive(item.moduleSlug)) {
-        // Show item but mark as locked for upsell
-        return {
-          ...item,
-          isLocked: true,
-        };
-      }
-      return item;
+    // Second pass: apply plan feature gating + module gating
+    // Super admins see everything unlocked
+    const processedItems: NavItem[] = items.map(item => {
+      if (isSuperAdminRole) return item;
+
+      // Check plan feature - if item has a planFeature requirement
+      const planAllows = !item.planFeature || hasPlanFeature(item.planFeature);
+      
+      // Check module - if item has a moduleSlug requirement
+      const moduleAllows = !item.moduleSlug || hasModuleActive(item.moduleSlug);
+
+      // Item is always shown if marked alwaysShow
+      if (item.alwaysShow) return item;
+
+      // If plan includes this feature OR module is active, show as unlocked
+      if (planAllows && moduleAllows) return item;
+
+      // If plan includes but module not active (for items with both), lock it
+      // If plan doesn't include, lock it (can be unlocked via plan upgrade or module purchase)
+      return {
+        ...item,
+        isLocked: true,
+      };
     });
 
     return processedItems;
-  }, [roles, hasFeature, hasModuleActive]);
+  }, [roles, hasFeature, hasModuleActive, hasPlanFeature]);
 
   // Get module nav items (grouped by category)
   const moduleNavItems = useMemo(() => {
@@ -240,7 +262,7 @@ export function AppSidebar() {
     return (
       <li key={key}>
         <Link
-          to={item.path}
+          to={isLocked ? '/settings?tab=modules' : item.path}
           onClick={() => setIsOpen(false)}
           title={sidebarCollapsed ? (isLocked ? `${label} (Adquirir)` : label) : undefined}
           className={cn(
