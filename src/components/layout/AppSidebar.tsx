@@ -120,6 +120,7 @@ export function AppSidebar() {
   const { branding } = useSystemSettings();
   const { t, hasFeature } = useBusinessCategoryContext();
   const { sidebarModules, hasMultiStore, hasModuleActive, isLoading: modulesLoading } = useSidebarModules();
+  const { hasPlanFeature, planFeatures, isLoading: planLoading } = usePlanFeatures();
   const { activeStoreName } = useActiveStore();
   const [isOpen, setIsOpen] = useState(false);
 
