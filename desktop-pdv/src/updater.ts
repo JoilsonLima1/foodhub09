@@ -185,8 +185,9 @@ export async function checkForUpdatesManual(): Promise<{ status: 'available' | '
   try {
     const result = await autoUpdater.checkForUpdates();
     if (result && result.updateInfo && result.updateInfo.version) {
-      const currentVersion = require('electron').app.getVersion();
-      if (result.updateInfo.version !== currentVersion) {
+      const currentVersion = app.getVersion();
+      // Only report as available if remote version is strictly newer
+      if (compareSemver(result.updateInfo.version, currentVersion) > 0) {
         return { status: 'available', version: result.updateInfo.version };
       }
     }
