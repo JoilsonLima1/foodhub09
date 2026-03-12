@@ -438,7 +438,7 @@ serve(async (req) => {
         }
 
         const allowed: Record<string, any> = {};
-        const allowedFields = ['name', 'email', 'phone', 'address', 'city', 'state', 'zip_code', 'is_active', 'subscription_status'];
+        const allowedFields = ['name', 'email', 'phone', 'address', 'city', 'state', 'zip_code', 'is_active', 'subscription_status', 'subscription_plan_id', 'trial_ends_at'];
         
         for (const field of allowedFields) {
           if (field in organizationData) {
