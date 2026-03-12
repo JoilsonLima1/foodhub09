@@ -6,6 +6,7 @@ import { useAppearance } from '@/hooks/useAppearance';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { useBusinessCategoryContext } from '@/contexts/BusinessCategoryContext';
 import { useSidebarModules } from '@/hooks/useSidebarModules';
+import { usePlanFeatures, PlanFeatures } from '@/hooks/usePlanFeatures';
 import { useActiveStore } from '@/contexts/ActiveStoreContext';
 import { MODULE_CATEGORY_LABELS } from '@/lib/moduleRoutes';
 import {
