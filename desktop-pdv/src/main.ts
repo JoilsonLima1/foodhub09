@@ -5,7 +5,14 @@ import { getConfig, setConfig } from './config';
 import { initAutoUpdater, checkForUpdatesManual, installUpdate, stopUpdater } from './updater';
 
 const DEFAULT_PDV_URL = 'https://start-a-new-quest.lovable.app/pos';
-const PDV_URL = getConfig('pdvUrl') || DEFAULT_PDV_URL;
+const customUrl = getConfig('pdvUrl');
+const PDV_URL = customUrl || DEFAULT_PDV_URL;
+
+console.log('[PDV] ─── URL Resolution ───');
+console.log(`[PDV] DEFAULT_PDV_URL = ${DEFAULT_PDV_URL}`);
+console.log(`[PDV] config pdvUrl   = ${customUrl ?? '(not set)'}`);
+console.log(`[PDV] FINAL PDV_URL   = ${PDV_URL}`);
+console.log('[PDV] ─────────────────────');
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -95,7 +102,7 @@ function buildMenu() {
             dialog.showMessageBox({
               type: 'info',
               title: 'Sobre',
-              message: `FoodHub PDV Desktop\nVersão ${version}`,
+              message: `FoodHub PDV Desktop\nVersão ${version}\n\nURL carregada:\n${PDV_URL}${customUrl ? '\n(configuração local ativa)' : '\n(URL padrão)'}`,
             });
           },
         },
@@ -284,6 +291,8 @@ ipcMain.handle('foodhub:getStatus', async () => {
     appVersion: app.getVersion(),
     printersCount,
     defaultPrinterName,
+    pdvUrl: PDV_URL,
+    isCustomUrl: !!customUrl,
   };
 });
 
