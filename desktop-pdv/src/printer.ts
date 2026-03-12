@@ -21,12 +21,14 @@ export interface ReceiptLine {
 }
 
 export interface PrintOptions {
-  printerName?: string;
+  printerName?: string | null;
   paperWidth?: number;
+  silent?: boolean;
+  useDefaultPrinter?: boolean;
 }
 
 export type PrintErrorCode =
-  | 'PRINTER_NOT_CONFIGURED'
+  | 'NO_DEFAULT_PRINTER'
   | 'PRINTER_NOT_FOUND'
   | 'NO_DRIVER_SET'
   | 'PRINT_FAILED'
