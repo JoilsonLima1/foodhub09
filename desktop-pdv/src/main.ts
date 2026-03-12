@@ -259,14 +259,23 @@ ipcMain.handle('foodhub:printTest', async () => {
 
 ipcMain.handle('foodhub:getStatus', async () => {
   let printersCount = 0;
-  let defaultPrinterName: string | null = null;
+  let defaultPrinterName: string | null = getWindowsDefaultPrinter() || null;
 
   if (mainWindow) {
     try {
       const printers = await mainWindow.webContents.getPrintersAsync();
       printersCount = printers.length;
-      const def = printers.find(p => p.isDefault);
-      if (def) defaultPrinterName = def.name;
+      if (!defaultPrinterName) {
+        const def = printers.find(p => p.isDefault);
+        if (def) defaultPrinterName = def.name;
+      }
+    } catch {}
+  }
+
+  if (printersCount === 0) {
+    try {
+      const printers = await listPrinters();
+      printersCount = printers.length;
     } catch {}
   }
 
