@@ -85,6 +85,7 @@ const coreNavItems: (NavItem & { moduleSlug?: string })[] = [
   { path: '/dashboard', label: 'Dashboard', icon: 'LayoutDashboard' },
   { path: '/orders', label: 'Pedidos', icon: 'ClipboardList' },
   { path: '/pos', label: 'PDV/Caixa', icon: 'Calculator', feature: 'pos' },
+  { path: '/downloads', label: 'Desktop PDV', icon: Monitor },
   { path: '/tables', label: 'Mesas', icon: 'Grid3X3', feature: 'tables' },
   { path: '/comandas', label: 'Comandas', icon: Receipt, feature: 'tables', moduleSlug: 'comandas' },
   { path: '/events', label: 'Eventos', icon: CalendarDays, moduleSlug: 'events_tickets' },
@@ -100,7 +101,6 @@ const coreNavItems: (NavItem & { moduleSlug?: string })[] = [
 // Admin-only items
 const adminNavItems: NavItem[] = [
   { path: '/settings', label: 'Configurações', icon: 'Settings' },
-  { path: '/downloads', label: 'Desktop PDV', icon: Monitor },
   { path: '/super-admin', label: 'Super Admin', icon: 'Crown' },
 ];
 
@@ -145,7 +145,7 @@ export function AppSidebar() {
 
     // Role-based filtering (hard filter)
     if (roles.includes('cashier')) {
-      return items.filter(item => ['/pos', '/orders'].includes(item.path));
+      return items.filter(item => ['/pos', '/orders', '/downloads'].includes(item.path));
     }
     if (roles.includes('kitchen')) {
       return items.filter(item => item.path === '/kitchen');
