@@ -144,7 +144,7 @@ function buildEscPosBuffer(lines: ReceiptLine[], paperWidth: number): Buffer {
 
 // ─── Windows Printer Utilities ─────────────────────────────
 
-function getDefaultPrinterName(): string | undefined {
+export function getWindowsDefaultPrinter(): string | undefined {
   try {
     const { execSync } = require('child_process');
     const output = execSync(
