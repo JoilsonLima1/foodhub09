@@ -1,6 +1,6 @@
 import { app, BrowserWindow, ipcMain, session, Menu } from 'electron';
 import path from 'path';
-import { printReceipt, listPrinters, testPrint } from './printer';
+import { printReceipt, listPrinters, testPrint, getWindowsDefaultPrinter } from './printer';
 import { getConfig, setConfig } from './config';
 import { initAutoUpdater, checkForUpdatesManual, installUpdate, stopUpdater } from './updater';
 
