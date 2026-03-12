@@ -8,7 +8,6 @@ import { getPrinterConfig } from "@/components/settings/PrinterSettings";
 import { printReceiptHTML, buildReceiptHTML, type PaperWidthMM } from "@/lib/thermalPrint";
 import { useTenantPrintSettings } from "@/hooks/useTenantPrintSettings";
 import { useDesktopPdvSettings } from "@/hooks/useDesktopPdvSettings";
-import { usePrinterRoutes } from "@/hooks/usePrinterRoutes";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -44,10 +43,6 @@ interface ReceiptDialogProps {
   tenantLogo?: string | null;
 }
 
-/**
- * Tipagem mínima da bridge desktop
- * Ajuste conforme sua implementação real do Electron preload
- */
 declare global {
   interface Window {
     foodhub?: {
@@ -59,32 +54,26 @@ declare global {
           message?: string;
         };
       }>;
-      getPrinters?: () => Promise<string[]>;
-      getDefaultPrinter?: () => Promise<string | null>;
       getStatus?: () => Promise<{
         appVersion: string;
         printersCount: number;
         defaultPrinterName?: string | null;
       }>;
+      getDefaultPrinter?: () => Promise<string | null>;
     };
   }
 }
 
-/** Map error codes to user-friendly guidance */
 function getErrorGuidance(code?: string): string {
   switch (code) {
-    case "PRINTER_NOT_CONFIGURED":
-      return "Adicione uma impressora ao setor Caixa nas configurações.";
+    case "NO_DEFAULT_PRINTER":
+      return "Defina uma impressora padrão no Windows para o Caixa.";
     case "PRINTER_NOT_FOUND":
-      return "Verifique se a impressora está ligada e conectada ao computador.";
-    case "NO_DRIVER_SET":
-      return "Instale/configure corretamente a impressora no sistema operacional.";
+      return "A impressora padrão não foi encontrada. Verifique se ela está ligada e instalada.";
     case "PRINT_FAILED":
-      return "Tente reimprimir. Se persistir, verifique a conexão da impressora.";
-    case "NO_PRINTERS_AVAILABLE":
-      return "Nenhuma impressora foi encontrada no computador.";
+      return "Falha ao enviar para a impressora padrão. Verifique o app desktop e a impressora.";
     default:
-      return "Verifique a impressora e tente novamente.";
+      return "Verifique a impressora padrão do sistema e tente novamente.";
   }
 }
 
@@ -103,7 +92,6 @@ export function ReceiptDialog({
   const receiptRef = useRef<HTMLDivElement>(null);
   const { settings } = useTenantPrintSettings();
   const { data: desktopUrls } = useDesktopPdvSettings();
-  const { routes } = usePrinterRoutes();
   const { tenantId, user } = useAuth();
   const { toast } = useToast();
 
@@ -117,10 +105,6 @@ export function ReceiptDialog({
       document.documentElement.style.setProperty("--receipt-width", config.paperWidth);
     }
   }, [open]);
-
-  const findCaixaRoute = () => {
-    return routes.find((r) => r.route_key === "caixa") || null;
-  };
 
   const formatCurrency = (value: number) =>
     value.toLocaleString("pt-BR", {
@@ -188,157 +172,45 @@ export function ReceiptDialog({
     return lines;
   };
 
-  const buildBrowserReceiptHtml = () => {
-    const config = getPrinterConfig();
-    const paperWidth = config.paperWidth.replace("mm", "") as PaperWidthMM;
-
-    const html = buildReceiptHTML({
-      tenantName,
-      tenantLogo,
-      orderNumber,
-      dateStr: new Date().toLocaleDateString("pt-BR"),
-      timeStr: new Date().toLocaleTimeString("pt-BR", {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-      cashierName,
-      items: items.map((item, index) => ({
-        index: index + 1,
-        name: item.productName,
-        variationName: item.variationName,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        totalPrice: item.totalPrice,
-        notes: item.notes,
-      })),
-      subtotal,
-      total,
-      paymentMethodLabel: paymentMethodLabels[paymentMethod] || paymentMethod,
-    });
-
-    return { html, paperWidth };
-  };
-
-  /**
-   * Regra:
-   * 1) Se houver impressoras configuradas na rota caixa, usa somente as que estiverem conectadas
-   * 2) Se não houver nenhuma configurada/compatível, usa todas as impressoras conectadas
-   * 3) Se ainda assim não houver nenhuma listada, usa null => impressora padrão do SO
-   */
-  const resolveDesktopPrinters = async (): Promise<(string | null)[]> => {
-    const caixaRoute = findCaixaRoute();
-    const routePrinters = caixaRoute?.printers?.filter(Boolean) || [];
-
-    let connectedPrinters: string[] = [];
-    try {
-      connectedPrinters = (await window.foodhub?.getPrinters?.()) || [];
-    } catch (error) {
-      console.warn("[PRINT] erro ao listar impressoras conectadas:", error);
-    }
-
-    console.log("[PRINT] routePrinters:", routePrinters);
-    console.log("[PRINT] connectedPrinters:", connectedPrinters);
-
-    if (connectedPrinters.length === 0) {
-      return [null];
-    }
-
-    if (routePrinters.length > 0) {
-      const matched = routePrinters.filter((rp) =>
-        connectedPrinters.some((cp) => cp.trim().toLowerCase() === rp.trim().toLowerCase()),
-      );
-
-      if (matched.length > 0) {
-        return matched;
-      }
-    }
-
-    return connectedPrinters;
-  };
-
   const handleDesktopPrint = async () => {
     if (!window.foodhub?.printReceipt) {
       setShowDesktopFallback(true);
+      toast({
+        title: "Impressão direta indisponível",
+        description: "Para imprimir em 1 clique sem seleção, abra no app Desktop com a impressora padrão configurada.",
+        variant: "destructive",
+      });
       return;
     }
 
-    const caixaRoute = findCaixaRoute();
-    const pw = Number(caixaRoute?.paper_width || settings?.paper_width) === 58 ? 58 : 80;
+    const pw = Number(settings?.paper_width) === 58 ? 58 : 80;
     const receiptLines = buildReceiptLines();
 
-    const printers = await resolveDesktopPrinters();
+    const result = await window.foodhub.printReceipt({
+      lines: receiptLines,
+      printerName: null, // SEMPRE usar a impressora padrão do sistema
+      paperWidth: pw,
+    });
 
-    console.log("[PRINT][DESKTOP] resolvedPrinters:", printers, "paperWidth:", pw);
-
-    if (printers.length === 0) {
+    if (result.ok) {
       toast({
-        title: "Nenhuma impressora disponível",
-        description: getErrorGuidance("NO_PRINTERS_AVAILABLE"),
-        variant: "destructive",
+        title: "✅ Impresso com sucesso",
+        description: "Cupom enviado para a impressora padrão do sistema.",
+        duration: 4000,
       });
+      onOpenChange(false);
       return;
     }
 
+    const errCode = result.error?.code || "UNKNOWN";
+    const errMsg = result.error?.message || "Falha ao imprimir.";
+
     toast({
-      title: "🖨️ Enviando impressão...",
-      description:
-        printers[0] === null
-          ? "Usando a impressora padrão do sistema"
-          : `Enviando para ${printers.length} impressora(s) detectada(s)`,
+      title: `❌ Falha ao imprimir (${errCode})`,
+      description: `${errMsg}\n${getErrorGuidance(errCode)}`,
+      variant: "destructive",
+      duration: 10000,
     });
-
-    const successPrinters: string[] = [];
-    const failedPrinters: string[] = [];
-
-    for (const printerName of printers) {
-      const result = await window.foodhub.printReceipt({
-        lines: receiptLines,
-        printerName,
-        paperWidth: pw,
-      });
-
-      console.log("[PRINT][DESKTOP] result:", {
-        printerName,
-        ok: result.ok,
-        jobId: result.jobId,
-        error: result.error,
-      });
-
-      if (result.ok) {
-        successPrinters.push(printerName || "Padrão do sistema");
-      } else {
-        failedPrinters.push(printerName || "Padrão do sistema");
-
-        const errCode = result.error?.code || "UNKNOWN";
-        const errMsg = result.error?.message || "Falha ao imprimir.";
-
-        toast({
-          title: `❌ Falha ao imprimir (${errCode})`,
-          description: `${printerName || "Impressora padrão"}: ${errMsg}\n${getErrorGuidance(errCode)}`,
-          variant: "destructive",
-          duration: 10000,
-        });
-      }
-    }
-
-    if (successPrinters.length > 0) {
-      toast({
-        title: "✅ Impressão concluída",
-        description:
-          successPrinters.length === 1
-            ? `Impresso em: ${successPrinters[0]}`
-            : `Impresso em ${successPrinters.length} impressoras`,
-        duration: 5000,
-      });
-    }
-
-    if (successPrinters.length === 0 && failedPrinters.length > 0) {
-      toast({
-        title: "Nenhuma impressão foi concluída",
-        description: "Todas as tentativas falharam.",
-        variant: "destructive",
-      });
-    }
   };
 
   const handleSmartPosPrint = async () => {
@@ -411,25 +283,49 @@ export function ReceiptDialog({
 
     toast({
       title: "📱 Enviado para SmartPOS",
-      description: "O cupom será impresso pela maquininha em instantes.",
+      description: "O cupom será impresso em instantes.",
       duration: 4000,
     });
+
+    onOpenChange(false);
   };
 
   const handleBrowserPrint = () => {
-    console.log("[PRINT][WEB] Usando impressão do navegador");
-    const { html, paperWidth } = buildBrowserReceiptHtml();
+    const config = getPrinterConfig();
+    const paperWidth = config.paperWidth.replace("mm", "") as PaperWidthMM;
+
+    const html = buildReceiptHTML({
+      tenantName,
+      tenantLogo,
+      orderNumber,
+      dateStr: new Date().toLocaleDateString("pt-BR"),
+      timeStr: new Date().toLocaleTimeString("pt-BR", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+      cashierName,
+      items: items.map((item, index) => ({
+        index: index + 1,
+        name: item.productName,
+        variationName: item.variationName,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        totalPrice: item.totalPrice,
+        notes: item.notes,
+      })),
+      subtotal,
+      total,
+      paymentMethodLabel: paymentMethodLabels[paymentMethod] || paymentMethod,
+    });
+
     printReceiptHTML(html, paperWidth);
   };
 
   const handlePrint = async () => {
-    console.log("[PRINT] click imprimir", {
-      mode: settings?.print_mode,
-      hasBridge: !!window.foodhub,
-      hasPrintReceipt: !!window.foodhub?.printReceipt,
-    });
+    if (isPrinting) return;
 
     setIsPrinting(true);
+    setShowDesktopFallback(false);
 
     try {
       if (settings?.print_mode === "desktop") {
@@ -442,6 +338,7 @@ export function ReceiptDialog({
         return;
       }
 
+      // No navegador ainda vai abrir diálogo. Isso é limitação do browser.
       handleBrowserPrint();
     } catch (error) {
       console.error("[PRINT] erro geral:", error);
@@ -469,42 +366,23 @@ export function ReceiptDialog({
           try {
             const status = await window.foodhub.getStatus();
             results.push(`Versão: ${status.appVersion}`);
-            results.push(`Impressoras: ${status.printersCount} encontrada(s)`);
-            results.push(`Padrão: ${status.defaultPrinterName || "Nenhuma"}`);
+            results.push(`Impressoras encontradas: ${status.printersCount}`);
+            results.push(`Impressora padrão: ${status.defaultPrinterName || "Nenhuma"}`);
           } catch {
             results.push("Status: ❌ Erro ao consultar");
-          }
-        }
-
-        if (window.foodhub.getPrinters) {
-          try {
-            const printers = await window.foodhub.getPrinters();
-            results.push(`Conectadas: ${printers.length > 0 ? printers.join(", ") : "Nenhuma"}`);
-          } catch {
-            results.push("Conectadas: ❌ Erro ao listar");
           }
         }
 
         if (window.foodhub.getDefaultPrinter) {
           try {
             const defaultPrinter = await window.foodhub.getDefaultPrinter();
-            results.push(`Padrão SO: ${defaultPrinter || "Nenhuma definida"}`);
+            results.push(`Padrão do sistema: ${defaultPrinter || "Nenhuma"}`);
           } catch {
-            results.push("Padrão SO: ❌ Erro ao consultar");
+            results.push("Padrão do sistema: ❌ Erro ao consultar");
           }
         }
       } else {
-        results.push("Desktop PDV: ❌ Não está rodando no FoodHub PDV Desktop");
-        results.push("💡 Baixe o FoodHub PDV Desktop para impressão direta.");
-      }
-
-      const caixaRoute = findCaixaRoute();
-      if (caixaRoute) {
-        results.push(
-          `Rota Caixa: route_key="${caixaRoute.route_key}", printers=[${caixaRoute.printers.join(", ") || "(nenhuma configurada)"}]`,
-        );
-      } else {
-        results.push("Rota Caixa: ❌ Não encontrada");
+        results.push("Desktop PDV: ❌ Não detectado");
       }
 
       toast({
@@ -547,58 +425,43 @@ export function ReceiptDialog({
 
         {showDesktopFallback && (
           <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 p-4 space-y-3">
-            <p className="text-sm font-medium text-amber-700 dark:text-amber-300">
-              ⚠️ FoodHub PDV Desktop não detectado
-            </p>
+            <p className="text-sm font-medium text-amber-700 dark:text-amber-300">⚠️ App Desktop não detectado</p>
 
             <p className="text-xs text-muted-foreground">
-              Para impressão direta sem tela do navegador, abra o sistema pelo app Desktop. No navegador, a impressão
-              abrirá o diálogo de impressão.
+              Impressão em 1 clique sem seleção só funciona no app Desktop usando a impressora padrão do sistema.
             </p>
 
             <div className="flex flex-col gap-2">
               {desktopUrls?.windows_url && desktopUrls.windows_url !== "#" ? (
-                <Button size="sm" onClick={() => window.open(desktopUrls.windows_url, "_blank")}>
+                <Button type="button" size="sm" onClick={() => window.open(desktopUrls.windows_url, "_blank")}>
                   <Download className="h-4 w-4 mr-2" />
-                  Baixar FoodHub PDV Desktop
+                  Baixar app Desktop
                 </Button>
               ) : (
-                <Button size="sm" onClick={() => window.open("/downloads", "_blank")}>
+                <Button type="button" size="sm" onClick={() => window.open("/downloads", "_blank")}>
                   <Download className="h-4 w-4 mr-2" />
                   Ver página de download
                 </Button>
               )}
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setShowDesktopFallback(false);
-                  handleBrowserPrint();
-                }}
-              >
-                <Printer className="h-4 w-4 mr-2" />
-                Imprimir pelo navegador
-              </Button>
             </div>
           </div>
         )}
 
         <div className="flex gap-2 mt-4">
-          <Button variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>
+          <Button type="button" variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>
             <X className="h-4 w-4 mr-2" />
             Fechar
           </Button>
 
-          <Button className="flex-1" onClick={handlePrint} disabled={isPrinting}>
+          <Button type="button" className="flex-1" onClick={handlePrint} disabled={isPrinting}>
             {isPrinting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Printer className="h-4 w-4 mr-2" />}
-
             {isPrinting ? "Imprimindo..." : isDesktopDirectPrintAvailable ? "Imprimir direto" : "Imprimir"}
           </Button>
         </div>
 
         {settings?.print_mode === "desktop" && (
           <Button
+            type="button"
             variant="ghost"
             size="sm"
             className="w-full text-xs text-muted-foreground"
