@@ -186,14 +186,18 @@ ipcMain.handle('foodhub:getPrinters', async () => {
 });
 
 ipcMain.handle('foodhub:getDefaultPrinter', async () => {
+  const osDefault = getWindowsDefaultPrinter();
+  if (osDefault) return osDefault;
+
   if (mainWindow) {
     try {
       const printers = await mainWindow.webContents.getPrintersAsync();
-      const osDef = printers.find(p => p.isDefault);
-      if (osDef) return osDef.name;
+      const fallbackDefault = printers.find(p => p.isDefault)?.name;
+      if (fallbackDefault) return fallbackDefault;
     } catch {}
   }
-  return getConfig('defaultPrinter') || null;
+
+  return null;
 });
 
 ipcMain.handle('foodhub:setDefaultPrinter', (_event, name: string) => {
