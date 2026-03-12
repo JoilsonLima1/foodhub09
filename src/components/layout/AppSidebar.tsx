@@ -35,6 +35,7 @@ import {
   CalendarDays,
   TrendingUp,
   Lock,
+  Monitor,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
