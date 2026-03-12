@@ -214,22 +214,32 @@ ipcMain.handle('foodhub:printReceipt', async (_event, payload: {
     right?: string;
     lines?: number;
   }>;
-  printerName?: string;
+  printerName?: string | null;
   paperWidth?: number;
+  silent?: boolean;
+  useDefaultPrinter?: boolean;
 }) => {
   try {
-    // If printerName is explicitly null → use OS default (no config fallback)
-    // If printerName is undefined (not provided) → fall back to config
-    const hasExplicitPrinter = 'printerName' in payload && payload.printerName !== undefined;
-    const printerName = hasExplicitPrinter
-      ? (payload.printerName || undefined)   // null → undefined (OS default)
-      : (getConfig('defaultPrinter') || undefined);
+    const shouldUseDefaultPrinter = payload.useDefaultPrinter === true || payload.printerName === null;
+    const normalizedPrinterName = typeof payload.printerName === 'string' ? payload.printerName.trim() : payload.printerName;
+    const printerName = shouldUseDefaultPrinter
+      ? null
+      : (normalizedPrinterName || undefined);
+
     const paperWidth = payload.paperWidth || 80;
-    console.log(`[IPC] foodhub:printReceipt received, payload.printerName=${JSON.stringify(payload.printerName)}, resolved="${printerName || '(OS default)'}", lines=${payload.lines?.length || 0}`);
-    return await printReceipt(payload.lines, { printerName, paperWidth });
+    const silent = payload.silent !== false;
+
+    console.log(`[IPC] foodhub:printReceipt received, payload.printerName=${JSON.stringify(payload.printerName)}, useDefaultPrinter=${shouldUseDefaultPrinter}, silent=${silent}, resolved=${JSON.stringify(printerName ?? '(OS default)')}, lines=${payload.lines?.length || 0}`);
+
+    return await printReceipt(payload.lines, {
+      printerName,
+      paperWidth,
+      silent,
+      useDefaultPrinter: shouldUseDefaultPrinter,
+    });
   } catch (err: any) {
     console.error('[IPC] foodhub:printReceipt uncaught error:', err);
-    return { ok: false, jobId: `err_${Date.now()}`, error: { code: 'INTERNAL_ERROR', message: err.message || String(err) } };
+    return { ok: false, jobId: `err_${Date.now()}`, error: { code: 'PRINT_FAILED', message: err.message || String(err) } };
   }
 });
 
