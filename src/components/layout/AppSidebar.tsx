@@ -145,7 +145,7 @@ export function AppSidebar() {
 
     // Role-based filtering (hard filter)
     if (roles.includes('cashier')) {
-      return items.filter(item => ['/pos', '/orders'].includes(item.path));
+      return items.filter(item => ['/pos', '/orders', '/downloads'].includes(item.path));
     }
     if (roles.includes('kitchen')) {
       return items.filter(item => item.path === '/kitchen');
