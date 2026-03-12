@@ -345,32 +345,23 @@ export function ReceiptDialog({
         return;
       }
 
-      // Priority 1: Local Python print API (127.0.0.1:8765)
-      if (localApiAvailable) {
-        const success = await handleLocalApiPrint();
-        if (success) return;
-        // If local API fails, fall through to other methods
-      }
-
-      // Priority 2: Electron desktop bridge
-      if (window.foodhub?.printReceipt) {
-        await handleDesktopPrint();
-        return;
-      }
-
-      // Se modo é desktop mas nenhum agente disponível → NÃO fazer fallback para browser
+      // Modo desktop: impressão direta via Electron (único canal)
       if (settings?.print_mode === "desktop") {
-        setShowDesktopFallback(true);
-        toast({
-          title: "Impressão direta indisponível",
-          description: "Nenhum agente de impressão detectado. Instale o app Desktop ou inicie a API local (porta 8765).",
-          variant: "destructive",
-          duration: 10000,
-        });
+        if (window.foodhub?.printReceipt) {
+          await handleDesktopPrint();
+        } else {
+          setShowDesktopFallback(true);
+          toast({
+            title: "Impressão direta indisponível",
+            description: "O app Desktop PDV não foi detectado. Abra o sistema dentro do FoodHub PDV Desktop para impressão em 1 clique.",
+            variant: "destructive",
+            duration: 10000,
+          });
+        }
         return;
       }
 
-      // Priority 3: Browser window.print (APENAS se modo web)
+      // Modo web: browser window.print
       handleBrowserPrint();
     } catch (error) {
       console.error("[PRINT] erro geral:", error);
