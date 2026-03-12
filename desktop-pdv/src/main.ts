@@ -102,7 +102,7 @@ function buildMenu() {
             dialog.showMessageBox({
               type: 'info',
               title: 'Sobre',
-              message: `FoodHub PDV Desktop\nVersão ${version}`,
+              message: `FoodHub PDV Desktop\nVersão ${version}\n\nURL carregada:\n${PDV_URL}${customUrl ? '\n(configuração local ativa)' : '\n(URL padrão)'}`,
             });
           },
         },
